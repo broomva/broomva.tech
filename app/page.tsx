@@ -53,21 +53,24 @@ export default function Home() {
           >
             Arcan
           </Link>
-          | <Link
+          | 
+          <Link
             target="_blank"
             href="https://github.com/broomva"
             className="underline duration-500 hover:text-zinc-300"
           >
             Github
           </Link>
-          | <Link
+          | 
+          <Link
             target="_blank"
             href="https://huggingface.co/Broomva"
             className="underline duration-500 hover:text-zinc-300"
           >
             HuggingFace
           </Link>
-          | <Link
+          | 
+          <Link
             target="_blank"
             href="https://www.linkedin.com/in/broomva/"
             className="underline duration-500 hover:text-zinc-300"
