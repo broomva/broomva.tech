@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@next/font": "^13.5.4",
+    "@vercel/analytics": "^1.1.1",
+    "@vercel/speed-insights": "^1.0.1",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.284.0",
     "markdown-wasm": "^1.2.0",
