@@ -2,7 +2,7 @@ import Link from "next/link";
 import Particles from "./components/particles";
 
 const navigation = [
-  { name: "Contact", href: "/contact" },
+  { name: "Let's speak 🚀", href: "/contact" },
 ];
 
 export default function Home() {

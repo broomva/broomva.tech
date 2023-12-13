@@ -16,13 +16,13 @@ const socials = [
 		icon: <Linkedin size={28} />,
 		href: "https://www.linkedin.com/in/broomva/",
 		label: "LinkedIn",
-		handle: "Let's connect",
+		handle: "Connect",
 	},
 	{
 		icon: <Github size={28} />,
 		href: "https://github.com/broomva",
 		label: "Github",
-		handle: "Broomva on Github",
+		handle: "Broomva on",
 	},
 
 	{
