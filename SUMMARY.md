@@ -1,3 +1,3 @@
 # Table of contents
 
-* [Solution Architect Questions](README.md)
+* [Solution Architect Questions](blog/solution_architect_questions.md)
