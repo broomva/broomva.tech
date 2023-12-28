@@ -62,13 +62,13 @@ df.dtypes # shows dataframe data types
 
 # Basic Data Types
 
-![Week%201%20Importing%20Datasets%205f33f09d84af40f98f34b59f86f2b171/Screen_Shot_2020-09-06_at_19.21.49.png](Week%201%20Importing%20Datasets%205f33f09d84af40f98f34b59f86f2b171/Screen_Shot_2020-09-06_at_19.21.49.png)
+![Week%201%20Importing%20Datasets/Screen_Shot_2020-09-06_at_19.21.49.png](Week%201%20Importing%20Datasets/Screen_Shot_2020-09-06_at_19.21.49.png)
 
 # Connecting to Databases
 
 Python can connect to databases and extract data using SQL API's. Basic functionality is shown:
 
-![Week%201%20Importing%20Datasets%205f33f09d84af40f98f34b59f86f2b171/Screen_Shot_2020-09-06_at_19.26.29.png](Week%201%20Importing%20Datasets%205f33f09d84af40f98f34b59f86f2b171/Screen_Shot_2020-09-06_at_19.26.29.png)
+![Week%201%20Importing%20Datasets/Screen_Shot_2020-09-06_at_19.26.29.png](Week%201%20Importing%20Datasets/Screen_Shot_2020-09-06_at_19.26.29.png)
 
 A basic code template is like:
 

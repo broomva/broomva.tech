@@ -4,15 +4,19 @@
     "type": "split",
     "children": [
       {
-        "id": "519df839f25947bc",
+        "id": "538a8f858f5ff437",
         "type": "tabs",
         "children": [
           {
-            "id": "379fda00810f3c3a",
+            "id": "edb13ca31954d8a6",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {}
+              "type": "markdown",
+              "state": {
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
+                "mode": "source",
+                "source": false
+              }
             }
           }
         ]
@@ -81,6 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -97,6 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -118,7 +124,9 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {}
+              "state": {
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md"
+              }
             }
           }
         ]
@@ -138,8 +146,11 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "379fda00810f3c3a",
+  "active": "edb13ca31954d8a6",
   "lastOpenFiles": [
+    "Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Azure Data Scientist Associate fff55a44fbc4461eb632d6acc0e92560.md",
+    "blog/Self Engineering Wiki.md",
+    "Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e",
     "blog/Self Engineering Wiki/Databricks/Pages/Quick Reference CI CD/dd_b2o-5-wd1rE2q_Y5Qj3ZErjzcIQeis.jpg",
     "blog/Self Engineering Wiki/Databricks/Pages/Streaming Delta Tables/Streaming_Delta_Tables_-_Ingesting_Raw_Data.webarchive",
     "blog/Self Engineering Wiki/Databricks/Pages/Quick Reference CI CD/Quick_Reference_CICD_-_Course_Introduction_and_Goals.webarchive",
@@ -152,7 +163,6 @@
     "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/fcmiaRpTUN7A6lZv_PxSlFmcVVqgME6hV.png",
     "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/atfu_34-Jy3fxYLQ_gLcoRENSJWxx0dhd.png",
     "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/ZtdxZp4-jFn6WrII_XisfDS4826u1Vt9J.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/YWSQpXjx__vAWY1Q_9ewZ4jGArbJ0mt7M.png",
     "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/Lakehouse_with_Delta_Lake_Deep_Dive_-_How_Delta_Lake_Enables_a_Lakehouse.webarchive",
     "blog/Self Engineering Wiki/Databricks/Pages/Data Engineering with Databricks/Course_Welcome_and_Setup_-_Introduction_to_the_Course.webarchive",
     "blog/Self Engineering Wiki/Databricks/Pages/Compliance and Optimization/Compliance_and_Optimization_-_GDPR__CCPA_Compliance.webarchive",
@@ -181,10 +191,8 @@
     "blog/Self Engineering Wiki/Solution Architect Questions/SQL vs NoS/Ability to scale.md",
     "blog/Self Engineering Wiki/Solution Architect Questions/SDD VS HDD/Power Draw Battery Life.md",
     "blog/Self Engineering Wiki/Solution Architect Questions/SDD VS HDD/Vibration.md",
-    "blog/Self Engineering Wiki/Solution Architect Questions/SQL vs NoS/ACID vs BASE Model.md",
     "blog/Self Engineering Wiki/Machine Learning with Big Data/Codebase/KNIME-workflows.zip",
     "blog/Self Engineering Wiki/Machine Learning with Big Data/Codebase/Big_Data_Spark_Install.zip",
-    "blog/Self Engineering Wiki/How to Win a Data Science Competition Learn from T/Week 4/compute_KNN_features.ipynb",
-    "blog/Self Engineering Wiki/How to Win a Data Science Competition Learn from T/Week 4/Macros.ipynb"
+    "blog/Self Engineering Wiki/How to Win a Data Science Competition Learn from T/Week 4/compute_KNN_features.ipynb"
   ]
 }

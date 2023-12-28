@@ -68,7 +68,7 @@ $$
 
 ## Logic Gates
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.25.13.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.25.13.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-18_at_14.25.13.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-18_at_14.25.13.png)
 
 A NOT gate flips the bit: $a$ → $\bar a$
 
@@ -84,7 +84,7 @@ A XOR gate outputs 1 if either input bits are 1, but no both, outputs 0 if neith
 
 Tells us the output of a logical operation based on its inputs
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.25.40.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.25.40.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-18_at_14.25.40.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-18_at_14.25.40.png)
 
 # Universality
 
@@ -92,7 +92,7 @@ Any computaiton operation can be made by using a combination  of (NOT, AND, OR, 
 
 An Adder with gates:
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.56.40.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.56.40.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-18_at_14.56.40.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-18_at_14.56.40.png)
 
 # Reversability
 
@@ -113,17 +113,17 @@ We use Boolean logic gates to implement operations in computing. It turns out th
 
 The NAND gate comprises of an AND gate immediately followed by a NOT gate. Here is it’s circuit symbol and corresponding truth table:
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.35.48.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.35.48.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.35.48.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.35.48.png)
 
 A very interesting fact is that the NAND gate is functionally complete by itself. This means that any conceivable operation can be performed using only NAND gates and COPY.  We can create all of the other logic gates using only NAND and COPY.
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.06.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.06.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.06.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.06.png)
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.11.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.11.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.11.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.11.png)
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.16.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.16.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.16.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.16.png)
 
-![Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.23.png](Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.23.png)
+![Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.23.png](Week%201%20Classical%20Computing/Screen_Shot_2020-10-21_at_15.38.23.png)
 
 The idea of functional completeness is extremely important in computing. If we want to make a computer, we must make physical circuits that perform these logical operations. If we have a functionally complete set of operations, {NAND} for example, we only need to know how to make that specific circuit, and then can make any operation necessary by combining the gates in different ways.
 Once we delve deeper in quantum computing, we will see that there are parallels between classical logic gates and quantum gates. We will also learn what a functionally complete set of quantum gates

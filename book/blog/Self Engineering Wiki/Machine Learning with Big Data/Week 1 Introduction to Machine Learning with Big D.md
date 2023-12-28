@@ -93,7 +93,7 @@ Note that the machine learning process is a very iterative one. Findings from on
 
 CRISP-DM is a process model that describes the steps in a data mining process. The phases are, business understanding, data understanding, data preparation, modeling, evaluation and deployment:
 
-![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_21.54.23.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_21.54.23.png)
+![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_21.54.23.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_21.54.23.png)
 
 ## Business Understanding
 
@@ -135,9 +135,9 @@ One way, is to scale up by adding more memory, processors, and storage to our sy
 
 An alternative approach is to scale out. This means using many local commodity distribution systems together. Data is distributed over these systems to gain processing speed up. The idea is to divide the data into smaller subsets. The same processing is applied to each subset, or map, and the results are merged at the end to come up with the overall results for the original dataset.
 
-![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.18.19.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.18.19.png)
+![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.18.19.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.18.19.png)
 
-![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.18.48.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.18.48.png)
+![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.18.48.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.18.48.png)
 
 Let's consider an example, where we want to apply the same operation to all the samples in a dataset of N samples. In this case, N is four. If it takes T time units to perform this operation on each sample, then with sequential processing the time to apply that operation to all samples, is N times T. If we have a cluster of four processors, we can distribute the data across the four processors. Each process performs the operation on the dataset subset of N over four samples. Processing of the four subsets of the data is done in parallel. That is, the subsets are processed at the same time. The processing time for the distributed approach is approximately N over 4 times T plus any overhead required to merge the subset results and maybe shuffle them. This is a speedup of nearly four times over the sequential approach.
 
@@ -151,7 +151,7 @@ KNIME Analytics is a platform for data analytics, reporting, and visualization. 
 
 In KNIME you assemble the steps that need to be performed in a machine learning process by connecting nodes to create a workflow. To create a workflow the user chooses the appropriate nodes from the node repository and assembles them into a workflow. The workflow can then be executed in the KNIME work bench.
 
-![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.25.01.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.25.01.png)
+![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.25.01.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.25.01.png)
 
 Each node can have input and output ports and can be connected to other nodes. When a node is executed, it takes data from its input port, performs some operations on the data and writes the results to the output port. Data is transferred between nodes that are connected. A node can be configured by opening up its configuration dialog. This is where the parameters for the node can be set.
 
@@ -161,7 +161,7 @@ The Node Repository is where you will find all the nodes available in your KNIME
 
 Spark is a distributed computing platform. MLlib is a scalable machine learning library that runs on top of Spark.
 
-![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.27.24.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D%2049f1ea20c7eb44889302a5e6544f54af/Screen_Shot_2020-11-03_at_22.27.24.png)
+![Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.27.24.png](Week%201%20Introduction%20to%20Machine%20Learning%20with%20Big%20D/Screen_Shot_2020-11-03_at_22.27.24.png)
 
 It provides distributed implementations of commonly used machine learning algorithms and utilities.
 

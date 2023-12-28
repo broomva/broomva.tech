@@ -5,71 +5,71 @@
 
 ## Cheat Sheets
 
-[Python Basics.ipynb](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Python_Basics.ipynb)
+[Python Basics.ipynb](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Python_Basics.ipynb)
 
-[Eigenvectors_Cheatsheet_SEM.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Eigenvectors_Cheatsheet_SEM.pdf)
+[Eigenvectors_Cheatsheet_SEM.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Eigenvectors_Cheatsheet_SEM.pdf)
 
-[Vector and Matrices Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Vector_and_Matrices_Cheat_Sheet.pdf)
+[Vector and Matrices Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Vector_and_Matrices_Cheat_Sheet.pdf)
 
-[Probability Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Probability_Cheatsheet.pdf)
+[Probability Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Probability_Cheatsheet.pdf)
 
-[Optional Winter Review Problems.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Optional_Winter_Review_Problems.pdf)
+[Optional Winter Review Problems.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Optional_Winter_Review_Problems.pdf)
 
-[Dirac Notation.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Dirac_Notation.pdf)
+[Dirac Notation.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Dirac_Notation.pdf)
 
-[Complex Numbers Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Complex_Numbers_Cheat_Sheet.pdf)
+[Complex Numbers Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Complex_Numbers_Cheat_Sheet.pdf)
 
-[Trig Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Trig_Cheat_Sheet.pdf)
+[Trig Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Trig_Cheat_Sheet.pdf)
 
 ## Week 0: Orientation
 
 [QubitxQubit: Quantum Computing, Orientation Lecture 10.11.20](https://www.youtube.com/watch?v=avac1Bltc-A&feature=youtu.be)
 
-[Lecture 0 poster shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_0_poster_shared_by_Maria.pdf)
+[Lecture 0 poster shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_0_poster_shared_by_Maria.pdf)
 
-[Lecture 0 notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_0_notes_shared_by_Maria.pdf)
+[Lecture 0 notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_0_notes_shared_by_Maria.pdf)
 
 [Qubit by Qubit: Trig Review](https://www.youtube.com/watch?v=D9DeMf3my44&feature=youtu.be)
 
-[Trig review slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Trig_review_slides.pdf)
+[Trig review slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Trig_review_slides.pdf)
 
-[Trig review notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Trig_review_notes_shared_by_Maria.pdf)
+[Trig review notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Trig_review_notes_shared_by_Maria.pdf)
 
 ## Week 1: Classical Computing
 
-[Week 1: Classical Computing](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Week%201%20Classical%20Computing%200a391624c86d42ea8bbaf87c462558c7.md)
+[Week 1: Classical Computing](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Week%201%20Classical%20Computing.md)
 
 [QxQ - Introduction to Quantum Computing Lecture 1 10.18.20](https://www.youtube.com/watch?v=TqKqnqlut8I&feature=youtu.be)
 
-[Lecture 1 Slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_1_Slides.pdf)
+[Lecture 1 Slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_1_Slides.pdf)
 
-[Lecture 1 poster shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_1_poster_shared_by_Maria.pdf)
+[Lecture 1 poster shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_1_poster_shared_by_Maria.pdf)
 
-[Lecture 1 notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_1_notes_shared_by_Maria.pdf)
+[Lecture 1 notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_1_notes_shared_by_Maria.pdf)
 
 [Qubit by Qubit: Lab 3, 10.20.20](https://www.youtube.com/watch?v=A2cWrLVYmvE&feature=youtu.be)
 
-[Lab 1 Slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lab_1_Slides.pdf)
+[Lab 1 Slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lab_1_Slides.pdf)
 
-[Week 1 Homework.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Week_1_Homework.pdf)
+[Week 1 Homework.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Week_1_Homework.pdf)
 
-[Optional Week 1 HW Problems - Solutions.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Optional_Week_1_HW_Problems_-_Solutions.pdf)
+[Optional Week 1 HW Problems - Solutions.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Optional_Week_1_HW_Problems_-_Solutions.pdf)
 
 ## Week 2: Quantum Computing in Abstract
 
 [QxQ - Introduction to Quantum Computing Lecture 2 10.25.20](https://www.youtube.com/watch?v=Yp_FGgwly_Q)
 
-[Lab 2 Slides - no annotations.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lab_2_Slides_-_no_annotations.pdf)
+[Lab 2 Slides - no annotations.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lab_2_Slides_-_no_annotations.pdf)
 
-[Optional Week 2 HW Problems - Solutions.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Optional_Week_2_HW_Problems_-_Solutions.pdf)
+[Optional Week 2 HW Problems - Solutions.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Optional_Week_2_HW_Problems_-_Solutions.pdf)
 
-[Week 2 hw.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Week_2_hw.pdf)
+[Week 2 hw.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Week_2_hw.pdf)
 
-[Lecture 2 poster shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_2_poster_shared_by_Maria.pdf)
+[Lecture 2 poster shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_2_poster_shared_by_Maria.pdf)
 
-[Lecture 2 notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_2_notes_shared_by_Maria.pdf)
+[Lecture 2 notes shared by Maria.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_2_notes_shared_by_Maria.pdf)
 
-[Lecture 2 Slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Lecture_2_Slides.pdf)
+[Lecture 2 Slides.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Lecture_2_Slides.pdf)
 
 [Qubit by Qubit: Lab 2A, 10.27.20](https://www.youtube.com/watch?v=8xSxB6JBpBg)
 
@@ -79,7 +79,7 @@
 
 [Qubit by Qubit: Lab 2A, 11.03.20](https://www.youtube.com/watch?v=i6hZxdtAmF4)
 
-[Week_3_MC.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Week_3_MC.pdf)
+[Week_3_MC.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Week_3_MC.pdf)
 
 ## Week 4: More Vectors and Intro to Matrices
 
@@ -121,15 +121,15 @@
 
 ## Cheat Sheets
 
-[Oracles Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Oracles_Cheat_Sheet.pdf)
+[Oracles Cheat Sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Oracles_Cheat_Sheet.pdf)
 
-[Superdense Coding Quantum Teleportation Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Superdense_Coding_Quantum_Teleportation_Cheatsheet.pdf)
+[Superdense Coding Quantum Teleportation Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Superdense_Coding_Quantum_Teleportation_Cheatsheet.pdf)
 
-[Quantum Key Distribution Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Quantum_Key_Distribution_Cheatsheet.pdf)
+[Quantum Key Distribution Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Quantum_Key_Distribution_Cheatsheet.pdf)
 
-[Qiskit Cheat sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Qiskit_Cheat_sheet.pdf)
+[Qiskit Cheat sheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Qiskit_Cheat_sheet.pdf)
 
-[Quantum Mechanics Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing%20bafa255283f24125ba6a8ee0bb9a9054/Quantum_Mechanics_Cheatsheet.pdf)
+[Quantum Mechanics Cheatsheet.pdf](QxQ%20-%20Introduction%20to%20Quantum%20Computing/Quantum_Mechanics_Cheatsheet.pdf)
 
 ## Week 10: Quantum Stack & Math Review
 

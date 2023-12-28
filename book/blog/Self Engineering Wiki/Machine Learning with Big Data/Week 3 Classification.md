@@ -37,7 +37,7 @@ The basic idea is to classify a sample based on its neighbors. So when you get a
 
 Given a new sample, look for the samples in the training data that are closest to the new sample. These are the neighbors. Use the labels of this neighboring points to determine the label for the new sample.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_13.37.57.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_13.37.57.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_13.37.57.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_13.37.57.png)
 
 This figure illustrate how kNN works. The problem here is to determine if a sample should be classified as a blue square or red triangle. The green circle is the new sample. To determine a class label for this new sample, look at its closest neighbors. These neighbors are the samples within the dashed circle. Two blue squares and one red triangle. The class labels of the neighboring samples determine the label for the new sample.
 
@@ -57,11 +57,11 @@ With real data completely pure subsets may not be possible. So the goal is to di
 
 Graphically this is equivalent to dividing the input space into regions that are as pure as possible. Boundaries separating these regions are called decision boundaries. And the decision tree model makes classification decisions based on these decision boundaries.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_13.43.33.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_13.43.33.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_13.43.33.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_13.43.33.png)
 
 A decision tree is a hierarchical structure with nodes and directed edges. The node at the top is called the root node. The nodes at the bottom are called the leaf nodes. Nodes that are neither the root node or the leaf nodes are called internal nodes. The root and internal nodes have test conditions, each leaf node has a class label associated with it.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_13.44.52.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_13.44.52.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_13.44.52.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_13.44.52.png)
 
 A classification decision is made by traversing the decision tree starting with the root node. At each node the answer to the test condition determines which branch to traverse to. When a leaf node is reached the category at the leaf node determines the classification decision.
 
@@ -119,25 +119,25 @@ Naive Bayes assumes that the input features are statistically independent of one
 
 Probability is the measure of how likely an event is, the probability of an event A occurring is denoted P and in parenthesis A. It is calculated by dividing the number of ways event A can occur, by the total number of possible outcomes.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.39.04.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.39.04.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.39.04.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.39.04.png)
 
 There's also a joint probability, the joint probability specifies the probability of event A and event B occurring together. The joint probability of A and B is denoted, P(A,B) for an example of joint probability.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.39.40.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.39.40.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.39.40.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.39.40.png)
 
 If the two events are independent, then the joint probability is simply the result of multiplying the probabilities of the individual events together. In this case then, we have the probability of rolling a six for each die is one over six so the joint probability is one over 36, this leads us to conditional probability
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.40.21.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.40.21.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.40.21.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.40.21.png)
 
 The conditional probability is the probability of event A occurring Given that event B has already occurred. Another way to say this is that event A is conditioned on event B. The conditional probability is the noted P and in parentheses A, vertical line B and is read as, probability of A Given B.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.41.48.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.41.48.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.41.48.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.41.48.png)
 
 As before, the blue circle is the probability of event A occurring, the green circle is the probability of event B occurring. The overlap is a joint probability of A and B. The conditional probability, P(A given B) then is calculated as the join probability divided by the probability of B. The conditional probability is an important concept in classification as we will see later. It provides the means to specify the probability of a class label, given the input values.
 
 The relationship between conditional probabilities P of B given A and P of A given B can be expressed through Bayes' Theorem. This theorem is named after a reverend named Thomas Bayes who lived in the 1700s. It is a way to look at how the probability of a hypothesis is affected by new evidence gathered from data. Bayes' theorem expresses the relationship between probability of B given A and probability of A given B as shown in this equation
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.45.34.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.45.34.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.45.34.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.45.34.png)
 
 ### Probabilistic Classification
 
@@ -147,11 +147,11 @@ Capital X is the set of values for the input features in the sample, given a sam
 
 Another way to state this is, what is the class label associated with the feature vector X or how should the feature vector x be classified? To find the class label C we need to calculate the conditional probability of class C, given X for all classes and select a class with the highest probability.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.48.43.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.48.43.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.48.43.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.48.43.png)
 
 So for classification, we want to find the value of C that maximizes the probability of C given X. The problem is that it is difficult to estimate this probability, because we would need to enumerate every possible combination of feature values and to know the conditional probability. The classification problem can be reformulated using Bayes' theorem to simplify the classification problem. Specifically, using Bayes' theorem, the probability of c given x, can be expressed using other probability quantities, which can be estimated from the data.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.50.40.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.50.40.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.50.40.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.50.40.png)
 
 Probability of C I X is referred to as the posterior probability since it is the probability of the class label being C after observing input features X. 
 
@@ -161,7 +161,7 @@ Probability of c is the probability of the class label being C, this is the prob
 
 The probability of X is the probability of observing input features X regardless of what the class label is.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.54.16.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.54.16.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.54.16.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.54.16.png)
 
 So for classification we want to calculate the posterior probability P(C | X) for each class C. From Bayes' theorem P(C | X) is related to the P(X | C) P(C And probability of X. Probability of X does not depend on the class C, therefore, it is a constant value, given the input X. Since it the same value for all classes, the probability of X can be removed from the calculation of probability of C, given X.
 
@@ -169,17 +169,17 @@ So estimating the probability of C given X boils down to estimating the probabil
 
 To the estimate the probability of C which is the probability of the class of C before observing any input data. We simply calculate the fraction of samples with that class label C in the training data.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.57.31.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.57.31.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.57.31.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.57.31.png)
 
 For this example, there are four samples labeled as green circles out of 10 samples, so probability of green circle is 4 out of 10, or 0.4. Similarly, the fraction of samples labeled as red triangles is 6 out of 10, or 0.6. So estimating the prior probabilities is a simple count of number of samples with each class label divided by the total number of samples in the training data center.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.58.46.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_15.58.46.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_15.58.46.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_15.58.46.png)
 
 In estimating probability of X given C which is the probability of observing feature factor X given that the class is C, we can use the independent assumption to simplify the problem.
 
 The Independence Assumption of the Naive Bayes classifier assumes that each feature X sub I in the featured vector X is conditionally independent of every other feature, given the class C. This means that we only need to estimate the probability of X sub i given C, instead of having to estimate the probability of the entire feature X given C. For every combination of values for the features in X then we would simply multiply these individual probabilities together to get the probability of the entire feature vector X. Given the class C to estimate the probability of X sub I, given C, we count up the number of times a particular input value is observed for the class c in the training data.
 
-![Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_16.03.32.png](Week%203%20Classification%20563b430707be4735afb3d9f4857848e6/Screen_Shot_2020-11-05_at_16.03.32.png)
+![Week%203%20Classification/Screen_Shot_2020-11-05_at_16.03.32.png](Week%203%20Classification/Screen_Shot_2020-11-05_at_16.03.32.png)
 
 For example, the number of times that we see the value of yes for the future home owner, when the class label is no it's three as indicated by the green arrows. This is divided by the number of samples with no as the class label which is seven. This fraction, three out of seven, is the probability that home owner is Yes given that the class is No. Similarly, the samples with the value of Single for the feature Marital Status when it crosses Yes are indicated by the red arrows. And the probability that Marital Status is Single, given that the class label is Yes is 2/3 or 0.67.
 

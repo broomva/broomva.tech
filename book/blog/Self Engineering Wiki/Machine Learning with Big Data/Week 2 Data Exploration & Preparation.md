@@ -9,7 +9,7 @@ There are many names for sample and variable. Some other terms for sample that y
 
 There are also many names for the term variable, such as feature, column, dimension, attribute, and field. All of these terms refer to specific characteristics for each sample in your dataset. An important point to emphasize about variable is that, they are additional values with a data type. Each variable has a data type associated with it. The most common data types are numeric and categorical. There are other data types as well such as string and date.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_22.06.25.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_22.06.25.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_22.06.25.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_22.06.25.png)
 
 As the name implies, numeric variables are variables that take on number values. Numeric variables can be measured, and their values can be sorted in some way. Note that a numeric variable can take on just integer values or be continuous valued. It can also have just positive numbers, negative numbers or both. A person's height is a positive, continuous valued number. The score in an exam is a positive number that range between zero and a 100%. The number of transactions per hour is a positive integer, whereas the change in a stock price can be either positive or negative.
 
@@ -47,7 +47,7 @@ Measures of location are summary statistics that describe the central or typical
 
 Measures of spread describe how dispersed or varied your dataset is. Common measures of spread are minimum, maximum, range, standard deviation and variance. Minimum and maximum are of course the smallest and largest values in your dataset respectively. The range is simply the difference between the maximum and minimum and tells you how spread out your data is. Standard deviation describes the amount of variation in your dataset.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.10.29.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.10.29.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.10.29.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.10.29.png)
 
 A low standard deviation value means that the samples in your dataset tend to be close to the mean. And a high standard deviation value means that the data samples are spread out. Variance is closely related to standard deviation. In fact the variance is the square of the standard deviation. So it also indicates how spread out the data samples are from the mean.
 
@@ -55,11 +55,11 @@ A low standard deviation value means that the samples in your dataset tend to be
 
 Measures of shape describe the shape of the distribution of a set of values. Common members of shape are skewness and kurtosis. Skewness indicates whether the data values are asymmetrically distributed. A skewness value of around zero indicates that the data distribution is approximately normal, as shown in the middle figure in the top diagram. A negative skewness value indicates that the distribution is skewed to the left, as indicated in the left figure in the top diagram. A positive skewness value on the other hand indicates that the data distribution is skewed to the right.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.12.36.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.12.36.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.12.36.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.12.36.png)
 
 Kurtosis measures the tailedness of the data distribution or how heavy or fat the tails of the distribution are. A high kurtosis value describes a distribution with longer and fatter tails and a higher and sharper central peak, indicating the presence of outliers. A low kurtosis value on the other hand, describes a distribution with shorter and lighter tails and lower and broader central peak, suggesting the lack of outliers.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.12.48.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.12.48.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.12.48.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.12.48.png)
 
 ### Measures of Dependence
 
@@ -81,15 +81,15 @@ Data visualization is a nice complement to using summary statistics for explorin
 
 A histogram is used to display the distribution of a variable. The range of values for the variable is divided into the number of bins, and the number of values that fall into each bin is counted. Which determines the height of each bin. A histogram can reveal many things about a variable in your data, for example, you can usually determine the central tendency of a variable, that is where the majority of the values lie. You can also see the most frequent value of values for that variable. A histogram also shows whether the values for that variable are skewed and whether the skewness is to the left towards smaller values or to the right towards larger values. You can also pick outliers in the histogram as shown on the bottom plot.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.20.31.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.20.31.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.20.31.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.20.31.png)
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.21.29.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.21.29.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.21.29.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.21.29.png)
 
 ### Line Plot
 
 A line plot shows how data values change over time. The values of a variable or variables are shown on the Y axis and the X axis shows the motion of time. A line plot can show patterns in your variables. For example, a cyclical pattern can be detected as in this plot, where the values start high, then decrease and go back up again. Trends can also be detected as shown in the upper-right plot where the values fluctuate but show a general upward trend over time. It is also easy to compare how multiple variables change over time on a single line plot as displayed in the center bottom plot.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.23.09.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.23.09.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.23.09.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.23.09.png)
 
 ### Scatter Plot
 
@@ -97,7 +97,7 @@ A scatter plot is a great way to visualize the relationship between two variable
 
 A positive correlation means that as the value of one variable increases, the value of the other variable also increases by a similar amount. The upper right scatter plot shows a negative correlation between two variables. This means that as the value of one variable increases, there is a corresponding decrease in the other variable, two variables can also have a non-linear correlation as shown in the lower left plot. This means that a change in one variable will not always correspond to the same change in the other variable. This is indicated by the curve in the scatter plot as opposed to something closer to a straight line for linear correlation. There can also be no correlation between two variables. In this case, you will see something like randomly placed dots as displayed in the lower right plot, indicating no relationship between how the two variables change with respect to each other.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.25.04.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.25.04.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.25.04.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.25.04.png)
 
 ### Bar Plot
 
@@ -105,21 +105,21 @@ A bar plot is used to show the distribution of categorical variables. Recall tha
 
 A bar plot is also a great way to compare two categorical variables. For example, this plot compares two categorical variables. One in blue and the other in orange, each with three different categories. Here you can see that for the first category, the blue variable has the higher count, while the orange variable has a higher count for the second and third category. This type of Bar Plot is called a Grouped Bar Chart. And the different variables of products side by side. A different kind of comparison can be performed using a Stacked Bar chart as seen in a lower right quad. Here, the accounts for the two variables are stacked on top of each other for each category. With this bar chart, you can determine that the combined count for the first category is about equal to the combine count for the second category, while the compliant count for the third category is much larger.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.27.18.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.27.18.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.27.18.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.27.18.png)
 
 ### Box Plot
 
 A box plot is another plot that shows the distribution of a numeric variable, it shows the distribution in a different format than the histogram, however. This is how a box plot displays the distribution of values for a variable, the gray portion in the figure is the box part. The lower and upper boundaries of the box represent the 25th and 75th percentiles respectively. This means that the box represents the middle 50% of the data, the median is the 50th percentile, meaning that 50% of the data is greater than its value and 50% of the data is less than this value. The top and bottom lines are the Whiskers and represent the 10th and 90th percentiles respectively. So, 80% of the data are in the region indicated by the upper extreme and lower extreme. Any data values outside of this region are outliers and are indicated as single point on the box plot.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.28.13.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.28.13.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.28.13.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.28.13.png)
 
 Note that there are different variations of the box plot, with the whiskers representing different types of extreme values. Box plots provide a compact way to show how variables are distributed, so they are often used to compare variables. The box plot on the left for example compares the base salary for two different roles. This plot can quickly provide information regarding the median value, the range and the spread of the two different variables. We can quickly see that the median salary for the marketing role is higher than the research role. We can also see that the variation or spread of the values for marketing is greater than for research, due to the larger area of the purple box.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.29.21.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.29.21.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.29.21.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.29.21.png)
 
 A box plot can also show you if the distribution of the data values is symmetrical, positively skewed or negatively skewed. Here we see that a box plot can also be displayed on its side. A symmetric distribution is indicated if the line in the box which specifies the median, is in the center of the box. A negative skew is indicated when the median is to the right of the center of the box. This means that there are more values that are less than the median than there are values greater than the median. Similarly, a positive skew is indicated when the median is to the left of the center of the box
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.29.41.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-04_at_23.29.41.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.29.41.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-04_at_23.29.41.png)
 
 # Data Preparation
 
@@ -167,7 +167,7 @@ The data used in machine learning processes often have many variables. This is w
 
 The number of features or variables you have in your data set determines the number of dimensions or dimensionality of your data. If your dataset has two features, than it is two dimensional data. If it has three features than it has three features and so on. You want to use as many features as possible to capture the characteristics of your data, but you also don't want the dimension of your data to be too high. As the dimensionality increases, the problem spaces you're looking at increases requiring substantially more instances to adequately sample of that space. So as the dimensionality increases, the space that you are looking at grows exponentially. As the space grows data becomes increasingly sparse.
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-05_at_00.23.14.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-05_at_00.23.14.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-05_at_00.23.14.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-05_at_00.23.14.png)
 
 In this diagram we see how the problem space grows as the dimensionality increases from 1 to 2 to 3. In the left plot, we have a one dimensional space partitioned into four regions each with size of 5 units. The middle plot shows a two dimensional space with 5x5 regions. The number of regions has now going from 4 to 16. In the third plot, the problem space is three dimensional with 5x5x5 regions. The number of regions increased even more to 64. We see that as the number of dimensions increases, the number of regions increases exponentially and the data becomes increasingly sparse. With a small dataset relative to the problem space, analysis results degrade. In addition, certain calculations used in analysis become much more difficult to define and calculate effectively. For example, distances between samples are harder to compare since all samples are far away from each other. All of these challenges represent the difficulty of dealing with high dimensional data and as referred to as the curse of dimensionality. To avoid the curse of dimensionality, you want to reduce the dimensionality of your data. This means finding a smaller subset of features that can effectively capture the characteristics of your data.
 
@@ -177,7 +177,7 @@ Another approach to dimensionality reduction is to mathematically determine the 
 
 ### Principal Components Analysis
 
-![Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-05_at_00.27.53.png](Week%202%20Data%20Exploration%20&%20Preparation%207f81691f67d54602acc95820033d6029/Screen_Shot_2020-11-05_at_00.27.53.png)
+![Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-05_at_00.27.53.png](Week%202%20Data%20Exploration%20&%20Preparation/Screen_Shot_2020-11-05_at_00.27.53.png)
 
 Here, we have data samples in a two dimensional space that is defined by the x axis and the y axis. You can see that most of the variation in the data lies along the red diagonal line. This means that the dat samples are best differentiated along this dimension because they're spread out, not clumped together along this dimension. This dimension indicated by the red line is the first principle component labelled as PC1 in the part. It captures the large amount of variance along a single dimension in data. PC1, indicated by the red line does not correspond to either axis. The next principle component is determined by looking in the direction that is orthogonal, in other words perpendicular, to the first principle component which captures the next largest amount of variance in the data. This is the second principal component PC2 and it's indicated by the green line in the plot. This process can be repeated to find as many principal components as desired. Note that the principal components do not align with either the x-axis or the y-axis. And that they are orthogonal, in other words, perpendicular to each other. This is what PCA does. It finds the underlined dimensions, the principal components that capture as much of the variation in the data as possible. These principal components form a new coordinates system to transform the data to, instead of the conventional dimensions like X, Y, and Z.
 

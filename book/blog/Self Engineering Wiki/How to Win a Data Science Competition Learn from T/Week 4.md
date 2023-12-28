@@ -195,11 +195,11 @@ We may often encounter a situation, where scheme **f)** is not applicable, espec
 
 # Example Notebooks
 
-[Hyperparameters_tuning_video2_RF_n_estimators.ipynb](Week%204%20497df8b0ed594f3c936b91f5dbf0331b/Hyperparameters_tuning_video2_RF_n_estimators.ipynb)
+[Hyperparameters_tuning_video2_RF_n_estimators.ipynb](Week%204/Hyperparameters_tuning_video2_RF_n_estimators.ipynb)
 
-[Macros.ipynb](Week%204%20497df8b0ed594f3c936b91f5dbf0331b/Macros.ipynb)
+[Macros.ipynb](Week%204/Macros.ipynb)
 
-[compute_KNN_features.ipynb](Week%204%20497df8b0ed594f3c936b91f5dbf0331b/compute_KNN_features.ipynb)
+[compute_KNN_features.ipynb](Week%204/compute_KNN_features.ipynb)
 
 # Additional Material
 

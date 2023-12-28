@@ -26,7 +26,7 @@ Typical identity management functionality includes the following: [Access contro
 - NAS vs SAN: A storage area network (SAN) provides a pool of storage resources that can be centrally managed and allocated as needed. A SAN consists of interconnected hosts, switches and storage devices. The components can be connected using a variety of protocols. A SAN typically uses Fibre Channel connectivity. The network-attached storage (NAS) typically ties into to the network through a standard Ethernet connection. To a client OS, a SAN typically appears as a disk and exists as its own separate network of storage devices, while NAS appears as a file server.
 - RAID levels: In computer storage, the standard RAID levels comprise a basic set of RAID (redundant array of independent disks) configurations that employ the techniques of striping, mirroring, or parity to create large reliable data stores from multiple general-purpose computer hard disk drives (HDDs). RAID 0 (also known as a stripe set or striped volume) splits ("stripes") data evenly across two or more disks, without parity information, redundancy, or fault tolerance. RAID 1 consists of an exact copy (or mirror) of a set of data on two or more disks; a classic RAID 1 mirrored pair contains two disks. RAID 2, which is rarely used in practice, stripes data at the bit (rather than block) level, and uses a Hamming code for error correction. RAID 3, which is rarely used in practice, consists of byte-level striping with a dedicated parity disk. One of the characteristics of RAID 3 is that it generally cannot service multiple requests simultaneously, which happens because any single block of data will, by definition, be spread across all members of the set and will reside in the same physical location on each disk. RAID 4 consists of block-level striping with a dedicated parity disk. As a result of its layout, RAID 4 provides good performance of random reads, while the performance of random writes is low due to the need to write all parity data to a single disk. RAID 5 consists of block-level striping with distributed parity. Unlike in RAID 4, parity information is distributed among the drives. It requires that all drives but one be present to operate. Upon failure of a single drive, subsequent reads can be calculated from the distributed parity such that no data is lost. RAID 6 extends RAID 5 by adding another parity block; thus, it uses block-level striping with two parity blocks distributed across all member disks.
 
-[RAID Levels](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/RAID%20Levels%2014e698ce9d2943318fa129d143b89e37.csv)
+[RAID Levels](Solution%20Architect%20Questions/RAID%20Levels.csv)
 
 - Can RAID1 be used for Gaming? When it comes to RAID 1, its advantage in excellent fault tolerance is worthy of mention. In RAID 1, internal drives are separated two sets. And the first set is mirrored to the second set. Hence, if one drive fails, you still can access your data. But, it is due to mirroring that RAID 1 is much slower than other RAID levels. So, in terms of playing game, RAID 1 is not a good choice
 - IOPS: Input/output operations per second is an input/output performance measurement used to characterize computer storage devices like hard disk drives (HDD), solid state drives (SSD), and storage area networks (SAN). The most common performance characteristics measured are sequential and random operations. Sequential operations access locations on the storage device in a contiguous manner and are generally associated with large data transfer sizes, e.g. 128 kB. Random operations access locations on the storage device in a non-contiguous manner and are generally associated with small data transfer sizes, e.g. 4kB.
@@ -62,7 +62,7 @@ An HDD might be the right choice if:
     - How would you analyze objects stored in S3 and share them with users
     
 
-[SDD VS HDD](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/SDD%20VS%20HDD%20ec71347c330c471fb1469cb827d498f8.csv)
+[SDD VS HDD](Solution%20Architect%20Questions/SDD%20VS%20HDD.csv)
 
 # Networking
 
@@ -114,14 +114,14 @@ SSL VPNs are implemented through the remote user’s web browser and do not requ
 - CDN - How does a CDN make web sites faster? A CDN stores multiple content types, which can contribute to faster loading times for users. And because the CDN stores this content it can push it to users more quickly. A CDN is designed for scalability so that you can handle changes in traffic (up or down) with ease and without learning of a traffic change because of a website that’s no longer functioning. A CDN is essentially a network of geographically dispersed servers. Each CDN node (also called Edge Servers) caches the static content of a site like the images, CSS/JS files and other structural components. The majority of an end-user’s page load time is spent on retrieving this content, and so it makes sense to provide these “building blocks” of a site in as many server nodes as possible, distributed throughout the world.
 - OSI:
 
-[OSI Layers](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/OSI%20Layers%20d7ea71bf66d340dabdc98564b56ea281.csv)
+[OSI Layers](Solution%20Architect%20Questions/OSI%20Layers.csv)
 
 - Optimize data flow over a high bandwidth/high latency link: TCP optimization increases TCP window size, which puts more data in flight on long latency paths. TCP optimization can also include a variety of actions such as sending pre-emptive data receipt acknowledgements that maintain high throughput to speed data from the source, and ramping up the TCP transmission rate more quickly by bypassing TCP's ‘slow start' function. TCP optimization also uses a selective acknowledgement (SACK) feature that retransmits only bytes lost rather than returning to the last continuously received data.
 - Firewalls: Is a [network security](https://en.wikipedia.org/wiki/Network_security) system that [monitors](https://en.wikipedia.org/wiki/Network_monitoring) and controls incoming and outgoing [network traffic](https://en.wikipedia.org/wiki/Network_traffic) based on predetermined security rules. A firewall typically establishes a barrier between a trusted internal network and untrusted external network, such as the [Internet](https://en.wikipedia.org/wiki/Internet). Firewalls are often categorized as either **network firewalls** or **host-based firewalls**. Network firewalls filter traffic between two or more networks and run on network hardware. Host-based firewalls run on host computers and control network traffic in and out of those machines.
 - Route 53: Amazon Route 53 is a highly available and scalable cloud Domain Name System (DNS) web service. Amazon Route 53 effectively connects user requests to infrastructure running in AWS – such as Amazon EC2 instances, Elastic Load Balancing load balancers, or Amazon S3 buckets – and can also be used to route users to infrastructure outside of AWS.
 - Port numbers for (DNS, HTTP, Telnet): Telnet 23, HTTP 80, HTTPS 443, DNS 53
 
-[Port Numbers](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Port%20Numbers%2085cccb4c1f784849af20a49cd7e547bf.csv)
+[Port Numbers](Solution%20Architect%20Questions/Port%20Numbers.csv)
 
 - CIDR: Classless Inter-Domain Routing is a method for allocating IP addresses and for IP routing. CIDR encompasses several concepts. It is based on variable-length subnet masking (VLSM) which allows the specification of arbitrary-length prefixes. Its goal was to slow the growth of routing tables on routers across the Internet, and to help slow the rapid exhaustion of IPv4 addresses. CIDR introduced a new method of representation for IP addresses, now commonly known as CIDR notation, in which an address or routing prefix is written with a suffix indicating the number of bits of the prefix, such as 192.0.2.0/24 for IPv4, and 2001:db8::/32 for IPv6.
 - QOS and bandwidth control: Quality of Service (QoS) Policies are interface-specific rules on a Firewall that help you ensure that important network services are given priority over less important traffic. Service quality measurements subject to a QoS implementation are bandwidth (maximum rate of transfer), throughput (actual rate of transfer), latency (delay), and jitter (variance in latency). With QoS rules, you can set up a minimum guaranteed bandwidth and maximum bandwidth limit for traffic, and set a priority value for the traffic. La configuracion para el control de banda ancha se realiza sobre las interfaces de red o router.
@@ -146,7 +146,7 @@ These are several examples of bastion host systems/services:
 - SQL databases are table based, while NoSQL databases are document, key-value, graph or wide-column stores.
 - SQL databases are better for multi-row transactions, NoSQL are better for unstructured data like documents or JSON.
 
-[SQL vs NoS](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/SQL%20vs%20NoS%205d6beff943cc46e8aefe7fbfa9cff82f.csv)
+[SQL vs NoS](Solution%20Architect%20Questions/SQL%20vs%20NoS.csv)
 
 ## Hadoop - explain MapReduce
 
@@ -174,7 +174,7 @@ In this phase, output values from the Shuffling phase are aggregated. This phase
 
 Online Transaction Processing - Data Warehouse
 
-![Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Screen_Shot_2020-07-07_at_20.26.07.png](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Screen_Shot_2020-07-07_at_20.26.07.png)
+![Solution%20Architect%20Questions/Screen_Shot_2020-07-07_at_20.26.07.png](Solution%20Architect%20Questions/Screen_Shot_2020-07-07_at_20.26.07.png)
 
 ## Describe how to best organize a data mart database
 
@@ -251,7 +251,7 @@ Caching is a buffering technique that stores frequently-queried data in a tempor
 
 **Availability —** If backend database server is unavailable, cache can still provide continuous service to the application, making the system more resilient to failures.
 
-![Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Screen_Shot_2020-07-07_at_20.44.06.png](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Screen_Shot_2020-07-07_at_20.44.06.png)
+![Solution%20Architect%20Questions/Screen_Shot_2020-07-07_at_20.44.06.png](Solution%20Architect%20Questions/Screen_Shot_2020-07-07_at_20.44.06.png)
 
 ## DB Tuning
 
@@ -263,7 +263,7 @@ Sharding is a method of splitting and storing a single logical dataset in multip
 
 ## JSON vs. XML
 
-[JSON vs XML](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/JSON%20vs%20XML%2042dfe7d1f2214d3ca6143c847d59e781.csv)
+[JSON vs XML](Solution%20Architect%20Questions/JSON%20vs%20XML.csv)
 
 ## How would you provide high availability for a database deployed on an instance in the cloud?
 
@@ -283,7 +283,7 @@ Indexing is a way to optimize the performance of a database by minimizing the nu
 
 ## What ports do databases use
 
-[Database ports](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Database%20ports%2064da48c3cbeb4cedb0141ad8ad46ba9f.csv)
+[Database ports](Solution%20Architect%20Questions/Database%20ports.csv)
 
 # Design
 
@@ -345,7 +345,7 @@ Indexing is a way to optimize the performance of a database by minimizing the nu
     - Errors logged in a user-friendly way
     - Automated deployments
     
-    ![Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Screen_Shot_2020-07-08_at_09.45.21.png](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Screen_Shot_2020-07-08_at_09.45.21.png)
+    ![Solution%20Architect%20Questions/Screen_Shot_2020-07-08_at_09.45.21.png](Solution%20Architect%20Questions/Screen_Shot_2020-07-08_at_09.45.21.png)
     
 - Design fault tolerant, load balanced video stream service: You get improved fault tolerance by placing your compute instances behind an Elastic Load Balancer, as it can automatically balance traffic across multiple instances and multiple Availability Zones and ensure that only healthy Amazon EC2 instances receive traffic. A server can be made fault tolerant by using an identical server running in parallel, with all operations mirrored to the backup server. Software systems that are backed up by other software instances. For example, a database with customer information can be continuously replicated to another machine.
 - Plan an e-commerce site for a small business
@@ -755,7 +755,7 @@ Indexing is a way to optimize the performance of a database by minimizing the nu
     
 - Command line interpreter vs compiler: A compiler is a program that takes the source code of another program, written in a high level language, and translates all to machine code, which runs very efficiently. Normally, a compiler compiles files and a linker links all object filkes into an executable.
     
-    [Compiled VS Interpreted](Solution%20Architect%20Questions%206c7f5f2ee17743cf8435feefe3299772/Compiled%20VS%20Interpreted%209a208c8092ba420f981dcf487aafea22.csv)
+    [Compiled VS Interpreted](Solution%20Architect%20Questions/Compiled%20VS%20Interpreted.csv)
     
 - Java compilation:
     

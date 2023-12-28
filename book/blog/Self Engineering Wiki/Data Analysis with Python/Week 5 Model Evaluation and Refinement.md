@@ -57,29 +57,29 @@ yhat = cross_val_predict(model_object, x_data, y_data, cv=3)
 
 For polynomial model, the goal of model selection is to determine the best order of the polynomial that gives an estimate of the function embed in the data. If the model is to simple in order to account for the diversity in the data, it would not be able to give a good estimate of the underlying dynamics, for example, selecting a linear model when the data is representing a non-linear relationship. That is underfitting, when the model is too simple to fit the data:
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_20.10.12.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_20.10.12.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_20.10.12.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_20.10.12.png)
 
 When a good model is selected, it will not underfit, but rather, it will be able to give a good estimate for the range in the data. This is an example of an 8th order polynomial:
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_20.13.03.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_20.13.03.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_20.13.03.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_20.13.03.png)
 
 Overfitting occurs when the model gets too complex or takes into account every single datapoint trying to fit all, and looses generalization, which in return damages the overall performance. This is an example of a 16th order polynomial:
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_20.16.20.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_20.16.20.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_20.16.20.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_20.16.20.png)
 
 With this example, the model does extremely well at tracking the training point but performs poorly at estimating the function. This is especially apparent where there is little training data. The estimated function oscillates not tracking the function. This is called overfitting, where the model is too flexible and fits the noise rather than the function.
 
 Via metrics, a good model can be selected. Plotting the MSE of both the train and test can lead to tell where does the under/overfitting occurs, and find a good point :
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_21.03.01.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_21.03.01.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_21.03.01.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_21.03.01.png)
 
 Anything too to the left would be underfitting, anything to right would be overfitting. Selecting the best fit does not guarantees optimal performance, since there's still error that comes from the noise, which is random and cannot be predicted; this is also called irreducible error. Other sources of error can also be present, for example, a wrong assumption for the model dynamics. For example, in the following plot, the data is created by a sine wave, therefore, a polynomial model will perform poorly:
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_21.35.39.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-28_at_21.35.39.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_21.35.39.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-28_at_21.35.39.png)
 
 Plotting $R^2$ over different polynomial orders as we train and test the data can show the relationship between polynomial order and model precision: 
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-29_at_20.56.40.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-29_at_20.56.40.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-29_at_20.56.40.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-29_at_20.56.40.png)
 
 ```python
 Rsqu_test=[]
@@ -96,7 +96,7 @@ for n in order:
 
 This prevents overfitting in polynomial regression by controlling the magnitude of the polynomial coefficients by introducing the parameter alpha. Alpha is a parameter selected before fitting the model. For polynomial functions in high orders, outliers might make the function to fit out-of-dynamic data (outliers), thus, affecting the overall performance; with alpha, the effect of the outliers can be diminished without removing them (either because are unforeseen or rather unremovable).
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-29_at_21.35.52.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-29_at_21.35.52.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-29_at_21.35.52.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-29_at_21.35.52.png)
 
 As alpha increases the parameters get smaller and it's evident the most for the higher order polynomial features. Careful selection must be made, since using an alpha value too large will make the parameters approach zero, thus, underfitting. Conversely, if alpha is zero, overfitting might be evident. In order to select alpha, use cross-validation.
 
@@ -111,7 +111,7 @@ In order to determine the parameter alpha, we use some data for training. We use
 
 Plotting $R^2$ vs Alpha yields a metric for selecting a good alpha model
 
-![Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-29_at_21.52.45.png](Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a/Screen_Shot_2020-09-29_at_21.52.45.png)
+![Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-29_at_21.52.45.png](Week%205%20Model%20Evaluation%20and%20Refinement/Screen_Shot_2020-09-29_at_21.52.45.png)
 
 # Grid Search
 

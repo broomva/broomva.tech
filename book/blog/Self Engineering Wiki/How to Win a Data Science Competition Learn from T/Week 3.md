@@ -5,13 +5,13 @@
 
 # Example Notebooks
 
-[Metrics_video2_constants_for_MSE_and_MAE.ipynb](Week%203%2098943c6d23e54a96b6d11bcdcdd9a883/Metrics_video2_constants_for_MSE_and_MAE.ipynb)
+[Metrics_video2_constants_for_MSE_and_MAE.ipynb](Week%203/Metrics_video2_constants_for_MSE_and_MAE.ipynb)
 
-[Metrics_video3_weighted_median.ipynb](Week%203%2098943c6d23e54a96b6d11bcdcdd9a883/Metrics_video3_weighted_median.ipynb)
+[Metrics_video3_weighted_median.ipynb](Week%203/Metrics_video3_weighted_median.ipynb)
 
-[Metrics_video8_soft_kappa_xgboost.ipynb](Week%203%2098943c6d23e54a96b6d11bcdcdd9a883/Metrics_video8_soft_kappa_xgboost.ipynb)
+[Metrics_video8_soft_kappa_xgboost.ipynb](Week%203/Metrics_video8_soft_kappa_xgboost.ipynb)
 
-[Programming_assignment_week_3.ipynb](Week%203%2098943c6d23e54a96b6d11bcdcdd9a883/Programming_assignment_week_3.ipynb)
+[Programming_assignment_week_3.ipynb](Week%203/Programming_assignment_week_3.ipynb)
 
 # Additional Material
 

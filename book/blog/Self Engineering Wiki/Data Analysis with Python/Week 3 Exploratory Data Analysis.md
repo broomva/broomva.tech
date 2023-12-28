@@ -13,7 +13,7 @@ It's important to explore the data before starting making prediction models. Des
 
 Box plots allow to compress a lot of information in a single graph, expressing the Upper Extreme (100%), Upper Quartile (75%), Median, (50%) Lower Quartile (25%) and Lower Extreme (0%), as well as outliers as dots. The data between the upper and lower quartiles represents the interquartile range, and the lower and upper extremes are calculated as 1.5 times the interquartile range. Box plots allow to see the distribution and skewness of the data. 
 
-![Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_21.45.40.png](Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_21.45.40.png)
+![Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_21.45.40.png](Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_21.45.40.png)
 
 ```python
 import seaborn as sns
@@ -104,7 +104,7 @@ It's a measure of the strength of the correlation between continuous numerical v
 - P-value < 0.1: Weak certainty
 - P-value > 0.1: No certainty
 
-![Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_22.29.23.png](Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_22.29.23.png)
+![Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_22.29.23.png](Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_22.29.23.png)
 
 ```python
 from scikit-learn import stats
@@ -115,9 +115,9 @@ pearson_coef, p_value = stats.pearsonr(df["predictor"], df["target"])
 
 Analyze a categorical variable and see the correlation among different categories. ANOVA can be used to find the correlation between different groups of a categorical variable. This returns two values, the F-test score which indicates the ratio of the variation between each sample group means, and P-value which indicated the degree of confidence. The F-test calculates the ratio of variation between groups means over the variation within each of the sample group means.
 
-![Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_22.44.40.png](Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_22.44.40.png)
+![Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_22.44.40.png](Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_22.44.40.png)
 
-![Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_22.44.55.png](Week%203%20Exploratory%20Data%20Analysis%20daffee3843ff4c5391d4624af556ffe4/Screen_Shot_2020-09-19_at_22.44.55.png)
+![Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_22.44.55.png](Week%203%20Exploratory%20Data%20Analysis/Screen_Shot_2020-09-19_at_22.44.55.png)
 
 ```python
 df_anova = df[["predictor","target"]]

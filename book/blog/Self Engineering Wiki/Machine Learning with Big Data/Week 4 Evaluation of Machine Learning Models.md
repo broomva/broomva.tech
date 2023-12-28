@@ -5,7 +5,7 @@
 
 Recall that a machine learning model maps the input it receives to an output. For a classification model, the model's output is the predicted class label for the input variables and the true class label is the target. Then if the classifier predicts the correct classes label for a sample, that is a success. If the predicted class label is different from the true class label, then that is an error. The error rate, then, is the percentage of errors made over the entire data set. That is, it is the number of errors divided by the total number of samples in a data set. Error rate, or simply error, on the training data is refered to as training error, and the error on test data is referred to as test error.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-05_at_16.25.20.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-05_at_16.25.20.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-05_at_16.25.20.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-05_at_16.25.20.png)
 
 The error on the test data is an indication of how well the classifier will perform on new data. This is known as generalization. Generalization refers to how well your model performs on new data, that is data not used to train the model. You want your model to generalize well to new data. If your model generalizes well, then it will perform well on data sets that are similar in structure to the training data, but doesn't contain exactly the same samples as in the training set. Since the test error indicates how well your model generalizes to new data, note that the test error is also called generalization error.
 
@@ -33,11 +33,11 @@ A validation set can be used to guide the training process to avoid overfitting 
 
 The idea is to look at the errors on both training set and validation set during model training as shown here. The orange solid line on the plot is the training error and the green line is the validation error. We see that as model building progresses along the x-axis, the number of nodes increases. That is the complexity of the model increases. We can see that as the model complexity increases, the training error decreases. On the other hand, the validation error initially decreases but then starts to increase
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_13.24.20.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_13.24.20.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_13.24.20.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_13.24.20.png)
 
 When the validation error increases, this indicates that the model is overfitting, resulting in decreased generalization performance.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_13.25.12.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_13.25.12.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_13.25.12.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_13.25.12.png)
 
 This can be used to determine when to stop training. Where validation error starts to increase is when you get the best generalization performance, so training should stop there. This method of using a validation set to determine when to stop training is referred to as model selection since you're selecting one from many of varying complexities. Note that this was illustrated for a decision tree classifier, but the same method can be applied to any type of machine learning model. There are several ways to create and use the validation set to avoid overfitting. The different methods are holdout method, random subsampling, k-fold cross-validation, and leave-one-out cross-validation.
 
@@ -45,7 +45,7 @@ This can be used to determine when to stop training. Where validation error star
 
 The first way to use a validation set is the holdout method. This describes the scenario that we have been discussing, where part of the training data is reserved as a validation set. The validation set is then the holdout set.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.15.51.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.15.51.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.15.51.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.15.51.png)
 
 Errors on the training set and the holdout set are calculated at each step during model training and plotted together as we've seen before. And the lowest error on the holdout set is when training should stop. This is the just the process that we have described here before. There's some limitations to the holdout method however. First, since some samples are reserved for the holdout validation set, the training set now has less data than it originally started out with. Secondly, if the training and holdout sets do not have the same data distributions, then the results will be misleading. For example, if the training data has many more samples of one class and the holdout dataset has many more samples of another class.
 
@@ -55,7 +55,7 @@ The next method for using a validation set is repeated holdout. As the name impl
 
 Cross-validation works as follows. Segment the data into k number of disjoint partitions. During each iteration, one partition is used as the validation set. Repeat the process k times. Each time using a different partition for validation. So each partition is used for validation exactly once.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.19.53.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.19.53.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.19.53.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.19.53.png)
 
 In the fist iteration, the first partition, specified in green, is used for validation. In the second iteration, the second partition is used for validation and so on. The overall validation error is calculated by averaging the validation errors for all k iterations. The model with the smallest average validation error then is selected. This approach gives you a more structured way to divide available data up between training and validation datasets and provides a way to overcome the variability in performance that you can get when using a single partitioning of the data.
 
@@ -63,7 +63,7 @@ In the fist iteration, the first partition, specified in green, is used for vali
 
 Leave-one-out cross-validation is a special case of k-fold cross-validation where k equals N, where N is the size of your dataset.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.21.42.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.21.42.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.21.42.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.21.42.png)
 
 Here, for each iteration the validation set has exactly one sample. So the model is trained to using N minus one samples and is validated on the remaining sample. The rest of the process works the same way as regular k-fold cross-validation. Note that cross-validation is often abbreviated CV and leave-one-out cross-validation is in abbreviated L-O-O-C-V and pronounced LOOCV.
 
@@ -93,13 +93,13 @@ If the true label is yes and the predicted label is no, then this is a false neg
 
 ## Accuracy and Error Rate
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.28.08.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.28.08.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.28.08.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.28.08.png)
 
 These four different types of errors are used in calculating many evaluation metrics for classifiers. The most commonly used evaluation metric is the accuracy rate, or accuracy for short. For classication, accuracy is calculated as the number of correct predictions divided by the total number of predictions.
 
 Note that the number of correct predictions is the sum of the true positives, and the true negatives, since the true and predicted labels match for those cases. The accuracy rate is an intuitive way to measure the performance of a classification model.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.29.24.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.29.24.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.29.24.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.29.24.png)
 
 Model performance can also be expressed in terms of error rate. Error rate is the opposite of accuracy rate.
 
@@ -109,11 +109,11 @@ What could be the problem with using accuracy for a class imbalance problem? Con
 
 ## Precision and Recall
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.34.37.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.34.37.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.34.37.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.34.37.png)
 
 A pair of evaluations metrics that are commonly used when there is a class imbalance are precision and recall. Precision is defined as the number of true positives divided by the sum of true positives and false positives. In other words, it is the number of true positives divided by the total number of samples predicted as being positive. Recall is defined as the number of true positives divided by the sum of true positives and false negatives. It is the number of true positives divided by the total number of samples, actually belonging to the true class
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.37.19.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.37.19.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.37.19.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.37.19.png)
 
 The selected elements indicated by the green half circle are the true positives. That is samples predicted as positive and are actually positive. The relevant elements indicated by the green half circle and the green half rectangle, are the true positives, plus the false negatives. That is samples that are actually positive, but some are correctly predicted as positive, and some are incorrectly predicted as negative. Recall then is the number of samples correctly predicted as positive, divided by all samples that are actually positive.
 
@@ -127,7 +127,7 @@ There is a trade off between precision and recall. A perfect precision score of 
 
 Precision and recall can be combined into a single metric called the F-measure. The equation for that is 2 times the product of precision and recall divided by their sum. There are different versions of the F-measure.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.41.11.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_15.41.11.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.41.11.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_15.41.11.png)
 
 The value for the F1 measure ranges from zero to one, with higher values giving better classification performance.
 
@@ -135,7 +135,7 @@ The value for the F1 measure ranges from zero to one, with higher values giving 
 
 A Confusion Matrix can be used to summarize the different types of classification errors. Each cell has the count, or percentage of samples, with each type of errors.
 
-![Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_19.46.21.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models%20684b08d84dab4d29bef937c1700823e4/Screen_Shot_2020-11-07_at_19.46.21.png)
+![Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_19.46.21.png](Week%204%20Evaluation%20of%20Machine%20Learning%20Models/Screen_Shot_2020-11-07_at_19.46.21.png)
 
 The higher the sum of the diagonal values, the better the performance of the model. The off diagonal values capture the misclassified samples. Where the model's predictions do not match the true labels.
 

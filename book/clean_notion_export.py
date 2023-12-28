@@ -1,3 +1,4 @@
+#%%
 import os
 import re
 import shutil
@@ -26,48 +27,56 @@ def rename_files_and_folders(root_path):
             old_file_path = os.path.join(path, name)
             new_name, uuid = remove_uuid(name)
             new_file_path = os.path.join(path, new_name)
-            shutil.move(old_file_path, new_file_path)
-            mapping[old_file_path] = new_file_path
-            if uuid:
-                removed_uuids.append(uuid)
+            try:
+                shutil.move(old_file_path, new_file_path)
+                mapping[old_file_path] = new_file_path
+                if uuid:
+                    removed_uuids.append(uuid)
+            except Exception as e:
+                print(f"Error processing file {old_file_path}: {e}")
 
         # Process directories
         for name in dirs:
             old_dir_path = os.path.join(path, name)
             new_name, uuid = remove_uuid(name)
             new_dir_path = os.path.join(path, new_name)
-            shutil.move(old_dir_path, new_dir_path)
-            mapping[old_dir_path] = new_dir_path
-            if uuid:
-                removed_uuids.append(uuid)
+            try:
+                shutil.move(old_dir_path, new_dir_path)
+                mapping[old_dir_path] = new_dir_path
+                if uuid:
+                    removed_uuids.append(uuid)
+            except Exception as e:
+                print(f"Error processing directory {old_dir_path}: {e}")
 
     return mapping, removed_uuids
 
+def update_file_content(file_path, uuids):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+
+        for uuid in uuids:
+            #print(uuid)
+            if uuid:
+                content = re.sub(rf'%20{uuid}', '', content) # includes the %20 for a space added by notion when including the hash code
+                with open(file_path, 'w', encoding='utf-8') as file:
+                    print(f"Updating file: {file_path}")
+                    file.write(content)
+    except Exception as e:
+        print(f"Error updating file {file_path}: {e}")
 
 
+def clean_files_relationships(root_directory, removed_uuids):
+    for path, dirs, files in os.walk(root_directory, topdown=False):
+            # Process files
+            for name in files:
+                if name.endswith('.md'):
+                    file_path = f'{path}/{name}'
+                    update_file_content(file_path, removed_uuids)
+#%%
 # Use the function
 root_directory = "blog"  # Replace with your directory path
 mapping, removed_uuids = rename_files_and_folders(root_directory)
-
+clean_files_relationships(root_directory, removed_uuids)
 
 #%%
-
-
-def update_file_content(file_path, uuids):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
-
-    for uuid in uuids:
-        if uuid:
-            # Encode UUID and replace it in the content
-            encoded_uuid = urllib.parse.quote(uuid).replace('%', '%25')
-            content = re.sub(rf'{encoded_uuid}', '', content)
-
-    with open(file_path, 'w', encoding='utf-8') as file:
-        file.write(content)
-
-
-# Update file contents
-for file_path in mapping.values():
-    if os.path.isfile(file_path) and file_path.endswith('.md'):
-        update_file_content(file_path, removed_uuids)

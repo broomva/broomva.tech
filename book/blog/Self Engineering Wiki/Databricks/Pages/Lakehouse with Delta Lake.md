@@ -1,11 +1,11 @@
 # Lakehouse with Delta Lake
 
 
-[Lakehouse with Delta Lake Deep Dive - How Delta Lake Enables a Lakehouse.webarchive](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/Lakehouse_with_Delta_Lake_Deep_Dive_-_How_Delta_Lake_Enables_a_Lakehouse.webarchive)
+[Lakehouse with Delta Lake Deep Dive - How Delta Lake Enables a Lakehouse.webarchive](Lakehouse%20with%20Delta%20Lake/Lakehouse_with_Delta_Lake_Deep_Dive_-_How_Delta_Lake_Enables_a_Lakehouse.webarchive)
 
 ## Data Warehouse
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/xBcV_EhKKARAL2L2_5ZQXJH8Z_1uX7tP3.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/xBcV_EhKKARAL2L2_5ZQXJH8Z_1uX7tP3.png)
+![Lakehouse%20with%20Delta%20Lake/xBcV_EhKKARAL2L2_5ZQXJH8Z_1uX7tP3.png](Lakehouse%20with%20Delta%20Lake/xBcV_EhKKARAL2L2_5ZQXJH8Z_1uX7tP3.png)
 
 Data warehouses were purpose built for business intelligence and reporting, and they provide support for data consistency and quick ad-hoc queries. However, they're unable to store unstructured raw data. That means they cannot support many of the data science and machine learning applications that have become crucial to modern data use cases.
 
@@ -13,7 +13,7 @@ Because of these challenges, many organizations employ data warehouses only for 
 
 ## Data Lake
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/YWSQpXjx__vAWY1Q_9ewZ4jGArbJ0mt7M.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/YWSQpXjx__vAWY1Q_9ewZ4jGArbJ0mt7M.png)
+![Lakehouse%20with%20Delta%20Lake/YWSQpXjx__vAWY1Q_9ewZ4jGArbJ0mt7M.png](Lakehouse%20with%20Delta%20Lake/YWSQpXjx__vAWY1Q_9ewZ4jGArbJ0mt7M.png)
 
 Data lakes use a variety of formats and store unstructured and semi-structured data; Apache Parquet and ORC have historically been popular formats for data lakes at scale. It’s an attractive approach, because the table is just a group of objects that can be accessed from a wide variety of tools without a lot of additional data stores or systems. However, both performance and consistency problems are common. Hidden data corruption is common due to transaction fails, eventual consistency leads to inconsistent queries, latency is high, and basic management capabilities like table versioning and audit logs are unavailable
 
@@ -27,7 +27,7 @@ Engineering challenges can be exacerbated by unstructured data, because these sy
 
 ## Lakehouse
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/yZnouTD3SfLIIzpL_83sZXvctP25lJhu8.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/yZnouTD3SfLIIzpL_83sZXvctP25lJhu8.png)
+![Lakehouse%20with%20Delta%20Lake/yZnouTD3SfLIIzpL_83sZXvctP25lJhu8.png](Lakehouse%20with%20Delta%20Lake/yZnouTD3SfLIIzpL_83sZXvctP25lJhu8.png)
 
 Lakehouses are enabled by a new system design: implementing similar data structures and data management features to those in a data warehouse, directly on the kind of low cost storage used for data lakes. They are what you would get if you had to redesign data warehouses in the modern world, now that cheap and highly reliable storage (in the form of object stores) are available.
 
@@ -35,7 +35,7 @@ Lakehouses are enabled by a new system design: implementing similar data structu
 
 Delta Lake provides a critical layer of a modern Lakehouse architecture, bringing structure and reliability to your data lakes in support of any downstream data use case.
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/AYmiWs3KcRSfzK4-_v3fo4XnBsGWYZ_C9.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/AYmiWs3KcRSfzK4-_v3fo4XnBsGWYZ_C9.png)
+![Lakehouse%20with%20Delta%20Lake/AYmiWs3KcRSfzK4-_v3fo4XnBsGWYZ_C9.png](Lakehouse%20with%20Delta%20Lake/AYmiWs3KcRSfzK4-_v3fo4XnBsGWYZ_C9.png)
 
 - An open source ACID table storage layer over cloud object stores
 - Adds reliability, quality, performance to data lakes
@@ -51,7 +51,7 @@ An intermediate Silver table is important because it might serve as the source f
 
 Gold level tables contain data that is thoroughly cleaned, transformed, and ready for consumption by machine learning models and/or analytics.  Because these tables are built directly on top of our system for ingesting raw data, we can be confident in its veracity and timeliness. And, because it has been processed through this architectural pattern, we can be confident that the data stored or streamed into our final Gold tables is clean, conforming, and consistent.
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/vmTyOEN1r8BkaGBg_FP3uxXj3HVy_A7fE.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/vmTyOEN1r8BkaGBg_FP3uxXj3HVy_A7fE.png)
+![Lakehouse%20with%20Delta%20Lake/vmTyOEN1r8BkaGBg_FP3uxXj3HVy_A7fE.png](Lakehouse%20with%20Delta%20Lake/vmTyOEN1r8BkaGBg_FP3uxXj3HVy_A7fE.png)
 
 ## Delta Storage Layer
 
@@ -93,7 +93,7 @@ Once we’ve made a total of 10 commits to the transaction log, Delta Lake saves
 
 These checkpoint files capture all table metadata and the list of data files that comprise a version of the table – in native Parquet format that is quick and easy for Spark to read. In other words, they offer the Spark reader a sort of “shortcut” to fully reproducing a table’s state that allows Spark to avoid reprocessing what could be thousands of tiny, inefficient JSON files.
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/PGEXC0QI0h3SHfip_qUSG4mk43ASqCNEZ.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/PGEXC0QI0h3SHfip_qUSG4mk43ASqCNEZ.png)
+![Lakehouse%20with%20Delta%20Lake/PGEXC0QI0h3SHfip_qUSG4mk43ASqCNEZ.png](Lakehouse%20with%20Delta%20Lake/PGEXC0QI0h3SHfip_qUSG4mk43ASqCNEZ.png)
 
 ### Metastore
 
@@ -101,7 +101,7 @@ A Delta table is registered in the Metastore associated with a Databricks Worksp
 
 Metadata can be stored and accessed easily as part of the transaction log.
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/5FYjFjkHl3eA415w_owfI5Bb8JdAbEaM2.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/5FYjFjkHl3eA415w_owfI5Bb8JdAbEaM2.png)
+![Lakehouse%20with%20Delta%20Lake/5FYjFjkHl3eA415w_owfI5Bb8JdAbEaM2.png](Lakehouse%20with%20Delta%20Lake/5FYjFjkHl3eA415w_owfI5Bb8JdAbEaM2.png)
 
 ## Delta Table File Format
 
@@ -119,7 +119,7 @@ And we have established that Delta files are really just Parquet files plus a tr
 
 Parquet data "looks" like the image shown here if we view it from a file system UI.
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/61LCsc2UIudSTFLs_yWD6aNbXPwL_kSQm.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/61LCsc2UIudSTFLs_yWD6aNbXPwL_kSQm.png)
+![Lakehouse%20with%20Delta%20Lake/61LCsc2UIudSTFLs_yWD6aNbXPwL_kSQm.png](Lakehouse%20with%20Delta%20Lake/61LCsc2UIudSTFLs_yWD6aNbXPwL_kSQm.png)
 
 The Parquet format organizes data files into directories.  Applications interact with these directories as a unified collection of data. This hierarchical layout is optimized for distributed read and write operations. When there are computations to be made on that data, Spark breaks that work into tasks and the tasks can be working concurrently until the distributed computation is consolidated back into a single result.
 
@@ -129,19 +129,19 @@ Note: Parquet is optimized for append-only execution. You may update data by ove
     
     Sometimes we end up with a lot of small files. This is often the result of lots of incremental updates and/or poor choices in partitioning. When we see this, it means that Spark has to do a lot of extra work to get at a relatively small amount of the data. For each of the little files, we need to have a task. Each tasks takes a little time to run. Considered together, this can add up to a significantly long time.
     
-    ![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/R5NF-mUjHChTHqjq_r5jHeWcff4doGJ5k.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/R5NF-mUjHChTHqjq_r5jHeWcff4doGJ5k.png)
+    ![Lakehouse%20with%20Delta%20Lake/R5NF-mUjHChTHqjq_r5jHeWcff4doGJ5k.png](Lakehouse%20with%20Delta%20Lake/R5NF-mUjHChTHqjq_r5jHeWcff4doGJ5k.png)
     
 - Big File (skewed) Problem
     
     Data skew refers to an imbalanced distribution of data. In this example, we have a couple of small files and one very large one. Each task is assigned a section of the data and, for the two small files, the work is done very quickly. But the large file takes significantly longer and slows down the overall speed. In effect, it doesn't matter that the first two tasks were finished quickly, because we need all the pieces to return that single, consolidated result set.
     
-    ![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/fcmiaRpTUN7A6lZv_PxSlFmcVVqgME6hV.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/fcmiaRpTUN7A6lZv_PxSlFmcVVqgME6hV.png)
+    ![Lakehouse%20with%20Delta%20Lake/fcmiaRpTUN7A6lZv_PxSlFmcVVqgME6hV.png](Lakehouse%20with%20Delta%20Lake/fcmiaRpTUN7A6lZv_PxSlFmcVVqgME6hV.png)
     
 - Corrupt Data
     
     Sometimes bad data is added to the system. If we don't have appropriate checks built in, we can easily add files with an incompatible schema or corruption. If any task fails, the whole job fails.
     
-    ![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/ZtdxZp4-jFn6WrII_XisfDS4826u1Vt9J.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/ZtdxZp4-jFn6WrII_XisfDS4826u1Vt9J.png)
+    ![Lakehouse%20with%20Delta%20Lake/ZtdxZp4-jFn6WrII_XisfDS4826u1Vt9J.png](Lakehouse%20with%20Delta%20Lake/ZtdxZp4-jFn6WrII_XisfDS4826u1Vt9J.png)
     
 
 ### Delta File
@@ -152,25 +152,25 @@ Delta has reliability and performance features built in that can solve common pr
     
     As we're writing batches of data (or streaming data) into storage, we use built-in schema enforcement to avoid reading broken, unfinished or wrong data. You can easily configure your data ingestion such that it only accepts a given schema, and you can even configure it to accept only values within a certain range or eliminate NULL values, for example.
     
-    ![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/1cDAYkMzIjxbCQth_N7g3rVKmaNCZ_P4g.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/1cDAYkMzIjxbCQth_N7g3rVKmaNCZ_P4g.png)
+    ![Lakehouse%20with%20Delta%20Lake/1cDAYkMzIjxbCQth_N7g3rVKmaNCZ_P4g.png](Lakehouse%20with%20Delta%20Lake/1cDAYkMzIjxbCQth_N7g3rVKmaNCZ_P4g.png)
     
 - Write Optimizations
     
     Delta is smart. Without you having to set up complex write pipelines, it can perform optimizations as the data comes in. If our ingest pipeline is about to write a bunch of small files, or about to write badly skewed data, Delta can automatically coalesce those files so that we end up with set of evenly distributed partial files of a decent size.
     
-    ![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/LRwt5Jl1gKbVC4kG_2N-DEORcxKFR-xkc.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/LRwt5Jl1gKbVC4kG_2N-DEORcxKFR-xkc.png)
+    ![Lakehouse%20with%20Delta%20Lake/LRwt5Jl1gKbVC4kG_2N-DEORcxKFR-xkc.png](Lakehouse%20with%20Delta%20Lake/LRwt5Jl1gKbVC4kG_2N-DEORcxKFR-xkc.png)
     
 - Updates and Deletes
     
     Recall that Parquet is append only. Delta uses the transaction log to manage updates and deletes for you so that you can avoid setting up a complex pipeline yourself. This is especially helpful for meeting compliance standards and change data capture
     
-    ![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/atfu_34-Jy3fxYLQ_gLcoRENSJWxx0dhd.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/atfu_34-Jy3fxYLQ_gLcoRENSJWxx0dhd.png)
+    ![Lakehouse%20with%20Delta%20Lake/atfu_34-Jy3fxYLQ_gLcoRENSJWxx0dhd.png](Lakehouse%20with%20Delta%20Lake/atfu_34-Jy3fxYLQ_gLcoRENSJWxx0dhd.png)
     
 - Time Travel
     
     Recall that Parquet is append only. Delta uses the transaction log to manage updates and deletes for you so that you can avoid setting up a complex pipeline yourself. This is especially helpful for meeting compliance standards and change data capture
     
-    ![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/0ADF6v4WLuEmbTru_Xk2GX48e4j_KFI0s.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/0ADF6v4WLuEmbTru_Xk2GX48e4j_KFI0s.png)
+    ![Lakehouse%20with%20Delta%20Lake/0ADF6v4WLuEmbTru_Xk2GX48e4j_KFI0s.png](Lakehouse%20with%20Delta%20Lake/0ADF6v4WLuEmbTru_Xk2GX48e4j_KFI0s.png)
     
 
 ## The Transaction Log
@@ -206,7 +206,7 @@ Delta Lake handles these cases by implementing a rule of mutual exclusion, then 
 
 In this example, 2 users read from the same table. They both get *000000.json*. Both append some data. There's a conflict - both users cannot commit *000001.json*.  Delta Lake handles this with "mutual exclusion. User 1 commit is accepted and User 2 is rejected. Instead of throwing an error, it checks for new commits, silently updates the table if necessary, and processed User 2's commit on the newly updated table.
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/fd7INfWkAbKD9NuD_bvO87_j5gK4cfifH.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/fd7INfWkAbKD9NuD_bvO87_j5gK4cfifH.png)
+![Lakehouse%20with%20Delta%20Lake/fd7INfWkAbKD9NuD_bvO87_j5gK4cfifH.png](Lakehouse%20with%20Delta%20Lake/fd7INfWkAbKD9NuD_bvO87_j5gK4cfifH.png)
 
 ## Optimizations with Delta Engine
 
@@ -216,7 +216,7 @@ Recall that Delta Engine is the high-performance query engine we use to access d
 
 You can run OPTIMIZE on your existing data to help fix stored skewed data. Optimize will look at the size of each file and coalesce them to help prevent data skew. When we do, we can use another optimization, called zordering, to help organize the coalesced data in the most performant way for the values we expect to be filtered most frequently
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/yEaKX4oVUH75lnBf_lpsfJT7teeLDEnLp.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/yEaKX4oVUH75lnBf_lpsfJT7teeLDEnLp.png)
+![Lakehouse%20with%20Delta%20Lake/yEaKX4oVUH75lnBf_lpsfJT7teeLDEnLp.png](Lakehouse%20with%20Delta%20Lake/yEaKX4oVUH75lnBf_lpsfJT7teeLDEnLp.png)
 
 ### Z-Ordering
 
@@ -236,4 +236,4 @@ Auto Optimize is an optional set of features that automatically compact small fi
 
 Auto Optimize consists of two complementary features: Optimized Writes and Auto Compaction. See [documentation](https://docs.databricks.com/delta/optimizations/auto-optimize.html#how-auto-optimize-works) for more details.
 
-![Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/FapurIj7rdOB_6xX_0dFqiEtIm3sjEHm6.png](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/FapurIj7rdOB_6xX_0dFqiEtIm3sjEHm6.png)
+![Lakehouse%20with%20Delta%20Lake/FapurIj7rdOB_6xX_0dFqiEtIm3sjEHm6.png](Lakehouse%20with%20Delta%20Lake/FapurIj7rdOB_6xX_0dFqiEtIm3sjEHm6.png)

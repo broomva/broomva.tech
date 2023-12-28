@@ -13,13 +13,13 @@ We can build a linear regression model to capture this linear relationship betwe
 
 From this example we see that linear regression works by finding the best fitting straight line, through the samples. This is called the regression line.
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.52.43.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.52.43.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.52.43.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.52.43.png)
 
 In the simple case with just one input variable, the regression line is simply a line. The equation for a line is y = mx + b, where m determines the slope of the line and b is the y intercept or where the line crosses the y axis. M and b are the parameters of the model.
 
 Training a linear regression model means adjusting these parameters to fit the regression line to the samples. The regression line can be determined using what's referred to as the least squares method.
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.55.06.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.55.06.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.55.06.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.55.06.png)
 
 This plot illustrates how the least squares method works. The yellow dots are the data samples. The red line is the regression line, the straight line that goes through the samples. This line represents the model's prediction of the output given the input. Each green line indicates the distance of each sample from the regression line. So the green line represents the error between the prediction, which is the value of the red regression line and the actual value of the sample. The square of this distance is referred to as the residual associated with that sample. The least squares method finds the regression line that makes the sum of the residuals as small as possible. In other words, we want to find the line that minimizes the sum of the squared errors of prediction. 
 
@@ -31,11 +31,11 @@ In cluster analysis, the goal is to organize similar items in your data set into
 
 Cluster analysis divides all the samples in a data set into groups. In this diagram, we see that the red, green, and purple data points are clustered together. Which group a sample is placed in is based on some measure of similarity.
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.57.39.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.57.39.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.57.39.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.57.39.png)
 
 The goal of cluster analysis is to segment data so that differences between samples in the same cluster are minimized, as shown by the yellow arrow, and differences between samples of different clusters are maximized, as shown by the orange arrow. Visually, you can think of this as getting samples in each cluster to be as close together as possible, and the samples from different clusters to be as far apart as possible.
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.59.02.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_20.59.02.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.59.02.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_20.59.02.png)
 
 Cluster analysis requires some sort of metric to measure similarity between two samples. Some common similarity measures are Euclidean distance, which is the distance along a straight line between two points, A and B, as shown in this plot.
 
@@ -61,13 +61,13 @@ Yet another use of cluster results is as a basis for anomaly detection. If a sam
 
 k-means is a classic algorithm used for cluster analysis. The algorithm is very simple. The first step is to select k initial centroids. A centroid is simply the center of a cluster. Next, assign each sample in a dataset to the closest centroid. This means you calculate the distance between the sample and each cluster center and assign a sample to the cluster with the closest centroid. Then you calculate the mean, or average, of each cluster to determine a new centroid. These two steps are then repeated until some stopping criterion are reached.
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.06.01.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.06.01.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.06.01.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.06.01.png)
 
 Here's an illustration of how k-Means works. (a) shows the original data set with some samples. And (b) illustrates centroids initially selected. (c) shows the first iteration. Here, samples are assigned to the closest centroid. In (d), the centroids are recalculated. (e) shows the second iteration. Samples are assigned to the closer centroid. Note that some samples changed their cluster assignments. And in (f), the centroids are recalculated again. Cluster assignments and centroid calculations are repeated until some stopping criteria is reached. And you get your final clusters, as shown in (f).
 
 How are the initial centroids selected? The issue is that the final cluster results are sensitive to initial centroids. This means that cluster results with one set of initial centroids can be very different from results with another set of initial centroids. There are many approaches to selecting the initial centroids for k-means varying in levels of sophistication. The easiest and most widely used approach is to apply k-means several times with different initial centroids randomly chosen to cluster you dataset. And then select the centroids that give the best clustering results.
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.08.07.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.08.07.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.08.07.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.08.07.png)
 
 To evaluate the cluster results, an error measure, known as the within cluster sum of squared error, can be used. The error associated with a sample within a cluster is the distance between the sample and the cluster centroid. The squared error of the sample then, is the squared of that distance. We sum up all the squared errors for all samples for a cluster to the get the squared error for that cluster. We then do the same thing for all clusters to get the final calculation for the within-cluster sum of squared error for all clusters in the results of a cluster analysis run.
 
@@ -81,7 +81,7 @@ A good value for k is application-dependent. So domain knowledge of the applicat
 
 There are also data-driven method for determining the value of k. These methods calculate symmetric for different values of k to determine the best selections of k. One such method is the elbow method.
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.11.08.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.11.08.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.11.08.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.11.08.png)
 
 The elbow method for determining the value of k is shown on this plot. As we saw in the previous slide, WSSE, or within-cluster sum of squared error, measures how much data samples deviate from their respective centroids in a set of clustering results. If we plot WSSE for different values for k, we can see how this error measure changes as a value of k changes as seen in the plot. The bend in this error curve indicates a drop in gain by adding more clusters. So this elbow in the curve provides a suggestion for a good value of k.
 
@@ -103,7 +103,7 @@ Another application of association analysis is to recommend items that a custome
 
 There are medical applications as well. Analysis of patients and treatments may reveal associations to identify effective treatments for patients with certain medical histories. 
 
-![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.16.31.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.16.31.png)
+![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.16.31.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.16.31.png)
 
 This diagram illustrates how association analysis works. The data set is a collection of transactions. Each transaction contains one or more items. This is referred to as the item set. From the given items sets, generate association rules that capture which item tend occur together. Rules that could be generated from this data set are shown at the bottom. For example, the first rule states that if bread and milk are bought together, then diaper is also bought. The second rule state that if milk is bought, then bread is also bought.
 
@@ -111,7 +111,7 @@ The association analysis process consist of the following steps:
 
 1. The first step is to create item sets. Item sets are generated for sets with one item, two items, three items and so on. Item sets have different sizes which need to be created. We will color code the items so that each one is easier to pick out from the transactions table.
     
-    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.24.00.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.24.00.png)
+    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.24.00.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.24.00.png)
     
     We start out with just 1-item sets, that is, sets with just one item. The left table is the dataset of transactions. The right table contains the 1-item sets that can be created from this dataset. As each item set is created, we also need to keep track of the frequency at which these item set occurs in the dataset. This is referred to support for the item set and is calculated by dividing the number of times the item set occurs in the dataset by the total number of transactions. This is what is in the Support column in the right table. The Support for each item set will be used to identify frequent item sets in the next step, specifically, the Support issues to prune, or remove, item sets that do not occur frequently. 
     
@@ -119,17 +119,17 @@ The association analysis process consist of the following steps:
     
     The two item sets are shown in the right table. We, again, need to keep track of the support for these item sets, just as we did with the one item sets
     
-    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.27.56.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.27.56.png)
+    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.27.56.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.27.56.png)
     
     For example, for the last item set, with beer, and diaper, we see, by looking at the left table, that beer and diaper occur together three times In transactions two, three and four. So with support is 3/5. Again, we need to prune item sets with low support. The ones highlighted in pink in the two item sets table. Those would be the item set with bread and beer and the item set with milk and beer.
     
-    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.29.11.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.29.11.png)
+    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.29.11.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.29.11.png)
     
     Let's look now at creating three item sets. The only three item sets that has a support value greater than minimum support is the one shown in the right table. Namely the items start with bread, milk and diaper.
     
 2. The second step in association analysis is to identify the frequent item sets. But note that the process that we just described for creating item sets already identifies frequent item sets. A frequent item set is one whose support is greater than or equal to the minimum support. So by keeping track of the support of each item set as it is being created and removing item sets with low support, we are already identifying frequent item sets.
     
-    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.36.04.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.36.04.png)
+    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.36.04.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.36.04.png)
     
 3. The last step is to generate the rules to capture associations that we see in the data. Let's first define some terms we'll need to discuss association rules. The format of an association rule is shown at the top. It's written as X arrow Y and is read as if X, then Y. The X part is called the antecedent and the Y part is called the consequent of the rule. X and Y are item sets.
     
@@ -137,13 +137,13 @@ The association analysis process consist of the following steps:
     
     Recall that the support for X is the frequency of item set X and is defined as the number of transactions containing items in X divided by the total number of transactions. The rule confidence measures how frequently items in Y appear in the transaction that contain X. In other words, the confidence measures the reliability of the rule by determining how often, if X and Y is found to be true in the data.
     
-    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.46.23.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.46.23.png)
+    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.46.23.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.46.23.png)
     
     Association rules are generated from the frequent item sets created from the data. Each item in an item set can be used as a part of the antecedent or consequent of the rule. And you can have many ways to combine items to form the antecedent and consequent. So if we just simply generate rules from each frequent item set, we would end up with lots and lots of rules. Each item set with k items can generate 2 to the k-2 rules. That's a lot of rules. And the majority of those rules would not be found in the data. This is where rule confidence comes in. We can use rule confidence to constrain the number of rules to keep. Specifically, a minimum confidence threshold is set and only rules with confidence greater than or equal to the minimum confidence are significant and only those will be kept.
     
     Let's look at how this works with our example dataset. We call that only one three item set was created from the transactions. That three items that contains items bread, milk and diaper as shown at the top. With these three item set let's see how we can generate rules from it and determine which rules to keep and which one to prune. Let's set the minimum confidence to 0.95. And here again is the definition for confidence. 
     
-    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.53.02.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio%208caf365217d34fbba36f8bcfd0d3e0e8/Screen_Shot_2020-11-07_at_21.53.02.png)
+    ![Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.53.02.png](Week%205%20Regression,%20Cluster%20Analysis%20and%20Associatio/Screen_Shot_2020-11-07_at_21.53.02.png)
     
     For candidate rule if bread and milk then diaper, we can calculate it's confidence as follows the support for both antecedent and consequent is the number of times we see bread, milk and diaper together in the data, divided by the total number of transactions. Items bread, milk and diaper appear together in transaction 1, 4 and 5 so the support is 3/5. The support for just the antecedent is the number of times we see bread and milk together divided by the total number of transactions. Items bread and milk appear together also in transactions 1, 4, and 5. So the support is 3/5. The confidence of this rule is then 1, or 100%. This means that the rule is correct 100%. Every time bread and milk are bought together, diaper is bought as well. For candidate rule if bread and diaper than milk, we calculate its confidence the same way. The support for bread, diaper and milk is 3/5 as before. Items bread and diaper are paired together in transactions 1, 2, 4 and 5. So the support for the items set with bread and milk is 4/5. Then the confidence with this rule is 0.75 or 75%. Since the minimum confidence is 0.95 or 95%, the first rule is kept and the second rule is removed from consideration.
     

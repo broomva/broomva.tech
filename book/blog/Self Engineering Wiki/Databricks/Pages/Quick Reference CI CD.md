@@ -1,7 +1,7 @@
 # Quick Reference: CI/CD
 
 
-[Quick Reference: CI:CD - Course Introduction and Goals.webarchive](Quick%20Reference%20CI%20CD%20880336ceb7b147c1bec0ff5501a0778d/Quick_Reference_CICD_-_Course_Introduction_and_Goals.webarchive)
+[Quick Reference: CI:CD - Course Introduction and Goals.webarchive](Quick%20Reference%20CI%20CD/Quick_Reference_CICD_-_Course_Introduction_and_Goals.webarchive)
 
 # CI/CD Overview
 
@@ -11,13 +11,13 @@ CI/CD, or Continuous Integration/Continuous Delivery, refers to the process of d
 
 Continuous integration begins with the practice of having you commit your code with some frequency to a branch within a source code repository. This is known as version control and is most frequently done with the open-source tool, git. Each commit is then merged with the commits from other developers to ensure that no conflicts were introduced. Commits are further validated by creating a build and running automated tests against that build. This process ultimately results in an artifact or deployment bundle that will eventually be deployed to a Databricks Workspace.
 
-![Quick%20Reference%20CI%20CD%20880336ceb7b147c1bec0ff5501a0778d/QMlucb87_1N0vq0X_fEmNjC81hlWioGd9.jpg](Quick%20Reference%20CI%20CD%20880336ceb7b147c1bec0ff5501a0778d/QMlucb87_1N0vq0X_fEmNjC81hlWioGd9.jpg)
+![Quick%20Reference%20CI%20CD/QMlucb87_1N0vq0X_fEmNjC81hlWioGd9.jpg](Quick%20Reference%20CI%20CD/QMlucb87_1N0vq0X_fEmNjC81hlWioGd9.jpg)
 
 ## Stages to automate a CI/CD pipeline
 
 The image below shows an example of how an automation agent works to automate a CI/CD pipeline on Databricks. As seen in the image, there are eight stages in automating a CI/CD pipeline: Configuring the automation agent (in this case, Jenkins), getting the latest changes to your code, executing unit tests, packaging code, generating artifacts, deploying artifacts, testing notebook code using other notebooks and publishing test results.
 
-![Quick%20Reference%20CI%20CD%20880336ceb7b147c1bec0ff5501a0778d/dd_b2o-5-wd1rE2q_Y5Qj3ZErjzcIQeis.jpg](Quick%20Reference%20CI%20CD%20880336ceb7b147c1bec0ff5501a0778d/dd_b2o-5-wd1rE2q_Y5Qj3ZErjzcIQeis.jpg)
+![Quick%20Reference%20CI%20CD/dd_b2o-5-wd1rE2q_Y5Qj3ZErjzcIQeis.jpg](Quick%20Reference%20CI%20CD/dd_b2o-5-wd1rE2q_Y5Qj3ZErjzcIQeis.jpg)
 
 # Deciding on a CI/CD Strategy
 

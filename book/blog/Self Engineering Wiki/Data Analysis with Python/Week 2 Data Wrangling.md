@@ -127,7 +127,7 @@ Most statistical models cannot take in objects or strings as input and for model
 
 Adds dummy variables (features) for each unique category and assign 0 or 1 in each category.
 
-![Week%202%20Data%20Wrangling%207274c21bd3414e67a5b09f4ed2661959/Annotation_2020-09-12_203222.png](Week%202%20Data%20Wrangling%207274c21bd3414e67a5b09f4ed2661959/Annotation_2020-09-12_203222.png)
+![Week%202%20Data%20Wrangling/Annotation_2020-09-12_203222.png](Week%202%20Data%20Wrangling/Annotation_2020-09-12_203222.png)
 
 ```python
 pd.get_dummies(df["col"])

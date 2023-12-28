@@ -78,7 +78,7 @@ The output for any given prediction input array, is another array with the same 
 
 A regression plot gives a good estimate of the relationship between two variables, the strength and direction of the correlation. One thing to keep in mind when looking at a regression plot is to pay attention to how scattered the data points are around the regression line. This will give you a good indication of the variance of the data, and whether a linear model would be the best fit or not. If the data is too far off from the line, this linear model might not be the best model for this data.
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.32.52.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.32.52.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.32.52.png](Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.32.52.png)
 
 The parameter x is the name of the column that contains the independent variable or feature, the parameter y contains the name of the column with the dependent variable or target. The regression plot can be then created by: 
 
@@ -100,15 +100,15 @@ Where, $Y_0, \hat{Y}_0$ are the real and predicted output value in index 0 of th
 
 It is then expected (for a good prediction) that the results have zero mean, distributed evenly around the horizontal axis with similar variance and no curvature; this suggests a linear prediction model is appropriate for the data, 
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.53.51.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.53.51.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.53.51.png](Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.53.51.png)
 
 When the residual plot return a curved plot, with the results not randomly spread out around the horizontal axis it might be a suggestion that a non linear model may be more appropriate:
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.56.27.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.56.27.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.56.27.png](Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.56.27.png)
 
 In the next example, the variance of the residuals value change in proportion with the horizontal axis, indicating that the prediction model $\hat{Y}$ is incorrect:
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.59.00.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_21.59.00.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.59.00.png](Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_21.59.00.png)
 
 Using seaborn, the residual plot can be created by: The first parameter is a series of dependent variable or feature. The second parameter is a series of dependent variable or target.
 
@@ -120,7 +120,7 @@ sns.residplot(df["feature"],df["target"])
 
 A distribution plot counts the predicted value versus the actual value. These are useful for visualizing models with more than one independent variable or feature. In the horizontal axis are plotted the values of $Y, \hat{Y}$, and on the vertical axis, the counted points for that value; the process is repeated for each value. A histogram is for discrete values, therefore, for continuous values, a distribution plot is obtained
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_22.15.04.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-22_at_22.15.04.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_22.15.04.png](Week%204%20Model%20Development/Screen_Shot_2020-09-22_at_22.15.04.png)
 
 ```python
 ax1 = sns.distplot(df["target"], hist=False, color "r", label="Actual Value")
@@ -137,7 +137,7 @@ $$
 \hat{Y} = b_0 + b_1x_1 + b_2(x_1)^2
 $$
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-23_at_22.27.30.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-23_at_22.27.30.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-23_at_22.27.30.png](Week%204%20Model%20Development/Screen_Shot_2020-09-23_at_22.27.30.png)
 
 - Cubic - 3rd Order
 
@@ -145,7 +145,7 @@ $$
 \hat{Y} = b_0 +b_1x_1+b_2(x_1)^2+b_3(x_1)^3
 $$
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-23_at_22.27.43.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-23_at_22.27.43.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-23_at_22.27.43.png](Week%204%20Model%20Development/Screen_Shot_2020-09-23_at_22.27.43.png)
 
 - High Order
 
@@ -153,7 +153,7 @@ $$
 \hat{Y} = b_0 + b_1x_1+b_2(x_1)^2 + ... + b_n(x_1)^n
 $$
 
-![Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-23_at_22.28.08.png](Week%204%20Model%20Development%20cbf8aec7a8884ae89fd0fe60ca667070/Screen_Shot_2020-09-23_at_22.28.08.png)
+![Week%204%20Model%20Development/Screen_Shot_2020-09-23_at_22.28.08.png](Week%204%20Model%20Development/Screen_Shot_2020-09-23_at_22.28.08.png)
 
 The degree of the regression makes a big difference and can result in a better fit by picking the right value.
 

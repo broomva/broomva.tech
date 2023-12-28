@@ -53,7 +53,7 @@ También existen aplicaciones externas que se pueden usar para extender las capa
 - Flume: Servicio distribuido para compilar y mover grandes cantidades de datos ente los distintos nodos del sistema
 - Sqoop: Aplicación para transferir datos entre bases de datos relacionales y Hadoop
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_20200913_173857_org.coursera.android.jpg](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_20200913_173857_org.coursera.android.jpg)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_20200913_173857_org.coursera.android.jpg](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_20200913_173857_org.coursera.android.jpg)
 
 # Modelo MapReduce
 
@@ -71,15 +71,15 @@ Un modelo adecuado para ejecutar este algoritmo es:
 
 En este modelo, se empieza con una gran cantidad de datos y se particionan en un proceso denominado "splitting". A cada fragmento de bloques de datos se asigna un worker, los cuales van a ir procesando los datos y generando resultados parciales; los resultados de cada worker se agrupan para formar el resultado final.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_20200913_175202_org.coursera.android.jpg](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_20200913_175202_org.coursera.android.jpg)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_20200913_175202_org.coursera.android.jpg](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_20200913_175202_org.coursera.android.jpg)
 
 Un modelo que responde a esta estructura general es pues, MapReduce. Bajo este paradigma se logra procesar grandes cantidades de datos en forma paralela y explota las características de los sistemas de cómputo distribuidos. Este framework altamente escalable permite ahorrar tiempo al permitir el uso de varios nodos de procesamiento de forma paralela sin degradar el rendimiento del sistema.
 
 A raíz del nombre, el modelo realiza una fase de mapeo "map" y otra donde recolecta los datos y reduce a la solución "reduce". La fase de mapeo va a ser realizada por los nodos donde se encuentran los datos denominados "mappers". El numero de mappers está determinado por el framework y no por el desarrollador. Este proceso de mapeo realiza operaciones sobre los datos y retorna pares "clave - valor (key - value)" que se envían a la siguiente fase de ordenación (Sort and shuffle). En la fase de ordenación se reciben los pares de clave valor desde los distintos mappers y los irán organizando para enviar a los reducers que agregan los resultados y producen la solución final
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_2020-10-07_200127.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_2020-10-07_200127.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_2020-10-07_200127.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_2020-10-07_200127.png)
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_2020-10-07_200748.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screenshot_2020-10-07_200748.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_2020-10-07_200748.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screenshot_2020-10-07_200748.png)
 
 El código para este ejemplo podría tener una forma así:
 
@@ -124,27 +124,27 @@ HDFS es adecuado para aplicaciones que utilizan grandes volúmenes de datos y un
 
 La arquitectura esta definida por un numero de nodos/ordenadores formando un cluster distribuidos entre uno o varios racks y donde uno de ellos, el "NameNode" va a estar dedicado a ser el gestor de espacio de nombres "NameSpace", y en definitiva, el gestor del sistema de archivos. Este nodo va a almacenar todos los metadatos referentes al sistema de archivos y tendrá un repositorio de los datos referentes al sistema de archivos. Por otro lado, los nodos restantes se denominan "DataNode" los cuales gestionan el almacenamiento local en cada uno de los nodos, es decir, de los discos locales de cada uno de los sistemas en que se compone el cluster. Tanto el NameNode como el DataNode estan programados en Java y se ejecutan generalmente sobre sistemas GNU/Linux, por que se pueden portar fácilmente entre distintos sistemas.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_18.56.22.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_18.56.22.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_18.56.22.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_18.56.22.png)
 
 Un fichero de datos se divide en un conjunto de bloques, generalmente de 65MB, auqneu es configurable. El NameNode realiza una asignacion en la que atribuye cada bloque de datos a un DataNode, asi pues, el fichero queda fisicamente distribuido entre los distintos nodos del cluster, de tal forma que cuando se necesite aplicar el modelo MapReduce para procesar los distintos nodos, los datos estaran divididos ya y se podra aprovechar el paralelismo sin necesidad de hacer mayores movimientos.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_18.56.22%201.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_18.56.22%201.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_18.56.22%201.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_18.56.22%201.png)
 
 Los datos de usuario nunca pasan por el NameNode. Las peticiones de lectura o escritura de datos por parte de clientes se dirigen a los DataNodes. En ese sentido, el NameNode se encarga únicamente de la gestión del sistema de ficheros desde un punto de vista organizativo
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.02.55.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.02.55.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.02.55.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.02.55.png)
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.03.01.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.03.01.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.03.01.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.03.01.png)
 
 Los clientes pueden realizar peticiones de replicacion para que se realice un backup de los datos, lo que otorga robustez a la disponibilidad de los datos en caso que ocurran fallos o se caigan nodos del sistema.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.05.42.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.05.42.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.05.42.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.05.42.png)
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.06.23.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.06.23.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.06.23.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.06.23.png)
 
 HDFS permite monitorear el estado de los nodos para determinar su estado de funcionamiento mediante señales "Heartbeat" que le indican al NameNode que estan activos y añadiendo un listado con los bloques de datos que ese DataNode esta gestionando.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.10.40.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.10.40.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.10.40.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.10.40.png)
 
 Si por algún motivo, en algún momento falla el nodo, el NameNode dejara de recibir la señal Heartbeat y pasado un Deadline determinara que el DataNode se cayo y tendrá entonces que recuperar la información que se encontraba en ese DataNode según anuncia la lista de bloques que envío. Entonces buscara en los otros nodos donde se encuentren los bloques y va a mandar peticiones de replica apara que se asignen los bloques del DataNode caído a nuevos DataNodes funcionales del sistema, asegurando que existan como mínimo dos copias activas de los ficheros/bloques.
 
@@ -159,7 +159,7 @@ Es un gestor de recursos y aplicaciones que pretende extender el procesamiento e
 
 Se tienen entonces diversos nodos bajo una estructura Master/Worker donde existe un Resource Manager en uno de los nodos, el cual va a controlar la gestion de recursos del sistema y luego unos Node Manager, el cual va a gestionar los recursos locales de cada uno de los nodos. Dentro de cada uno de los nodos, se ejecutan una serie de Contenedores. Uno de estos Contenedores se encargara de ejecutar el Application Master, el cual controla la ejecución de la aplicación. Así pues, en este sistema gestor de recursos se tienen cuatro componentes.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.27.30.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_19.27.30.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.27.30.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_19.27.30.png)
 
 - El Resource Manager gestiona todo el sistema de archivos e incluye un planificador (Scheduler) el cual se encarga de asignar las tareas entre los distintos nodos del sistema. Este sistema de planificación se puede programar introduciendo diferentes plugins que permite añadir diversas políticas de planificación. El Resource Manager ejecuta el gestor de aplicaciones Application Manager, el cual acepta envíos de tareas y gestiona la ejecución. Entonces, el resource manager recibe peticiones de los usuarios y realiza la asignación.
 - El Node Manager controla los recursos locales del nodo y recibe las peticiones, envíos o asignaciones de tareas que le va asignando el Resource Manager. Un agente por nodo. El Node Manager gestiona un nodo de computo individual y se comunica con el Resource Manager para enviar información sobre el estado del nodo
@@ -168,16 +168,16 @@ Se tienen entonces diversos nodos bajo una estructura Master/Worker donde existe
 
 Entonces, cuando un cliente quiere ejecutar una aplicación, la petición de ejecución le va a llegar al Resource Manager que lo que va a hacer va a ser, en función del estado de ocupación de los distintos recursos, va a ejecutar, va a abrir un "Container" para ejecutar el Application Master correspondiente a esa aplicación.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.33.12.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.33.12.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.33.12.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.33.12.png)
 
 A partir de ahí, este Application Master le va a pedir al Resource Manager los recursos para poder ejecutarse, y el Resource Manager va a ver el estado de los distintos nodos con la información que le van mandando los Node Managers, y va a decidir mandar unas peticiones de Containers para que se habiliten estos Containers para ponerlos a disposición de esta aplicación en particular, y van a empezar estos Containers a estar disponibles para la ejecución de esta aplicación. 
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.33.28.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.33.28.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.33.28.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.33.28.png)
 
 De modo que el Application Master, que es el que controla la ejecución de la aplicación, va a comunicarse con los Containers asignados y se va a empezar a realizar la ejecución de la aplicación. A partir de ese momento, el Resource Manager ya no va a participar en la gestión de la aplicación y va a ser, directamente, el Application Master el que va a estar controlando los distintos Containers que le han sido asignados. El Application Master va a comunicarse con el cliente mandándole resultados, recibiendo instrucciones del usuario para poder ir ejecutando la aplicación de la forma correcta.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.36.17.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.36.17.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.36.17.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.36.17.png)
 
 Si ahora llega otro cliente y pide ejecutar otra aplicación, se va a abrir otro Application Master en otro Container, y este Application Master nuevo va a volver a pedir al Resource Manager los recursos necesarios para poder ejecutar la aplicación, y el Resource Manager va a activar los distintos Containers necesarios para poder ejecutar la aplicación. De modo que, simultáneamente, vamos a tener distintas aplicaciones ejecutándose en nuestros nodos con un Application Master por aplicación y distintos Containers distribuidos entre los distintos nodos de nuestra aplicación. La asignación de los recursos de los Containers se va realizando en función del estado de ocupación de los distintos nodos, según la información que le van mandando los Node Managers al Resource Manager.
 
-![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.37.48.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop%2096bc8de4756b4f9c9db18dfb219195e4/Screen_Shot_2020-10-15_at_22.37.48.png)
+![Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.37.48.png](Mo%CC%81dulo%201%20Introduccio%CC%81n%20al%20Ecosistema%20Hadoop/Screen_Shot_2020-10-15_at_22.37.48.png)

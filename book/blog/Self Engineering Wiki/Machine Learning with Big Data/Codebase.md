@@ -7,7 +7,7 @@ Use with KNIME:
 
 [KNIME | Open for Innovation](https://www.knime.com)
 
-[KNIME-workflows.zip](Codebase%20437851dee9e644df9bc63d7f2e2b56e1/KNIME-workflows.zip)
+[KNIME-workflows.zip](Codebase/KNIME-workflows.zip)
 
 # PySpark
 
@@ -19,7 +19,7 @@ Download from VM from:
 
 [](https://downloads.cloudera.com/demo_vm/virtualbox/cloudera-quickstart-vm-5.12.0-0-virtualbox.zip)
 
-[Big Data Spark Install.zip](Codebase%20437851dee9e644df9bc63d7f2e2b56e1/Big_Data_Spark_Install.zip)
+[Big Data Spark Install.zip](Codebase/Big_Data_Spark_Install.zip)
 
 Unzip and run:
 

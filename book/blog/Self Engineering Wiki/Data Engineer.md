@@ -40,7 +40,7 @@ The results of this additional foresight will often lead us to more innovative s
 
 An execution plan provides a graphical representation of how the query optimizer chose to execute a query:
 
-![Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/c-users-epollack-appdata-local-microsoft-windows-.jpeg](Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/c-users-epollack-appdata-local-microsoft-windows-.jpeg)
+![Data%20Engineer/c-users-epollack-appdata-local-microsoft-windows-.jpeg](Data%20Engineer/c-users-epollack-appdata-local-microsoft-windows-.jpeg)
 
 The execution plan shows us which tables were accessed, how they were accessed, how they were joined together, and any other operations that occurred along the way. Included are query costs, which are estimates of the overall expense of any query component. A treasure trove of data is also included, such as row size, CPU cost, I/O cost, and details on which indexes were utilized.
 
@@ -52,7 +52,7 @@ SET STATISTICS IO ON;
 
 Once on, we will see additional data included in the Messages pane:
 
-![Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/c-users-epollack-appdata-local-microsoft-windows-1-1a.png](Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/c-users-epollack-appdata-local-microsoft-windows-1-1a.png)
+![Data%20Engineer/c-users-epollack-appdata-local-microsoft-windows-1-1a.png](Data%20Engineer/c-users-epollack-appdata-local-microsoft-windows-1-1a.png)
 
 Logical reads tell us how many reads were made from the buffer cache. This is the number that we will refer to whenever we talk about how many reads a query is responsible for, or how much IO it is causing.
 
@@ -64,7 +64,7 @@ In general, IO will be the primary cause of latency and bottlenecks when analyzi
 
 Every query follows the same basic process from TSQL to completing execution on a SQL Server:
 
-![Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/word-image-428.png](Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/word-image-428.png)
+![Data%20Engineer/word-image-428.png](Data%20Engineer/word-image-428.png)
 
 ### **Parsing**
 
@@ -273,9 +273,9 @@ ETL stands for Extract, Transform and Load. It is the process in which the Data 
 
 Some examples of tools for ETL are Informatica, Azure Data Factory
 
-![Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/Screen_Shot_2020-10-28_at_23.20.01.png](Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/Screen_Shot_2020-10-28_at_23.20.01.png)
+![Data%20Engineer/Screen_Shot_2020-10-28_at_23.20.01.png](Data%20Engineer/Screen_Shot_2020-10-28_at_23.20.01.png)
 
-![Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/Screen_Shot_2020-10-28_at_23.20.45.png](Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/Screen_Shot_2020-10-28_at_23.20.45.png)
+![Data%20Engineer/Screen_Shot_2020-10-28_at_23.20.45.png](Data%20Engineer/Screen_Shot_2020-10-28_at_23.20.45.png)
 
 # Data Models
 
@@ -317,7 +317,7 @@ Several such models have been suggested. Common models include:
 
 **[Star schema](https://en.wikipedia.org/wiki/Star_schema)** The simplest style of data warehouse schema. The star schema consists of a few "fact tables" (possibly only one, justifying the name) referencing any number of "dimension tables". The star schema is considered an important special case of the [snowflake schema](https://en.wikipedia.org/wiki/Snowflake_schema).
 
-![Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/480px-Database_models.jpg](Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/480px-Database_models.jpg)
+![Data%20Engineer/480px-Database_models.jpg](Data%20Engineer/480px-Database_models.jpg)
 
 # Business Intelligence
 
@@ -352,4 +352,4 @@ Over the past few years, business intelligence has evolved to include more proce
 
 Businesses and organizations have questions and goals. To answer these questions and track performance against these goals, they gather the necessary data, analyze it, and determine which actions to take to reach their goals.
 
-![Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/modern_analytics_cycle.png](Data%20Engineer%20c50b3fdbbbf24b92a0e39c17fa71db5b/modern_analytics_cycle.png)
+![Data%20Engineer/modern_analytics_cycle.png](Data%20Engineer/modern_analytics_cycle.png)
