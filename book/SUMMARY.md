@@ -1,3 +1,3 @@
 # Table of contents
 
-* [Solution Architect Questions](blog/solution_architect_questions.md)
+* [Solution Architect Questions](blog/Self Engineering Wiki/Solution Architect Questions.md)
