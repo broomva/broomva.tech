@@ -1,3 +1,6 @@
+[Go to previous page](./previous_page.md)
+[Go to Self Engineering Wiki ](./Self Engineering Wiki /Self Engineering Wiki .md)
+
 # Solution Architect Questions
 
 ## Security
@@ -828,3 +831,5 @@ Database ports
 ## Attribution
 
 SOLUTION ARCHITECT [https://github.com/donnemartin/system-design-primer](https://github.com/donnemartin/system-design-primer)
+
+[Go to next page](./next_page.md)

@@ -1,4 +1,4 @@
-# broomva.tech Book
+# Broomva's Book
 
 ## Technology and Life
 <!-- might need renaming -->

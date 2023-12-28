@@ -4,19 +4,15 @@
     "type": "split",
     "children": [
       {
-        "id": "102b5ffabe302098",
+        "id": "519df839f25947bc",
         "type": "tabs",
         "children": [
           {
-            "id": "ef33f7166eb0a4a4",
+            "id": "379fda00810f3c3a",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "README.md",
-                "mode": "source",
-                "source": false
-              }
+              "type": "empty",
+              "state": {}
             }
           }
         ]
@@ -69,7 +65,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 658.5
   },
   "right": {
     "id": "bac446a70e7b3df8",
@@ -85,7 +81,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "README.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +97,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "README.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -124,9 +118,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "README.md"
-              }
+              "state": {}
             }
           }
         ]
@@ -146,11 +138,48 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "ef33f7166eb0a4a4",
+  "active": "379fda00810f3c3a",
   "lastOpenFiles": [
-    "SUMMARY.md",
-    "README.md",
-    "blog/solution_architect_qa.md",
-    "blog/solution_architect_questions.md"
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Databricks cc3da28c14cf485ca24cde4cab39cdf7.md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Solution Architect Questions .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Google Cloud Platform Big Data and Machine Learnin .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Machine Learning Engineering for Production (MLOps 3d62143a3df74a0a8c743f326690b0f4/Introduction to Machine Learning in Production .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week 1 Classical Computing .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Databricks .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/How to Win a Data Science Competition Learn from T 7acc38f2bd7a476390c3c1c0f6d84b68/Week 4 .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/How to Win a Data Science Competition Learn from T 7acc38f2bd7a476390c3c1c0f6d84b68/Week 2 .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/How to Win a Data Science Competition Learn from T 7acc38f2bd7a476390c3c1c0f6d84b68/Week 1 .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/How to Win a Data Science Competition Learn from T 7acc38f2bd7a476390c3c1c0f6d84b68/Week 5 .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/How to Win a Data Science Competition Learn from T 7acc38f2bd7a476390c3c1c0f6d84b68/Week 3 .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Data Engineer .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Machine Learning with Big Data ea6c8693b30e4ff8bdce06fed8d98cfb/Week 1 Introduction to Machine Learning with Big D .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Machine Learning with Big Data ea6c8693b30e4ff8bdce06fed8d98cfb/Week 3 Classification .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Machine Learning with Big Data ea6c8693b30e4ff8bdce06fed8d98cfb/Week 2 Data Exploration & Preparation .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Machine Learning with Big Data ea6c8693b30e4ff8bdce06fed8d98cfb/Codebase .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Machine Learning with Big Data ea6c8693b30e4ff8bdce06fed8d98cfb/Week 5 Regression, Cluster Analysis and Associatio .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Machine Learning with Big Data ea6c8693b30e4ff8bdce06fed8d98cfb/Week 4 Evaluation of Machine Learning Models .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Big Data adquisición y almacenamiento de datos d8ab00d1764848c4a0b64944fd5a2efa/Modulo 3 Adquisición de Datos .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Big Data adquisición y almacenamiento de datos d8ab00d1764848c4a0b64944fd5a2efa/Codebase .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Big Data adquisición y almacenamiento de datos d8ab00d1764848c4a0b64944fd5a2efa/Módulo 4 Herramientas para el Análisis de Datos  .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Big Data adquisición y almacenamiento de datos d8ab00d1764848c4a0b64944fd5a2efa/Módulo 1 Introducción al Ecosistema Hadoop .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Big Data adquisición y almacenamiento de datos d8ab00d1764848c4a0b64944fd5a2efa/Módulo 2 Tecnologías SQL y NoSQL .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Azure Data Scientist Associate .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Azure Data Scientist Associate fff55a44fbc4461eb632d6acc0e92560/Train and evaluate regression models .md",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/Azure Data Scientist Associate fff55a44fbc4461eb632d6acc0e92560/Train and evaluate classification models .md",
+    "clean_notion_export.py",
+    "blog/clean_notion_export.py",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Dirac_Notation.pdf",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week 1 Classical Computing 0a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.23.png",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week 1 Classical Computing 0a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.16.png",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week 1 Classical Computing 0a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-21_at_15.38.06.png",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week 1 Classical Computing 0a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.56.40.png",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week 1 Classical Computing 0a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.25.40.png",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week 1 Classical Computing 0a391624c86d42ea8bbaf87c462558c7/Screen_Shot_2020-10-18_at_14.25.13.png",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week_3_MC.pdf",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week_2_hw.pdf",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Week_1_Homework.pdf",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Oracles_Cheat_Sheet.pdf",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Lecture_2_Slides.pdf",
+    "blog/Self Engineering Wiki 144621d3a42e4d13bbaf41864a58d26e/QxQ - Introduction to Quantum Computing bafa255283f24125ba6a8ee0bb9a9054/Lecture_1_Slides.pdf"
   ]
 }
