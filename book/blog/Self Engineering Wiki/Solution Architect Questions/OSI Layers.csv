@@ -1,0 +1,9 @@
+﻿Name,Protocol Data Unit,Function,Example
+Application,Data,"High-level APIs, including resource sharing, remote file access","HTTP, SMTP, DNS"
+Presentation,Data,"Translation of data between a networking service and an application; including character encoding, data compression and encryption/decryption","Basic Encoding Rules of Abstract Syntax Notation One (ASN.1), with capabilities such as converting an EBCDIC-coded text file to an ASCII-coded file, or serialization of objects and other data structures from and to XML"
+Session,Data,"Managing communication sessions, i.e., continuous exchange of information in the form of multiple back-and-forth transmissions between two nodes","It provides for full-duplex, half-duplex, or simplex operation, and establishes procedures for checkpointing, suspending, restarting, and terminating a session."
+Transport,"Segment, Datagram","Reliable transmission of data segments between points on a network, including segmentation, acknowledgement and multiplexing",Transmission Control Protocol (TCP) and the User Datagram Protocol (UDP)
+Network,Packet,"Structuring and managing a multi-node network, including addressing, routing and traffic control",IP
+Data link,Frame,Reliable transmission of data frames between two nodes connected by a physical layer,"Medium access control (MAC) layer – responsible for controlling how devices in a network gain access to a medium and permission to transmit data.
+Logical link control (LLC) layer – responsible for identifying and encapsulating network layer protocols, and controls error checking and frame synchronization."
+Physical,Symbol,Transmission and reception of raw bit streams over a physical medium,"Bluetooth, Ethernet, and USB"

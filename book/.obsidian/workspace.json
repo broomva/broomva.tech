@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "102b5ffabe302098",
+        "id": "538a8f858f5ff437",
         "type": "tabs",
         "children": [
           {
-            "id": "ef33f7166eb0a4a4",
+            "id": "edb13ca31954d8a6",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
                 "mode": "source",
                 "source": false
               }
@@ -69,7 +69,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 658.5
   },
   "right": {
     "id": "bac446a70e7b3df8",
@@ -85,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "README.md",
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "README.md",
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,7 +125,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "README.md"
+                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md"
               }
             }
           }
@@ -146,11 +146,53 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "ef33f7166eb0a4a4",
+  "active": "edb13ca31954d8a6",
   "lastOpenFiles": [
-    "SUMMARY.md",
-    "README.md",
-    "blog/solution_architect_qa.md",
-    "blog/solution_architect_questions.md"
+    "blog/Tech Scribbles/Computer Vision for On Site Safety.md",
+    "blog/Tech Scribbles/Ver lo bueno en lo malo.md",
+    "blog/Tech Scribbles/¿Ver lo bueno en lo malo.md",
+    "blog/Tech Scribbles/A I Perspectives.md",
+    "blog/Tech Scribbles/Common Web Ports.md",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/SSH.md",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/PostgreSQL.md",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/HTTPS.md",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/HTTP.md",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/DNS (TCP).md",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/Custom TCP.md",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules.csv",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules _all.csv",
+    "blog/Tech Scribbles/Cloud Configurations/Inbound rules",
+    "blog/Tech Scribbles/Taking the Digital Industries to any Digital Citiz.md",
+    "blog/Tech Scribbles/Quantum Computing.md",
+    "blog/Tech Scribbles/Probability.md",
+    "blog/Tech Scribbles/La intuición en un sistema artificial, e….md",
+    "blog/Tech Scribbles/Inteligencia Artificial en la Industria Colombiana.md",
+    "blog/Tech Scribbles/In the Creation of Massive IIoT Deployments at Sca.md",
+    "blog/Tech Scribbles/IPS IIoT - aaS and concerns on privacy.md",
+    "blog/Tech Scribbles/IIoT.md",
+    "blog/Tech Scribbles/GIT Decentralization.md",
+    "blog/Tech Scribbles/For stability, control.md",
+    "blog/Tech Scribbles/Data Monetization.md",
+    "blog/Tech Scribbles/Cloud Configurations.md",
+    "blog/Tech Scribbles/Cloud Configurations",
+    "blog/Tech Scribbles/BlockChain.md",
+    "blog/Tech Scribbles/Achieving personal type-ology.md",
+    "blog/Tech Scribbles/A way of self enhancement.md",
+    "blog/Tech Scribbles",
+    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20/Inbound rules 7562fe15e63d49919e8a9550fa16be02_all.csv",
+    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20/Inbound rules 7562fe15e63d49919e8a9550fa16be02.csv",
+    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20/Inbound rules 7562fe15e63d49919e8a9550fa16be02",
+    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20",
+    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4",
+    "blog/Self Engineering Wiki/Databricks/Pages/Quick Reference CI CD/dd_b2o-5-wd1rE2q_Y5Qj3ZErjzcIQeis.jpg",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/xBcV_EhKKARAL2L2_5ZQXJH8Z_1uX7tP3.png",
+    "blog/Self Engineering Wiki/Databricks/Pages/Quick Reference CI CD/QMlucb87_1N0vq0X_fEmNjC81hlWioGd9.jpg",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/yZnouTD3SfLIIzpL_83sZXvctP25lJhu8.png",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/yEaKX4oVUH75lnBf_lpsfJT7teeLDEnLp.png",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/vmTyOEN1r8BkaGBg_FP3uxXj3HVy_A7fE.png",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/fd7INfWkAbKD9NuD_bvO87_j5gK4cfifH.png",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/fcmiaRpTUN7A6lZv_PxSlFmcVVqgME6hV.png",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/atfu_34-Jy3fxYLQ_gLcoRENSJWxx0dhd.png",
+    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/ZtdxZp4-jFn6WrII_XisfDS4826u1Vt9J.png"
   ]
 }

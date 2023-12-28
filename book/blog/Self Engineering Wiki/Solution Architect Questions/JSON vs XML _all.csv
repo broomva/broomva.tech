@@ -1,0 +1,16 @@
+﻿JSON,XML
+JSON object has a type,XML data is typeless
+"JSON types: string, number, array, Boolean",All XML data should be string
+Data is readily accessible as JSON objects,XML data needs to be parsed.
+JSON is supported by most browsers.,Cross-browser XML parsing can be tricky
+JSON has no display capabilities.,XML offers the capability to display data because it is a markup language.
+JSON supports only text and number data type.,"XML support various data types such as number, text, images, charts, graphs, etc. It also provides options for transferring the structure or format of the data with actual data."
+Retrieving value is easy,Retrieving value is difficult
+Supported by many Ajax toolkit,Not fully supported by Ajax toolkit
+A fully automated way of deserializing/serializing JavaScript.,Developers have to write JavaScript code to serialize/de-serialize from XML
+Native support for object.,The object has to be express by conventions - mostly missed use of attributes and elements.
+It supports only UTF-8 encoding.,It supports various encoding.
+It doesn't support comments.,It supports comments.
+JSON files are easy to read as compared to XML.,XML documents are relatively more difficult to read and interpret.
+It does not provide any support for namespaces.,It supports namespaces.
+It is less secured.,It is more secure than JSON.

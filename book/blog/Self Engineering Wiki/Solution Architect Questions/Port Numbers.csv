@@ -1,0 +1,19 @@
+﻿Port Number,Protocol description
+"20, 21",port number 20 is used for FTP data while port number 21 is used for FTP Control
+23,Used for TELNET
+"80, 8080",HTTP
+443,HTTPS
+161,SMTP (Simple Mail Transfer Protocol)
+110,POP3
+143,IMAP i.e. Interim Mail Access Protocol
+"137, 138, 139","port number 137 is used for BIOS Name service, 138 for NetBIOS-dgm, 139 for NetBIOS Datagram service"
+22,"Used for SSH remote login protocol, SSH is short form of Secure Shell"
+"67, 68",The port number 68 is used for DHCP client and 67 is used for DHCP server
+53,DNS (Domain Name System)
+69,TFTP (Trivial File Transfer Protocol)
+70,Gopher services
+79,Finger
+161,SNMP
+179,BGP (Border Gateway Protocol)
+389,LDAP (Lightweight Directory Access Protocol)
+"5800, 5900",VNC
