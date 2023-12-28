@@ -1,12 +1,12 @@
 # Self Engineering Wiki
 
-All the knowledge, courses notes and how-to's for mechatronics, control, artificial intelligence and systems
+All the knowledge, courses notes and how-to's for mechatronics, control, artificial intelligence and systems. These are my notes from various online courses, and they are not intended to be a complete guide.
 
 ## Online Courses
 
 [Azure Data Scientist Associate](Self%20Engineering%20Wiki%20144621d3a42e4d13bbaf41864a58d26e/Azure%20Data%20Scientist%20Associate%20fff55a44fbc4461eb632d6acc0e92560.md)
 
-[**[Machine Learning Engineering for Production (MLOps) Specialization](https://www.coursera.org/specializations/machine-learning-engineering-for-production-mlops)**](Self%20Engineering%20Wiki%20144621d3a42e4d13bbaf41864a58d26e/Machine%20Learning%20Engineering%20for%20Production%20(MLOps%203d62143a3df74a0a8c743f326690b0f4.md)
+[Machine Learning Engineering for Production Specialization](Self%20Engineering%20Wiki%20144621d3a42e4d13bbaf41864a58d26e/Machine%20Learning%20Engineering%20for%20Production%203d62143a3df74a0a8c743f326690b0f4.md)
 
 [Intro to Reinforcement Learning with Python](Self%20Engineering%20Wiki%20144621d3a42e4d13bbaf41864a58d26e/Intro%20to%20Reinforcement%20Learning%20with%20Python%205b7924537bb6479b8284e9ba82028372.md)
 

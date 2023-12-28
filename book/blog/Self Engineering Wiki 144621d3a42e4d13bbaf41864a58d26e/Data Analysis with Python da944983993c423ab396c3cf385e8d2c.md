@@ -13,6 +13,3 @@
 
 [Week 5: Model Evaluation and Refinement](Data%20Analysis%20with%20Python%20da944983993c423ab396c3cf385e8d2c/Week%205%20Model%20Evaluation%20and%20Refinement%20c94e2b41b52749b2bdebf6b0dca8d52a.md)
 
-## Certificate
-
-[Coursera YYSNY965XAD2.pdf](Data%20Analysis%20with%20Python%20da944983993c423ab396c3cf385e8d2c/Coursera_YYSNY965XAD2.pdf)
