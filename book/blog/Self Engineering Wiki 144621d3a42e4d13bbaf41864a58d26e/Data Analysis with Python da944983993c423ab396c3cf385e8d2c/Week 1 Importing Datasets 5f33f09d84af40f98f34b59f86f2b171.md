@@ -1,6 +1,5 @@
 # Week 1: Importing Datasets
 
-Propietario: Carlos Escobar
 
 ---
 

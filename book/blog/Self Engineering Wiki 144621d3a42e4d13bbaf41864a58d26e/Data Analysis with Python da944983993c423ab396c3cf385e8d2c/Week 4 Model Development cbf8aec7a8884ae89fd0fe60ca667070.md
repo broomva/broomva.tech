@@ -1,6 +1,5 @@
 # Week 4: Model Development
 
-Propietario: Carlos Escobar
 
 ## Colab Link
 

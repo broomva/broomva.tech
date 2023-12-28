@@ -1,6 +1,5 @@
 # Intro to Reinforcement Learning with Python
 
-Propietario: Carlos Escobar
 
 # Exploring Multi-Arm Bandit Problem
 

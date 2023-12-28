@@ -1,6 +1,5 @@
 # Week 2: Data Wrangling
 
-Propietario: Carlos Escobar
 
 ### Colab Link
 

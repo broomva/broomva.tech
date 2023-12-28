@@ -1,6 +1,5 @@
 # Week 2: Recommender Systems with Cloud SQL and Spark
 
-Propietario: Carlos Escobar
 
 This module is on performing product recommendations using Cloud SQL and Apache Spark. Cloud SQL, which is a managed relational database, and Cloud Dataproc, which is a managed environment on which you can run Apache Spark
 

@@ -1,6 +1,5 @@
 # Week 2: Data Exploration & Preparation
 
-Propietario: Carlos Escobar
 
 # Data Terminology
 

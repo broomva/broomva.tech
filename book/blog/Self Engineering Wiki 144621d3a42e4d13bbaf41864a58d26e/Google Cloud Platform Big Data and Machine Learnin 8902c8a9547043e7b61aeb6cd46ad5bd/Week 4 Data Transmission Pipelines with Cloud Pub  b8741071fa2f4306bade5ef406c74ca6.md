@@ -1,6 +1,5 @@
 # Week 4: Data Transmission Pipelines with Cloud Pub/Sub and Cloud Dataflow
 
-Propietario: Carlos Escobar
 
 # Real-time IoT Dashboard with Pub/Sub, Dataflow and Data Studio
 

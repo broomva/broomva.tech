@@ -1,6 +1,5 @@
 # Quick Reference: CI/CD
 
-Propietario: Carlos Escobar
 
 [Quick Reference: CI:CD - Course Introduction and Goals.webarchive](Quick%20Reference%20CI%20CD%20880336ceb7b147c1bec0ff5501a0778d/Quick_Reference_CICD_-_Course_Introduction_and_Goals.webarchive)
 

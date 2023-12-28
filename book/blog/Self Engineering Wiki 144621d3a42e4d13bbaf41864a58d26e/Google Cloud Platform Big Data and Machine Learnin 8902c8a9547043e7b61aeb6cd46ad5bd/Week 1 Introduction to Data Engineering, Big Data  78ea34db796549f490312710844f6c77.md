@@ -1,6 +1,5 @@
 # Week 1: Introduction to Data Engineering, Big Data and Machine Learning on GCP
 
-Propietario: Carlos Escobar
 
 # Introduction
 

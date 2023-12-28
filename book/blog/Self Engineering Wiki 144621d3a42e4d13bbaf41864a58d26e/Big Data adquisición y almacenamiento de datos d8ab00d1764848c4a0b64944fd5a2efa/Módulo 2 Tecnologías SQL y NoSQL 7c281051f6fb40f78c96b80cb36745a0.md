@@ -1,6 +1,5 @@
 # Módulo 2: Tecnologías SQL y NoSQL
 
-Propietario: Carlos Escobar
 
 # Tipos de Datos
 

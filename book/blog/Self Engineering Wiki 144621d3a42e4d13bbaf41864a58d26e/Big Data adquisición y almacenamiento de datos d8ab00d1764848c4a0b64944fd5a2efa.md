@@ -1,6 +1,5 @@
 # Big Data: adquisición y almacenamiento de datos
 
-Propietario: Carlos Escobar
 
 ### Universidad Autónoma de Barcelona
 

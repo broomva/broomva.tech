@@ -1,6 +1,5 @@
 # Data Engineer
 
-Propietario: Carlos Escobar
 
 Tons of SQL
 

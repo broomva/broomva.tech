@@ -1,6 +1,5 @@
 # Week 5: Regression, Cluster Analysis and Association Analysis
 
-Propietario: Carlos Escobar
 
 # Linear Regression
 

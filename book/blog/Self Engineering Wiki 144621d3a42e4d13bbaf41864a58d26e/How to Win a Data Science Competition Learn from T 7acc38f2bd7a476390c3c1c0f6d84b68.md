@@ -1,6 +1,5 @@
 # How to Win a Data Science Competition: Learn from Top Kagglers
 
-Propietario: Carlos Escobar
 
 ## Course Link
 

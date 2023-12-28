@@ -1,6 +1,5 @@
 # Week 3: Exploratory Data Analysis
 
-Propietario: Carlos Escobar
 
 ## Colab Link
 

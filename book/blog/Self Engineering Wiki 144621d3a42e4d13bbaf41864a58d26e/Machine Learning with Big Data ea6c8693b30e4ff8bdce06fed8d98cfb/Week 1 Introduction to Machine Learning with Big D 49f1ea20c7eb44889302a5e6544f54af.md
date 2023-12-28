@@ -1,6 +1,5 @@
 # Week 1: Introduction to Machine Learning with Big Data
 
-Propietario: Carlos Escobar
 
 # Machine Learning Overview
 

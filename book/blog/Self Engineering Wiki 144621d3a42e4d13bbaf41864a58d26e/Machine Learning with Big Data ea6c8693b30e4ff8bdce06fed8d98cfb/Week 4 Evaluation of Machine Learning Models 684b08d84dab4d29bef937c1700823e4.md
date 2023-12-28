@@ -1,6 +1,5 @@
 # Week 4: Evaluation of Machine Learning Models
 
-Propietario: Carlos Escobar
 
 # Generalization and Overfitting
 

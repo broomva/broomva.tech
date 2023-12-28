@@ -1,6 +1,5 @@
 # Solution Architect Questions
 
-Propietario: Carlos Escobar
 
 SOLUTION ARCHITECT
 [https://github.com/donnemartin/system-design-primer](https://github.com/donnemartin/system-design-primer)

@@ -1,6 +1,5 @@
 # Modulo 3: Adquisición de Datos
 
-Propietario: Carlos Escobar
 
 # Adquisición de Datos
 

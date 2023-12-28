@@ -1,6 +1,5 @@
 # Lakehouse with Delta Lake
 
-Propietario: Carlos Escobar
 
 [Lakehouse with Delta Lake Deep Dive - How Delta Lake Enables a Lakehouse.webarchive](Lakehouse%20with%20Delta%20Lake%20c0c316b6309b4dafa1f6e8b7fd5de355/Lakehouse_with_Delta_Lake_Deep_Dive_-_How_Delta_Lake_Enables_a_Lakehouse.webarchive)
 

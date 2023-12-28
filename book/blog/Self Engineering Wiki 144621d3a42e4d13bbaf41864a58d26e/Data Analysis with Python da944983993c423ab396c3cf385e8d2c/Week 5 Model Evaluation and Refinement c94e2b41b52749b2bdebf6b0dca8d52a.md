@@ -1,6 +1,5 @@
 # Week 5: Model Evaluation and Refinement
 
-Propietario: Carlos Escobar
 
 ## Colab Link
 

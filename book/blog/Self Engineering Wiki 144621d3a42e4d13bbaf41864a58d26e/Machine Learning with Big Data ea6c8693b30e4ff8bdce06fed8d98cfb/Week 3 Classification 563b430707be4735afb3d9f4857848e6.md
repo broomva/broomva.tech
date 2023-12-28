@@ -1,6 +1,5 @@
 # Week 3: Classification
 
-Propietario: Carlos Escobar
 
 # Classification
 

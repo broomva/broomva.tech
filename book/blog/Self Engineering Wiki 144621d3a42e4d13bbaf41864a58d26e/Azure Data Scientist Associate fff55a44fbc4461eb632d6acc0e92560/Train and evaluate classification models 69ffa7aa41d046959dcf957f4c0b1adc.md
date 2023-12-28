@@ -1,6 +1,5 @@
 # Train and evaluate classification models
 
-Propietario: Carlos Escobar
 
 *Classification* is a form of machine learning in which you train a model to predict which category an item belongs to. For example, a health clinic might use diagnostic data such as a patient's height, weight, blood pressure, blood-glucose level to predict whether or not the patient is diabetic.
 

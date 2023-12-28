@@ -1,6 +1,5 @@
 # Data Analysis with Python
 
-Propietario: Carlos Escobar
 
 ## IBM
 

@@ -1,6 +1,5 @@
 # Week 3: SQL Machine Learning
 
-Propietario: Carlos Escobar
 
 # Introduction to BigQuery
 

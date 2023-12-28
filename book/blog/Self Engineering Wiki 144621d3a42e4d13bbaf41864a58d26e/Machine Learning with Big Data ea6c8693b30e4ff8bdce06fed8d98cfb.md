@@ -1,6 +1,5 @@
 # Machine Learning with Big Data
 
-Propietario: Carlos Escobar
 
 ## UC San Diego
 

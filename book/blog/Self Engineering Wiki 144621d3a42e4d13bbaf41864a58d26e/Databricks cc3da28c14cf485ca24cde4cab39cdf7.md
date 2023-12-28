@@ -1,6 +1,5 @@
 # Databricks
 
-Propietario: Carlos Escobar
 
 [Pages](Databricks%20cc3da28c14cf485ca24cde4cab39cdf7/Pages%207d048a64d37141a38c75f4e188c80523.md)
 

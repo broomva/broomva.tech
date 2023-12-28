@@ -1,6 +1,5 @@
 # Módulo 4: Herramientas para el Análisis de Datos Industrial
 
-Propietario: Carlos Escobar
 
 # Bases de Datos Analíticas
 

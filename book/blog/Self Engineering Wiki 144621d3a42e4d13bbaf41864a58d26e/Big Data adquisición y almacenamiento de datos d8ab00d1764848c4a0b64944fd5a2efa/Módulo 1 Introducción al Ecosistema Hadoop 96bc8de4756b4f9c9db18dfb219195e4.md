@@ -1,6 +1,5 @@
 # Módulo 1: Introducción al Ecosistema Hadoop
 
-Propietario: Carlos Escobar
 
 ### Las Cinco V's del Big Data
 

@@ -1,6 +1,5 @@
 # QxQ - Introduction to Quantum Computing
 
-Propietario: Carlos Escobar
 
 # Semester 1
 

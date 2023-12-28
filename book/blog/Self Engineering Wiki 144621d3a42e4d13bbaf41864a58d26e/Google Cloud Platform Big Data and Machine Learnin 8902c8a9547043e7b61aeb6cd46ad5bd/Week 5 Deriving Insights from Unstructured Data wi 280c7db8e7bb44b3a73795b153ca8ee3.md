@@ -1,6 +1,5 @@
 # Week 5: Deriving Insights from Unstructured Data with ML
 
-Propietario: Carlos Escobar
 
 # Cloud AutoML and Classification with Precompiled Vision API
 

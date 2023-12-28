@@ -1,6 +1,5 @@
 # SIMATIC TIA  Portal Structured Programming
 
-Propietario: Carlos Escobar
 
 # The Programming Process
 

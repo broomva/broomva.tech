@@ -1,6 +1,5 @@
 # Train and evaluate regression models
 
-Propietario: Carlos Escobar
 
 # ****What is regression?****
 

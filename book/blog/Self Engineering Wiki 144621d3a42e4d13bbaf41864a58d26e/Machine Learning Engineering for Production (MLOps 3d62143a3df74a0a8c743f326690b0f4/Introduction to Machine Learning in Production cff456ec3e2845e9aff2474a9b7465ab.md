@@ -1,6 +1,5 @@
 # Introduction to Machine Learning in Production
 
-Propietario: Carlos Escobar
 
 # Overview of the ML Lifecycle and Deployment
 

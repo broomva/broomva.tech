@@ -1,6 +1,5 @@
 # Week 1: Classical Computing
 
-Propietario: Carlos Escobar
 
 From 1981 onward, classical computers took off as a good enough tool for practical purposes. Now, classical computers are reaching a wall that quantum seems to be able to break.
 

@@ -1,6 +1,5 @@
 # Week 2
 
-Propietario: Carlos Escobar
 
 # Exploratory Data Analysis
 

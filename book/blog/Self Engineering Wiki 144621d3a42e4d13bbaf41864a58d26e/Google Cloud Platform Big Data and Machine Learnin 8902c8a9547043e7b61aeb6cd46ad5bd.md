@@ -1,6 +1,5 @@
 # Google Cloud Platform Big Data and Machine Learning
 
-Propietario: Carlos Escobar
 
 [Week 1: Introduction to Data Engineering, Big Data and Machine Learning on GCP](Google%20Cloud%20Platform%20Big%20Data%20and%20Machine%20Learnin%208902c8a9547043e7b61aeb6cd46ad5bd/Week%201%20Introduction%20to%20Data%20Engineering,%20Big%20Data%20%2078ea34db796549f490312710844f6c77.md)
 
