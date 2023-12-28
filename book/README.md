@@ -1,6 +1,6 @@
-# Broomva
+# broomva.tech Book
 
-## Book on Technology and Life
+## Technology and Life
 <!-- might need renaming -->
 ## Introduction
 
