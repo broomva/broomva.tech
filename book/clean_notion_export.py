@@ -1,93 +1,73 @@
-#%%
 import os
 import re
-import ntpath
+import shutil
+import urllib.parse
 
-def clean_filename(filename):
-    # This regex will match the UUIDs and remove them
-    return re.sub(r'[a-f0-9]{32}', '', filename).strip('_')
 
-def add_navigation_links(content, parent_link, child_link):
-    navigation = ""
-    if parent_link:
-        navigation += f"[← Back to {parent_link}](../{parent_link}.md)\n\n"
-    if child_link:
-        navigation += f"[Go to {child_link}](./{child_link}/{child_link}.md)\n\n"
-    return navigation + content
+def remove_uuid(name):
+    # Regular expression to match the specific UUID pattern
+    uuid_regex = r'[0-9a-f]{32}'
+    # Find UUIDs in the name
+    match = re.search(uuid_regex, name)
+    uuid = match.group(0) if match else None
+    # Remove UUIDs from the name
+    new_name = re.sub(uuid_regex, '', name).strip()
+    # Remove any trailing spaces before the file extension
+    new_name = re.sub(r'\s+\.', '.', new_name)
+    return new_name, uuid
 
-def process_directory(directory_path, parent_name=None):
-    # List all files and directories in the current directory
-    for item in os.listdir(directory_path):
-        item_path = os.path.join(directory_path, item)
-        if os.path.isdir(item_path):
-            # If the item is a directory, process it recursively
-            child_name = clean_filename(item)
-            process_directory(item_path, parent_name=child_name)
-        elif item.endswith('.md'):
-            # If the item is a markdown file, clean its content
-            with open(item_path, 'r', encoding='utf-8') as file:
-                content = file.read()
+def rename_files_and_folders(root_path):
+    mapping = {}
+    removed_uuids = []
 
-            # Clean file content from UUIDs
-            cleaned_content = re.sub(r'\([a-f0-9]{32}\)', '()', content)
-            
-            # Get the first child link if available
-            child_dirs = [clean_filename(d) for d in os.listdir(directory_path) if os.path.isdir(os.path.join(directory_path, d))]
-            child_link = child_dirs[0] if child_dirs else None
-            
-            # Add navigation links
-            navigation_content = add_navigation_links(cleaned_content, parent_name, child_link)
-            
-            # Write the cleaned content back to the file
-            with open(item_path, 'w', encoding='utf-8') as file:
-                file.write(navigation_content)
+    for path, dirs, files in os.walk(root_path, topdown=False):
+        # Process files
+        for name in files:
+            old_file_path = os.path.join(path, name)
+            new_name, uuid = remove_uuid(name)
+            new_file_path = os.path.join(path, new_name)
+            shutil.move(old_file_path, new_file_path)
+            mapping[old_file_path] = new_file_path
+            if uuid:
+                removed_uuids.append(uuid)
 
-            # Rename the file to remove the UUID
-            cleaned_filename = clean_filename(item)
-            os.rename(item_path, os.path.join(directory_path, cleaned_filename))
+        # Process directories
+        for name in dirs:
+            old_dir_path = os.path.join(path, name)
+            new_name, uuid = remove_uuid(name)
+            new_dir_path = os.path.join(path, new_name)
+            shutil.move(old_dir_path, new_dir_path)
+            mapping[old_dir_path] = new_dir_path
+            if uuid:
+                removed_uuids.append(uuid)
+
+    return mapping, removed_uuids
+
+
+
+# Use the function
+root_directory = "blog"  # Replace with your directory path
+mapping, removed_uuids = rename_files_and_folders(root_directory)
+
+
 #%%
-# Assuming the script is run at the root where the 'FOLDERS' are located
-root_path = '/Users/broomva/GitHub/broomva.tech/book/blog'  # Change this to your path
-process_directory(root_path)
-
-# %%
-
-%%
-
-import glob
-import os
-import re
 
 
-def clean_filename(filename):
-    # Remove the hash from the filename
-    cleaned_filename = re.sub(r'\s[0-9a-f]{32}\s', ' ', filename)
-    return cleaned_filename
+def update_file_content(file_path, uuids):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        content = file.read()
 
-def add_navigation_links(filepath):
-    # Add navigation links to the file content
-    with open(filepath, 'r') as file:
-        lines = file.readlines()
+    for uuid in uuids:
+        if uuid:
+            # Encode UUID and replace it in the content
+            encoded_uuid = urllib.parse.quote(uuid).replace('%', '%25')
+            content = re.sub(rf'{encoded_uuid}', '', content)
 
-    # Add navigation links at the beginning and end of the file
-    lines.insert(0, '[Go to previous page](./previous_page.md)\n')
-    lines.append('\n[Go to next page](./next_page.md)')
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(content)
 
-    with open(filepath, 'w') as file:
-        file.writelines(lines)
 
-def clean_notion_export(directory):
-    # Iterate over all markdown files in the directory
-    for filepath in glob.iglob(directory + '**/*.md', recursive=True):
-        # Clean the filename
-        dirpath, filename = os.path.split(filepath)
-        cleaned_filename = clean_filename(filename)
-        cleaned_filepath = os.path.join(dirpath, cleaned_filename)
-        os.rename(filepath, cleaned_filepath)
-
-        # Add navigation links
-        add_navigation_links(cleaned_filepath)
-
-# Call the function on your directory
-clean_notion_export('/Users/broomva/GitHub/broomva.tech/book/blog')
-# %%
+# Update file contents
+for file_path in mapping.values():
+    if os.path.isfile(file_path) and file_path.endswith('.md'):
+        update_file_content(file_path, removed_uuids)
