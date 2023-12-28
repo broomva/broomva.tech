@@ -1,0 +1,3 @@
+# Data Monetization
+
+Regular users of internet services (free or paid), that is, nowadays allmost any human (?), more and more each day, so you might say that in a close future (15-20 years) everyone will be connected to a global network. For service providers that is a huge market niche in all sorts of topics, yet, all the underliying physical world and the inner workings of not only the network but also the infrastructure of industries that create all the goods, the systems built on top of such goods, the assets created and production of services, that convert materials to assets, that in a huge chain of process, can also be turned into digital assets, that can be used to create
