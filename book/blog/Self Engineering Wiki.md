@@ -4,11 +4,11 @@ All the knowledge, courses notes and how-to's for mechatronics, control, artific
 
 ## Online Courses
 
-[Azure Data Scientist Associate](Self%20Engineering%20Wiki/Azure%20Data%20Scientist%20Associate.md)
+* [Azure Data Scientist Associate](Self%20Engineering%20Wiki/Azure%20Data%20Scientist%20Associate.md)
 
-[Machine Learning Engineering for Production (MLOps) Specialization](Self%20Engineering%20Wiki/Machine%20Learning%20Engineering%20for%20Production%20(MLOps)/Introduction%20to%20Machine%20Learning%20in%20Production%20(MLOps).md)
+* [Machine Learning Engineering for Production (MLOps) Specialization](Self%20Engineering%20Wiki/Machine%20Learning%20Engineering%20for%20Production%20(MLOps)/Introduction%20to%20Machine%20Learning%20in%20Production%20(MLOps).md)
 
-[Intro to Reinforcement Learning with Python](Self%20Engineering%20Wiki/Intro%20to%20Reinforcement%20Learning%20with%20Python.md)
+* [Intro to Reinforcement Learning with Python](Self%20Engineering%20Wiki/Intro%20to%20Reinforcement%20Learning%20with%20Python.md)
 
 [Data Analysis with Python](Self%20Engineering%20Wiki/Data%20Analysis%20with%20Python.md)
 
