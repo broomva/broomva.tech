@@ -202,7 +202,7 @@ def generate_gitbook_summary(root_dir, output_file='SUMMARY.md'):
             if file.endswith('.md') and file != f'{folder_name}.md':
                 file_path = os.path.relpath(os.path.join(root, file), root_dir)
                 file_title = os.path.splitext(file)[0]
-                summary_lines.append(f'{header_level}    [{file_title}]({file_path})\n')
+                summary_lines.append(f'{header_level}   * [{file_title}]({file_path})\n')
 
     # Write to SUMMARY.md file
     with open(output_file, 'w') as file:
@@ -253,6 +253,4 @@ def generate_gitbook_summary(root_dir, output_file='SUMMARY.md'):
         file.writelines(summary_lines)
 
 # Use the function with your project's root directory
-generate_gitbook_summary('.')
-
-# %%
+generate_gitbook_summary('/path/to/your/markdown/project')
