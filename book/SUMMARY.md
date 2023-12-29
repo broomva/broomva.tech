@@ -1,6 +1,6 @@
 # Summary
 
-### [Online Courses Notes](online_courses_notes/online_courses_notes.md)
+### [Online Courses Notes](online_courses_notes/README.md)
 
 #### [azure_data_scientist_associate](online_courses_notes/azure_data_scientist_associate.md)
 
