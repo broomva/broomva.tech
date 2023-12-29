@@ -1,14 +1,14 @@
 # Pages
 
 
-[Lakehouse with Delta Lake](Pages/Lakehouse%20with%20Delta%20Lake.md)
+[Lakehouse with Delta Lake](Pages/lakehouse_with_delta_lake.md)
 
 [Quick Reference: CI/CD](Pages/Quick%20Reference%20CI%20CD.md)
 
-[Data Engineering with Databricks](Pages/Data%20Engineering%20with%20Databricks.md)
+[Data Engineering with Databricks](Pages/data_engineering_with_databricks.md)
 
-[Streaming Delta Tables](Pages/Streaming%20Delta%20Tables.md)
+[Streaming Delta Tables](Pages/streaming_delta_tables.md)
 
-[Batch Delta Tables](Pages/Batch%20Delta%20Tables.md)
+[Batch Delta Tables](Pages/batch_delta_tables.md)
 
-[Compliance and Optimization](Pages/Compliance%20and%20Optimization.md)
+[Compliance and Optimization](Pages/compliance_and_optimization.md)

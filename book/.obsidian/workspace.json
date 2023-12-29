@@ -4,19 +4,15 @@
     "type": "split",
     "children": [
       {
-        "id": "538a8f858f5ff437",
+        "id": "ac8809a46da1ea73",
         "type": "tabs",
         "children": [
           {
-            "id": "edb13ca31954d8a6",
+            "id": "c92c385227250783",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
-                "mode": "source",
-                "source": false
-              }
+              "type": "empty",
+              "state": {}
             }
           }
         ]
@@ -85,7 +81,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +97,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,7 +119,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "blog/Self Engineering Wiki/Azure Data Scientist Associate/Train and evaluate regression models.md"
+                "file": "2023-12-29.md"
               }
             }
           }
@@ -143,56 +137,58 @@
       "canvas:Create new canvas": false,
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
-      "command-palette:Open command palette": false
+      "command-palette:Open command palette": false,
+      "publish:Publish changes...": false
     }
   },
-  "active": "edb13ca31954d8a6",
+  "active": "2f24f1a961ef97df",
   "lastOpenFiles": [
-    "blog/Tech Scribbles/Computer Vision for On Site Safety.md",
-    "blog/Tech Scribbles/Ver lo bueno en lo malo.md",
-    "blog/Tech Scribbles/¿Ver lo bueno en lo malo.md",
-    "blog/Tech Scribbles/A I Perspectives.md",
-    "blog/Tech Scribbles/Common Web Ports.md",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/SSH.md",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/PostgreSQL.md",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/HTTPS.md",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/HTTP.md",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/DNS (TCP).md",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules/Custom TCP.md",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules.csv",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules _all.csv",
-    "blog/Tech Scribbles/Cloud Configurations/Inbound rules",
-    "blog/Tech Scribbles/Taking the Digital Industries to any Digital Citiz.md",
-    "blog/Tech Scribbles/Quantum Computing.md",
-    "blog/Tech Scribbles/Probability.md",
-    "blog/Tech Scribbles/La intuición en un sistema artificial, e….md",
-    "blog/Tech Scribbles/Inteligencia Artificial en la Industria Colombiana.md",
-    "blog/Tech Scribbles/In the Creation of Massive IIoT Deployments at Sca.md",
-    "blog/Tech Scribbles/IPS IIoT - aaS and concerns on privacy.md",
-    "blog/Tech Scribbles/IIoT.md",
-    "blog/Tech Scribbles/GIT Decentralization.md",
-    "blog/Tech Scribbles/For stability, control.md",
-    "blog/Tech Scribbles/Data Monetization.md",
-    "blog/Tech Scribbles/Cloud Configurations.md",
-    "blog/Tech Scribbles/Cloud Configurations",
-    "blog/Tech Scribbles/BlockChain.md",
-    "blog/Tech Scribbles/Achieving personal type-ology.md",
-    "blog/Tech Scribbles/A way of self enhancement.md",
-    "blog/Tech Scribbles",
-    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20/Inbound rules 7562fe15e63d49919e8a9550fa16be02_all.csv",
-    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20/Inbound rules 7562fe15e63d49919e8a9550fa16be02.csv",
-    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20/Inbound rules 7562fe15e63d49919e8a9550fa16be02",
-    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4/Cloud Configurations 37e52b4cd69547959131151ebc2e2c20",
-    "blog/Tech Scribbles 3d58f62634bd4eaf90894baa033bbcb4",
-    "blog/Self Engineering Wiki/Databricks/Pages/Quick Reference CI CD/dd_b2o-5-wd1rE2q_Y5Qj3ZErjzcIQeis.jpg",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/xBcV_EhKKARAL2L2_5ZQXJH8Z_1uX7tP3.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Quick Reference CI CD/QMlucb87_1N0vq0X_fEmNjC81hlWioGd9.jpg",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/yZnouTD3SfLIIzpL_83sZXvctP25lJhu8.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/yEaKX4oVUH75lnBf_lpsfJT7teeLDEnLp.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/vmTyOEN1r8BkaGBg_FP3uxXj3HVy_A7fE.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/fd7INfWkAbKD9NuD_bvO87_j5gK4cfifH.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/fcmiaRpTUN7A6lZv_PxSlFmcVVqgME6hV.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/atfu_34-Jy3fxYLQ_gLcoRENSJWxx0dhd.png",
-    "blog/Self Engineering Wiki/Databricks/Pages/Lakehouse with Delta Lake/ZtdxZp4-jFn6WrII_XisfDS4826u1Vt9J.png"
+    "online_courses_notes/README.md",
+    "online_courses_notes/azure_data_scientist_associate/train_and_evaluate_regression_models.md",
+    "online_courses_notes/azure_data_scientist_associate/train_and_evaluate_classification_models.md",
+    "online_courses_notes/azure_data_scientist_associate",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_161443.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_161239.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_160952.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_160801.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_160253.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_140356.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_135908.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_132743.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_132518.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos/screen_shot_20201031_at_132331.png",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos.md",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_4_herramientas_para_el_análisis_de_datos",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_2_tecnologías_sql_y_nosql.md",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_2_tecnologías_sql_y_nosql",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_1_introducción_al_ecosistema_hadoop.md",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/módulo_1_introducción_al_ecosistema_hadoop",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/modulo_3_adquisición_de_datos.md",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/modulo_3_adquisición_de_datos",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos/codebase.md",
+    "online_courses_notes/big_data_adquisición_y_almacenamiento_de_datos",
+    "online_courses_notes/machine_learning_engineering_for_production_mlops/introduction_to_machine_learning_in_production_mlops.md",
+    "online_courses_notes/machine_learning_engineering_for_production_mlops/introduction_to_machine_learning_in_production",
+    "online_courses_notes/machine_learning_engineering_for_production_mlops",
+    "online_courses_notes/machine_learning_with_big_data/codebase/knimeworkflows.zip",
+    "online_courses_notes/machine_learning_with_big_data/codebase/big_data_spark_install.zip",
+    "online_courses_notes/machine_learning_with_big_data/week_5_regression_cluster_analysis_and_associatio.md",
+    "online_courses_notes/machine_learning_with_big_data/week_4_evaluation_of_machine_learning_models.md",
+    "online_courses_notes/machine_learning_with_big_data/week_3_classification.md",
+    "online_courses_notes/machine_learning_with_big_data/week_2_data_exploration_preparation.md",
+    "online_courses_notes/machine_learning_with_big_data/week_1_introduction_to_machine_learning_with_big_d.md",
+    "online_courses_notes/machine_learning_with_big_data/codebase.md",
+    "online_courses_notes/qxq_introduction_to_quantum_computing/week_1_classical_computing.md",
+    "online_courses_notes/how_to_win_a_data_science_competition_learn_from_t/week_5.md",
+    "online_courses_notes/how_to_win_a_data_science_competition_learn_from_t/week_4.md",
+    "online_courses_notes/how_to_win_a_data_science_competition_learn_from_t/week_3.md",
+    "online_courses_notes/how_to_win_a_data_science_competition_learn_from_t/week_2.md",
+    "online_courses_notes/how_to_win_a_data_science_competition_learn_from_t/week_1.md",
+    "online_courses_notes/databricks/pages/streaming_delta_tables.md",
+    "online_courses_notes/databricks/pages/quick_reference_ci_cd.md",
+    "online_courses_notes/databricks/pages/lakehouse_with_delta_lake.md",
+    "online_courses_notes/databricks/pages/data_engineering_with_databricks.md",
+    "online_courses_notes/databricks/pages/compliance_and_optimization.md",
+    "Untitled.canvas"
   ]
 }
