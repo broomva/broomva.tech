@@ -143,6 +143,7 @@
   },
   "active": "2f24f1a961ef97df",
   "lastOpenFiles": [
+    "README.md",
     "tech_docs/README.md",
     "tech_scribbles/README.md",
     "tech_scribbles/+.md",
@@ -177,7 +178,6 @@
     "tech_docs/solution_architect_questions/sql_vs_nos/best_option.md",
     "tech_docs/solution_architect_questions/sql_vs_nos/best_features.md",
     "tech_docs/solution_architect_questions/sql_vs_nos/average_salary.md",
-    "tech_docs/solution_architect_questions/sql_vs_nos/acid_vs_base_model.md",
     "tech_docs/solution_architect_questions/sql_vs_nos__all.csv",
     "tech_docs/solution_architect_questions/sql_vs_nos.csv",
     "tech_docs/solution_architect_questions/sql_vs_nos",

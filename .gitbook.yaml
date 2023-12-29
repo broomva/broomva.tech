@@ -1,8 +1,8 @@
 root: ./book
 
 ​structure:
-  readme: broomva_book.md
+  readme: README.md
   summary: SUMMARY.md​
 
 redirects:
-  help: broomva_book.md
+  help: README.md
