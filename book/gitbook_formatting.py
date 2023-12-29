@@ -212,3 +212,47 @@ def generate_gitbook_summary(root_dir, output_file='SUMMARY.md'):
 generate_gitbook_summary('.')
 
 # %%
+
+
+import os
+
+
+def format_summary_line(title, path, depth):
+    header_level = '#' * (depth + 1)
+    return f'{header_level} [{title}]({path})\n'
+
+def generate_summary_line(file_path, root_dir, depth):
+    relative_path = os.path.relpath(file_path, root_dir)
+    title = os.path.splitext(os.path.basename(file_path))[0]
+    return format_summary_line(title, relative_path, depth)
+
+def generate_gitbook_summary(root_dir, output_file='SUMMARY.md'):
+    summary_lines = ['# Summary\n\n']
+    for root, dirs, files in os.walk(root_dir):
+        depth = root[len(root_dir):].count(os.sep)
+        if root == root_dir:
+            depth -= 1  # Adjust depth for root directory
+
+        dirs.sort()
+        files.sort()
+
+        # Folder as a section
+        if root != root_dir:
+            folder_title = os.path.basename(root)
+            folder_rel_path = os.path.relpath(root, root_dir)
+            summary_lines.append(format_summary_line(folder_title, os.path.join(folder_rel_path, folder_title + '.md'), depth))
+
+        # Files as subsections
+        for file in files:
+            if file.endswith('.md'):
+                file_path = os.path.join(root, file)
+                summary_lines.append(generate_summary_line(file_path, root_dir, depth + 1))
+
+    # Write to SUMMARY.md file
+    with open(output_file, 'w') as file:
+        file.writelines(summary_lines)
+
+# Use the function with your project's root directory
+generate_gitbook_summary('.')
+
+# %%
