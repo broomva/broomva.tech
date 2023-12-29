@@ -138,7 +138,7 @@ def update_markdown_file_2(file_path, md_files, root_dir):
             file.writelines(new_lines)
 
 #%%
-root_dir = './online_courses_notes'
+root_dir = './tech_scribbles'
 
 # First, create a map of old paths to new snake_case paths
 old_new_map = {}
@@ -176,27 +176,35 @@ import os
 
 def generate_gitbook_summary(root_dir, output_file='SUMMARY.md'):
     summary_lines = ['# Summary\n\n']
-    
-    for root, dirs, files in os.walk(root_dir):
+
+    for root, dirs, files in sorted(os.walk(root_dir)):
         # Skip the root directory itself
         if root == root_dir:
             continue
-        
-        # Calculate the depth for indentation
+
+        # Sort directories and files
+        dirs.sort()
+        files.sort()
+
+        # Calculate the depth for header levels
         depth = root[len(root_dir):].count(os.sep)
-        indent = '    ' * depth
-        
+        header_level = '#' * (depth + 2)  # Starting from '##' for the first level
+
         # Folder title (use the name of the folder)
         folder_name = os.path.basename(root)
         if depth > 0:
-            summary_lines.append(f'{indent}* {folder_name}\n')
-        
+            summary_lines.append(f'{header_level} {folder_name}\n\n')
+
         # Files under the folder
         for file in files:
             if file.endswith('.md'):
                 file_path = os.path.relpath(os.path.join(root, file), root_dir)
                 file_title = os.path.splitext(file)[0]
-                summary_lines.append(f'{indent}    * [{file_title}]({file_path})\n')
+                summary_lines.append(f'* [{file_title}]({file_path})\n')
+
+        # Add a newline for readability
+        if dirs or files:
+            summary_lines.append('\n')
 
     # Write to SUMMARY.md file
     with open(output_file, 'w') as file:
