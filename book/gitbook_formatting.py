@@ -194,8 +194,8 @@ def generate_gitbook_summary(root_dir, output_file='SUMMARY.md'):
         # Folder title (use the name of the folder)
         folder_name = os.path.basename(root)
         folder_path = os.path.relpath(root, root_dir)
-        if depth > 0:
-            summary_lines.append(f'{header_level} [{folder_name}]({folder_path}/{folder_name}.md)\n\n')
+        # if depth > 0:
+        #     summary_lines.append(f'{header_level} [{folder_name}]({folder_path}/{folder_name}.md)\n\n')
 
         # Files under the folder
         for file in files:
