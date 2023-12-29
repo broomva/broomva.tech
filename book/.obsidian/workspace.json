@@ -4,14 +4,14 @@
     "type": "split",
     "children": [
       {
-        "id": "ac8809a46da1ea73",
+        "id": "d8b56c64aaea9b93",
         "type": "tabs",
         "children": [
           {
-            "id": "c92c385227250783",
+            "id": "de4b858413d34707",
             "type": "leaf",
             "state": {
-              "type": "empty",
+              "type": "graph",
               "state": {}
             }
           }
@@ -118,9 +118,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "2023-12-29.md"
-              }
+              "state": {}
             }
           }
         ]
@@ -137,12 +135,13 @@
       "canvas:Create new canvas": false,
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
-      "command-palette:Open command palette": false,
-      "publish:Publish changes...": false
+      "command-palette:Open command palette": false
     }
   },
-  "active": "2f24f1a961ef97df",
+  "active": "de4b858413d34707",
   "lastOpenFiles": [
+    "SUMMARY.md",
+    "2023-12-29.md",
     "README.md",
     "tech_docs/README.md",
     "tech_scribbles/README.md",
@@ -176,8 +175,6 @@
     "tech_docs/solution_architect_questions/sql_vs_nos/best_used_for.md",
     "tech_docs/solution_architect_questions/sql_vs_nos/best_suited_for.md",
     "tech_docs/solution_architect_questions/sql_vs_nos/best_option.md",
-    "tech_docs/solution_architect_questions/sql_vs_nos/best_features.md",
-    "tech_docs/solution_architect_questions/sql_vs_nos/average_salary.md",
     "tech_docs/solution_architect_questions/sql_vs_nos__all.csv",
     "tech_docs/solution_architect_questions/sql_vs_nos.csv",
     "tech_docs/solution_architect_questions/sql_vs_nos",

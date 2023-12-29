@@ -2,7 +2,7 @@ root: ./book
 
 ​structure:
   readme: README.md
-  summary: SUMMARY.md​
+  summary: index.md​
 
 redirects:
   help: README.md
