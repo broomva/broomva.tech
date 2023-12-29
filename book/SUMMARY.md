@@ -1,3 +1,4 @@
 # Table of contents
 
-* [Engineering Wiki](./blog/Self%20Engineering%20Wiki.md)
+* [Online Courses Notes](./online_courses_notes/README.md)
+* [Tech Scribbles](./tech_scribbles/README.md)
