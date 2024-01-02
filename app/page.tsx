@@ -66,6 +66,12 @@ export default function Home() {
             HuggingFace
           </Link> | <Link
             target="_blank"
+            href="https://book.broomva.tech"
+            className="underline duration-500 hover:text-zinc-300"
+          >
+            Book
+          </Link> | <Link
+            target="_blank"
             href="https://www.linkedin.com/in/broomva/"
             className="underline duration-500 hover:text-zinc-300"
           >
