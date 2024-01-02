@@ -1,8 +1,0 @@
-﻿Level,Description,Minimum number of drives[b],Space efficiency,Fault tolerance,Read performance,Write performance
-RAID 0,Block-level striping without parity or mirroring,2,1,None,n,n
-RAID 1,Mirroring without parity or striping,2,1/n,n − 1 drive failures,n[a][15],1[c][15]
-RAID 2,Bit-level striping with Hamming code for error correction,3,1 − 1/n log2 (n + 1),One drive failure[d],Depends,Depends
-RAID 3,Byte-level striping with dedicated parity,3,1 − 1/n,One drive failure,(n − 1),(n − 1)[e]
-RAID 4,Block-level striping with dedicated parity,3,1 − 1/n,One drive failure,(n − 1),(n − 1)[e][citation needed]
-RAID 5,Block-level striping with distributed parity,3,1 − 1/n,One drive failure,n[e],single sector: 1/4full stripe: (n − 1)[e][citation needed]
-RAID 6,Block-level striping with double distributed parity,4,1 − 2/n,Two drive failures,n[e],single sector: 1/6full stripe: (n − 2)[e][citation needed]
