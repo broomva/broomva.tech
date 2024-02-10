@@ -3,13 +3,14 @@ import Particles from "./components/particles";
 
 const navigation = [
   { name: "Let's speak 🚀", href: "/contact" },
+  { name: "Chat with Vortex", href: "https://api.whatsapp.com/send/?phone=19853323941&text=Hi%20there!" },
 ];
 
 export default function Home() {
   return (
     
     <div className="flex flex-col items-center justify-center w-screen h-screen overflow-hidden bg-gradient-to-tl from-black via-zinc-600/20 to-black">
-      <nav className="my-16 animate-fade-in">
+      <nav className="my-16 animate-fade-out">
         <ul className="flex items-center justify-center gap-4">
           {navigation.map((item) => (
             <Link
@@ -47,6 +48,12 @@ export default function Home() {
         <h2 className="text-sm text-zinc-500 ">
           AI | Smart Agents & LLMs | Blockchain | Quantum | Working on {" "}
           <Link
+            target="_blank"
+            href="https://vortex.broomva.tech"
+            className="underline duration-500 hover:text-zinc-300"
+          >
+            Vortex
+          </Link> | <Link
             target="_blank"
             href="https://arcanai.tech"
             className="underline duration-500 hover:text-zinc-300"
