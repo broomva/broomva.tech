@@ -3,7 +3,7 @@ import Particles from "./components/particles";
 
 const navigation = [
   { name: "Let's speak 🚀", href: "/contact" },
-  { name: "Chat with Vortex", href: "https://api.whatsapp.com/send/?phone=19853323941&text=Hi%20there!" },
+  { name: "Chat with Vortex 🌪️", href: "https://api.whatsapp.com/send/?phone=19853323941&text=Hi%20there!" },
 ];
 
 export default function Home() {
