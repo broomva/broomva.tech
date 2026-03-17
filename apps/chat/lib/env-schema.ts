@@ -17,6 +17,15 @@ export const serverEnvSchema = {
     .string()
     .min(1)
     .describe("NextAuth.js secret for signing session tokens"),
+  NEON_AUTH_BASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .describe("Neon Auth base URL for the branch auth service"),
+  NEON_AUTH_COOKIE_SECRET: z
+    .string()
+    .optional()
+    .describe("Cookie signing secret for Neon Auth"),
 
   // Optional blob storage (enable in chat.config.ts)
   BLOB_READ_WRITE_TOKEN: z

@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { ContentCard } from "@/components/site/content-card";
 import Particles from "@/components/site/particles";
@@ -8,7 +9,7 @@ const socials = [
   { href: "https://github.com/broomva", label: "GitHub" },
   { href: "https://www.linkedin.com/in/broomva/", label: "LinkedIn" },
   { href: "https://x.com/broomva_", label: "X" },
-  { href: "https://hi.broomva.tech", label: "Link hub" },
+  { href: "/links", label: "Link hub" },
 ];
 
 const stack = [
@@ -74,15 +75,25 @@ export default async function Home() {
         </div>
         <div className="relative mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs uppercase tracking-[0.18em] text-zinc-400">
           {socials.map((social) => (
-            <a
-              key={social.href}
-              href={social.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition hover:text-zinc-200"
-            >
-              {social.label}
-            </a>
+            social.href.startsWith("/") ? (
+              <Link
+                key={social.href}
+                href={social.href as Route}
+                className="transition hover:text-zinc-200"
+              >
+                {social.label}
+              </Link>
+            ) : (
+              <a
+                key={social.href}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition hover:text-zinc-200"
+              >
+                {social.label}
+              </a>
+            )
           ))}
         </div>
       </section>
@@ -99,7 +110,7 @@ export default async function Home() {
             {stack.map((item) => (
               <Link
                 key={item.name}
-                href={item.href as any}
+                href={item.href as Route}
                 className="group rounded-2xl border border-zinc-700 bg-black/60 p-4 transition hover:border-emerald-300/50"
               >
                 <p className="font-display text-lg text-zinc-100 transition group-hover:text-emerald-200">

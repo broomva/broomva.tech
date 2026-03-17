@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { ContentCard } from "@/components/site/content-card";
 import { PageHero } from "@/components/site/page-hero";
@@ -11,7 +12,7 @@ export const metadata = {
 };
 
 const followLinks = [
-  { href: "https://hi.broomva.tech", label: "Link hub" },
+  { href: "/links", label: "Link hub" },
   { href: "https://github.com/broomva", label: "GitHub" },
   { href: "https://www.linkedin.com/in/broomva/", label: "LinkedIn" },
   { href: "https://x.com/broomva_", label: "X" },
@@ -109,15 +110,25 @@ export default async function StartHerePage() {
         <h2 className="font-display text-2xl">Where to follow</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           {followLinks.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-zinc-700 px-4 py-2 text-sm transition hover:border-zinc-500 hover:text-emerald-200"
-            >
-              {item.label}
-            </a>
+            item.href.startsWith("/") ? (
+              <Link
+                key={item.href}
+                href={item.href as Route}
+                className="rounded-full border border-zinc-700 px-4 py-2 text-sm transition hover:border-zinc-500 hover:text-emerald-200"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <a
+                key={item.href}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-zinc-700 px-4 py-2 text-sm transition hover:border-zinc-500 hover:text-emerald-200"
+              >
+                {item.label}
+              </a>
+            )
           ))}
         </div>
       </section>

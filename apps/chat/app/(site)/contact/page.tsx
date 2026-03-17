@@ -1,9 +1,10 @@
+import type { Route } from "next";
+import Link from "next/link";
 import {
   Mail,
   Github,
   Linkedin,
   Link2,
-  MessageCircle,
 } from "lucide-react";
 import { PageHero } from "@/components/site/page-hero";
 
@@ -14,13 +15,6 @@ const contactLinks = [
     handle: "hi@broomva.tech",
     href: "mailto:hi@broomva.tech",
     description: "Best for collaboration or consulting inquiries.",
-  },
-  {
-    icon: MessageCircle,
-    label: "WhatsApp",
-    handle: "+1 985 332 3941",
-    href: "https://api.whatsapp.com/send/?phone=19853323941&text=Hi%20there!",
-    description: "Fastest route for quick coordination.",
   },
   {
     icon: Github,
@@ -39,9 +33,10 @@ const contactLinks = [
   {
     icon: Link2,
     label: "Link hub",
-    handle: "hi.broomva.tech",
-    href: "https://hi.broomva.tech",
+    handle: "broomva.tech/links",
+    href: "/links",
     description: "All current public links in one place.",
+    external: false,
   },
 ];
 
@@ -60,6 +55,38 @@ export default function ContactPage() {
       <section className="mt-10 grid gap-4 md:grid-cols-2">
         {contactLinks.map((item) => {
           const Icon = item.icon;
+          const className =
+            "rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 transition hover:-translate-y-0.5 hover:border-emerald-300/40 hover:bg-zinc-900";
+          const content = (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">
+                  {item.label}
+                </p>
+                <p className="mt-2 font-display text-2xl text-zinc-100">
+                  {item.handle}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+                  {item.description}
+                </p>
+              </div>
+              <span className="rounded-full border border-zinc-700 p-2 text-zinc-200">
+                <Icon size={18} />
+              </span>
+            </div>
+          );
+
+          if (item.external === false) {
+            return (
+              <Link
+                key={item.href}
+                href={item.href as Route}
+                className={className}
+              >
+                {content}
+              </Link>
+            );
+          }
 
           return (
             <a
@@ -67,24 +94,9 @@ export default function ContactPage() {
               href={item.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 transition hover:-translate-y-0.5 hover:border-emerald-300/40 hover:bg-zinc-900"
+              className={className}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 font-display text-2xl text-zinc-100">
-                    {item.handle}
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-300">
-                    {item.description}
-                  </p>
-                </div>
-                <span className="rounded-full border border-zinc-700 p-2 text-zinc-200">
-                  <Icon size={18} />
-                </span>
-              </div>
+              {content}
             </a>
           );
         })}

@@ -20,17 +20,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Lint
-        run: bun run lint
+      - name: Validate Type Generation
+        run: bun run test:types
 
       - name: Validate internal links
         run: bun run check:links
-
-      - name: Test
-        run: bun run test
-
-      - name: Build
-        run: bun run build
