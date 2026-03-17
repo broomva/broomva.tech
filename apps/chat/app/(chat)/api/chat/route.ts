@@ -32,7 +32,7 @@ import {
   getAnonymousSession,
   setAnonymousSession,
 } from "@/lib/anonymous-session-server";
-import { auth } from "@/lib/auth";
+import { getSafeSession } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { createAnonymousSession } from "@/lib/create-anonymous-session";
 import { CostAccumulator } from "@/lib/credits/cost-accumulator";
@@ -600,7 +600,7 @@ async function validateAndSetupSession({
 }): Promise<SessionSetupResult> {
   const log = createModuleLogger("api:chat:setup");
 
-  const { data: session } = await auth.getSession({
+  const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
   const userId = session?.user?.id ?? null;

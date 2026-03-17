@@ -3,6 +3,7 @@ import { getChatModels } from "@/app/actions/get-chat-models";
 import { AppSidebar } from "@/components/app-sidebar";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { getSafeSession } from "@/lib/auth";
 import type { AppModelId } from "@/lib/ai/app-model-id";
 import { config } from "@/lib/config";
 import { ANONYMOUS_LIMITS } from "@/lib/types/anonymous";
@@ -11,7 +12,6 @@ import { DefaultModelProvider } from "@/providers/default-model-provider";
 import { SessionProvider } from "@/providers/session-provider";
 import { TRPCReactProvider } from "@/trpc/react";
 import { getQueryClient, HydrateClient, trpc } from "@/trpc/server";
-import { auth } from "../../lib/auth";
 import { ChatProviders } from "./chat-providers";
 
 export default async function ChatLayout({
@@ -20,7 +20,7 @@ export default async function ChatLayout({
   children: React.ReactNode;
 }) {
   const cookieStore = await cookies();
-  const { data: session } = await auth.getSession({
+  const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
   const isCollapsed = cookieStore.get("sidebar:state")?.value !== "true";

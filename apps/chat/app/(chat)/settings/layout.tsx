@@ -2,14 +2,14 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SettingsHeader } from "@/components/settings/settings-header";
 import { SettingsNav } from "@/components/settings/settings-nav";
-import { auth } from "@/lib/auth";
+import { getSafeSession } from "@/lib/auth";
 
 export default async function SettingsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session } = await auth.getSession({
+  const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
 

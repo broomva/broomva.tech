@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSafeSession } from "@/lib/auth";
 
 function isPublicApiRoute(pathname: string): boolean {
   return (
@@ -24,6 +24,7 @@ function isPublicPage(pathname: string): boolean {
     return true;
   }
   return (
+    pathname === "/chat" ||
     pathname.startsWith("/projects") ||
     pathname.startsWith("/writing") ||
     pathname.startsWith("/notes") ||
@@ -53,7 +54,7 @@ export async function proxy(req: NextRequest) {
     return;
   }
 
-  const { data: session } = await auth.getSession({
+  const { data: session } = await getSafeSession({
     fetchOptions: { headers: req.headers },
   });
   const isLoggedIn = !!session?.user;

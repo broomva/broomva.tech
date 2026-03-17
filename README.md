@@ -1,52 +1,23 @@
-# broomva.tech monorepo
+# broomva.tech
 
-Turbo monorepo with:
+Personal site and AI chat app, built with Next.js 16 and Turborepo.
 
-- `apps/landing`: personal site and content hub
-- `apps/chat`: full ChatJS app (interactive chat runtime)
-
-## Workspace commands
+## Getting started
 
 ```sh
 bun install
 bun run dev
 ```
 
-Run both apps in parallel:
+The app runs at [http://localhost:3001](http://localhost:3001).
 
-```sh
-bun run dev:all
-```
+## Workspace commands
 
-`dev:all` requires `apps/chat/.env.local` to be configured.
-
-Target a single app:
-
-```sh
-bun run dev:landing
-bun run dev:chat
-```
-
-Landing app build, lint, test:
-
-```sh
-bun run build
-bun run lint
-bun run test
-```
-
-Chat app specific:
-
-```sh
-bun run build:chat
-bun run lint:chat
-bun run test:chat
-bun run test:types
-```
-
-Landing checks:
-
-```sh
-bun run check:links
-bun run check:links:external
-```
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Start dev server |
+| `bun run build` | Production build |
+| `bun run lint` | Lint |
+| `bun run test` | Run tests |
+| `bun run typecheck` | Type-check |
+| `bun run check:links` | Validate internal content links |

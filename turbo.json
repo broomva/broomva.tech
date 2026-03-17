@@ -42,9 +42,6 @@
     },
     "check:links": {
       "cache": false
-    },
-    "check:links:external": {
-      "cache": false
     }
   }
 }

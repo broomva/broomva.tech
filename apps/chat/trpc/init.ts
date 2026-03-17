@@ -12,7 +12,7 @@ import { headers } from "next/headers";
 import { cache } from "react";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { auth } from "@/lib/auth";
+import { getSafeSession } from "@/lib/auth";
 
 /**
  * 1. CONTEXT
@@ -27,7 +27,7 @@ import { auth } from "@/lib/auth";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = cache(async () => {
-  const { data: session } = await auth.getSession({
+  const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
   return {

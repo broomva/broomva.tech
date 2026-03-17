@@ -7,7 +7,7 @@ import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { ChatSDKError } from "@/lib/ai/errors";
 import type { ChatMessage } from "@/lib/ai/types";
-import { auth } from "@/lib/auth";
+import { getSafeSession } from "@/lib/auth";
 import { getChatById, getChatMessageWithPartsById } from "@/lib/db/queries";
 import { getStreamContext } from "../../route";
 
@@ -50,7 +50,7 @@ export async function GET(
   }
 
   // Validate chat ownership
-  const { data: session } = await auth.getSession({
+  const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
   const userId = session?.user?.id || null;
