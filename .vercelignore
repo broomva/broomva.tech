@@ -1,0 +1,14 @@
+node_modules
+.next
+.turbo
+.devtools
+.bun-tmp
+.claude
+playwright-report
+test-results
+*.tsbuildinfo
+apps/*/.bun-tmp
+apps/*/.next
+apps/*/node_modules
+apps/*/playwright-report
+apps/*/test-results

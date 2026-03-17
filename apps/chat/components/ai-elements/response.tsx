@@ -8,7 +8,12 @@ import { type ComponentProps, memo } from "react";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 
-const plugins = { code, mermaid, math };
+// Streamdown plugin packages can resolve a different `unified` type tree in CI.
+const plugins = {
+  code,
+  mermaid,
+  math,
+} as unknown as NonNullable<ComponentProps<typeof Streamdown>["plugins"]>;
 
 type ResponseProps = ComponentProps<typeof Streamdown>;
 

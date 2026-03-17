@@ -27,7 +27,12 @@ import { mermaid } from "@streamdown/mermaid";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 
-const plugins = { code, mermaid, math };
+// Streamdown plugin packages can resolve a different `unified` type tree in CI.
+const plugins = {
+  code,
+  mermaid,
+  math,
+} as unknown as NonNullable<ComponentProps<typeof Streamdown>["plugins"]>;
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
