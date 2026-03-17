@@ -24,8 +24,12 @@ function isPublicPage(pathname: string): boolean {
     return true;
   }
   return (
-    pathname.startsWith("/models") ||
-    pathname.startsWith("/compare") ||
+    pathname.startsWith("/projects") ||
+    pathname.startsWith("/writing") ||
+    pathname.startsWith("/notes") ||
+    pathname.startsWith("/start-here") ||
+    pathname.startsWith("/now") ||
+    pathname.startsWith("/contact") ||
     pathname.startsWith("/share/") ||
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/terms")
@@ -40,7 +44,12 @@ export async function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const { pathname } = url;
 
-  if (isPublicApiRoute(pathname) || isMetadataRoute(pathname)) {
+  if (
+    isPublicApiRoute(pathname) ||
+    isMetadataRoute(pathname) ||
+    isPublicPage(pathname) ||
+    isAuthPage(pathname)
+  ) {
     return;
   }
 
@@ -51,10 +60,6 @@ export async function proxy(req: NextRequest) {
 
   if (isLoggedIn && isAuthPage(pathname)) {
     return NextResponse.redirect(new URL("/", url));
-  }
-
-  if (isAuthPage(pathname) || isPublicPage(pathname)) {
-    return;
   }
 
   if (!isLoggedIn) {
