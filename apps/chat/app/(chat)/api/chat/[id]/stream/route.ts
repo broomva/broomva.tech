@@ -77,7 +77,7 @@ export async function GET(
   }
 
   // Resume the existing stream
-  const streamContext = getStreamContext();
+  const streamContext = await getStreamContext();
   if (!streamContext) {
     return new Response(null, { status: 204 });
   }

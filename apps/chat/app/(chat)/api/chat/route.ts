@@ -63,30 +63,56 @@ import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
 // Shared Redis clients for resumable stream
 let redisPublisher: ReturnType<typeof createClient> | null = null;
 let redisSubscriber: ReturnType<typeof createClient> | null = null;
+let redisConnectPromise: Promise<void> | null = null;
 
-if (env.REDIS_URL) {
+async function ensureRedisClients() {
+  if (!env.REDIS_URL) {
+    return null;
+  }
+
+  if (redisPublisher && redisSubscriber) {
+    if (redisConnectPromise) {
+      await redisConnectPromise;
+    }
+    return { publisher: redisPublisher, subscriber: redisSubscriber };
+  }
+
   redisPublisher = createClient({ url: env.REDIS_URL });
   redisSubscriber = createClient({ url: env.REDIS_URL });
-  await Promise.all([redisPublisher.connect(), redisSubscriber.connect()]);
+
+  redisConnectPromise = Promise.all([
+    redisPublisher.connect(),
+    redisSubscriber.connect(),
+  ]).then(() => undefined);
+
+  try {
+    await redisConnectPromise;
+    return { publisher: redisPublisher, subscriber: redisSubscriber };
+  } catch (error) {
+    redisPublisher = null;
+    redisSubscriber = null;
+    redisConnectPromise = null;
+    throw error;
+  }
 }
 
 let globalStreamContext: ResumableStreamContext | null = null;
 
-export function getStreamContext(): ResumableStreamContext | null {
+export async function getStreamContext(): Promise<ResumableStreamContext | null> {
   if (globalStreamContext) {
     return globalStreamContext;
   }
 
-  // Resumable streams require Redis - return null if not configured
-  if (!(redisPublisher && redisSubscriber)) {
+  const clients = await ensureRedisClients();
+  if (!clients) {
     return null;
   }
 
   globalStreamContext = createResumableStreamContext({
     waitUntil: after,
     keyPrefix: `${config.appPrefix}:resumable-stream`,
-    publisher: redisPublisher,
-    subscriber: redisSubscriber,
+    publisher: clients.publisher,
+    subscriber: clients.subscriber,
   });
 
   return globalStreamContext;
@@ -544,7 +570,8 @@ async function executeChatRequest({
     onChunk,
   });
 
-  const publisher = redisPublisher;
+  const redisClients = await ensureRedisClients();
+  const publisher = redisClients?.publisher;
   if (publisher) {
     after(async () => {
       try {
@@ -567,7 +594,7 @@ async function executeChatRequest({
     Connection: "keep-alive",
   } as const;
 
-  const streamContext = getStreamContext();
+  const streamContext = await getStreamContext();
   const sseStream = () => stream.pipeThrough(new JsonToSseTransformStream());
 
   if (streamContext) {
