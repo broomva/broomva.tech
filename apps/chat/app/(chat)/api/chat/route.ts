@@ -46,6 +46,7 @@ import {
   getUserById,
   saveChat,
   saveMessage,
+  upsertUserFromSession,
   updateMessage,
   updateMessageActiveStreamId,
 } from "@/lib/db/queries";
@@ -636,6 +637,7 @@ async function validateAndSetupSession({
   let anonymousSession: AnonymousSession | null = null;
 
   if (userId) {
+    await upsertUserFromSession({ sessionUser: session.user });
     const user = await getUserById({ userId });
     if (!user) {
       log.warn("User not found");

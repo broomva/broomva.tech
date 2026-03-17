@@ -11,6 +11,7 @@ import {
   isNull,
   type SQL,
 } from "drizzle-orm";
+import type { Session } from "@/lib/auth";
 import type {
   Attachment,
   ChatMessage,
@@ -51,6 +52,39 @@ async function _getUserByEmail(email: string): Promise<User[]> {
     console.error("Failed to get user from database");
     throw error;
   }
+}
+
+export async function upsertUserFromSession({
+  sessionUser,
+}: {
+  sessionUser: NonNullable<Session["user"]>;
+}): Promise<User> {
+  await db
+    .insert(user)
+    .values({
+      id: sessionUser.id,
+      name: sessionUser.name ?? sessionUser.email ?? "User",
+      email: sessionUser.email ?? `${sessionUser.id}@local.invalid`,
+      emailVerified: false,
+      image: sessionUser.image ?? null,
+    })
+    .onConflictDoUpdate({
+      target: user.id,
+      set: {
+        name: sessionUser.name ?? sessionUser.email ?? "User",
+        email: sessionUser.email ?? `${sessionUser.id}@local.invalid`,
+        image: sessionUser.image ?? null,
+        updatedAt: new Date(),
+      },
+    });
+
+  const syncedUser = await getUserById({ userId: sessionUser.id });
+
+  if (!syncedUser) {
+    throw new Error("Failed to sync authenticated user into app database");
+  }
+
+  return syncedUser;
 }
 
 export async function saveChat({

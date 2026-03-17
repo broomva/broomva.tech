@@ -13,6 +13,7 @@ import { cache } from "react";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import { getSafeSession } from "@/lib/auth";
+import { upsertUserFromSession } from "@/lib/db/queries";
 
 /**
  * 1. CONTEXT
@@ -30,6 +31,11 @@ export const createTRPCContext = cache(async () => {
   const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
+
+  if (session?.user) {
+    await upsertUserFromSession({ sessionUser: session.user });
+  }
+
   return {
     user: session?.user,
   };
