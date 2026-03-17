@@ -1,34 +1,52 @@
-<div align="center">
-    <a href="https://broomva.tech"><h1 align="center">broomva.tech</h1></a>
+# broomva.tech monorepo
 
-Broomva.tech website built with [Next.js](https://nextjs.org/), [Tailwind CSS](https://tailwindcss.com/),  and deployed to [Vercel](https://vercel.com/).
+Turbo monorepo with:
 
-</div>
+- `apps/landing`: personal site and content hub
+- `apps/chat`: full ChatJS app (interactive chat runtime)
 
-<br/>
+## Workspace commands
 
-## Running Locally
-
-
-```sh-session
-git clone https://github.com/broomva/broomva.tech.git
-cd broomva.tech
+```sh
+bun install
+bun run dev
 ```
 
+Run both apps in parallel:
 
-Create a `.env` file similar to [`.env.example`](https://github.com/broomva/broomva.tech/blob/main/.env.example).
-
-Then install dependencies and run the development server:
-```sh-session
-yarn install
-yarn dev
+```sh
+bun run dev:all
 ```
 
+`dev:all` requires `apps/chat/.env.local` to be configured.
 
-## Cloning / Forking
+Target a single app:
 
-Please remove all of my personal information (projects, images, etc.) before deploying your own version of this site.
+```sh
+bun run dev:landing
+bun run dev:chat
+```
 
+Landing app build, lint, test:
 
-# Attribution
-Cloned from [chronark](https://github.com/chronark/chronark.com)
+```sh
+bun run build
+bun run lint
+bun run test
+```
+
+Chat app specific:
+
+```sh
+bun run build:chat
+bun run lint:chat
+bun run test:chat
+bun run test:types
+```
+
+Landing checks:
+
+```sh
+bun run check:links
+bun run check:links:external
+```

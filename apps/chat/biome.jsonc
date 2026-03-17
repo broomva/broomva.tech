@@ -1,0 +1,27 @@
+{
+  "extends": ["ultracite/core", "ultracite/react", "ultracite/next"],
+  "files": {
+    "includes": [
+      "**/*",
+      "!.next",
+      "!.next",
+      "!.devtools",
+      "!.devtools",
+      "!components/ui",
+      "!components/ai-elements",
+      "!components/streamdown",
+      "!components/stick-to-bottom",
+      "!lib/utils.ts",
+      "!hooks/use-mobile.ts",
+      "!content"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "suspicious": {
+        /* Needs more work to fix */
+        "noExplicitAny": "off"
+      }
+    }
+  }
+}

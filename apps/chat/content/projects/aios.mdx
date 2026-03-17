@@ -1,0 +1,40 @@
+---
+title: aiOS
+summary: Agent operating system kernel that provides identity, memory, and capability management for autonomous software agents.
+date: 2026-03-05
+published: true
+pinned: true
+status: Active
+tags:
+  - rust
+  - agent-os
+  - kernel
+links:
+  - label: Repository
+    url: https://github.com/broomva/aios
+---
+
+## Problem
+
+Agents need persistent identity, long-term memory, and capability discovery to operate across sessions and contexts. Without an OS-level abstraction, each agent reimplements these primitives poorly.
+
+## Approach
+
+aiOS provides kernel-level services for agents:
+
+- persistent agent identity with cryptographic attestation
+- structured memory with configurable retention and retrieval
+- capability registry for tool discovery and permission management
+- inter-agent communication via typed message channels
+
+## Architecture overview
+
+The kernel exposes a minimal syscall-like API. Agents register capabilities and request resources through typed interfaces. Memory is layered: working memory (ephemeral), episodic memory (session-scoped), and semantic memory (persistent).
+
+## Current status
+
+Active development with identity, memory subsystem, and capability registry in early iterations.
+
+## Why it matters
+
+aiOS is the foundation layer that turns isolated agents into a composable ecosystem with shared infrastructure.

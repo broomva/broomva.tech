@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	color-scheme: dark;
+}
+
+@layer base {
+	body {
+		@apply bg-black text-zinc-100;
+	}
+
+	a {
+		@apply outline-none;
+	}
+
+	a:focus-visible {
+		@apply rounded-sm ring-2 ring-emerald-300 ring-offset-2 ring-offset-black;
+	}
+}

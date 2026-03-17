@@ -1,0 +1,43 @@
+---
+title: Autonomous Repos Are Control Systems
+summary: The repository is not just where code lives. It is the control surface for autonomous software development.
+date: 2026-03-12
+published: true
+tags:
+  - autonomy
+  - control
+  - thesis
+---
+
+The future of software development is not AI writing code. It is repositories that operate themselves.
+
+An autonomous repo is a control system: it has sensors (tests, lints, type checks), actuators (CI/CD, deployment), and a feedback loop (monitoring, alerts, rollbacks). The agent is the controller, but the repo is the plant.
+
+## What makes a repo autonomous
+
+1. **Explicit contracts**: Every boundary between components is typed and tested. The agent knows what it can and cannot change.
+2. **Observable state**: The repo exposes its health through structured signals, not just pass/fail CI.
+3. **Deterministic gates**: Merge requires passing a defined set of checks. No exceptions, no overrides.
+4. **Recovery paths**: When something breaks, the system knows how to roll back or degrade gracefully.
+
+## The control loop
+
+The agent operates in a loop:
+
+1. Observe: read the current state of the repo (issues, test results, metrics).
+2. Plan: decide what change would improve the system.
+3. Act: implement the change in a branch with a PR.
+4. Verify: run the gate checks and wait for feedback.
+5. Adapt: if checks fail, diagnose and retry or escalate.
+
+This is classical control theory applied to software development. The agent is not creative; it is a controller that maintains desired state.
+
+## Why governance matters more than generation
+
+The hard problem is not generating code. It is ensuring that generated code meets the constraints of the system. Governance, the set of rules and checks that bound what is acceptable, is the dominant variable.
+
+Teams that invest in governance infrastructure (typed contracts, comprehensive tests, structured review) get more value from autonomous agents than teams that invest in better prompts.
+
+## The thesis
+
+Autonomous repos are control systems. The quality of the control system determines the quality of the autonomy. Invest in the harness, not the model.

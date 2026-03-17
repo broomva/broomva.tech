@@ -1,0 +1,40 @@
+---
+title: Symphony
+summary: Rust-native orchestration runtime for composable agent workflows with deterministic scheduling and fault isolation.
+date: 2026-03-10
+published: true
+pinned: true
+status: Active
+tags:
+  - rust
+  - orchestration
+  - runtime
+links:
+  - label: Repository
+    url: https://github.com/broomva/symphony
+---
+
+## Problem
+
+Agent orchestration frameworks in dynamic languages sacrifice predictability for convenience. When workflows fail mid-execution, recovery is ad-hoc and state is lost.
+
+## Approach
+
+Symphony is a Rust-native runtime that treats agent workflows as composable, typed pipelines:
+
+- deterministic task scheduling with explicit dependency graphs
+- fault isolation via process boundaries and typed error channels
+- durable state checkpoints for mid-workflow recovery
+- zero-copy message passing between pipeline stages
+
+## Architecture overview
+
+The core is a scheduler that accepts workflow definitions as DAGs of typed tasks. Each task runs in an isolated execution context with bounded resources. State transitions are logged to a write-ahead log for crash recovery.
+
+## Current status
+
+Active development with the scheduler, checkpoint system, and basic task primitives shipping.
+
+## Why it matters
+
+Symphony provides the execution substrate that makes agent workflows reproducible and recoverable at the systems level.

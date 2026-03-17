@@ -1,0 +1,28 @@
+import { createModuleLogger } from "@/lib/logger";
+import type { AiGatewayModel } from "../ai-gateway-models-schemas";
+import {
+  models as fallbackModels,
+  generatedForGateway,
+} from "../models.generated";
+import type { GatewayType } from "./registry";
+
+const log = createModuleLogger("ai/gateways/fallback");
+
+/**
+ * Returns fallback models only if the snapshot was generated for the
+ * requested gateway. When there's a mismatch the snapshot contains model
+ * IDs from a different provider, so returning them would cause resolution
+ * errors — an empty array is safer.
+ */
+export function getFallbackModels(
+  gateway: GatewayType
+): readonly AiGatewayModel[] {
+  if (generatedForGateway !== gateway) {
+    log.warn(
+      { expected: gateway, actual: generatedForGateway },
+      "Fallback snapshot was generated for a different gateway, skipping. Run `bun fetch:models` to regenerate."
+    );
+    return [];
+  }
+  return fallbackModels as unknown as AiGatewayModel[];
+}

@@ -1,0 +1,158 @@
+"use client";
+
+import type { ToolUIPart } from "ai";
+import {
+  isDataUIPart,
+  isReasoningUIPart,
+  isStaticToolUIPart,
+  isTextUIPart,
+  isToolUIPart,
+} from "ai";
+import { memo } from "react";
+import type { ChatTools } from "@/lib/ai/types";
+import {
+  useMessagePartByPartIdx,
+  useMessagePartTypesById,
+} from "@/lib/stores/hooks-message-parts";
+import { CodeExecution } from "./part/code-execution";
+import { DeepResearch } from "./part/deep-research";
+import { DocumentTool } from "./part/document-tool";
+import { DynamicToolPart } from "./part/dynamic-tool";
+import { GenerateImage } from "./part/generate-image";
+import { ReasoningPart } from "./part/message-reasoning";
+import { ReadDocument } from "./part/read-document";
+
+import { RetrieveUrl } from "./part/retrieve-url";
+import { TextMessagePart } from "./part/text-message-part";
+import { Weather } from "./part/weather";
+import { WebSearch } from "./part/web-search";
+
+type MessagePartsProps = {
+  messageId: string;
+  isLoading: boolean;
+  isReadonly: boolean;
+};
+
+function ToolPart({
+  part,
+  messageId,
+  isReadonly,
+}: {
+  part: ToolUIPart<ChatTools>;
+  messageId: string;
+  isReadonly: boolean;
+}) {
+  const type = part.type;
+
+  if (type === "tool-getWeather") {
+    return <Weather tool={part} />;
+  }
+
+  if (
+    type === "tool-createTextDocument" ||
+    type === "tool-createCodeDocument" ||
+    type === "tool-createSheetDocument" ||
+    type === "tool-editTextDocument" ||
+    type === "tool-editCodeDocument" ||
+    type === "tool-editSheetDocument"
+  ) {
+    return (
+      <DocumentTool isReadonly={isReadonly} messageId={messageId} tool={part} />
+    );
+  }
+
+  if (type === "tool-retrieveUrl") {
+    return <RetrieveUrl tool={part} />;
+  }
+
+  if (type === "tool-readDocument") {
+    return <ReadDocument tool={part} />;
+  }
+
+  if (type === "tool-codeExecution") {
+    return <CodeExecution tool={part} />;
+  }
+
+  if (type === "tool-generateImage") {
+    return <GenerateImage tool={part} />;
+  }
+
+  if (type === "tool-deepResearch") {
+    return <DeepResearch messageId={messageId} part={part} />;
+  }
+
+  if (type === "tool-webSearch") {
+    return <WebSearch messageId={messageId} part={part} />;
+  }
+  return null;
+}
+
+// Render a single part by index with minimal subscriptions
+function PureMessagePart({
+  messageId,
+  partIdx,
+  isReadonly,
+  isLoading,
+}: {
+  messageId: string;
+  partIdx: number;
+  isReadonly: boolean;
+  isLoading: boolean;
+}) {
+  const part = useMessagePartByPartIdx(messageId, partIdx);
+
+  if (isTextUIPart(part)) {
+    return <TextMessagePart isLoading={isLoading} text={part.text} />;
+  }
+
+  if (isReasoningUIPart(part)) {
+    return <ReasoningPart content={part.text} isLoading={isLoading} />;
+  }
+
+  if (isDataUIPart(part)) {
+    return null;
+  }
+
+  if (isToolUIPart(part)) {
+    if (isStaticToolUIPart(part)) {
+      return (
+        <ToolPart isReadonly={isReadonly} messageId={messageId} part={part} />
+      );
+    }
+    // At this point it's a Dynamic Tool, tools are handled beforehand by the ToolPart component
+    return (
+      <DynamicToolPart
+        isReadonly={isReadonly}
+        messageId={messageId}
+        part={part}
+      />
+    );
+  }
+
+  return null;
+}
+
+const MessagePart = memo(PureMessagePart);
+
+function PureMessageParts({
+  messageId,
+  isLoading,
+  isReadonly,
+}: MessagePartsProps) {
+  const types = useMessagePartTypesById(messageId);
+
+  return types.map((t, i) => {
+    return (
+      <MessagePart
+        isLoading={isLoading && i === types.length - 1}
+        isReadonly={isReadonly}
+        // biome-ignore lint/suspicious/noArrayIndexKey: we only have index at this point
+        key={`message-${messageId}-${t}-${i}`}
+        messageId={messageId}
+        partIdx={i}
+      />
+    );
+  });
+}
+
+export const MessageParts = memo(PureMessageParts);

@@ -1,0 +1,40 @@
+---
+title: Control Metalayer
+summary: Governance and policy layer that enforces constraints, budgets, and audit trails across autonomous agent operations.
+date: 2026-03-08
+published: true
+pinned: true
+status: Active
+tags:
+  - governance
+  - control
+  - policy
+links:
+  - label: Repository
+    url: https://github.com/broomva/control-metalayer
+---
+
+## Problem
+
+Autonomous agents need guardrails that go beyond prompt instructions. When agents manage resources, make API calls, or modify state, there must be enforceable policy boundaries.
+
+## Approach
+
+The control metalayer sits between agent intent and execution:
+
+- declarative policy definitions for resource budgets and action allowlists
+- real-time audit logging with structured traces
+- circuit breakers that halt execution when constraints are violated
+- approval workflows for high-stakes operations
+
+## Architecture overview
+
+Policies are defined as typed rules that the metalayer evaluates before each agent action. The evaluation is synchronous and deterministic. Violations produce structured events that feed into alerting and dashboards.
+
+## Current status
+
+Active development with policy evaluation, budget enforcement, and audit trail primitives in place.
+
+## Why it matters
+
+Control is what makes autonomy safe. The metalayer ensures agents operate within defined boundaries without requiring human-in-the-loop for every action.
