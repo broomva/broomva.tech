@@ -93,7 +93,8 @@ async function ensureRedisClients() {
     redisPublisher = null;
     redisSubscriber = null;
     redisConnectPromise = null;
-    throw error;
+    console.warn("Redis unavailable, continuing without resumable streams.", error);
+    return null;
   }
 }
 
