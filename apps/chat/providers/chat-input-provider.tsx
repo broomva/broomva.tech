@@ -31,6 +31,8 @@ type ChatInputContextType = {
   isEmpty: boolean;
   handleSubmit: (submitFn: () => void, isEditMode?: boolean) => void;
   isProjectContext: boolean;
+  pendingAutoSubmit: boolean;
+  tryConsumeAutoSubmit: () => boolean;
 };
 
 const ChatInputContext = createContext<ChatInputContextType | undefined>(
@@ -40,9 +42,10 @@ const ChatInputContext = createContext<ChatInputContextType | undefined>(
 type ChatInputProviderProps = {
   children: ReactNode;
   initialInput?: string;
+  autoSubmit?: boolean;
   initialTool?: UiToolName | null;
   initialAttachments?: Attachment[];
-  overrideModelId?: AppModelId; // For message editing where we want to use the original model
+  overrideModelId?: AppModelId;
   localStorageEnabled?: boolean;
   isProjectContext?: boolean;
 };
@@ -50,6 +53,7 @@ type ChatInputProviderProps = {
 export function ChatInputProvider({
   children,
   initialInput = "",
+  autoSubmit = false,
   initialTool = null,
   initialAttachments = [],
   overrideModelId,
@@ -57,6 +61,23 @@ export function ChatInputProvider({
   isProjectContext = false,
 }: ChatInputProviderProps) {
   const [hasHydrated, setHasHydrated] = useState(false);
+  const autoSubmitRef = useRef(autoSubmit && initialInput.trim().length > 0);
+  const [pendingAutoSubmit, setPendingAutoSubmit] = useState(
+    autoSubmitRef.current
+  );
+  if (typeof window !== "undefined") {
+    const w = window as Record<string, unknown>;
+    if (!w.__chatInputLog) w.__chatInputLog = [];
+    (w.__chatInputLog as string[]).push(JSON.stringify({ autoSubmit, initialInput: initialInput.slice(0, 10), ref: autoSubmitRef.current, pending: pendingAutoSubmit, ts: Date.now() }));
+    w.__chatInputDebug = { autoSubmit, initialInput, autoSubmitRef: autoSubmitRef.current, pendingAutoSubmit };
+  }
+
+  const tryConsumeAutoSubmit = useCallback(() => {
+    if (!autoSubmitRef.current) return false;
+    autoSubmitRef.current = false;
+    setPendingAutoSubmit(false);
+    return true;
+  }, []);
 
   useEffect(() => {
     setHasHydrated(true);
@@ -214,6 +235,8 @@ export function ChatInputProvider({
         isEmpty,
         handleSubmit,
         isProjectContext,
+        pendingAutoSubmit,
+        tryConsumeAutoSubmit,
       }}
     >
       {children}

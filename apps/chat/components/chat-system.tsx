@@ -43,6 +43,7 @@ export const ChatSystem = memo(function PureChatSystem({
   isReadonly,
   initialTool = null,
   initialInput,
+  autoSubmit,
   overrideModelId,
   projectId,
 }: {
@@ -51,6 +52,7 @@ export const ChatSystem = memo(function PureChatSystem({
   isReadonly: boolean;
   initialTool?: UiToolName | null;
   initialInput?: string;
+  autoSubmit?: boolean;
   overrideModelId?: AppModelId;
   projectId?: string;
 }) {
@@ -80,6 +82,7 @@ export const ChatSystem = memo(function PureChatSystem({
           ) : (
             <ChatInputProvider
               initialInput={initialInput}
+              autoSubmit={autoSubmit}
               initialTool={initialTool ?? null}
               isProjectContext={!!projectId}
               localStorageEnabled={true}

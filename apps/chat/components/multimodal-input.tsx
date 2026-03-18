@@ -10,6 +10,7 @@ import {
   memo,
   type SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -121,6 +122,8 @@ function PureMultimodalInput({
     getInitialInput,
     isEmpty,
     handleSubmit,
+    pendingAutoSubmit,
+    tryConsumeAutoSubmit,
   } = useChatInput();
 
   const isAnonymous = !session?.user;
@@ -254,7 +257,7 @@ function PureMultimodalInput({
       }
 
       const currentPath = window.location.pathname;
-      if (currentPath === "/") {
+      if (currentPath === "/" || currentPath === "/chat") {
         window.history.pushState({}, "", `/chat/${chatIdToAdd}`);
         return;
       }
@@ -389,6 +392,24 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     handleSubmit(coreSubmitLogic, isEditMode);
   }, [handleSubmit, coreSubmitLogic, isEditMode]);
+
+  useEffect(() => {
+    console.log("[auto-submit] effect", { pendingAutoSubmit, status, isEmpty, isEditMode, val: getInputValue().slice(0, 20) });
+    if (
+      !pendingAutoSubmit ||
+      status !== "ready" ||
+      isEmpty ||
+      isEditMode ||
+      getInputValue().trim().length === 0
+    ) {
+      return;
+    }
+    const consumed = tryConsumeAutoSubmit();
+    console.log("[auto-submit] tryConsume:", consumed);
+    if (consumed) {
+      submitForm();
+    }
+  }, [pendingAutoSubmit, status, isEmpty, isEditMode, tryConsumeAutoSubmit, submitForm, getInputValue]);
 
   const uploadFile = useCallback(
     async (
