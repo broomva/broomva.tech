@@ -11,3 +11,5 @@ tags:
 If your agent fails in production, start by debugging boundaries, state, and recovery logic before tweaking prompts.
 
 The failure is often in orchestration, not generation.
+
+A prompt that generates perfect SQL still fails if the harness doesn't validate the query against the schema before execution. Getting from zero to demo is a model problem. Getting from demo to production is a harness problem.

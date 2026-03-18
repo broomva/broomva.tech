@@ -13,6 +13,8 @@ links:
     url: https://github.com/broomva/lago
 ---
 
+<video src="/images/projects/lago/lago-video.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
 ## Problem
 
 Many agent demos collapse when the workload becomes multi-step and stateful. Reliability needs stronger substrate primitives.
@@ -21,18 +23,18 @@ Many agent demos collapse when the workload becomes multi-step and stateful. Rel
 
 Lago emphasizes infrastructure fundamentals:
 
-- explicit session/workspace boundaries
-- reproducible tool execution
-- predictable event and state handling
-- interfaces that support auditability
+- explicit session and workspace boundaries — every agent run operates in a scoped context with defined inputs and outputs
+- reproducible tool execution — the same tool call with the same inputs produces the same result
+- predictable event and state handling — state transitions are logged and replayable
+- interfaces that support auditability — every action leaves a trace
 
 ## Architecture overview
 
-The design separates execution substrate from higher-level UX so each layer can evolve independently.
+The design separates execution substrate from higher-level UX so each layer can evolve independently. The substrate handles sessions, tool dispatch, state persistence, and event streaming. Products like Arcan build operator-facing workflows on top without reimplementing these primitives.
 
 ## Current status
 
-Active OSS iteration with focus on developer ergonomics and testability.
+Active OSS iteration with focus on developer ergonomics and testability. The session and tool execution primitives are stabilizing.
 
 ## Why it matters
 

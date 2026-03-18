@@ -13,26 +13,30 @@ links:
     url: https://github.com/broomva/harness-engineering-skill
 ---
 
+<video src="/images/projects/harness-engineering/harness-video.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
 ## Problem
 
-Teams over-focus on prompts and under-invest in the harness around the model.
+Teams over-focus on prompts and under-invest in the harness around the model. The result is agents that demo well but fail under production constraints.
 
 ## Approach
 
-The skill packages reusable patterns for:
+The skill is an installable Claude Code skill that packages reusable patterns for:
 
-- architecture boundaries and contracts
-- deterministic checks in CI
-- observability defaults
-- low-entropy runbooks for repeated tasks
+- architecture boundaries and contracts via `AGENTS.md` (tool catalog, agent map) and `PLANS.md` (active implementation plans)
+- deterministic gate sequences: `smoke` (tools, deps, typecheck) → `check` (lint, format) → `test` (unit, integration, control audit)
+- observability defaults wired from day one
+- low-entropy runbooks that reduce variance in repeated tasks
+
+The core philosophy is entropy control — every agent action should leave the repo in a more predictable state, not a less predictable one.
 
 ## Architecture overview
 
-The structure combines docs, runbooks, and guardrails so agent execution is constrained by explicit acceptance criteria.
+The structure combines docs, runbooks, and guardrails so agent execution is constrained by explicit acceptance criteria. The gate sequence runs automatically via pre-commit and pre-push hooks, catching regressions before they reach review.
 
 ## Current status
 
-Active and evolving as new production lessons are captured.
+Active and evolving as new production lessons are captured. Deployed across multiple repositories with the `.control/` directory pattern.
 
 ## Why it matters
 

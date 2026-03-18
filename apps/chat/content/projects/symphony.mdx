@@ -14,6 +14,8 @@ links:
     url: https://github.com/broomva/symphony
 ---
 
+<video src="/images/projects/symphony/symphony-video.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
 ## Problem
 
 Agent orchestration frameworks in dynamic languages sacrifice predictability for convenience. When workflows fail mid-execution, recovery is ad-hoc and state is lost.
@@ -27,13 +29,17 @@ Symphony is a Rust-native runtime that treats agent workflows as composable, typ
 - durable state checkpoints for mid-workflow recovery
 - zero-copy message passing between pipeline stages
 
+The project ships as multiple crates: `symphony-core` (scheduler and DAG engine), `symphony-arcan` (Arcan product integration), and `symphony-aios` (aiOS kernel bridge).
+
 ## Architecture overview
 
-The core is a scheduler that accepts workflow definitions as DAGs of typed tasks. Each task runs in an isolated execution context with bounded resources. State transitions are logged to a write-ahead log for crash recovery.
+The core is a scheduler that accepts workflow definitions as DAGs of typed tasks. A workflow might define `fetch_data → validate → transform → publish` where each node declares its input/output types and error modes. Each task runs in an isolated execution context with bounded resources. State transitions are logged to a write-ahead log so a crashed workflow resumes from the last checkpoint, not from scratch.
+
+Errors propagate through typed channels — a validation failure returns a structured `ValidationError` with field-level details, not a generic string. The scheduler uses this to decide whether to retry, skip, or halt.
 
 ## Current status
 
-Active development with the scheduler, checkpoint system, and basic task primitives shipping.
+Active development with the scheduler, checkpoint system, and basic task primitives shipping. The `symphony-arcan` and `symphony-aios` bridge crates are in early integration.
 
 ## Why it matters
 

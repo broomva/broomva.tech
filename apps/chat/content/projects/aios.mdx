@@ -14,6 +14,8 @@ links:
     url: https://github.com/broomva/aios
 ---
 
+<video src="/images/projects/aios/aios-video.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
 ## Problem
 
 Agents need persistent identity, long-term memory, and capability discovery to operate across sessions and contexts. Without an OS-level abstraction, each agent reimplements these primitives poorly.
@@ -27,13 +29,17 @@ aiOS provides kernel-level services for agents:
 - capability registry for tool discovery and permission management
 - inter-agent communication via typed message channels
 
+An agent registers with the kernel, receives an attested identity, declares its capabilities (e.g. "can query SQL", "can write files"), and requests access to shared resources through typed syscall-like interfaces.
+
 ## Architecture overview
 
-The kernel exposes a minimal syscall-like API. Agents register capabilities and request resources through typed interfaces. Memory is layered: working memory (ephemeral), episodic memory (session-scoped), and semantic memory (persistent).
+The kernel exposes a minimal API modeled after OS syscalls. Memory is layered into three tiers: **working memory** (ephemeral, cleared per task), **episodic memory** (session-scoped, persists across tool calls within a conversation), and **semantic memory** (persistent, survives across sessions and feeds long-term learning).
+
+The capability registry ensures agents only access tools they've been granted. When Symphony orchestrates a multi-agent workflow, aiOS handles identity resolution and memory scoping per agent. When the Control Metalayer enforces a policy, aiOS provides the identity context for per-agent budget tracking.
 
 ## Current status
 
-Active development with identity, memory subsystem, and capability registry in early iterations.
+Active development with identity, memory subsystem, and capability registry in early iterations. Integration with Symphony (via `symphony-aios` crate) and Control Metalayer is underway.
 
 ## Why it matters
 
