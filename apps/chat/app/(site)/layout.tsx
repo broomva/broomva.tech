@@ -1,5 +1,5 @@
 import { TopNav } from "@/components/site/top-nav";
-import { Footer } from "@/components/site/footer";
+import { FlickeringFooter } from "@/components/ui/flickering-footer";
 
 export default function SiteLayout({
   children,
@@ -9,7 +9,7 @@ export default function SiteLayout({
   return (
     <div className="min-h-screen bg-bg-deep text-text-primary pb-24">
       {children}
-      <Footer />
+      <FlickeringFooter />
       <TopNav />
     </div>
   );

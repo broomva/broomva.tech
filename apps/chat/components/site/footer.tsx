@@ -28,7 +28,7 @@ export function Footer() {
             broomva.tech
           </Link>
           <p className="mt-2 text-xs text-text-muted">
-            Reliability engineering for complex systems.
+            Reliability engineering for complex systems — from Databricks to autonomous agents.
           </p>
         </div>
         <div className="flex gap-10">

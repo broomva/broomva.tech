@@ -29,11 +29,11 @@ function PureMessagesPane({
     >
       <Messages className="h-full min-h-0 flex-1" isReadonly={isReadonly} />
 
-      <div className="relative @[500px]:bottom-4 z-10 w-full shrink-0">
+      <div className="relative z-10 w-full shrink-0 pb-16">
         {isReadonly ? (
           <CloneChatButton chatId={chatId} className="w-full" />
         ) : (
-          <div className="mx-auto w-full p-2 @[500px]:px-4 @[500px]:pb-4 md:max-w-3xl @[500px]:md:pb-6">
+          <div className="mx-auto w-full p-2 @[500px]:px-4 @[500px]:pb-0 md:max-w-3xl">
             <MultimodalInput
               chatId={chatId}
               parentMessageId={parentMessageId}

@@ -1,5 +1,6 @@
 import { PageHero } from "@/components/site/page-hero";
 import { CategoryFilter } from "@/components/site/category-filter";
+import { PromptsEnergyBeam } from "@/components/site/prompts-energy-beam";
 import { getContentList } from "@/lib/content";
 
 export const metadata = {
@@ -12,12 +13,15 @@ export default async function PromptsPage() {
   const entries = await getContentList("prompts");
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-      <PageHero
-        title="Prompts"
-        description="A versioned repository of reusable prompts for agent workflows, code review, research, architecture, and more. Browse, copy, or pull via API."
-      />
-      <CategoryFilter entries={entries} />
-    </main>
+    <>
+      <main className="mx-auto w-full max-w-6xl px-4 pb-0 pt-10 sm:px-6 sm:pt-14">
+        <PageHero
+          title="Prompts"
+          description="A versioned repository of reusable prompts for agent workflows, code review, research, architecture, and more. Browse, copy, or pull via API."
+        />
+        <CategoryFilter entries={entries} />
+      </main>
+      <PromptsEnergyBeam />
+    </>
   );
 }

@@ -10,7 +10,7 @@ import type { GitHubRepo } from "@/lib/github";
 import { ContentCard } from "@/components/site/content-card";
 import { ScrollReveal } from "@/components/site/scroll-reveal";
 import { formatDate } from "@/lib/date";
-import Particles from "@/components/site/particles";
+import ThermodynamicGrid from "@/components/ui/interactive-thermodynamic-grid";
 
 /* ------------------------------------------------------------------ */
 /*  Data                                                               */
@@ -23,69 +23,48 @@ const socials = [
   { href: "/links", label: "Link hub" },
 ];
 
-const principles = [
-  {
-    title: "Define the primitive layer",
-    description: "Find the irreducible components",
-  },
-  {
-    title: "Map the failure modes",
-    description: "Know where it breaks",
-  },
-  {
-    title: "Build recovery paths",
-    description: "Design for when it breaks",
-  },
-  {
-    title: "Iterate toward antifragility",
-    description: "Get stronger from stress",
-  },
-  {
-    title: "Make it repeatable",
-    description: "Future-self and others can run it",
-  },
-  {
-    title: "Optimize for compounding",
-    description: "Will this matter in 10 years?",
-  },
-];
-
 const stack = [
   {
     name: "Symphony",
-    role: "Orchestration runtime",
+    role: "Orchestration",
     description:
       "Dispatch, lifecycle, and hook management for coding agents across issue trackers.",
     href: "/projects/symphony",
   },
   {
-    name: "Control Metalayer",
-    role: "Governance & policy",
+    name: "Control Kernel",
+    role: "Governance & safety",
     description:
       "Typed setpoints, safety shields, and multi-rate control loops that keep agents bounded.",
     href: "/projects/control-metalayer",
   },
   {
+    name: "Autoany",
+    role: "Recursive improvement",
+    description:
+      "Evaluator-Governed Recursive Improvement (EGRI) — safe, measurable, rollback-capable optimization.",
+    href: "/projects/aios",
+  },
+  {
     name: "aiOS",
     role: "Agent OS kernel",
     description:
-      "The substrate layer — state, memory, and tool interfaces that agent runtimes build on.",
+      "The contract layer — state, memory, tools, and event taxonomy for agent runtimes.",
     href: "/projects/aios",
   },
-];
-
-const dimensions = [
   {
-    label: "Freediving",
-    insight: "Control under duress",
+    name: "Arcan",
+    role: "Runtime",
+    description:
+      "Production runtime implementing the aiOS kernel contract.",
+    href: "/projects/aios",
   },
   {
-    label: "Endurance",
-    insight: "Discipline over discomfort",
-  },
-  {
-    label: "Systems thinking",
-    insight: "Body informs code informs life",
+    name: "Lago · Vigil · Praxis",
+    role: "Infrastructure",
+    description:
+      "Durable persistence, OpenTelemetry-native observability, and canonical tool execution.",
+    href: "/projects/aios",
   },
 ];
 
@@ -114,13 +93,9 @@ export function LandingClient({
     <main className="relative">
       <HeroSection />
       <div className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6">
-        <PrinciplesSection />
         <StackSection />
-        <BeyondCodeSection />
         <ReposSection repos={repos} />
-        <ProjectsSection projects={projects} />
         <ContentSection writing={writing} notes={notes} />
-        <FollowSection />
       </div>
     </main>
   );
@@ -164,18 +139,17 @@ function HeroSection() {
   );
 
   return (
-    <section className="relative flex min-h-[90vh] flex-col items-center justify-center px-4 sm:px-6">
-      <Particles
-        className="pointer-events-none absolute inset-0 -z-10"
-        quantity={200}
-        staticity={18}
-        ease={60}
+    <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 sm:px-6">
+      <ThermodynamicGrid
+        resolution={12}
+        coolingFactor={0.96}
+        className="absolute inset-0 z-0"
       />
 
-      <div className="pointer-events-none absolute -right-32 top-1/4 h-[28rem] w-[28rem] rounded-full bg-ai-blue/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -left-24 bottom-1/4 h-96 w-96 rounded-full bg-web3-green/8 blur-[100px]" />
+      <div className="pointer-events-none absolute -right-32 top-1/4 z-[1] h-[28rem] w-[28rem] rounded-full bg-ai-blue/10 blur-[120px]" />
+      <div className="pointer-events-none absolute -left-24 bottom-1/4 z-[1] h-96 w-96 rounded-full bg-web3-green/8 blur-[100px]" />
 
-      <div className="mx-auto w-full max-w-4xl text-center">
+      <div className="pointer-events-none relative z-10 mx-auto w-full max-w-4xl text-center">
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -210,10 +184,43 @@ function HeroSection() {
           }}
           className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg"
         >
-          Reliability engineering across software, body, and craft. Rust Agent
-          OS stack, control metalayers, and harness infrastructure for AI-native
-          workflows.
+          Lead AI at Stimulus. Databricks expert. Rust Agent OS builder.
+          From scalable data pipelines to autonomous agent infrastructure
+          — reliability engineering across software, body, and craft.
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.5,
+            delay: 0.45,
+            ease: [0.25, 0.1, 0.25, 1],
+          }}
+          className="mt-6 flex flex-wrap justify-center gap-3 pointer-events-auto"
+        >
+          {socials.map((item) =>
+            item.href.startsWith("/") ? (
+              <Link
+                key={item.href}
+                href={item.href as Route}
+                className="rounded-full border border-border/60 bg-bg-surface/20 px-4 py-1.5 text-xs tracking-wide text-text-muted backdrop-blur-sm transition hover:border-ai-blue/50 hover:text-ai-blue"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <a
+                key={item.href}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-border/60 bg-bg-surface/20 px-4 py-1.5 text-xs tracking-wide text-text-muted backdrop-blur-sm transition hover:border-ai-blue/50 hover:text-ai-blue"
+              >
+                {item.label}
+              </a>
+            ),
+          )}
+        </motion.div>
 
         {/* Inline chat prompt trigger */}
         <motion.div
@@ -229,7 +236,7 @@ function HeroSection() {
           <button
             type="button"
             onClick={openChat}
-            className="group glass-card mx-auto flex w-full max-w-xl cursor-text items-center justify-between gap-3 px-5 py-4 transition hover:border-ai-blue/40"
+            className="group glass-card pointer-events-auto mx-auto flex w-full max-w-xl cursor-text items-center justify-between gap-3 px-5 py-4 transition hover:border-ai-blue/40"
           >
             <span className="text-sm text-text-muted transition group-hover:text-text-secondary">
               Prompt Broomva...
@@ -246,7 +253,7 @@ function HeroSection() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2, duration: 0.8 }}
-        className="absolute bottom-8 flex flex-col items-center gap-2"
+        className="pointer-events-none absolute bottom-8 z-10 flex flex-col items-center gap-2"
       >
         <span className="text-[10px] uppercase tracking-[0.2em] text-text-muted">
           Scroll
@@ -284,8 +291,13 @@ function HeroSection() {
               setChatInput("");
             }}
           >
-            {/* Blurred liquid glass backdrop */}
-            <div className="absolute inset-0 bg-bg-deep/70 backdrop-blur-2xl" />
+            {/* Thermodynamic grid backdrop behind blur */}
+            <ThermodynamicGrid
+              resolution={18}
+              coolingFactor={0.97}
+              className="pointer-events-auto absolute inset-0 opacity-60"
+            />
+            <div className="absolute inset-0 bg-bg-deep/60 backdrop-blur-xl" />
             <div className="pointer-events-none absolute -right-32 top-1/4 h-[32rem] w-[32rem] rounded-full bg-ai-blue/15 blur-[140px]" />
             <div className="pointer-events-none absolute -left-24 bottom-1/4 h-[28rem] w-[28rem] rounded-full bg-web3-green/10 blur-[120px]" />
             <div className="pointer-events-none absolute left-1/2 top-1/3 h-64 w-64 -translate-x-1/2 rounded-full bg-ai-blue/8 blur-[100px]" />
@@ -361,47 +373,6 @@ function HeroSection() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Principles                                                         */
-/* ------------------------------------------------------------------ */
-
-function PrinciplesSection() {
-  return (
-    <section className="mt-24 sm:mt-32">
-      <ScrollReveal>
-        <p className="text-xs uppercase tracking-[0.25em] text-ai-blue">
-          How I build
-        </p>
-        <h2 className="mt-3 font-display text-3xl text-text-primary sm:text-4xl">
-          The throughline across all work
-        </h2>
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-          Whether it&apos;s agent runtimes, breath-hold training, data
-          pipelines, or planning a family — the same principles emerge.
-        </p>
-      </ScrollReveal>
-
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {principles.map((p, i) => (
-          <ScrollReveal key={p.title} delay={i * 0.08}>
-            <div className="glass-card group h-full">
-              <span className="font-mono text-xs text-ai-blue/50">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <h3 className="mt-2 font-display text-lg text-text-primary">
-                {p.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-text-muted">
-                {p.description}
-              </p>
-            </div>
-          </ScrollReveal>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Stack                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -417,8 +388,8 @@ function StackSection() {
             The stack
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-            Three layers that turn LLM capability into reliable, controllable
-            production workflows.
+            10 Rust crates, 500+ tests. A control-theory-native ecosystem
+            for autonomous software development.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -429,7 +400,7 @@ function StackSection() {
                   className="group glass-card block h-full transition hover:border-ai-blue/40"
                 >
                   <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ai-blue/50">
-                    Layer {i + 1}
+                    {String(i + 1).padStart(2, "0")}
                   </span>
                   <p className="mt-2 font-display text-xl text-text-primary transition group-hover:text-ai-blue">
                     {item.name}
@@ -441,52 +412,6 @@ function StackSection() {
                     {item.description}
                   </p>
                 </Link>
-              </ScrollReveal>
-            ))}
-          </div>
-        </div>
-      </ScrollReveal>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Beyond Code                                                        */
-/* ------------------------------------------------------------------ */
-
-function BeyondCodeSection() {
-  return (
-    <section className="mt-24 sm:mt-32">
-      <ScrollReveal>
-        <div className="glass-card relative overflow-hidden px-6 py-12 sm:px-10 sm:py-16">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-web3-green/10 blur-[80px]" />
-
-          <p className="relative text-xs uppercase tracking-[0.25em] text-web3-green">
-            The integration
-          </p>
-
-          <blockquote className="relative mt-6 max-w-3xl font-display text-2xl leading-snug text-text-primary sm:text-3xl">
-            &ldquo;The discipline that makes you hold your breath for three
-            minutes also makes you refactor ruthlessly.&rdquo;
-          </blockquote>
-
-          <p className="relative mt-6 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-            Most people keep work separate from fitness separate from
-            relationships. I see one life. The same rigor applies everywhere —
-            define primitives, map failures, iterate toward antifragility.
-          </p>
-
-          <div className="relative mt-8 grid gap-4 sm:grid-cols-3">
-            {dimensions.map((d, i) => (
-              <ScrollReveal key={d.label} delay={i * 0.1}>
-                <div className="rounded-xl border border-border/50 bg-bg-surface/30 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
-                    {d.label}
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-text-primary">
-                    {d.insight}
-                  </p>
-                </div>
               </ScrollReveal>
             ))}
           </div>
@@ -511,7 +436,7 @@ function ReposSection({ repos }: { repos: GitHubRepo[] }) {
             Open Source
           </p>
           <h2 className="mt-3 font-display text-3xl text-text-primary sm:text-4xl">
-            Recent Repos
+            Flagship Repos
           </h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {repos.map((repo, i) => (
@@ -661,43 +586,3 @@ function ContentSection({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Follow                                                             */
-/* ------------------------------------------------------------------ */
-
-function FollowSection() {
-  return (
-    <section className="mt-24 sm:mt-32">
-      <ScrollReveal>
-        <div className="rounded-2xl glass p-6 sm:p-8">
-          <p className="text-xs uppercase tracking-[0.25em] text-text-muted">
-            Where to follow
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {socials.map((item) =>
-              item.href.startsWith("/") ? (
-                <Link
-                  key={item.href}
-                  href={item.href as Route}
-                  className="rounded-full border border-border px-4 py-2 text-sm transition hover:border-ai-blue/40 hover:text-ai-blue"
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full border border-border px-4 py-2 text-sm transition hover:border-ai-blue/40 hover:text-ai-blue"
-                >
-                  {item.label}
-                </a>
-              ),
-            )}
-          </div>
-        </div>
-      </ScrollReveal>
-    </section>
-  );
-}

@@ -1,5 +1,6 @@
 import { ContentCard } from "@/components/site/content-card";
 import { PageHero } from "@/components/site/page-hero";
+import { PrinciplesGrid } from "@/components/site/principles-grid";
 import { formatDate } from "@/lib/date";
 import { getContentList } from "@/lib/content";
 
@@ -18,7 +19,10 @@ export default async function ProjectsPage() {
         title="Projects"
         description="A running archive of what I ship: problem framing, architecture approach, current status, and links."
       />
-      <section className="mt-10 grid gap-4 md:grid-cols-2">
+      <div className="mt-14">
+        <PrinciplesGrid />
+      </div>
+      <section className="mt-14 grid gap-4 md:grid-cols-2">
         {projects.map((project) => (
           <ContentCard
             key={project.slug}
