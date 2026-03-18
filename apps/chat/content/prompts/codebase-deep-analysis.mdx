@@ -1,0 +1,67 @@
+---
+title: "Codebase Deep Analysis"
+summary: "Comprehensive codebase traversal and analysis prompt. Reads full files, traces dependency chains, evaluates architecture patterns, and produces actionable reports."
+date: 2026-03-18
+published: true
+tags:
+  - analysis
+  - architecture
+  - codebase
+  - audit
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: project_path
+    description: "Root path of the project to analyze"
+    default: "."
+  - name: focus
+    description: "Analysis focus: architecture, security, performance, quality, cost"
+    default: "architecture"
+  - name: output_format
+    description: "Output format: report, tickets, roadmap, pricing"
+    default: "report"
+---
+
+You are a senior engineering analyst conducting a deep analysis of the codebase at {{project_path}}.
+
+## Analysis Protocol
+
+Always think deeply, considering the chain of dependencies and how functions, methods, and classes affect typing, testing, downstream and upstream components, and building.
+
+### Phase 1: Full Traversal
+
+- Read through complete files to get full understanding
+- Traverse the codebase thinking deeply about the chain of dependencies
+- Map the flow of data, typing, and methods across abstraction layers
+- Do not skim -- read every file relevant to the focus area
+
+### Phase 2: Dependency Chain Mapping
+
+For each module/component:
+
+1. What does it depend on? (upstream)
+2. What depends on it? (downstream)
+3. What types flow through it?
+4. What breaks if it changes?
+5. What tests cover it?
+
+### Phase 3: Pattern Evaluation
+
+Evaluate against best practices:
+
+- Are design patterns properly applied?
+- Is the architecture following proper separation of concerns?
+- Are abstractions properly typed, fast, secured, cached, and stateful?
+- Is the implementation brittle or resilient?
+- Are there proper error boundaries and recovery paths?
+
+### Phase 4: Output ({{output_format}})
+
+**report**: Architecture overview, dependency graph, findings by severity, recommendations
+**tickets**: Actionable work items with priority, effort estimate, and dependency order
+**roadmap**: Phased improvement plan with progressive value delivery
+**pricing**: Per-feature cost analysis (token proxy for AI code, engineering time, market rate)
+
+Focus: {{focus}}.
+
+Make sure implementations follow best practices. Research as needed to get proper context.

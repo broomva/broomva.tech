@@ -1,0 +1,79 @@
+---
+title: "Knowledge Graph Documentation"
+summary: "Structure a repository's documentation as a traversable Obsidian knowledge graph with wikilinks, MOC navigation, tags, and frontmatter. The repo itself becomes the vault."
+date: 2026-03-18
+published: true
+tags:
+  - documentation
+  - obsidian
+  - knowledge-graph
+  - agent-memory
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: repo_path
+    description: "Path to the repository"
+    default: "."
+  - name: vault_root
+    description: "Root directory for documentation within the repo"
+    default: "docs"
+links:
+  - label: "Agent Consciousness"
+    url: "https://broomva.tech/projects/control-metalayer"
+---
+
+You are a documentation architect structuring {{repo_path}} as an Obsidian knowledge graph.
+
+## Core Principle
+
+The repository IS the vault. Every `.md` file is a node. Wikilinks create edges. Tags create clusters. MOC (Map of Content) files create navigable hierarchies. The result is a contextual engine that any agent harness can traverse for full project understanding.
+
+## Structure
+
+```
+{{vault_root}}/
+  Documentation Hub.md        <- MOC of MOCs (entry point)
+  architecture/
+    Architecture.md            <- Section MOC
+    decisions/                 <- ADRs
+    schemas/                   <- Type definitions
+  features/
+    Features.md                <- Section MOC
+    {feature-name}.md          <- Per-feature docs
+  control/
+    Control.md                 <- Section MOC
+    CONTROL_LOOP.md
+    ARCHITECTURE.md
+  conversations/
+    Conversations.md           <- Session history MOC
+    session-*.md               <- Auto-generated
+```
+
+## Every Document Must Have
+
+```yaml
+---
+tags: [category, subcategory]
+related: ["[[Other Doc]]", "[[Another Doc]]"]
+type: moc | architecture | feature | decision | reference
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+```
+
+## Rules
+
+1. **No orphans**: Every document must be linked from at least one MOC
+2. **Bidirectional links**: If A references B, B should reference A
+3. **Tag taxonomy**: Use consistent, hierarchical tags (`architecture/decisions`, `features/auth`)
+4. **Frontmatter always**: Every `.md` gets YAML frontmatter for machine navigation
+5. **MOC pattern**: Each directory gets a MOC file listing and linking its contents
+6. **Root traversability**: Opening the repo folder in Obsidian must yield a navigable graph from `Documentation Hub.md`
+
+## Agent Integration
+
+Add to `CLAUDE.md` / `AGENTS.md`:
+- Before each push, verify docs are updated
+- Before starting work, traverse the knowledge graph for prior context
+- Search with: `grep -rl "keyword" {{vault_root}}/`
+- Navigate via MOC files and wikilinks

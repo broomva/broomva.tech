@@ -4,7 +4,13 @@ import matter from "gray-matter";
 import { remark } from "remark";
 import remarkHtml from "remark-html";
 
-export type ContentKind = "notes" | "projects" | "writing";
+export type ContentKind = "notes" | "projects" | "writing" | "prompts";
+
+export interface PromptVariable {
+  name: string;
+  description: string;
+  default?: string;
+}
 
 interface ContentFrontmatter {
   title?: string;
@@ -18,6 +24,10 @@ interface ContentFrontmatter {
     label: string;
     url: string;
   }>;
+  category?: string;
+  model?: string;
+  version?: string;
+  variables?: PromptVariable[];
 }
 
 export interface ContentSummary {
@@ -34,6 +44,10 @@ export interface ContentSummary {
     label: string;
     url: string;
   }>;
+  category?: string;
+  model?: string;
+  version?: string;
+  variables?: PromptVariable[];
 }
 
 export interface ContentDocument extends ContentSummary {
@@ -93,6 +107,13 @@ function toSummary(
       )
     : [];
 
+  const variables = Array.isArray(frontmatter.variables)
+    ? frontmatter.variables.filter(
+        (v): v is PromptVariable =>
+          typeof v?.name === "string" && typeof v?.description === "string",
+      )
+    : undefined;
+
   return {
     title,
     summary,
@@ -104,6 +125,10 @@ function toSummary(
     status: frontmatter.status,
     tags,
     links,
+    category: frontmatter.category,
+    model: frontmatter.model,
+    version: frontmatter.version,
+    variables,
   };
 }
 

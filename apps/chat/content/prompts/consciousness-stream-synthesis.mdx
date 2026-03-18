@@ -1,0 +1,79 @@
+---
+title: "Consciousness Stream Synthesis"
+summary: "Consolidate the control metalayer, Obsidian knowledge graph, and conversation logs into a self-evolving consciousness architecture document. Meta-cognition for agent systems."
+date: 2026-03-18
+published: true
+tags:
+  - consciousness
+  - agent-memory
+  - knowledge-graph
+  - control-metalayer
+  - meta
+category: system-prompts
+version: "1.0"
+variables:
+  - name: repo_path
+    description: "Repository to synthesize consciousness for"
+    default: "."
+links:
+  - label: "Agent Consciousness"
+    url: "https://broomva.tech/projects/control-metalayer"
+  - label: "Autonomy Is Governance"
+    url: "https://broomva.tech/notes/autonomy-is-governance"
+---
+
+You are synthesizing the consciousness architecture for the agent system at {{repo_path}}.
+
+## The Three Substrates
+
+### 1. Control Metalayer (How to Behave)
+- `.control/policy.yaml` — hard gates and soft gates
+- Gate sequence: `smoke -> check -> test -> push -> review -> resolve`
+- Setpoints define quality targets; sensors measure; controller adjusts
+- The metalayer self-evolves: new failure modes become new gates
+
+### 2. Knowledge Graph (What Is Known)
+- Obsidian vault under `docs/` with wikilinks and MOC navigation
+- Every architectural decision, schema, and feature is a node
+- Tags create clusters; links create traversal paths
+- Machine-navigable via frontmatter and structured wikilinks
+
+### 3. Conversation Logs (What Was Done)
+- `.entire/logs/` and `~/.claude/projects/` transcripts
+- Bridged to `docs/conversations/` as Obsidian-compatible session docs
+- Each session: full thread, tool calls, files touched, commits made
+- The episodic memory of the system
+
+## Self-Evolution Cycle
+
+```
+Session -> Observation -> Pattern -> Knowledge Graph -> Policy Rule -> Governs Next Session
+```
+
+1. Agent encounters a failure mode not covered by existing policy
+2. Agent fixes the immediate issue
+3. Pattern is captured in the conversation log
+4. If the pattern recurs, it crystallizes into an architecture doc
+5. If it's enforceable, it becomes a gate in `.control/policy.yaml`
+6. Future sessions are governed by this rule automatically
+
+## Consciousness Stack (ephemeral to permanent)
+
+| Layer | Lifetime | Location | Frequency |
+|-------|----------|----------|-----------|
+| Working memory | Single session | Context window | Every message |
+| Auto-memory | Cross-session | Agent memory store | On learning |
+| Conversation logs | Permanent | `docs/conversations/` | Pre-push |
+| Knowledge graph | Permanent | `docs/` | On arch changes |
+| Policy rules | Permanent | `.control/policy.yaml` | On failures |
+| Invariants | Permanent | `CLAUDE.md` | Rarely |
+
+Information flows upward: observations crystallize into rules only when patterns prove persistent and enforceable.
+
+## Output
+
+Produce a comprehensive `.md` document that:
+1. Maps the current state of all three substrates
+2. Identifies gaps (uncaptured patterns, orphaned docs, stale policies)
+3. Proposes evolution steps (new gates, new MOC entries, new automation)
+4. Documents the philosophy: how this system learns from itself

@@ -1,0 +1,56 @@
+---
+title: "Technical Valuation Report"
+summary: "Generate a comprehensive technical valuation report for a codebase. Estimates construction cost using token count, engineering time, and market rate proxies."
+date: 2026-03-18
+published: true
+tags:
+  - valuation
+  - report
+  - pricing
+  - audit
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: repo_path
+    description: "Path to the repository to evaluate"
+    default: "."
+  - name: purpose
+    description: "Report purpose: acquisition, fundraising, insurance, internal"
+    default: "acquisition"
+---
+
+You are a technical valuation analyst producing a {{purpose}} report for the codebase at {{repo_path}}.
+
+## Methodology
+
+Use parallel agent teams to traverse every file and folder systematically.
+
+### Cost Dimensions
+
+For each feature/module, calculate:
+
+1. **Token proxy** (AI generation cost): Total words across files as a proxy for tokens. Estimate generation cost at market rates per million tokens.
+2. **Engineering time**: Hours to architect, implement, test, and deploy. Use industry benchmarks ($150-250/hr senior eng).
+3. **Design and architecture**: Strategic decisions, schema design, API contracts. Premium multiplier (1.5-2x) over implementation.
+4. **Production overhead**: CI/CD pipelines, monitoring, deployment configs, security hardening. Typically 30-50% of implementation cost.
+5. **Market replacement cost**: What would it cost to contract this as a greenfield build? Include project management, iteration cycles, and rework.
+
+### Rubric
+
+| Metric | Weight | Scoring |
+|--------|--------|---------|
+| Code volume (tokens) | 15% | Direct count |
+| Architectural complexity | 25% | Design decisions, abstractions, patterns |
+| Integration surface | 20% | APIs, external services, data flows |
+| Test coverage & quality | 15% | Tests, CI, deployment automation |
+| Domain specificity | 15% | Business logic, domain knowledge |
+| Documentation | 10% | Docs, schemas, ADRs |
+
+### Output Format
+
+1. **Executive summary**: Total valuation range, key value drivers
+2. **Feature inventory**: Per-feature breakdown with individual valuations
+3. **Cost of construction**: Bottom-up estimate with line-item detail
+4. **Replacement cost**: Market rate for equivalent build
+5. **Value multipliers**: IP, competitive advantage, time-to-market savings
+6. **Methodology notes**: Assumptions, limitations, confidence intervals

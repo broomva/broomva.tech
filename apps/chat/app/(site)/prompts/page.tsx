@@ -1,0 +1,23 @@
+import { PageHero } from "@/components/site/page-hero";
+import { CategoryFilter } from "@/components/site/category-filter";
+import { getContentList } from "@/lib/content";
+
+export const metadata = {
+  title: "Prompts",
+  description:
+    "Reusable, versioned prompts for agent workflows. Browse by category, copy with one click, or pull via API.",
+};
+
+export default async function PromptsPage() {
+  const entries = await getContentList("prompts");
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+      <PageHero
+        title="Prompts"
+        description="A versioned repository of reusable prompts for agent workflows, code review, research, architecture, and more. Browse, copy, or pull via API."
+      />
+      <CategoryFilter entries={entries} />
+    </main>
+  );
+}
