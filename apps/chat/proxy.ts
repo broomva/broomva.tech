@@ -46,24 +46,32 @@ export async function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const { pathname } = url;
 
+  // Always allow public API routes, metadata, and public pages
   if (
     isPublicApiRoute(pathname) ||
     isMetadataRoute(pathname) ||
-    isPublicPage(pathname) ||
-    isAuthPage(pathname)
+    isPublicPage(pathname)
   ) {
     return;
   }
 
+  // Auth pages (/login, /register) need a session check so we can redirect
+  // logged-in users away — don't short-circuit them above
   const { data: session } = await getSafeSession({
     fetchOptions: { headers: req.headers },
   });
   const isLoggedIn = !!session?.user;
 
-  if (isLoggedIn && isAuthPage(pathname)) {
-    return NextResponse.redirect(new URL("/", url));
+  if (isAuthPage(pathname)) {
+    // Redirect authenticated users away from login/register
+    if (isLoggedIn) {
+      return NextResponse.redirect(new URL("/", url));
+    }
+    // Allow unauthenticated users to reach auth pages
+    return;
   }
 
+  // Block all other routes for unauthenticated users
   if (!isLoggedIn) {
     return NextResponse.redirect(new URL("/login", url));
   }
