@@ -38,8 +38,13 @@ export async function GET(request: NextRequest) {
   const model = searchParams.get("model");
   const format = searchParams.get("format");
 
-  // DB prompts (public)
-  const dbPrompts = await getAllPublicPrompts({ category, tag, model });
+  // DB prompts (public) — gracefully handle missing migration
+  let dbPrompts: UserPrompt[] = [];
+  try {
+    dbPrompts = await getAllPublicPrompts({ category, tag, model });
+  } catch {
+    // DB schema not ready yet (migration pending) — fall through to MDX
+  }
   const dbSlugs = new Set(dbPrompts.map((p) => p.slug));
   const dbSummaries = dbPrompts.map(dbToSummary);
 

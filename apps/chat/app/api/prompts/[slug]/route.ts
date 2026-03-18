@@ -16,8 +16,13 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  // DB first
-  const dbPrompt = await getPromptBySlug(slug);
+  // DB first — gracefully handle missing migration
+  let dbPrompt: Awaited<ReturnType<typeof getPromptBySlug>> | undefined;
+  try {
+    dbPrompt = await getPromptBySlug(slug);
+  } catch {
+    // DB schema not ready yet — fall through to MDX
+  }
   if (dbPrompt) {
     return NextResponse.json({
       title: dbPrompt.title,
