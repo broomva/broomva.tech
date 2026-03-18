@@ -28,7 +28,7 @@ export function Footer() {
             broomva.tech
           </Link>
           <p className="mt-2 text-xs text-text-muted">
-            Building autonomous software systems.
+            Reliability engineering for complex systems.
           </p>
         </div>
         <div className="flex gap-10">
