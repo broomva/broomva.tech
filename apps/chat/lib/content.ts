@@ -185,7 +185,7 @@ export async function getContentBySlug(
   const summary = toSummary(kind, slug, parsed.data as ContentFrontmatter);
   if (!summary.published) return null;
 
-  const processed = await remark().use(remarkHtml).process(parsed.content);
+  const processed = await remark().use(remarkHtml, { sanitize: false }).process(parsed.content);
 
   return {
     ...summary,
