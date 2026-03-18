@@ -77,12 +77,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Auth: check session or API key
   const apiKey = request.headers.get("authorization")?.replace("Bearer ", "");
-  let userId: string | null = null;
-  let userEmail: string | null = null;
+  let userId = "";
+  let userEmail = "";
 
   if (apiKey && apiKey === process.env.PROMPT_API_KEY) {
     // API key auth (for CLI usage) — treat as admin
-    userId = process.env.PROMPT_ADMIN_USER_ID ?? "admin";
+    userId = process.env.PROMPT_ADMIN_USER_ID ?? "";
     userEmail = "carlosdavidescobar@gmail.com";
   } else {
     // Session auth
