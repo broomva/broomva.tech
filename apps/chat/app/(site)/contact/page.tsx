@@ -12,8 +12,8 @@ const contactLinks = [
   {
     icon: Mail,
     label: "Email",
-    handle: "hi@broomva.tech",
-    href: "mailto:hi@broomva.tech",
+    handle: "carlos@broomva.tech",
+    href: "mailto:carlos@broomva.tech",
     description: "Best for collaboration or consulting inquiries.",
   },
   {

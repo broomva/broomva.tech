@@ -18,8 +18,8 @@ const config = {
   organization: {
     name: "broomva.tech",
     contact: {
-      privacyEmail: "hi@broomva.tech",
-      legalEmail: "hi@broomva.tech",
+      privacyEmail: "carlos@broomva.tech",
+      legalEmail: "carlos@broomva.tech",
     },
   },
   services: {
