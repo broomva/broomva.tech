@@ -10,6 +10,10 @@ import type { deepResearch } from "@/lib/ai/tools/deep-research/deep-research";
 import type { generateImageTool as generateImageToolFactory } from "@/lib/ai/tools/generate-image";
 import type { getWeather } from "@/lib/ai/tools/get-weather";
 import type { readDocument } from "@/lib/ai/tools/read-document";
+import type {
+  searchKnowledge,
+  readKnowledgeNote,
+} from "@/lib/ai/tools/knowledge-graph";
 import type { retrieveUrl } from "@/lib/ai/tools/retrieve-url";
 import type { tavilyWebSearch } from "@/lib/ai/tools/web-search";
 import type { AppModelId } from "./app-models";
@@ -35,6 +39,8 @@ export const toolNameSchema = z.enum([
   "codeExecution",
   "generateImage",
   "deepResearch",
+  "searchKnowledge",
+  "readKnowledgeNote",
 ]);
 
 const _ = toolNameSchema.options satisfies ToolName[];
@@ -94,6 +100,8 @@ type generateImageTool = InferUITool<
 type webSearchTool = InferUITool<ReturnType<typeof tavilyWebSearch>>;
 type codeExecutionTool = InferUITool<ReturnType<typeof codeExecution>>;
 type retrieveUrlTool = InferUITool<typeof retrieveUrl>;
+type searchKnowledgeTool = InferUITool<typeof searchKnowledge>;
+type readKnowledgeNoteTool = InferUITool<typeof readKnowledgeNote>;
 
 export type ChatTools = {
   getWeather: weatherTool;
@@ -109,6 +117,8 @@ export type ChatTools = {
   webSearch: webSearchTool;
   codeExecution: codeExecutionTool;
   retrieveUrl: retrieveUrlTool;
+  searchKnowledge: searchKnowledgeTool;
+  readKnowledgeNote: readKnowledgeNoteTool;
 };
 
 type FollowupSuggestions = {

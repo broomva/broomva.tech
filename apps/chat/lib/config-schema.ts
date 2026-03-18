@@ -230,6 +230,9 @@ export const featuresConfigSchema = z
     followupSuggestions: z
       .boolean()
       .describe("Follow-up question suggestions after AI responses"),
+    knowledgeGraph: z
+      .boolean()
+      .describe("Obsidian vault knowledge graph search (requires VAULT_PATH)"),
   })
   .default({
     sandbox: false,
@@ -240,6 +243,7 @@ export const featuresConfigSchema = z
     imageGeneration: false,
     attachments: false,
     followupSuggestions: false,
+    knowledgeGraph: false,
   });
 
 export const authenticationConfigSchema = z

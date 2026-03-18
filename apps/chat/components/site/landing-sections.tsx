@@ -2,7 +2,9 @@
 
 import type { Route } from "next";
 import Link from "next/link";
-import { motion } from "motion/react";
+import { useRouter } from "next/navigation";
+import { useCallback, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import type { ContentSummary } from "@/lib/content";
 import type { GitHubRepo } from "@/lib/github";
 import { ContentCard } from "@/components/site/content-card";
@@ -116,7 +118,6 @@ export function LandingClient({
         <StackSection />
         <BeyondCodeSection />
         <ReposSection repos={repos} />
-        <ChatSection />
         <ProjectsSection projects={projects} />
         <ContentSection writing={writing} notes={notes} />
         <FollowSection />
@@ -130,6 +131,38 @@ export function LandingClient({
 /* ------------------------------------------------------------------ */
 
 function HeroSection() {
+  const router = useRouter();
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const openChat = useCallback(() => {
+    setChatOpen(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    });
+  }, []);
+
+  const submitChat = useCallback(() => {
+    const trimmed = chatInput.trim();
+    if (!trimmed) return;
+    router.push(`/chat?q=${encodeURIComponent(trimmed)}`);
+  }, [chatInput, router]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        submitChat();
+      }
+      if (e.key === "Escape") {
+        setChatOpen(false);
+        setChatInput("");
+      }
+    },
+    [submitChat],
+  );
+
   return (
     <section className="relative flex min-h-[90vh] flex-col items-center justify-center px-4 sm:px-6">
       <Particles
@@ -182,6 +215,7 @@ function HeroSection() {
           workflows.
         </motion.p>
 
+        {/* Inline chat prompt trigger */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -190,20 +224,20 @@ function HeroSection() {
             delay: 0.55,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-10 flex flex-wrap items-center justify-center gap-3"
+          className="mt-10"
         >
-          <Link
-            href="/start-here"
-            className="glass-button glass-button-primary rounded-full px-6 py-3 text-sm font-semibold"
+          <button
+            type="button"
+            onClick={openChat}
+            className="group glass-card mx-auto flex w-full max-w-xl cursor-text items-center justify-between gap-3 px-5 py-4 transition hover:border-ai-blue/40"
           >
-            Start here
-          </Link>
-          <Link
-            href="/contact"
-            className="glass-button rounded-full px-6 py-3 text-sm font-semibold"
-          >
-            Collaborate
-          </Link>
+            <span className="text-sm text-text-muted transition group-hover:text-text-secondary">
+              Prompt Broomva...
+            </span>
+            <span className="glass-button glass-button-primary shrink-0 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em]">
+              Chat
+            </span>
+          </button>
         </motion.div>
       </div>
 
@@ -235,6 +269,93 @@ function HeroSection() {
           />
         </motion.svg>
       </motion.div>
+
+      {/* Full-screen chat overlay */}
+      <AnimatePresence>
+        {chatOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            onClick={() => {
+              setChatOpen(false);
+              setChatInput("");
+            }}
+          >
+            {/* Blurred liquid glass backdrop */}
+            <div className="absolute inset-0 bg-bg-deep/70 backdrop-blur-2xl" />
+            <div className="pointer-events-none absolute -right-32 top-1/4 h-[32rem] w-[32rem] rounded-full bg-ai-blue/15 blur-[140px]" />
+            <div className="pointer-events-none absolute -left-24 bottom-1/4 h-[28rem] w-[28rem] rounded-full bg-web3-green/10 blur-[120px]" />
+            <div className="pointer-events-none absolute left-1/2 top-1/3 h-64 w-64 -translate-x-1/2 rounded-full bg-ai-blue/8 blur-[100px]" />
+
+            {/* Chat input card */}
+            <motion.div
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{
+                duration: 0.45,
+                ease: [0.25, 0.1, 0.25, 1],
+              }}
+              className="relative w-full max-w-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.4 }}
+                className="mb-4 text-center text-xs uppercase tracking-[0.25em] text-ai-blue"
+              >
+                Ask me anything
+              </motion.p>
+
+              <div className="glass-heavy relative overflow-hidden rounded-2xl border border-border/50 shadow-lg shadow-ai-blue/5">
+                <textarea
+                  ref={inputRef}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask about systems thinking, agent architecture, or what I'm building now..."
+                  rows={3}
+                  className="w-full resize-none bg-transparent px-6 pb-14 pt-6 text-base text-text-primary placeholder:text-text-muted/60 focus:outline-none sm:text-lg"
+                />
+
+                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-border/30 px-4 py-3">
+                  <span className="text-[11px] text-text-muted/50">
+                    <kbd className="rounded border border-border/40 px-1.5 py-0.5 font-mono text-[10px]">
+                      Enter
+                    </kbd>
+                    {" "}to send{" · "}
+                    <kbd className="rounded border border-border/40 px-1.5 py-0.5 font-mono text-[10px]">
+                      Esc
+                    </kbd>
+                    {" "}to close
+                  </span>
+                  <button
+                    type="button"
+                    onClick={submitChat}
+                    disabled={!chatInput.trim()}
+                    className="glass-button glass-button-primary rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] disabled:opacity-30 disabled:hover:transform-none"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="mt-4 text-center text-xs text-text-muted/40"
+              >
+                Powered by Broomva AI
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
@@ -424,46 +545,6 @@ function ReposSection({ repos }: { repos: GitHubRepo[] }) {
                 </a>
               </ScrollReveal>
             ))}
-          </div>
-        </div>
-      </ScrollReveal>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Chat CTA                                                           */
-/* ------------------------------------------------------------------ */
-
-function ChatSection() {
-  return (
-    <section className="mt-24 sm:mt-32">
-      <ScrollReveal direction="scale">
-        <div className="glass rounded-3xl p-6 sm:p-10">
-          <div className="mx-auto max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.25em] text-ai-blue">
-              Interactive
-            </p>
-            <h2 className="mt-3 font-display text-3xl text-text-primary sm:text-4xl">
-              Talk with Broomva
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-text-secondary sm:text-base">
-              Ask me about systems thinking, agent architecture, or what
-              I&apos;m building now.
-            </p>
-            <Link
-              href="/chat"
-              className="group glass-card mt-6 block p-4 transition hover:border-ai-blue/40"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-text-muted">
-                  Prompt Broomva...
-                </span>
-                <span className="glass-button glass-button-primary rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em]">
-                  Open chat
-                </span>
-              </div>
-            </Link>
           </div>
         </div>
       </ScrollReveal>

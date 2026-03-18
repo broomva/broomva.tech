@@ -12,6 +12,10 @@ import { editTextDocumentTool } from "@/lib/ai/tools/documents/edit-text-documen
 import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { readDocument } from "@/lib/ai/tools/read-document";
+import {
+  searchKnowledge,
+  readKnowledgeNote,
+} from "@/lib/ai/tools/knowledge-graph";
 import { retrieveUrl } from "@/lib/ai/tools/retrieve-url";
 import { tavilyWebSearch } from "@/lib/ai/tools/web-search";
 import { config } from "@/lib/config";
@@ -96,6 +100,9 @@ export function getTools({
             costAccumulator,
           }),
         }
+      : {}),
+    ...(config.features.knowledgeGraph
+      ? { searchKnowledge, readKnowledgeNote }
       : {}),
   };
 }

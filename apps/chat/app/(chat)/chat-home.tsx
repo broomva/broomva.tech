@@ -12,10 +12,15 @@ export function ChatHome() {
     const value = searchParams.get("modelId");
     return (value as AppModelId) || undefined;
   }, [searchParams]);
+  const initialInput = useMemo(
+    () => searchParams.get("q") ?? undefined,
+    [searchParams],
+  );
   return (
     <ChatSystem
       id={id}
       initialMessages={[]}
+      initialInput={initialInput}
       isReadonly={false}
       overrideModelId={overrideModelId}
     />

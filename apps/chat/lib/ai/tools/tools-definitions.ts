@@ -68,6 +68,16 @@ export const toolsDefinitions: Record<ToolName, ToolDefinition> = {
     description: "Research a topic",
     cost: 0, // LLM calls tracked via usage, Tavily calls counted separately
   },
+  searchKnowledge: {
+    name: "searchKnowledge",
+    description: "Search the knowledge graph",
+    cost: 0, // filesystem only
+  },
+  readKnowledgeNote: {
+    name: "readKnowledgeNote",
+    description: "Read a note from the knowledge graph",
+    cost: 0, // filesystem only
+  },
 };
 
 export const allTools = toolNameSchema.options;

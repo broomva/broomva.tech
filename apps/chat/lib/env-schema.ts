@@ -114,6 +114,12 @@ export const serverEnvSchema = {
     .optional()
     .describe("Vercel sandbox runtime identifier"),
 
+  // Knowledge graph (Obsidian vault)
+  VAULT_PATH: z
+    .string()
+    .optional()
+    .describe("Absolute path to the Obsidian vault directory"),
+
   // App URL (for non-Vercel deployments) - full URL including https://
   APP_URL: z
     .url()

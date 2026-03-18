@@ -53,6 +53,7 @@ const config = {
     imageGeneration: true, // Requires BLOB_READ_WRITE_TOKEN
     attachments: true, // Requires BLOB_READ_WRITE_TOKEN
     followupSuggestions: true,
+    knowledgeGraph: true, // Requires VAULT_PATH
   },
   legal: {
     minimumAge: 13,

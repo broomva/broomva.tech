@@ -12,6 +12,7 @@ import { DefaultModelProvider } from "@/providers/default-model-provider";
 import { SessionProvider } from "@/providers/session-provider";
 import { TRPCReactProvider } from "@/trpc/react";
 import { getQueryClient, HydrateClient, trpc } from "@/trpc/server";
+import { TopNav } from "@/components/site/top-nav";
 import { ChatProviders } from "./chat-providers";
 
 export default async function ChatLayout({
@@ -94,6 +95,7 @@ export default async function ChatLayout({
                   </DefaultModelProvider>
                 </ChatModelsProvider>
               </SidebarInset>
+              <TopNav />
             </SidebarProvider>
           </ChatProviders>
         </SessionProvider>
