@@ -12,6 +12,8 @@ tags:
 
 When the FIFA World Cup 2026 host committees needed to onboard thousands of vendors across multiple cities, they didn't reach for a PDF form and a spreadsheet. They deployed an AI agent.
 
+<video src="/images/writing/fifa-procurement/fifa-procurement.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:32px 0"></video>
+
 ## The problem with procurement at scale
 
 Procurement intake for a global sporting event is a logistics problem disguised as a data collection problem. The FIFA World Cup 2026 is spread across multiple host cities — each with its own compliance requirements, diversity goals, and supplier ecosystems. The New York/New Jersey Host Committee, Philadelphia Soccer 2026, and the City of Philadelphia each need to evaluate thousands of businesses across dozens of service categories: construction, catering, security, transportation, IT, hospitality, and more.
@@ -21,6 +23,8 @@ Traditional procurement portals dump vendors into a 40-field form, expect perfec
 ## What the agent does differently
 
 The Stimulus vendor interest system replaces the static form with a conversational AI agent. When a vendor visits the host committee's intake page, they interact with a chat-based assessment that guides them through structured data collection — one question at a time, with context-aware validation at every step.
+
+![The AI agent greets the vendor and starts collecting structured data through natural conversation](/images/writing/fifa-procurement/agent-chat-start-opt.png)
 
 The agent covers eight structured sections:
 
@@ -35,13 +39,31 @@ The agent covers eight structured sections:
 
 Each section is validated in real-time. The agent understands when an answer is incomplete, contradictory, or needs clarification. It adapts the conversation based on what the vendor has already provided — skipping irrelevant questions, drilling into relevant ones.
 
+![The agent responds to each input, validates data in real-time, and asks follow-up questions with context](/images/writing/fifa-procurement/agent-chat-response-opt.png)
+
+As the vendor progresses, the agent maintains context across the entire conversation — confirming saved data, requesting missing fields, and providing helpful examples for each question.
+
+![Progressive data collection — the agent tracks what has been provided and what still needs to be completed](/images/writing/fifa-procurement/agent-chat-progress-opt.png)
+
 ## Multi-tenant, multi-city, multi-language
 
-The system runs as a multi-tenant platform. Each host committee gets its own isolated tenant with custom branding, compliance rules, and configuration. The NYNJ Host Committee page carries the FIFA World Cup 2026 New York New Jersey branding. Philadelphia Soccer 2026 emphasizes supplier diversity and its commitment to vendors reflecting the city's demographics. The City of Philadelphia tenant connects the World Cup to the broader 2026 event portfolio — the 250th Anniversary of America, the MLB All-Star Game, and more.
+The system runs as a multi-tenant platform. Each host committee gets its own isolated tenant with custom branding, compliance rules, and configuration.
+
+![The NYNJ Host Committee landing page with FIFA World Cup 2026 branding and the Start Assessment call to action](/images/writing/fifa-procurement/nynj-landing-opt.png)
+
+The NYNJ Host Committee page carries the FIFA World Cup 2026 New York New Jersey branding. Philadelphia Soccer 2026 emphasizes supplier diversity and its commitment to vendors reflecting the city's demographics.
+
+![Philadelphia Soccer 2026 — committed to working with vendors who reflect the city's diversity](/images/writing/fifa-procurement/phila2026-landing-opt.png)
+
+The City of Philadelphia tenant connects the World Cup to the broader 2026 event portfolio — the 250th Anniversary of America, the MLB All-Star Game, and more.
+
+![City of Philadelphia 2026 — connecting businesses to opportunities across FIFA, America's 250th, and the MLB All-Star Game](/images/writing/fifa-procurement/cop-landing-opt.png)
 
 All three tenants share the same underlying infrastructure but operate with full data isolation. Tenant-specific certifications (Philadelphia's LBE and SBE programs, for example) are configured per-tenant, not hardcoded. The agent adapts its conversation flow based on which tenant the vendor is engaging with.
 
 Language support is built in. The system detects the vendor's preferred language and conducts the entire conversation accordingly — critical when you're onboarding businesses from international supply chains.
+
+![Multi-language support — vendors can switch between English and Spanish at any point in the conversation](/images/writing/fifa-procurement/agent-language-selector-opt.png)
 
 ## Architecture that enables scale
 
@@ -54,6 +76,8 @@ Public metrics dashboards aggregate anonymized data — total submissions, servi
 ## What this looks like in practice
 
 A vendor visits the NYNJ Host Committee page. They click "Start Assessment." The agent greets them, explains the process (about 10 minutes), and starts collecting information through natural conversation. If they pause and come back, their session is preserved. If they enter something that doesn't validate, the agent explains why and helps them correct it. When they submit, they get a confirmation email with next steps.
+
+![The conversational flow — from greeting to data collection to validation, all in natural language](/images/writing/fifa-procurement/agent-conversation-flow.gif)
 
 On the committee side, procurement officers see a searchable, filterable dashboard of all submitted vendor profiles. They can sort by service category, certification, geography, or capacity. The data is clean because the agent validated it at collection time — not after the fact.
 
