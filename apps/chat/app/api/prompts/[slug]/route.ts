@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { getContentBySlug } from "@/lib/content";
-import { getSafeSession } from "@/lib/auth";
 import {
   getPromptBySlug,
   updateUserPrompt,
@@ -10,6 +8,7 @@ import {
 import { updatePromptSchema } from "@/lib/prompts/validation";
 import { isAdmin } from "@/lib/prompts/admin";
 import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 export async function GET(
   _request: Request,
@@ -47,26 +46,11 @@ export async function GET(
   return NextResponse.json(entry);
 }
 
-async function getAuth(request: Request) {
-  const apiKey = request.headers.get("authorization")?.replace("Bearer ", "");
-  if (apiKey && apiKey === process.env.PROMPT_API_KEY) {
-    return {
-      userId: process.env.PROMPT_ADMIN_USER_ID ?? "admin",
-      email: "carlosdavidescobar@gmail.com",
-    };
-  }
-  const { data: session } = await getSafeSession({
-    fetchOptions: { headers: await headers() },
-  });
-  if (!session?.user?.id) return null;
-  return { userId: session.user.id, email: session.user.email };
-}
-
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const auth = await getAuth(request);
+  const auth = await resolveAuth(request);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -110,7 +94,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const auth = await getAuth(request);
+  const auth = await resolveAuth(request);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

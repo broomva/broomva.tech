@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { headers } from "next/headers";
 import { getContentList } from "@/lib/content";
-import { getSafeSession } from "@/lib/auth";
 import {
   getAllPublicPrompts,
   createUserPrompt,
@@ -11,6 +9,7 @@ import {
 import { createPromptSchema } from "@/lib/prompts/validation";
 import { isAdmin, generateSlug } from "@/lib/prompts/admin";
 import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
 import type { UserPrompt } from "@/lib/db/schema";
 import type { ContentSummary } from "@/lib/content";
 
@@ -75,26 +74,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Auth: check session or API key
-  const apiKey = request.headers.get("authorization")?.replace("Bearer ", "");
-  let userId = "";
-  let userEmail = "";
-
-  if (apiKey && apiKey === process.env.PROMPT_API_KEY) {
-    // API key auth (for CLI usage) — treat as admin
-    userId = process.env.PROMPT_ADMIN_USER_ID ?? "";
-    userEmail = "carlosdavidescobar@gmail.com";
-  } else {
-    // Session auth
-    const { data: session } = await getSafeSession({
-      fetchOptions: { headers: await headers() },
-    });
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    userId = session.user.id;
-    userEmail = session.user.email;
+  const auth = await resolveAuth(request);
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { userId, email: userEmail } = auth;
 
   const body = await request.json();
   const parsed = createPromptSchema.safeParse(body);
