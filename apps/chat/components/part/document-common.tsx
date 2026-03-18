@@ -128,7 +128,7 @@ function PureDocumentToolCall({
       type="button"
     >
       <div className="flex flex-row items-start gap-3">
-        <div className="mt-1 text-zinc-500">
+        <div className="mt-1 text-text-muted">
           {(() => {
             if (type === "create") {
               return <File size={16} />;

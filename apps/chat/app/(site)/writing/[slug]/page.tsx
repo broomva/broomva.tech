@@ -42,10 +42,10 @@ export default async function WritingSlugPage({
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <PageHero title={entry.title} description={entry.summary} />
-      <p className="mt-8 text-xs uppercase tracking-[0.18em] text-zinc-400">
+      <p className="mt-8 text-xs uppercase tracking-[0.18em] text-text-muted">
         {formatDate(entry.date)}
       </p>
-      <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6 sm:p-8">
+      <div className="mt-8 glass rounded-2xl p-6 sm:p-8">
         <ProseContent html={entry.html} />
       </div>
     </main>

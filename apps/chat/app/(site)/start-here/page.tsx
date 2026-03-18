@@ -32,10 +32,10 @@ export default async function StartHerePage() {
         description="I build autonomous software systems: a Rust Agent OS stack with orchestration, governance, and kernel layers that turn LLM capability into reliable, controllable workflows. This page is the shortest route to my best work."
       />
 
-      <section className="mt-10 grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6 sm:grid-cols-2 sm:gap-6">
+      <section className="mt-10 grid gap-4 rounded-2xl glass p-6 sm:grid-cols-2 sm:gap-6">
         <div>
           <h2 className="font-display text-2xl">What I build</h2>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+          <p className="mt-3 text-sm leading-relaxed text-text-secondary">
             A Rust-native Agent OS stack: Symphony for orchestration, a control
             metalayer for governance, and aiOS as the kernel. Plus harness
             engineering patterns that make agents reliable in production.
@@ -43,7 +43,7 @@ export default async function StartHerePage() {
         </div>
         <div>
           <h2 className="font-display text-2xl">Why it matters</h2>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+          <p className="mt-3 text-sm leading-relaxed text-text-secondary">
             Most failures are not model failures. They are harness failures. I
             focus on the systems-level primitives that make agents controllable,
             observable, and useful under real constraints.
@@ -56,7 +56,7 @@ export default async function StartHerePage() {
           <h2 className="font-display text-3xl">Best projects</h2>
           <Link
             href="/projects"
-            className="text-sm text-emerald-300 transition hover:text-emerald-200"
+            className="text-sm text-ai-blue transition hover:text-web3-green"
           >
             All projects
           </Link>
@@ -106,7 +106,7 @@ export default async function StartHerePage() {
         </div>
       </section>
 
-      <section className="mt-12 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6">
+      <section className="mt-12 rounded-2xl glass p-6">
         <h2 className="font-display text-2xl">Where to follow</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           {followLinks.map((item) => (
@@ -114,7 +114,7 @@ export default async function StartHerePage() {
               <Link
                 key={item.href}
                 href={item.href as Route}
-                className="rounded-full border border-zinc-700 px-4 py-2 text-sm transition hover:border-zinc-500 hover:text-emerald-200"
+                className="rounded-full border border-border px-4 py-2 text-sm transition hover:border-ai-blue/40 hover:text-ai-blue"
               >
                 {item.label}
               </Link>
@@ -124,7 +124,7 @@ export default async function StartHerePage() {
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-zinc-700 px-4 py-2 text-sm transition hover:border-zinc-500 hover:text-emerald-200"
+                className="rounded-full border border-border px-4 py-2 text-sm transition hover:border-ai-blue/40 hover:text-ai-blue"
               >
                 {item.label}
               </a>

@@ -16,7 +16,7 @@ export const Greeting = () => (
     </motion.div>
     <motion.div
       animate={{ opacity: 1, y: 0 }}
-      className="text-2xl text-zinc-500"
+      className="text-2xl text-text-muted"
       exit={{ opacity: 0, y: 10 }}
       initial={{ opacity: 0, y: 10 }}
       transition={{ delay: 0.6 }}

@@ -283,7 +283,7 @@ function PureArtifactPanel({
       <ArtifactHeader className="items-start bg-background/80 p-2">
         <div className="flex flex-row items-start gap-4">
           <ArtifactClose
-            className="h-fit p-2 dark:hover:bg-zinc-700"
+            className="h-fit p-2 hover:bg-bg-hover"
             data-testid="artifact-close-button"
             onClick={closeArtifact}
             variant="outline"

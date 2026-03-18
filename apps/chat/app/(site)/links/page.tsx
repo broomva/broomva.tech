@@ -209,7 +209,7 @@ export const metadata = {
 
 function renderPill(link: { href: string; label: string; internal?: boolean }) {
   const className =
-    "rounded-full border border-zinc-700 px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-zinc-300 transition hover:border-zinc-500 hover:text-emerald-200";
+    "rounded-full border border-border px-3 py-1.5 text-xs uppercase tracking-[0.16em] text-text-secondary transition hover:border-ai-blue/40 hover:text-ai-blue";
 
   if (link.internal) {
     return (
@@ -245,17 +245,17 @@ export default async function LinksPage() {
       <section className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {primaryDestinations.map((item) => {
           const className =
-            "group block rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 transition hover:-translate-y-0.5 hover:border-emerald-300/40 hover:bg-zinc-900";
+            "group block rounded-2xl glass-card transition hover:-translate-y-0.5 hover:border-ai-blue/40";
 
           const content = (
             <>
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">
+              <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
                 {item.label}
               </p>
-              <p className="mt-2 font-display text-2xl text-zinc-100 transition group-hover:text-emerald-200">
+              <p className="mt-2 font-display text-2xl text-text-primary transition group-hover:text-ai-blue">
                 {item.handle}
               </p>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+              <p className="mt-3 text-sm leading-relaxed text-text-secondary">
                 {item.description}
               </p>
             </>
@@ -287,17 +287,17 @@ export default async function LinksPage() {
         })}
       </section>
 
-      <section className="mt-12 rounded-3xl border border-zinc-800 bg-zinc-900/30 p-6 sm:p-8">
+      <section className="mt-12 rounded-3xl glass p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
+            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
               Profiles
             </p>
-            <h2 className="mt-2 font-display text-3xl text-zinc-100">
+            <h2 className="mt-2 font-display text-3xl text-text-primary">
               Public accounts
             </h2>
           </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
+          <p className="max-w-2xl text-sm leading-relaxed text-text-muted">
             These are the main external profiles and legacy properties linked
             from the older public hub.
           </p>
@@ -310,14 +310,14 @@ export default async function LinksPage() {
       <section className="mt-12">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
+            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
               Projects
             </p>
-            <h2 className="mt-2 font-display text-3xl text-zinc-100">
+            <h2 className="mt-2 font-display text-3xl text-text-primary">
               Current work
             </h2>
           </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
+          <p className="max-w-2xl text-sm leading-relaxed text-text-muted">
             Every project page in this repo, plus its repository and live links
             when available.
           </p>
@@ -326,22 +326,22 @@ export default async function LinksPage() {
           {projects.map((project) => (
             <article
               key={project.slug}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5"
+              className="rounded-2xl glass-card"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <Link
                     href={`/projects/${project.slug}` as Route}
-                    className="font-display text-2xl text-zinc-100 transition hover:text-emerald-200"
+                    className="font-display text-2xl text-text-primary transition hover:text-ai-blue"
                   >
                     {project.title}
                   </Link>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+                  <p className="mt-3 text-sm leading-relaxed text-text-secondary">
                     {project.summary}
                   </p>
                 </div>
                 {project.status ? (
-                  <span className="rounded-full border border-zinc-700 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-zinc-300">
+                  <span className="rounded-full border border-border px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-text-secondary">
                     {project.status}
                   </span>
                 ) : null}
@@ -367,14 +367,14 @@ export default async function LinksPage() {
       <section className="mt-12">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
+            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
               Deployment inventory
             </p>
-            <h2 className="mt-2 font-display text-3xl text-zinc-100">
+            <h2 className="mt-2 font-display text-3xl text-text-primary">
               `*.broomva.tech` scan
             </h2>
           </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
+          <p className="max-w-2xl text-sm leading-relaxed text-text-muted">
             Public subdomains discovered from live probing and certificate
             records. Inactive hosts stay listed here for completeness.
           </p>
@@ -386,20 +386,20 @@ export default async function LinksPage() {
               href={deployment.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 transition hover:-translate-y-0.5 hover:border-emerald-300/40 hover:bg-zinc-900"
+              className="rounded-2xl glass-card transition hover:-translate-y-0.5 hover:border-ai-blue/40"
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="font-display text-xl text-zinc-100">
+                <p className="font-display text-xl text-text-primary">
                   {deployment.host}
                 </p>
-                <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-300">
+                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-text-secondary">
                   {deployment.status}
                 </span>
               </div>
-              <p className="mt-3 text-xs uppercase tracking-[0.16em] text-zinc-500">
+              <p className="mt-3 text-xs uppercase tracking-[0.16em] text-text-muted">
                 {deployment.category}
               </p>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+              <p className="mt-3 text-sm leading-relaxed text-text-secondary">
                 {deployment.description}
               </p>
             </a>
