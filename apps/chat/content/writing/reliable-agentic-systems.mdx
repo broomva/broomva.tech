@@ -36,6 +36,8 @@ Consider: an agent generates a correct database migration. But the harness doesn
 - Tool calls are idempotent — running the same tool twice produces the same result, not a duplicate side effect.
 - Error channels are typed — a `ValidationError` carries field-level details, not a string. The harness can decide whether to retry, skip, or escalate.
 - State is inspectable — at any point, an operator can see what the agent has done, what it plans to do, and what it would take to undo the last action.
+- Timeouts are structural, not hopeful — every tool call has a deadline. If a code-generation step takes longer than 30 seconds, the harness kills it and falls back to a cached result or escalates. No hanging processes, no silent stalls.
+- Resource scopes are bounded — the agent can write to `src/` but not to `.env`. It can create branches but not merge to `main`. The harness enforces these boundaries before the model even sees the prompt, so a confused agent cannot do damage it was never allowed to do.
 
 ## What changes when you do this
 

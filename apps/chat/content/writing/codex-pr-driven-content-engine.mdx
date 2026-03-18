@@ -35,6 +35,10 @@ The human makes decisions. The agent executes. The gates enforce quality.
 - Images optimized and under 500KB
 - Vercel preview deployment builds successfully before merge
 
+## A real example
+
+PR #5 on this site: "improve all MDX content." The agent touched 14 files across writing and project pages — +97/-46 lines. Every file kept its frontmatter intact. The PR ran through typecheck, lint, and build gates automatically. No manual fixes needed. Merged the same day it was opened. That is one Tuesday's work with the engine running.
+
 ## Why this works
 
 - Throughput improves because execution is parallelized.
