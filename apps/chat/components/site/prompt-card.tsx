@@ -43,7 +43,7 @@ export function PromptCard({
           </span>
         ) : null}
         {model ? (
-          <span className="rounded-full bg-web3-green/10 px-2.5 py-0.5 text-[11px] font-medium text-web3-green">
+          <span className="rounded-full bg-ai-blue/10 px-2.5 py-0.5 text-[11px] font-medium text-ai-blue">
             {model}
           </span>
         ) : null}

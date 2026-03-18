@@ -50,7 +50,7 @@ export default async function PromptSlugPage({
           </span>
         ) : null}
         {entry.model ? (
-          <span className="rounded-full bg-web3-green/10 px-3 py-1 text-xs font-medium text-web3-green">
+          <span className="rounded-full bg-ai-blue/10 px-3 py-1 text-xs font-medium text-ai-blue">
             {entry.model}
           </span>
         ) : null}
@@ -93,7 +93,7 @@ export default async function PromptSlugPage({
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-ai-blue transition hover:text-web3-green"
+                  className="text-sm text-ai-blue transition hover:text-ai-blue"
                 >
                   {link.label}
                 </a>

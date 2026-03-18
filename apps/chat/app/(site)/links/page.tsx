@@ -83,8 +83,8 @@ const profileLinks = [
   },
   {
     label: "X",
-    handle: "x.com/broomva_",
-    href: "https://x.com/broomva_",
+    handle: "x.com/broomva_tech",
+    href: "https://x.com/broomva_tech",
   },
   {
     label: "Legacy landing",
@@ -290,7 +290,7 @@ export default async function LinksPage() {
       <section className="mt-12 rounded-3xl glass p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
+            <p className="text-xs uppercase tracking-[0.2em] text-ai-blue">
               Profiles
             </p>
             <h2 className="mt-2 font-display text-3xl text-text-primary">
@@ -310,7 +310,7 @@ export default async function LinksPage() {
       <section className="mt-12">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
+            <p className="text-xs uppercase tracking-[0.2em] text-ai-blue">
               Projects
             </p>
             <h2 className="mt-2 font-display text-3xl text-text-primary">
@@ -367,7 +367,7 @@ export default async function LinksPage() {
       <section className="mt-12">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
+            <p className="text-xs uppercase tracking-[0.2em] text-ai-blue">
               Deployment inventory
             </p>
             <h2 className="mt-2 font-display text-3xl text-text-primary">

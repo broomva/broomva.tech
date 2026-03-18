@@ -12,7 +12,7 @@ const navLinks = [
 const socialLinks = [
   { href: "https://github.com/broomva", label: "GitHub" },
   { href: "https://www.linkedin.com/in/broomva/", label: "LinkedIn" },
-  { href: "https://x.com/broomva_", label: "X" },
+  { href: "https://x.com/broomva_tech", label: "X" },
   { href: "/links", label: "Link hub" },
 ];
 

@@ -15,7 +15,7 @@ const followLinks = [
   { href: "/links", label: "Link hub" },
   { href: "https://github.com/broomva", label: "GitHub" },
   { href: "https://www.linkedin.com/in/broomva/", label: "LinkedIn" },
-  { href: "https://x.com/broomva_", label: "X" },
+  { href: "https://x.com/broomva_tech", label: "X" },
 ];
 
 export default async function StartHerePage() {
@@ -56,7 +56,7 @@ export default async function StartHerePage() {
           <h2 className="font-display text-3xl">Best projects</h2>
           <Link
             href="/projects"
-            className="text-sm text-ai-blue transition hover:text-web3-green"
+            className="text-sm text-ai-blue transition hover:text-ai-blue/80"
           >
             All projects
           </Link>

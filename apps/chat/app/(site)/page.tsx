@@ -8,7 +8,7 @@ import { getLatest, getPinnedProjects } from "@/lib/content";
 const socials = [
   { href: "https://github.com/broomva", label: "GitHub" },
   { href: "https://www.linkedin.com/in/broomva/", label: "LinkedIn" },
-  { href: "https://x.com/broomva_", label: "X" },
+  { href: "https://x.com/broomva_tech", label: "X" },
   { href: "/links", label: "Link hub" },
 ];
 
@@ -50,7 +50,7 @@ export default async function Home() {
       <section className="glass-card relative overflow-hidden px-6 py-16 sm:px-12">
         <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-ai-blue/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-web3-green/10 blur-3xl" />
-        <p className="relative text-xs uppercase tracking-[0.25em] text-web3-green">
+        <p className="relative text-xs uppercase tracking-[0.25em] text-ai-blue">
           Carlos D. Escobar-Valbuena
         </p>
         <h1 className="relative mt-3 font-display text-4xl text-text-primary sm:text-6xl">
@@ -103,7 +103,7 @@ export default async function Home() {
       {/* Stack */}
       <section className="mt-10">
         <div className="glass rounded-3xl p-6 sm:p-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
+          <p className="text-xs uppercase tracking-[0.2em] text-ai-blue">
             Agent OS Stack
           </p>
           <h2 className="mt-2 font-display text-3xl text-text-primary sm:text-4xl">
@@ -130,7 +130,7 @@ export default async function Home() {
       <section className="mt-10">
         <div className="glass rounded-3xl p-6 sm:p-8">
           <div className="mx-auto max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
+            <p className="text-xs uppercase tracking-[0.2em] text-ai-blue">
               Interactive
             </p>
             <h2 className="mt-2 font-display text-3xl text-text-primary sm:text-4xl">
@@ -165,7 +165,7 @@ export default async function Home() {
           </h2>
           <Link
             href="/projects"
-            className="text-sm text-ai-blue transition hover:text-web3-green"
+            className="text-sm text-ai-blue transition hover:text-ai-blue"
           >
             View all
           </Link>
@@ -193,7 +193,7 @@ export default async function Home() {
             </h2>
             <Link
               href="/writing"
-              className="text-sm text-ai-blue transition hover:text-web3-green"
+              className="text-sm text-ai-blue transition hover:text-ai-blue"
             >
               Read all
             </Link>
@@ -218,7 +218,7 @@ export default async function Home() {
             </h2>
             <Link
               href="/notes"
-              className="text-sm text-ai-blue transition hover:text-web3-green"
+              className="text-sm text-ai-blue transition hover:text-ai-blue"
             >
               Browse notes
             </Link>
