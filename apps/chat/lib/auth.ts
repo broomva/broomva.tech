@@ -3,10 +3,23 @@ import { env } from "@/lib/env";
 
 const neonAuthBaseUrl = process.env.NEON_AUTH_BASE_URL;
 
+const cookieSecret =
+  process.env.NEON_AUTH_COOKIE_SECRET || env.AUTH_SECRET || "";
+
+if (
+  neonAuthBaseUrl &&
+  process.env.NODE_ENV === "production" &&
+  cookieSecret.length < 32
+) {
+  throw new Error(
+    "AUTH_SECRET or NEON_AUTH_COOKIE_SECRET must be set (>=32 chars) in production",
+  );
+}
+
 export const auth = createNeonAuth({
   baseUrl: neonAuthBaseUrl || process.env.APP_URL || "http://localhost:3001",
   cookies: {
-    secret: process.env.NEON_AUTH_COOKIE_SECRET || env.AUTH_SECRET || "default_secret_for_build",
+    secret: cookieSecret || "insecure-dev-only-secret-do-not-use-in-prod",
   },
 });
 
