@@ -61,7 +61,10 @@ The layers compound. Each one you activate multiplies what the layers above can 
 
 The control metalayer is what turns a repository from a passive code store into an active control surface.
 
-![The seven-layer architecture — foundation through strategy](/images/writing/autonomous-dev-workflows/seven-layers.png)
+<figure style="max-width:600px;margin:28px auto;text-align:center">
+<img src="/images/writing/autonomous-dev-workflows/seven-layers.png" alt="The seven-layer architecture — foundation through strategy" style="width:100%;border-radius:12px" />
+<figcaption style="font-size:13px;color:#94a3b8;margin-top:8px">The seven composable layers — foundation through strategy</figcaption>
+</figure>
 
 Initialize it in any project:
 
@@ -97,7 +100,12 @@ The agent never touches the plant directly. Every mutation passes through the sh
 
 ## Scene 3: The control loop in action
 
-![The control loop — observe, plan, act, verify, adapt](/images/writing/autonomous-dev-workflows/control-loop.png)
+<div style="display:flex;gap:36px;align-items:flex-start;margin:24px 0">
+<figure style="flex:0 0 42%;margin:0;text-align:center">
+<img src="/images/writing/autonomous-dev-workflows/control-loop.png" alt="The control loop — observe, plan, act, verify, adapt" style="width:100%;border-radius:12px" />
+<figcaption style="font-size:13px;color:#94a3b8;margin-top:8px">Observe → Plan → Act → Verify → Adapt</figcaption>
+</figure>
+<div style="flex:1;min-width:0">
 
 With the metalayer in place, your agent operates in a classical control loop applied to software development:
 
@@ -110,6 +118,9 @@ With the metalayer in place, your agent operates in a classical control loop app
 **Verify.** Harness gates run automatically — `make smoke` → `make check` → `make test`. If any gate fails, the agent diagnoses the failure and iterates.
 
 **Adapt.** Results feed back into the belief state. The ledger records what happened. The next cycle starts with richer context.
+
+</div>
+</div>
 
 This loop runs at different rates depending on the task:
 
@@ -128,7 +139,10 @@ The agent handles the supervisory and improvement loops. The harness handles eve
 
 An agent that starts blank every session will repeat solved problems, contradict prior decisions, and violate invisible constraints. The consciousness stack solves this with three memory substrates.
 
-![The consciousness stack — three substrates merging into persistent context](/images/writing/autonomous-dev-workflows/consciousness-stack.png)
+<figure style="max-width:520px;margin:28px auto;text-align:center">
+<img src="/images/writing/autonomous-dev-workflows/consciousness-stack.png" alt="The consciousness stack — three substrates merging into persistent context" style="width:100%;border-radius:12px" />
+<figcaption style="font-size:13px;color:#94a3b8;margin-top:8px">Three memory substrates → persistent context</figcaption>
+</figure>
 
 ### Substrate 1: Control metalayer (behavioral governance)
 
@@ -174,9 +188,12 @@ Each level is more permanent and more expensive to change. An agent that has run
 
 Single-agent control loops are powerful. Multi-agent orchestration is where the leverage compounds.
 
-![Symphony — multi-agent dispatch and orchestration](/images/writing/autonomous-dev-workflows/symphony-dispatch.png)
-
 **Symphony** is a runtime daemon that listens to your issue tracker (Linear, GitHub) and dispatches agents per ticket. The pattern is: **poll → dispatch → per-issue worker → reconcile**.
+
+<figure style="max-width:650px;margin:28px auto;text-align:center">
+<img src="/images/writing/autonomous-dev-workflows/symphony-dispatch.png" alt="Symphony — multi-agent dispatch and orchestration" style="width:100%;border-radius:12px" />
+<figcaption style="font-size:13px;color:#94a3b8;margin-top:8px">Multi-agent dispatch — poll, dispatch, per-issue workers, reconcile</figcaption>
+</figure>
 
 Initialize Symphony in your project:
 
@@ -232,11 +249,12 @@ Pull requests are the natural guardrail. They give humans a review point without
 
 The final scene is where the system learns to improve itself.
 
-![EGRI — the recursive self-improvement spiral](/images/writing/autonomous-dev-workflows/egri-loop.png)
-
 **EGRI** (Evaluator-Governed Recursive Improvement) is the framework for turning vague optimization goals into bounded, safe improvement loops. The core constraint:
 
 > The evaluator is immutable. The artifact is mutable. The evaluator determines what "better" means. The artifact is what gets better.
+
+<div style="display:flex;gap:36px;align-items:flex-start;margin:28px 0">
+<div style="flex:1;min-width:0">
 
 Define a problem spec for your controller:
 
@@ -244,13 +262,23 @@ Define a problem spec for your controller:
 # problem-spec.control.yaml
 artifact: "src/controllers/ticket-handler.ts"
 evaluator: "tests/eval/ticket-handler-eval.ts"
-mutation_surface: ["prompt templates", "tool selection logic", "retry policy"]
+mutation_surface:
+  - "prompt templates"
+  - "tool selection logic"
+  - "retry policy"
 promotion_policy:
   metric: "ticket_resolution_rate"
   threshold: 0.85
   window: "7d"
 rollback: "git revert HEAD"
 ```
+
+</div>
+<figure style="flex:0 0 45%;margin:0;text-align:center">
+<img src="/images/writing/autonomous-dev-workflows/egri-loop.png" alt="EGRI — the recursive self-improvement spiral" style="width:100%;border-radius:12px" />
+<figcaption style="font-size:13px;color:#94a3b8;margin-top:8px">Evaluator-governed recursive improvement</figcaption>
+</figure>
+</div>
 
 The EGRI loop:
 

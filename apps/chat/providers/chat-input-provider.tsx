@@ -65,12 +65,6 @@ export function ChatInputProvider({
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(
     autoSubmitRef.current
   );
-  if (typeof window !== "undefined") {
-    const w = window as Record<string, unknown>;
-    if (!w.__chatInputLog) w.__chatInputLog = [];
-    (w.__chatInputLog as string[]).push(JSON.stringify({ autoSubmit, initialInput: initialInput.slice(0, 10), ref: autoSubmitRef.current, pending: pendingAutoSubmit, ts: Date.now() }));
-    w.__chatInputDebug = { autoSubmit, initialInput, autoSubmitRef: autoSubmitRef.current, pendingAutoSubmit };
-  }
 
   const tryConsumeAutoSubmit = useCallback(() => {
     if (!autoSubmitRef.current) return false;
