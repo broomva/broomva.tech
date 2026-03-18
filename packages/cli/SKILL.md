@@ -26,13 +26,21 @@ bun add -g @broomva/cli      # global install
 ## Authentication
 
 ```bash
-broomva auth login    # Opens browser, paste token
+broomva auth login    # Guided login: sign in → get token → paste
 broomva auth status   # Check auth state
 broomva auth token    # Print current token
 broomva auth logout   # Remove stored token
 ```
 
-Token is stored in `~/.broomva/config.json` (0o600). Resolution: `--token` flag > `BROOMVA_API_TOKEN` env > config file.
+### How it works
+
+1. **Sign in** at [broomva.tech](https://broomva.tech) using email/password, Google, or GitHub.
+   Accounts with the same email are automatically linked — you can sign up with email
+   and later log in with Google (or vice versa) and it resolves to the same user.
+2. **Get your token** at `https://broomva.tech/api/auth/api-token` (requires active session).
+3. **Paste it** when `broomva auth login` prompts you, or set `BROOMVA_API_TOKEN` env var.
+
+Token is stored in `~/.broomva/config.json` (0o600). Resolution order: `--token` flag > `BROOMVA_API_TOKEN` env > config file. Tokens are session-scoped and auto-expire.
 
 ## Commands
 

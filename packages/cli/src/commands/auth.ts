@@ -16,9 +16,11 @@ export function authCommand(): Command {
       const config = readConfig();
       const base = config.apiBase ?? DEFAULT_API_BASE;
 
-      info(`Open this URL in your browser to get an API token:\n`);
-      console.log(`  ${base}/api/auth/api-token\n`);
-      info("Log in if needed, then copy the token and paste it below.\n");
+      info("1. Sign in at broomva.tech (email, Google, or GitHub)\n");
+      info("   Accounts with the same email are automatically linked.\n");
+      info("2. Open this URL to get your API token:\n");
+      console.log(`   ${base}/api/auth/api-token\n`);
+      info("3. Copy the \"token\" value and paste it below.\n");
 
       const rl = createInterface({ input: process.stdin, output: process.stdout });
       const token = (await rl.question("Token: ")).trim();
