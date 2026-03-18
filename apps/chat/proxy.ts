@@ -31,6 +31,7 @@ function isPublicPage(pathname: string): boolean {
     pathname.startsWith("/start-here") ||
     pathname.startsWith("/now") ||
     pathname.startsWith("/contact") ||
+    pathname.startsWith("/prompts") ||
     pathname.startsWith("/share/") ||
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/terms")
