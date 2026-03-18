@@ -106,7 +106,7 @@ export function SidebarChatsList() {
 
   if (chats.length === 0) {
     return (
-      <div className="flex w-full flex-row items-center justify-center gap-2 px-2 py-4 text-sm text-zinc-500">
+      <div className="flex w-full flex-row items-center justify-center gap-2 px-2 py-4 text-sm text-text-muted">
         Start chatting to see your conversation history!
       </div>
     );

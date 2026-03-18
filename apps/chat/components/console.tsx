@@ -54,16 +54,16 @@ export function Console({
 
   return consoleOutputs.length > 0 ? (
     <div className={cn("flex w-full flex-col overflow-hidden", className)}>
-      <div className="flex h-full w-full flex-col overflow-x-hidden overflow-y-scroll border-zinc-200 border-t bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-        <div className="sticky top-0 z-50 flex h-fit w-full flex-row items-center justify-between border-zinc-200 border-b bg-muted px-2 py-1 dark:border-zinc-700">
-          <div className="flex flex-row items-center gap-3 pl-2 text-sm text-zinc-800 dark:text-zinc-50">
+      <div className="flex h-full w-full flex-col overflow-x-hidden overflow-y-scroll border-border border-t bg-muted">
+        <div className="sticky top-0 z-50 flex h-fit w-full flex-row items-center justify-between border-border border-b bg-muted px-2 py-1">
+          <div className="flex flex-row items-center gap-3 pl-2 text-sm text-foreground">
             <div className="text-muted-foreground">
               <Terminal size={16} />
             </div>
             <div>Console</div>
           </div>
           <Button
-            className="size-fit p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+            className="size-fit p-1 hover:bg-bg-hover"
             onClick={() => setConsoleOutputs([])}
             size="icon"
             variant="ghost"
@@ -75,7 +75,7 @@ export function Console({
         <div>
           {consoleOutputs.map((consoleOutput, index) => (
             <div
-              className="flex flex-row border-zinc-200 border-b bg-zinc-50 px-4 py-2 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              className="flex flex-row border-border border-b bg-muted px-4 py-2 font-mono text-sm"
               key={consoleOutput.id}
             >
               <div
@@ -84,8 +84,8 @@ export function Console({
                     "in_progress",
                     "loading_packages",
                   ].includes(consoleOutput.status),
-                  "text-emerald-500": consoleOutput.status === "completed",
-                  "text-red-400": consoleOutput.status === "failed",
+                  "text-web3-green": consoleOutput.status === "completed",
+                  "text-error": consoleOutput.status === "failed",
                 })}
               >
                 [{index + 1}]
@@ -102,7 +102,7 @@ export function Console({
                   </div>
                 </div>
               ) : (
-                <div className="flex w-full flex-col gap-2 overflow-x-scroll text-zinc-900 dark:text-zinc-50">
+                <div className="flex w-full flex-col gap-2 overflow-x-scroll text-foreground">
                   {consoleOutput.contents.map((content, contentIndex) =>
                     content.type === "image" ? (
                       <picture key={`${consoleOutput.id}-${contentIndex}`}>

@@ -74,7 +74,7 @@ export function ImageActions({
   return (
     <div className={cn("flex items-center gap-1", className)}>
       <Button
-        className="bg-black/50 text-white hover:bg-black/70 hover:text-white"
+        className="bg-bg-deep/50 text-text-primary hover:bg-bg-deep/70 hover:text-text-primary"
         onClick={(e) => handleCopyImage(e, imageUrl)}
         size="icon-sm"
         title="Copy image"
@@ -84,7 +84,7 @@ export function ImageActions({
         <span className="sr-only">Copy image</span>
       </Button>
       <Button
-        className="bg-black/50 text-white hover:bg-black/70 hover:text-white"
+        className="bg-bg-deep/50 text-text-primary hover:bg-bg-deep/70 hover:text-text-primary"
         onClick={(e) => handleDownload(e, imageUrl)}
         size="icon-sm"
         title="Download image"

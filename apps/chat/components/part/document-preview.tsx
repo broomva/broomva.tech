@@ -137,7 +137,7 @@ const LoadingSkeleton = ({
   artifactKind: ArtifactKind;
 }) => (
   <div className="w-full">
-    <div className="flex h-[57px] flex-row items-center justify-between gap-2 rounded-t-2xl border border-b-0 p-4 dark:border-zinc-700 dark:bg-muted">
+    <div className="flex h-[57px] flex-row items-center justify-between gap-2 rounded-t-2xl border border-b-0 p-4 border-border bg-muted">
       <div className="flex flex-row items-center gap-3">
         <div className="text-muted-foreground">
           <div className="size-4 animate-pulse rounded-md bg-muted-foreground/20" />
@@ -149,7 +149,7 @@ const LoadingSkeleton = ({
       </div>
     </div>
 
-    <div className="overflow-y-scroll rounded-b-2xl border border-t-0 bg-muted p-8 pt-4 dark:border-zinc-700">
+    <div className="overflow-y-scroll rounded-b-2xl border border-t-0 bg-muted p-8 pt-4 border-border">
       <InlineDocumentSkeleton />
     </div>
   </div>
@@ -199,7 +199,7 @@ const PureHitboxLayer = ({
       role="presentation"
     >
       <div className="flex w-full items-center justify-end p-4">
-        <div className="absolute top-[13px] right-[9px] rounded-md p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700">
+        <div className="absolute top-[13px] right-[9px] rounded-md p-2 hover:bg-bg-hover">
           <Maximize size={16} />
         </div>
       </div>
@@ -239,7 +239,7 @@ const PureDocumentHeader = ({
   isStreaming: boolean;
   type: "create" | "update";
 }) => (
-  <div className="flex flex-row items-start justify-between gap-2 rounded-t-2xl border border-b-0 p-4 sm:items-center dark:border-zinc-700 dark:bg-muted">
+  <div className="flex flex-row items-start justify-between gap-2 rounded-t-2xl border border-b-0 p-4 sm:items-center border-border bg-muted">
     <div className="flex flex-row items-start gap-3 sm:items-center">
       <div className="text-muted-foreground">
         {(() => {
@@ -281,7 +281,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
   const { artifact } = useArtifact();
 
   const containerClassName = cn(
-    "h-[257px] overflow-y-scroll rounded-b-2xl border border-t-0 dark:border-zinc-700 dark:bg-muted",
+    "h-[257px] overflow-y-scroll rounded-b-2xl border border-t-0 border-border bg-muted",
     {
       "p-4 sm:px-14 sm:py-16": document.kind === "text",
       "p-0": document.kind === "code",

@@ -56,21 +56,21 @@ export default function ContactPage() {
         {contactLinks.map((item) => {
           const Icon = item.icon;
           const className =
-            "rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 transition hover:-translate-y-0.5 hover:border-emerald-300/40 hover:bg-zinc-900";
+            "glass-card transition hover:-translate-y-0.5 hover:border-ai-blue/40";
           const content = (
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">
+                <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
                   {item.label}
                 </p>
-                <p className="mt-2 font-display text-2xl text-zinc-100">
+                <p className="mt-2 font-display text-2xl text-text-primary">
                   {item.handle}
                 </p>
-                <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+                <p className="mt-3 text-sm leading-relaxed text-text-secondary">
                   {item.description}
                 </p>
               </div>
-              <span className="rounded-full border border-zinc-700 p-2 text-zinc-200">
+              <span className="rounded-full border border-border p-2 text-text-primary">
                 <Icon size={18} />
               </span>
             </div>

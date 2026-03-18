@@ -43,10 +43,10 @@ export default async function ProjectPage({
     <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <PageHero title={project.title} description={project.summary} />
 
-      <div className="mt-8 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-zinc-400">
+      <div className="mt-8 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-text-muted">
         <span>{formatDate(project.date)}</span>
         {project.status ? (
-          <span className="rounded-full border border-zinc-700 px-2 py-1">
+          <span className="rounded-full border border-border px-2 py-1">
             {project.status}
           </span>
         ) : null}
@@ -60,7 +60,7 @@ export default async function ProjectPage({
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full border border-zinc-700 px-4 py-2 text-sm transition hover:border-zinc-500 hover:text-emerald-200"
+              className="rounded-full border border-border px-4 py-2 text-sm transition hover:border-ai-blue/40 hover:text-ai-blue"
             >
               {link.label}
             </a>
@@ -68,7 +68,7 @@ export default async function ProjectPage({
         </div>
       ) : null}
 
-      <div className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6 sm:p-8">
+      <div className="mt-10 glass rounded-2xl p-6 sm:p-8">
         <ProseContent html={project.html} />
       </div>
     </main>
