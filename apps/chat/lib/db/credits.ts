@@ -30,25 +30,29 @@ export async function getCredits(userId: string): Promise<number> {
 }
 
 /**
- * Check if user has positive credits (can spend).
+ * Check if user has sufficient credits (can spend).
  */
-export async function canSpend(userId: string): Promise<boolean> {
+export async function canSpend(
+  userId: string,
+  minimumBalance = 0,
+): Promise<boolean> {
   const credits = await getCredits(userId);
-  return credits > 0;
+  return credits > minimumBalance;
 }
 
 /**
- * Deduct credits from user. Allows going slightly negative for in-progress operations.
+ * Deduct credits from user. Caps overdraft at maxOverdraft cents (default $1.00).
  */
 export async function deductCredits(
   userId: string,
-  amount: number
+  amount: number,
+  maxOverdraft = 100,
 ): Promise<void> {
   await ensureUserCreditRow(userId);
   await db
     .update(userCredit)
     .set({
-      credits: sql`${userCredit.credits} - ${amount}`,
+      credits: sql`GREATEST(${userCredit.credits} - ${amount}, -${maxOverdraft})`,
     })
     .where(eq(userCredit.userId, userId));
 }

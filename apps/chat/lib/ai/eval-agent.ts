@@ -72,6 +72,7 @@ async function executeAgentAndGetOutput({
     budgetAllowedTools: activeTools,
     abortSignal,
     messageId,
+    chatId: `eval-${messageId}`,
     dataStream: noOpStreamWriter,
     onError: (error) => {
       throw error;

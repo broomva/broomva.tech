@@ -17,6 +17,39 @@ type RateLimitOptions = {
   keyPrefix: string;
 };
 
+// In-memory fallback for when Redis is unavailable
+const inMemoryCounters = new Map<string, { count: number; resetAt: number }>();
+
+function inMemoryRateLimit(
+  key: string,
+  limit: number,
+  windowSize: number,
+): RateLimitResult {
+  const now = Date.now();
+  const resetTime =
+    Math.floor(now / (windowSize * 1000)) * windowSize * 1000 +
+    windowSize * 1000;
+  const entry = inMemoryCounters.get(key);
+  if (!entry || entry.resetAt <= now) {
+    inMemoryCounters.set(key, { count: 1, resetAt: resetTime });
+    return { success: true, remaining: limit - 1, resetTime };
+  }
+  entry.count++;
+  if (entry.count > limit) {
+    return {
+      success: false,
+      remaining: 0,
+      resetTime,
+      error: "Rate limit exceeded",
+    };
+  }
+  return {
+    success: true,
+    remaining: Math.max(0, limit - entry.count),
+    resetTime,
+  };
+}
+
 async function checkRateLimit({
   identifier,
   limit,
@@ -24,15 +57,12 @@ async function checkRateLimit({
   redisClient,
   keyPrefix,
 }: RateLimitOptions): Promise<RateLimitResult> {
+  const key = `${keyPrefix}:${identifier}`;
+
   if (!redisClient) {
-    return {
-      success: true,
-      remaining: limit,
-      resetTime: Date.now() + windowSize * 1000,
-    };
+    return inMemoryRateLimit(key, limit, windowSize);
   }
 
-  const key = `${keyPrefix}:${identifier}`;
   const now = Date.now();
   const windowStart = Math.floor(now / (windowSize * 1000)) * windowSize * 1000;
   const resetTime = windowStart + windowSize * 1000;
@@ -67,13 +97,8 @@ async function checkRateLimit({
       resetTime,
     };
   } catch (error) {
-    console.error("Rate limit check failed:", error);
-    // Fail open - allow request if Redis is down
-    return {
-      success: true,
-      remaining: limit,
-      resetTime,
-    };
+    console.error("Rate limit check failed, falling back to in-memory:", error);
+    return inMemoryRateLimit(key, limit, windowSize);
   }
 }
 
@@ -144,6 +169,73 @@ export async function checkAnonymousRateLimit(
       "X-RateLimit-Limit-Month": RATE_LIMIT.REQUESTS_PER_MONTH.toString(),
       "X-RateLimit-Remaining-Month": monthResult.remaining.toString(),
       "X-RateLimit-Reset-Month": monthResult.resetTime.toString(),
+    },
+  };
+}
+
+const WINDOW_SIZE_HOUR = 3600;
+
+export async function checkAuthenticatedRateLimit(
+  userId: string,
+  redisClient: any,
+): Promise<{
+  success: boolean;
+  error?: string;
+  headers?: Record<string, string>;
+}> {
+  const { rateLimit } = config.authenticated;
+
+  // Check per-minute limit
+  const minuteResult = await checkRateLimit({
+    identifier: userId,
+    limit: rateLimit.requestsPerMinute,
+    windowSize: WINDOW_SIZE_MINUTE,
+    redisClient,
+    keyPrefix: `${config.appPrefix}:auth-rate-limit:minute`,
+  });
+
+  if (!minuteResult.success) {
+    return {
+      success: false,
+      error: `Rate limit exceeded. You can make ${rateLimit.requestsPerMinute} requests per minute. Try again in ${Math.ceil((minuteResult.resetTime - Date.now()) / 1000)} seconds.`,
+      headers: {
+        "X-RateLimit-Limit": rateLimit.requestsPerMinute.toString(),
+        "X-RateLimit-Remaining": minuteResult.remaining.toString(),
+        "X-RateLimit-Reset": minuteResult.resetTime.toString(),
+      },
+    };
+  }
+
+  // Check per-hour limit
+  const hourResult = await checkRateLimit({
+    identifier: userId,
+    limit: rateLimit.requestsPerHour,
+    windowSize: WINDOW_SIZE_HOUR,
+    redisClient,
+    keyPrefix: `${config.appPrefix}:auth-rate-limit:hour`,
+  });
+
+  if (!hourResult.success) {
+    return {
+      success: false,
+      error: `Hourly rate limit exceeded. You can make ${rateLimit.requestsPerHour} requests per hour. Try again in ${Math.ceil((hourResult.resetTime - Date.now()) / 1000)} seconds.`,
+      headers: {
+        "X-RateLimit-Limit": rateLimit.requestsPerHour.toString(),
+        "X-RateLimit-Remaining": hourResult.remaining.toString(),
+        "X-RateLimit-Reset": hourResult.resetTime.toString(),
+      },
+    };
+  }
+
+  return {
+    success: true,
+    headers: {
+      "X-RateLimit-Limit-Minute": rateLimit.requestsPerMinute.toString(),
+      "X-RateLimit-Remaining-Minute": minuteResult.remaining.toString(),
+      "X-RateLimit-Reset-Minute": minuteResult.resetTime.toString(),
+      "X-RateLimit-Limit-Hour": rateLimit.requestsPerHour.toString(),
+      "X-RateLimit-Remaining-Hour": hourResult.remaining.toString(),
+      "X-RateLimit-Reset-Hour": hourResult.resetTime.toString(),
     },
   };
 }
