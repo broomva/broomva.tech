@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { ScrollReveal } from "@/components/site/scroll-reveal";
-import { BSTACK_LAYERS } from "@/lib/skills-data";
-import type { BstackSkill } from "@/lib/skills-data";
+import type { BstackLayer, BstackSkill } from "@/lib/skills-data";
 
 function SkillCard({ skill, index }: { skill: BstackSkill; index: number }) {
   const [copied, setCopied] = useState(false);
@@ -46,10 +45,10 @@ function SkillCard({ skill, index }: { skill: BstackSkill; index: number }) {
   );
 }
 
-export function SkillsGrid() {
+export function SkillsGrid({ layers }: { layers: BstackLayer[] }) {
   return (
     <div className="mt-10 space-y-14">
-      {BSTACK_LAYERS.map((layer) => (
+      {layers.map((layer) => (
         <section key={layer.id}>
           <ScrollReveal>
             <p className="text-xs uppercase tracking-[0.25em] text-ai-blue">
