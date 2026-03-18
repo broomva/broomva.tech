@@ -71,8 +71,8 @@ const config = {
     },
   },
   authentication: {
-    google: false, // Requires AUTH_GOOGLE_ID + AUTH_GOOGLE_SECRET
-    github: false, // Requires AUTH_GITHUB_ID + AUTH_GITHUB_SECRET
+    google: true, // Requires AUTH_GOOGLE_ID + AUTH_GOOGLE_SECRET
+    github: true, // Requires AUTH_GITHUB_ID + AUTH_GITHUB_SECRET
     vercel: false, // Requires VERCEL_APP_CLIENT_ID + VERCEL_APP_CLIENT_SECRET
   },
   models: {
