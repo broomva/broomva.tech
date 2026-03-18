@@ -21,20 +21,22 @@ Teams want agent help for real workflows, not isolated prompts. The hard part is
 
 ## Approach
 
-Arcan focuses on explicit workflow structure:
+Arcan is a Next.js product (live at [arcanai.app](https://arcanai.app)) that focuses on explicit workflow structure:
 
-- clear task boundaries
-- tool-first execution paths
-- observable state transitions
-- deterministic outputs for key actions
+- clear task boundaries with typed inputs and outputs
+- tool-first execution paths where agents use defined tools, not freeform generation
+- observable state transitions visible to operators in real-time
+- deterministic outputs for key actions like approvals, notifications, and data writes
+
+Workflow types include procurement intake, document review, compliance auditing, and multi-step data processing — tasks where operators need reliability, not creativity.
 
 ## Architecture overview
 
-The product layer stays simple for operators while the orchestration layer handles retries, state evolution, and edge conditions.
+The product layer stays simple for operators — they see tasks, status, and results. The orchestration layer underneath handles retries, state evolution, and edge conditions. This separation means UX can evolve without touching the execution engine, and vice versa.
 
 ## Current status
 
-Active build and iteration with ongoing UX and reliability improvements.
+Active build and iteration with ongoing UX and reliability improvements. Production deployments serving real operator workflows.
 
 ## Why it matters
 

@@ -20,20 +20,24 @@ Autonomous agents need guardrails that go beyond prompt instructions. When agent
 
 ## Approach
 
-The control metalayer sits between agent intent and execution:
+The control metalayer sits between agent intent and execution using classical control vocabulary — **setpoints** (desired state), **sensors** (tests, lints, metrics), **actuators** (CI/CD, deployment), and a **feedback loop** (monitoring, alerts, rollbacks):
 
 - declarative policy definitions for resource budgets and action allowlists
 - real-time audit logging with structured traces
 - circuit breakers that halt execution when constraints are violated
 - approval workflows for high-stakes operations
 
+A concrete policy rule: `max_api_calls_per_session: 50` — if an agent exceeds this, the circuit breaker halts execution and logs the violation before any damage compounds.
+
 ## Architecture overview
 
-Policies are defined as typed rules that the metalayer evaluates before each agent action. The evaluation is synchronous and deterministic. Violations produce structured events that feed into alerting and dashboards.
+Policies are defined as typed rules that the metalayer evaluates before each agent action. The evaluation is synchronous and deterministic. Violations produce structured events that feed into alerting and dashboards. In practice, this lives in a `.control/` directory alongside `policy.yaml`, `state.json`, and `commands.yaml` — making governance version-controlled and auditable alongside the code it governs.
+
+The metalayer integrates with Symphony for orchestration enforcement and aiOS for identity-scoped policy resolution, forming the governance spine of the Agent OS stack.
 
 ## Current status
 
-Active development with policy evaluation, budget enforcement, and audit trail primitives in place.
+Active development with policy evaluation, budget enforcement, and audit trail primitives in place. The `.control/` directory pattern is deployed in production repositories.
 
 ## Why it matters
 

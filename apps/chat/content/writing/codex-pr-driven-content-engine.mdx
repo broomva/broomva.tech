@@ -18,11 +18,28 @@ The operating model is simple:
 3. Guardrails: enforce typecheck, lint, build, and link integrity.
 4. Distribution: publish summaries to X and LinkedIn.
 
+## A concrete weekly cycle
+
+- **Monday:** Pick 2-3 high-leverage changes from the backlog — a new writing piece, a project page update, a UI improvement.
+- **Tuesday-Wednesday:** Agent drafts PRs. Each PR runs through the gate sequence automatically: typecheck, lint, build, link integrity.
+- **Thursday:** Review and merge. The agent addresses PR feedback, fixes lint issues, and re-pushes.
+- **Friday:** Distribute — extract social copy from the new content, cross-post to X and LinkedIn.
+
+The human makes decisions. The agent executes. The gates enforce quality.
+
+## What the guardrails look like
+
+- `bun run check` passes on every PR — no exceptions
+- MDX frontmatter validates (title, summary, date, published, tags required)
+- All internal links resolve — no broken references
+- Images optimized and under 500KB
+- Vercel preview deployment builds successfully before merge
+
 ## Why this works
 
 - Throughput improves because execution is parallelized.
-- Quality improves because acceptance criteria are explicit.
-- Momentum improves because publishing becomes repeatable.
+- Quality improves because acceptance criteria are explicit and automated.
+- Momentum improves because publishing becomes repeatable — it's a process, not a burst of motivation.
 
 ## Where to start
 

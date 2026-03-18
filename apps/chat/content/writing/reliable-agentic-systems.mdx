@@ -20,16 +20,24 @@ A harness is the runtime system around the model:
 
 When these parts are weak, even strong model outputs lead to fragile workflows.
 
+Consider: an agent generates a correct database migration. But the harness doesn't snapshot state before applying it, doesn't validate the migration against the current schema, and doesn't have a rollback path. The model did its job. The harness failed the team.
+
 ## A practical reliability stack
 
-1. Define strict tool contracts and input validation.
-2. Keep state transitions explicit and inspectable.
-3. Design for partial failures instead of all-or-nothing paths.
-4. Build deterministic checks into CI so regressions are visible early.
+1. **Strict tool contracts.** Every tool declares its input schema, output schema, and error modes. If the agent passes invalid input, the harness rejects it before execution — not after.
+2. **Explicit state transitions.** Before any mutation, snapshot the current state. After the mutation, verify the transition matches expectations. This makes every failure diagnosable.
+3. **Partial failure paths.** A five-step workflow that fails at step three should preserve the results of steps one and two, not restart from scratch. Design for checkpoints, not all-or-nothing.
+4. **Deterministic CI gates.** Build `smoke` → `check` → `test` into every commit. If the harness catches the regression, the team never has to.
+
+## What a reliable harness looks like
+
+- Tool calls are idempotent — running the same tool twice produces the same result, not a duplicate side effect.
+- Error channels are typed — a `ValidationError` carries field-level details, not a string. The harness can decide whether to retry, skip, or escalate.
+- State is inspectable — at any point, an operator can see what the agent has done, what it plans to do, and what it would take to undo the last action.
 
 ## What changes when you do this
 
-The team stops shipping demos and starts shipping dependable loops. Product velocity improves because failures become diagnosable.
+The team stops shipping demos and starts shipping dependable loops. Product velocity improves because failures become diagnosable, not mysterious.
 
 ## Closing
 

@@ -15,10 +15,10 @@ An autonomous repo is a control system: it has sensors (tests, lints, type check
 
 ## What makes a repo autonomous
 
-1. **Explicit contracts**: Every boundary between components is typed and tested. The agent knows what it can and cannot change.
-2. **Observable state**: The repo exposes its health through structured signals, not just pass/fail CI.
-3. **Deterministic gates**: Merge requires passing a defined set of checks. No exceptions, no overrides.
-4. **Recovery paths**: When something breaks, the system knows how to roll back or degrade gracefully.
+1. **Explicit contracts**: Every boundary between components is typed and tested. API endpoints declare input/output schemas. Database models enforce foreign key constraints. The agent knows what it can and cannot change because the contracts tell it.
+2. **Observable state**: The repo exposes its health through structured signals — test coverage percentages, lint error counts, type coverage metrics — not just pass/fail CI.
+3. **Deterministic gates**: Merge requires passing `smoke` → `check` → `test` in sequence. No exceptions, no `--no-verify`, no force-merges. The gates are the law.
+4. **Recovery paths**: When something breaks, the system knows how to roll back or degrade gracefully. Migrations are reversible. Deployments have rollback triggers. State is checkpointed before mutations.
 
 ## The control loop
 

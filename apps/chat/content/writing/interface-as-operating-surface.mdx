@@ -18,12 +18,20 @@ An operator needs to answer four questions quickly:
 - What can fail next?
 - How do I intervene without resetting context?
 
+## The gap between bad and good
+
+A bad agent UI: a chat window that says "thinking..." for 45 seconds. The operator has no idea if the agent is stuck, processing, or about to do something irreversible.
+
+A good agent UI: a panel showing "Step 3/7: Querying vendor database — 847 records scanned. Next: filter by certification status." The operator knows what's happening, what's next, and where to intervene if something looks wrong.
+
+The difference is not design polish. It is operational visibility.
+
 ## Design principles
 
-- Show the current step and planned next step.
-- Make tool calls visible and inspectable.
-- Surface confidence and uncertainty directly.
-- Keep interruption paths obvious and reversible.
+- **Show the current step and planned next step.** "Generating report" is not enough. "Step 4/6: aggregating diversity metrics for Q1" tells the operator exactly where they are.
+- **Make tool calls visible and inspectable.** Every API call, database query, and file write should be surfaced — not buried in logs.
+- **Surface confidence and uncertainty directly.** If the agent is guessing, say so. "3 matching vendors found (high confidence)" vs "1 partial match (low confidence — manual review recommended)."
+- **Keep interruption paths obvious and reversible.** A "Stop" button that actually stops, not one that queues a cancellation for the next cycle.
 
 ## Why this matters
 
