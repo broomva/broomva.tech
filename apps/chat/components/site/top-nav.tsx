@@ -1,18 +1,31 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Home,
+  Compass,
+  FolderKanban,
+  PenLine,
+  StickyNote,
+  Sparkles,
+  CalendarClock,
+  Mail,
+  MessageCircle,
+} from "lucide-react";
+import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
 
 const links = [
-  { href: "/", label: "Home" },
-  { href: "/start-here", label: "Start here" },
-  { href: "/projects", label: "Projects" },
-  { href: "/writing", label: "Writing" },
-  { href: "/notes", label: "Notes" },
-  { href: "/prompts", label: "Prompts" },
-  { href: "/now", label: "Now" },
-  { href: "/contact", label: "Contact" },
-  { href: "/chat", label: "Chat" },
+  { href: "/", label: "Home", icon: Home },
+  { href: "/start-here", label: "Start here", icon: Compass },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/writing", label: "Writing", icon: PenLine },
+  { href: "/notes", label: "Notes", icon: StickyNote },
+  { href: "/prompts", label: "Prompts", icon: Sparkles },
+  { href: "/now", label: "Now", icon: CalendarClock },
+  { href: "/contact", label: "Contact", icon: Mail },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
 ];
 
 function isCurrent(pathname: string, href: string): boolean {
@@ -24,39 +37,42 @@ function isCurrent(pathname: string, href: string): boolean {
 
 export function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
-    <header className="glass-nav sticky top-0 z-40">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <Link
-          href="/"
-          className="font-display text-lg text-text-primary transition hover:text-ai-blue"
+    <header className="fixed bottom-4 left-0 right-0 z-40">
+      <nav aria-label="Main navigation">
+        <Dock
+          magnification={60}
+          distance={120}
+          panelHeight={48}
+          className="gap-3 px-3"
         >
-          broomva.tech
-        </Link>
-        <nav>
-          <ul className="flex flex-wrap items-center justify-end gap-2 text-xs sm:gap-3 sm:text-sm">
-            {links.map((link) => {
-              const active = isCurrent(pathname, link.href);
-              return (
-                <li key={link.href}>
-                  <Link
-                    href={link.href as any}
-                    className={[
-                      "rounded-full px-3 py-1.5 transition",
+          {links.map((link) => {
+            const active = isCurrent(pathname, link.href);
+            const Icon = link.icon;
+            return (
+              <DockItem
+                key={link.href}
+                onClick={() => router.push(link.href as Route)}
+                className="cursor-pointer"
+              >
+                <DockLabel>{link.label}</DockLabel>
+                <DockIcon>
+                  <Icon
+                    className={
                       active
-                        ? "bg-ai-blue/15 text-ai-blue"
-                        : "text-text-muted hover:text-text-primary",
-                    ].join(" ")}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      </div>
+                        ? "text-ai-blue"
+                        : "text-zinc-400 transition-colors group-hover:text-text-primary"
+                    }
+                    strokeWidth={active ? 2.5 : 1.5}
+                  />
+                </DockIcon>
+              </DockItem>
+            );
+          })}
+        </Dock>
+      </nav>
     </header>
   );
 }
