@@ -21,6 +21,7 @@ export async function createCoreChatAgent({
   budgetAllowedTools,
   abortSignal,
   messageId,
+  chatId,
   dataStream,
   onError,
   onChunk,
@@ -37,6 +38,7 @@ export async function createCoreChatAgent({
   budgetAllowedTools: ToolName[];
   abortSignal?: AbortSignal;
   messageId: string;
+  chatId: string;
   dataStream: StreamWriter;
   onError?: (error: unknown) => void;
   onChunk?: () => void;
@@ -140,6 +142,11 @@ export async function createCoreChatAgent({
     experimental_telemetry: {
       isEnabled: true,
       functionId: "chat-response",
+      metadata: {
+        userId: userId ?? "anonymous",
+        modelId: selectedModelId,
+        chatId,
+      },
     },
     tools: allTools,
     onError: (error) => {

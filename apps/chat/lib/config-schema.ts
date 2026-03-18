@@ -157,6 +157,22 @@ export const anonymousConfigSchema = z
     },
   });
 
+export const authenticatedConfigSchema = z
+  .object({
+    rateLimit: z
+      .object({
+        requestsPerMinute: z.number(),
+        requestsPerHour: z.number(),
+      })
+      .describe("Rate limits for authenticated users"),
+  })
+  .default({
+    rateLimit: {
+      requestsPerMinute: 20,
+      requestsPerHour: 100,
+    },
+  });
+
 export const attachmentsConfigSchema = z
   .object({
     maxBytes: z.number().describe("Max file size in bytes after compression"),
@@ -342,6 +358,8 @@ export const configSchema = z.object({
 
   anonymous: anonymousConfigSchema,
 
+  authenticated: authenticatedConfigSchema,
+
   attachments: attachmentsConfigSchema,
 
   deepResearch: deepResearchConfigSchema,
@@ -356,6 +374,7 @@ export type AttachmentsConfig = z.infer<typeof attachmentsConfigSchema>;
 export type DeepResearchConfig = z.infer<typeof deepResearchConfigSchema>;
 export type FeaturesConfig = z.infer<typeof featuresConfigSchema>;
 export type AuthenticationConfig = z.infer<typeof authenticationConfigSchema>;
+export type AuthenticatedConfig = z.infer<typeof authenticatedConfigSchema>;
 
 // Gateway-aware input types: model IDs narrowed per gateway for autocomplete
 type ZodConfigInput = z.input<typeof configSchema>;

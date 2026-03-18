@@ -57,7 +57,11 @@ import { createModuleLogger } from "@/lib/logger";
 import type { AnonymousSession } from "@/lib/types/anonymous";
 import { ANONYMOUS_LIMITS } from "@/lib/types/anonymous";
 import { generateUUID } from "@/lib/utils";
-import { checkAnonymousRateLimit, getClientIP } from "@/lib/utils/rate-limit";
+import {
+  checkAnonymousRateLimit,
+  checkAuthenticatedRateLimit,
+  getClientIP,
+} from "@/lib/utils/rate-limit";
 import { generateTitleFromUserMessage } from "../../actions";
 import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
 
@@ -393,6 +397,7 @@ async function createChatStream({
         budgetAllowedTools: allowedTools,
         abortSignal: abortController.signal,
         messageId,
+        chatId,
         dataStream,
         onError: (error) => {
           log.error({ error }, "streamText error");
@@ -837,6 +842,18 @@ export async function POST(request: NextRequest) {
 
     // Handle authenticated user validation and credit check
     if (userId) {
+      // Rate limit authenticated users
+      const authRateLimit = await checkAuthenticatedRateLimit(
+        userId,
+        redisPublisher,
+      );
+      if (!authRateLimit.success) {
+        return Response.json(
+          { error: authRateLimit.error, type: "RATE_LIMIT_EXCEEDED" },
+          { status: 429, headers: authRateLimit.headers || {} },
+        );
+      }
+
       const result = await handleUserValidationAndCredits({
         chatId,
         userId,

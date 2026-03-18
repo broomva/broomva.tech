@@ -127,6 +127,12 @@ const config = {
       requestsPerMonth: isProd ? 10 : 1000,
     },
   },
+  authenticated: {
+    rateLimit: {
+      requestsPerMinute: isProd ? 20 : 120,
+      requestsPerHour: isProd ? 100 : 1000,
+    },
+  },
   attachments: {
     maxBytes: 1024 * 1024, // 1MB
     maxDimension: 2048,
