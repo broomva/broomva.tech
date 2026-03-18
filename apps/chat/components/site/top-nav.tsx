@@ -42,7 +42,7 @@ export function TopNav() {
   const router = useRouter();
 
   return (
-    <header className="fixed bottom-4 left-0 right-0 z-40">
+    <header className="pointer-events-none fixed bottom-4 left-0 right-0 z-40">
       <nav aria-label="Main navigation">
         <Dock
           magnification={60}
