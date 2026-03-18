@@ -430,6 +430,7 @@ export const userPrompt = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    slug: varchar("slug", { length: 256 }).notNull(),
     title: varchar("title", { length: 256 }).notNull(),
     content: text("content").notNull(),
     summary: text("summary"),
@@ -440,6 +441,7 @@ export const userPrompt = pgTable(
     variables: json("variables").$type<
       Array<{ name: string; description: string; default?: string }>
     >(),
+    links: json("links").$type<Array<{ label: string; url: string }>>(),
     visibility: varchar("visibility", { enum: ["public", "private"] })
       .notNull()
       .default("private"),
@@ -448,12 +450,14 @@ export const userPrompt = pgTable(
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
+    deletedAt: timestamp("deletedAt"),
   },
   (t) => ({
     UserPrompt_user_id_idx: index("UserPrompt_user_id_idx").on(t.userId),
     UserPrompt_visibility_idx: index("UserPrompt_visibility_idx").on(
       t.visibility
     ),
+    UserPrompt_slug_idx: uniqueIndex("UserPrompt_slug_unique").on(t.slug),
   })
 );
 
