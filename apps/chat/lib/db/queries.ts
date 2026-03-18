@@ -1229,7 +1229,7 @@ export async function getUserPrompts(userId: string): Promise<UserPrompt[]> {
   return db
     .select()
     .from(userPrompt)
-    .where(eq(userPrompt.userId, userId))
+    .where(and(eq(userPrompt.userId, userId), isNull(userPrompt.deletedAt)))
     .orderBy(desc(userPrompt.updatedAt));
 }
 
@@ -1237,11 +1237,17 @@ export async function getVisiblePrompts(
   userId?: string
 ): Promise<UserPrompt[]> {
   const conditions = userId
-    ? or(
-        eq(userPrompt.userId, userId),
-        eq(userPrompt.visibility, "public")
+    ? and(
+        or(
+          eq(userPrompt.userId, userId),
+          eq(userPrompt.visibility, "public")
+        ),
+        isNull(userPrompt.deletedAt)
       )
-    : eq(userPrompt.visibility, "public");
+    : and(
+        eq(userPrompt.visibility, "public"),
+        isNull(userPrompt.deletedAt)
+      );
   return db
     .select()
     .from(userPrompt)
@@ -1287,6 +1293,54 @@ export async function deleteUserPrompt(
 ): Promise<boolean> {
   const result = await db
     .delete(userPrompt)
+    .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
+    .returning({ id: userPrompt.id });
+  return result.length > 0;
+}
+
+export async function getPromptBySlug(
+  slug: string
+): Promise<UserPrompt | undefined> {
+  const [result] = await db
+    .select()
+    .from(userPrompt)
+    .where(and(eq(userPrompt.slug, slug), isNull(userPrompt.deletedAt)));
+  return result;
+}
+
+export async function getAllPublicPrompts(filters?: {
+  category?: string | null;
+  tag?: string | null;
+  model?: string | null;
+}): Promise<UserPrompt[]> {
+  const conditions = [
+    eq(userPrompt.visibility, "public"),
+    isNull(userPrompt.deletedAt),
+  ];
+  if (filters?.category)
+    conditions.push(eq(userPrompt.category, filters.category));
+  if (filters?.model) conditions.push(eq(userPrompt.model, filters.model));
+
+  const results = await db
+    .select()
+    .from(userPrompt)
+    .where(and(...conditions))
+    .orderBy(desc(userPrompt.updatedAt));
+
+  // Tag filtering in JS since tags is JSON
+  if (filters?.tag) {
+    return results.filter((p) => p.tags?.includes(filters.tag!));
+  }
+  return results;
+}
+
+export async function softDeleteUserPrompt(
+  id: string,
+  userId: string
+): Promise<boolean> {
+  const result = await db
+    .update(userPrompt)
+    .set({ deletedAt: new Date() })
     .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
     .returning({ id: userPrompt.id });
   return result.length > 0;

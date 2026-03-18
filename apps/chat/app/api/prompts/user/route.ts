@@ -21,9 +21,12 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
+  const title = body.title ?? "Untitled";
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const prompt = await createUserPrompt({
     userId: session.user.id,
-    title: body.title,
+    slug,
+    title,
     content: body.content,
     summary: body.summary ?? null,
     category: body.category ?? null,
@@ -31,7 +34,9 @@ export async function POST(request: NextRequest) {
     version: body.version ?? null,
     tags: body.tags ?? [],
     variables: body.variables ?? null,
+    links: body.links ?? null,
     visibility: body.visibility ?? "private",
+    deletedAt: null,
   });
 
   return NextResponse.json(prompt, { status: 201 });
