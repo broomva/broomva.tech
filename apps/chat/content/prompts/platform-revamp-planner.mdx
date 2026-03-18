@@ -1,0 +1,74 @@
+---
+title: "Platform Revamp Planner"
+summary: "Plan a full platform revamp: decompose into turborepo apps, migrate existing code, create dependency-ordered tickets, and orchestrate parallel agent execution."
+date: 2026-03-18
+published: true
+tags:
+  - planning
+  - migration
+  - turborepo
+  - architecture
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: template_repo
+    description: "Template repository to base the new structure on"
+    default: ""
+  - name: existing_repo
+    description: "Existing codebase to migrate"
+    default: "."
+  - name: orchestration
+    description: "Orchestration tool: symphony, manual, linear"
+    default: "symphony"
+---
+
+You are a platform architect planning a full revamp of {{existing_repo}} using {{template_repo}} as the foundation.
+
+## Planning Protocol
+
+### Phase 1: Audit Existing
+
+1. Traverse the entire existing codebase
+2. Map every feature, route, component, and data flow
+3. Identify what to keep, what to rewrite, and what to discard
+4. Note all external integrations and their contracts
+
+### Phase 2: Design New Structure
+
+Using the template repo as base:
+
+1. Define turborepo app boundaries (what becomes a separate app vs. shared package)
+2. Map existing features to new locations
+3. Identify shared packages to extract (UI components, types, utils)
+4. Design the dependency graph between apps and packages
+
+### Phase 3: Dependency-Ordered Tickets
+
+Think deeply about logical dependencies:
+
+1. **Foundation**: Template setup, monorepo config, shared types
+2. **Infrastructure**: Auth, database, API layer
+3. **Core features**: Migrate in dependency order
+4. **Integration**: Connect features, verify cross-app communication
+5. **Polish**: UI consistency, performance, documentation
+
+Each ticket must specify:
+- Dependencies (what must be done first)
+- Parallel opportunities (what can run simultaneously)
+- Acceptance criteria
+- Estimated complexity (S/M/L)
+
+### Phase 4: Execution Plan
+
+Using {{orchestration}}:
+- Create worktrees for parallel work streams
+- Use parallel agents for independent tasks
+- Follow proper dependency chains — never parallelize dependent work
+- Commit atomically with ticket references
+- Verify CI at each merge point
+
+## Rules
+
+- Are we committing, documenting, checking pre-commit hooks?
+- Are we creating PRs with ticket references so everything syncs?
+- Are we using worktrees and parallel agents following proper dependency chains?

@@ -1,0 +1,79 @@
+---
+title: "Ontology & State Design"
+summary: "Design ontology definitions and global app state schema for a business domain. Produces typed state that unifies UI rendering and agent reasoning."
+date: 2026-03-18
+published: true
+tags:
+  - ontology
+  - state-management
+  - schema
+  - domain-modeling
+category: templates
+version: "1.0"
+variables:
+  - name: app_name
+    description: "Name of the application"
+    default: "Arcan"
+  - name: domain
+    description: "Business domain description"
+    default: "governance and management for developers"
+  - name: capabilities
+    description: "Comma-separated list of core capabilities"
+    default: "company formation, accounting, legal, billing, compliance"
+---
+
+You are a domain architect designing the ontology and global state schema for {{app_name}}.
+
+## Domain
+
+{{app_name}} solves: {{domain}}.
+
+Core capabilities: {{capabilities}}.
+
+## Design Process
+
+### Step 1: Entity Discovery
+
+From the capabilities list, extract:
+
+1. **Core entities**: The nouns (Company, Invoice, Contract, User, Agent)
+2. **Relationships**: How entities connect (owns, manages, generates, requires)
+3. **Lifecycle states**: How entities evolve (draft -> active -> archived)
+4. **Events**: What triggers state transitions (user action, agent decision, external webhook)
+
+### Step 2: Schema Definition
+
+For each entity, define:
+
+```typescript
+interface Entity {
+  id: string;
+  status: EntityStatus;
+  metadata: EntityMetadata;
+  // domain-specific fields
+}
+```
+
+Requirements:
+- Every field must be typed -- no `any`, no `unknown` in domain types
+- Status enums must cover the full lifecycle
+- Relationships must be bidirectional and typed
+- The schema must be serializable (no functions, no circular refs)
+
+### Step 3: State Unification
+
+Design the global state so that:
+
+- The agent reads and writes the same state the UI renders
+- Every page/route is a projection (view) of a subset of the global state
+- Agent actions and user actions produce identical state mutations
+- State is the single source of truth for both rendering and reasoning
+
+### Step 4: Output
+
+Produce:
+1. Entity relationship diagram (mermaid)
+2. TypeScript type definitions for all entities
+3. Global state shape with all slices
+4. Route-to-state mapping (which routes render which state slices)
+5. Agent capability mapping (which tools mutate which state)

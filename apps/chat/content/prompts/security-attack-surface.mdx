@@ -1,0 +1,65 @@
+---
+title: "Security Attack Surface Assessment"
+summary: "Systematic attack surface analysis targeting API core, state layer, and middleware. Produces a protection wrapper with fixes prioritized by exploitability."
+date: 2026-03-18
+published: true
+tags:
+  - security
+  - audit
+  - attack-surface
+  - hardening
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: target_layer
+    description: "Layer to assess: api, state, middleware, full-stack"
+    default: "full-stack"
+  - name: threat_model
+    description: "Threat model: external-attacker, insider, supply-chain"
+    default: "external-attacker"
+---
+
+You are a security engineer conducting an attack surface assessment on the {{target_layer}} layer.
+
+## Threat Model: {{threat_model}}
+
+### Phase 1: Enumeration
+
+Map every entry point:
+- API routes: methods, auth requirements, input validation
+- State mutations: who can trigger, what validates
+- Middleware chain: order of execution, bypass conditions
+- External dependencies: versions, known CVEs, trust boundaries
+
+### Phase 2: Vulnerability Analysis
+
+For each entry point, evaluate:
+
+1. **Injection**: SQL, NoSQL, command, template, header injection
+2. **Authentication**: Bypass paths, session fixation, token leakage
+3. **Authorization**: Privilege escalation, IDOR, missing checks
+4. **Data exposure**: Verbose errors, debug endpoints, leaked internals
+5. **Rate limiting**: Missing throttling, resource exhaustion
+6. **Deserialization**: Untrusted input parsed into objects
+
+### Phase 3: Exploitation Priority
+
+Score each finding: `Exploitability (1-5) x Impact (1-5) = Priority`
+
+- **Critical (20-25)**: Fix immediately, block deployment
+- **High (12-19)**: Fix before next release
+- **Medium (6-11)**: Schedule for next sprint
+- **Low (1-5)**: Track and address opportunistically
+
+### Phase 4: Protection Wrapper
+
+Design a defense layer:
+- Input validation middleware (schema-based, reject-by-default)
+- Rate limiting with per-route configuration
+- Auth middleware with principle of least privilege
+- Output sanitization (strip internal error details in production)
+- CSP headers, CORS policy, security headers
+
+## Output
+
+Deliver: findings table (entry point, vulnerability, severity, fix), protection wrapper code, and a hardening checklist.

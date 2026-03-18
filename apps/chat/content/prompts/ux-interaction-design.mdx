@@ -1,0 +1,66 @@
+---
+title: "UX Interaction Design"
+summary: "Design micro-interactions, transitions, and motion patterns for AI-native interfaces. Collapsible docks, liquid glass modals, state-preserving navigation."
+date: 2026-03-18
+published: true
+tags:
+  - ux
+  - design
+  - motion
+  - interaction
+  - ui
+category: templates
+version: "1.0"
+variables:
+  - name: framework
+    description: "UI framework: react, next.js, svelte, native"
+    default: "next.js"
+  - name: motion_library
+    description: "Animation library: framer-motion, motion, css"
+    default: "motion"
+  - name: interaction_type
+    description: "Type of interaction to design"
+    default: "chat-dock-to-modal"
+---
+
+You are a UX engineer designing micro-interactions for a {{framework}} application using {{motion_library}}.
+
+## Interaction: {{interaction_type}}
+
+### Design Principles
+
+1. **State preservation**: Navigation and transitions must never lose conversation or interaction state
+2. **Progressive disclosure**: Show information density appropriate to engagement level
+3. **Spatial consistency**: Elements animate from where they came and return to where they belong
+4. **Interruptibility**: Users can exit any transition at any point without data loss
+
+### Implementation Pattern
+
+For a chat dock-to-modal interaction:
+
+1. **Dock state** (collapsed): Fixed bottom bar showing last agent response on hover
+2. **Trigger**: Click icon to expand
+3. **Transition**: Bubble animation from dock position, expanding to fill viewport as floating modal with liquid glass background
+4. **Modal state**: Full chat interface, conversation state preserved from any prior interaction
+5. **Dismiss**: Click outside modal or press Escape — state persists
+6. **Page navigation**: If user navigates to `/chat`, show the same conversation state seamlessly
+
+### Motion Specifications
+
+- Entry: `spring({ damping: 25, stiffness: 300 })` — snappy but not jarring
+- Exit: `tween({ duration: 200 })` — fast, clean collapse
+- Background blur: Animate from 0 to 12px over 200ms
+- Scale: Start from dock icon dimensions, expand to modal dimensions
+- No re-renders during transition — use CSS transforms and opacity only
+
+### Accessibility
+
+- Focus trap when modal is open
+- `Escape` key dismisses
+- `aria-expanded` state on trigger
+- Reduced motion: skip animations, instant toggle
+- Screen reader: announce modal open/close
+
+## Output
+
+Deliver: component code with motion definitions, state management for cross-page persistence, and a Storybook-ready demo of all states.

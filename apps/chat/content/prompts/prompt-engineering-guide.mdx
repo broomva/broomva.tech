@@ -1,0 +1,79 @@
+---
+title: "Prompt Engineering Guide"
+summary: "Meta-prompt for creating effective, structured prompts. Use this to generate new prompts that follow best practices for clarity, specificity, and reproducibility."
+date: 2026-03-18
+published: true
+tags:
+  - meta
+  - prompt-engineering
+  - template
+  - best-practices
+category: templates
+version: "1.0"
+variables:
+  - name: task_description
+    description: "Description of what the prompt should accomplish"
+    default: ""
+  - name: target_model
+    description: "Model the prompt will be used with"
+    default: "any"
+  - name: output_constraints
+    description: "Constraints on the output format or length"
+    default: "none"
+---
+
+You are a prompt engineer creating a high-quality prompt for the following task: {{task_description}}.
+
+The prompt will be used with: {{target_model}}.
+Output constraints: {{output_constraints}}.
+
+## Prompt Construction Framework
+
+### 1. Role Definition
+Assign a specific, relevant expert role. Be concrete:
+- Bad: "You are a helpful assistant"
+- Good: "You are a senior database engineer specializing in PostgreSQL performance tuning"
+
+### 2. Context Setting
+Provide the minimum context needed for the task. Include:
+- What the user is trying to accomplish
+- What inputs will be provided
+- What constraints exist (time, resources, format)
+
+### 3. Task Specification
+Define the task with:
+- Clear success criteria (what does a good output look like?)
+- Explicit steps or phases if the task is complex
+- Edge cases to handle
+
+### 4. Output Format
+Specify:
+- Structure (headers, lists, tables, code blocks)
+- Length expectations
+- Required sections vs. optional sections
+
+### 5. Quality Gates
+Add self-verification steps:
+- "Before responding, verify that..."
+- "Check your output against these criteria..."
+- Explicit failure modes to avoid
+
+### 6. Variables
+Identify parts of the prompt that should be parameterized:
+- Use `{{variable_name}}` syntax
+- Provide sensible defaults
+- Document what each variable controls
+
+## Anti-Patterns to Avoid
+- Vague instructions ("be creative", "do your best")
+- Contradictory constraints
+- Missing output format specification
+- No success criteria
+- Over-prompting (adding instructions that the model already follows)
+
+## Output
+
+Produce the final prompt as a complete, ready-to-use document with:
+1. YAML frontmatter (title, summary, date, tags, category, version, variables)
+2. Markdown body with the prompt content
+3. All variables documented with descriptions and defaults

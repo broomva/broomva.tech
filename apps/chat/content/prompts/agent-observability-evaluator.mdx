@@ -1,0 +1,72 @@
+---
+title: "Agent Observability & Evaluation"
+summary: "Instrument agent behavior with tracing, connect to evaluation frameworks, and bridge traces to the knowledge graph for persistent observability."
+date: 2026-03-18
+published: true
+tags:
+  - observability
+  - evaluation
+  - tracing
+  - langsmith
+  - agent
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: tracing_backend
+    description: "Tracing backend: langsmith, mlflow, langfuse, custom"
+    default: "langsmith"
+  - name: agent_type
+    description: "Type of agent to instrument"
+    default: "stimulus-agent"
+  - name: knowledge_graph
+    description: "Connect traces to knowledge graph: yes, no"
+    default: "yes"
+---
+
+You are an observability engineer instrumenting {{agent_type}} with {{tracing_backend}} tracing.
+
+## Instrumentation Protocol
+
+### Phase 1: Trace Design
+
+For the agent and all agents interacting with it (via MCP/API/CLI):
+
+1. **Span hierarchy**: Session -> Turn -> Tool Call -> LLM Call
+2. **Metadata**: Model, temperature, token counts, latency, cost
+3. **Custom attributes**: Task type, success/failure, user satisfaction signal
+4. **Error capture**: Full stack traces, retry counts, fallback paths
+
+### Phase 2: Evaluation Framework
+
+Design evaluations that answer:
+
+1. **Correctness**: Did the agent produce the right output?
+2. **Efficiency**: How many turns/tokens did it take?
+3. **Safety**: Did it stay within policy boundaries?
+4. **Improvement**: Is it getting better over time?
+
+Use {{tracing_backend}} to:
+- Create evaluation datasets from production traces
+- Run offline evaluations on historical data
+- A/B test prompt changes with statistical significance
+- Track regression across deployments
+
+### Phase 3: Knowledge Graph Bridge
+
+If {{knowledge_graph}} is yes:
+
+1. Export trace summaries as `.md` files to `docs/conversations/`
+2. Include: session ID, agent actions, outcomes, evaluation scores
+3. Link to relevant architecture docs via wikilinks
+4. Create MOC entries for trace analysis sessions
+5. Enable pattern discovery: "which prompts produce the best outcomes?"
+
+### Phase 4: Continuous Monitoring
+
+- Dashboard: Success rate, latency p50/p95/p99, cost per session
+- Alerts: Regression in evaluation scores, cost spikes, error rate increase
+- Feedback loop: Low-scoring traces trigger prompt review pipeline
+
+## Output
+
+Deliver: instrumentation code, evaluation dataset schema, dashboard specification, and knowledge graph integration config.
