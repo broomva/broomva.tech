@@ -1,85 +1,283 @@
 ---
-title: "Brownbag: Autonomous Agents with OpenClaw, Claude Code, and the Control Metalayer"
-summary: From security alert bots to 40+ auto-closed tickets — a team brownbag on building autonomous agent workflows with OpenClaw, Claude Code, Symphony, and compounding skills.
+title: "Autonomous Development Workflows: A Storyboard Guide to the Control Metalayer and bstack"
+summary: From zero to autonomous — a step-by-step storyboard for enabling self-operating development workflows using the Broomva Stack, the agentic control kernel, and Symphony orchestration.
 date: 2026-03-18
 published: true
 tags:
   - agents
-  - openclaw
-  - symphony
-  - automation
   - control-metalayer
+  - bstack
+  - symphony
+  - tutorial
 ---
 
-Last week we ran an internal brownbag on autonomous agent workflows. The session covered everything from deploying a security alert bot on Telegram to closing 40+ Linear tickets and pull requests autonomously using Claude Code, Symphony, and the control metalayer stack. Here is a distilled summary of what we discussed and what we learned.
+Most teams stop at "AI writes code." The interesting question is what happens after — who reviews it, who tests it, who decides it is safe to merge, and who learns from the outcome.
 
-## Security alert automation
+<video src="/images/writing/autonomous-dev-workflows/autonomous-dev-workflows.mp4" autoplay loop muted playsInline style="width:100%;border-radius:12px;margin:24px 0"></video>
 
-Varsha built an OpenClaw agent that queries Azure for security logs — vulnerabilities, port statuses, exposed IPs — and sends a daily briefing to Telegram at 9am CST. No more manual portal checks every morning. The plan is to extend this to Slack so the full team gets visibility into the security posture without anyone having to remember to look.
+This post is a storyboard: six scenes that walk you from an empty terminal to a repository that operates itself. Each scene builds on the last. By the end, your agents will pick up tickets, create pull requests, review their own changes, iterate on feedback, and merge — all governed by typed safety contracts and cross-session memory.
 
-The bot runs locally today using Docker, but the natural next step is cloud deployment for 24/7 operation. Railway is the easiest on-ramp (create an instance, SSH in, configure), while Azure VMs make more sense for production given existing credits and enterprise networking. The key insight: local is fine for iteration, but security alerting needs to be always-on.
+The stack is called **bstack** — 24 curated agent skills across 7 layers. The foundation is the **agentic control kernel**, a control-systems metalayer that treats your repository as a plant and your AI agents as controllers.
 
-## Autonomous ticket handling
+---
 
-The core demo showed a workflow where agents autonomously pick up Linear tickets, create pull requests, review their own code, iterate on feedback, and merge when CI checks pass. Over 40 tickets and pull requests were handled this way — created, reviewed, and closed without manual intervention.
+## Scene 1: Install the stack
 
-The workflow is driven by a prompt that composes several skills:
+Everything starts with a single command.
 
-- **Symphony** — a runtime that listens to a Linear project and dispatches agents per ticket
-- **Control metalayer** — feedback loops that govern agent behavior and ensure alignment with project standards
-- **Knowledge graph memory** — Obsidian-indexed project context that agents reference when developing
+```bash
+npx skills add broomva/bstack
+```
 
-When an agent creates a pull request, it does not just fire and forget. It reviews its own changes, responds to CI failures, iterates on comments, and only merges when checks are green. Some tickets get closed as irrelevant — the agent reasons about code context and conversation history to make that call.
+This installs the meta-skill. From here, bootstrap all 24 skills:
 
-## Compounding skills
+```bash
+bash ~/.agents/skills/bstack/scripts/bootstrap.sh
+```
 
-The architecture is modular. Skills are installed via terminal (or by the agent itself) and can be scoped globally or per-project. The stack we use:
+Verify the installation:
 
-- **Agentic control kernel** — the umbrella skill that ties control, memory, and consciousness layers together
-- **Knowledge graph memory** — bridges Claude Code conversation logs to an Obsidian vault, giving agents indexed project context
-- **Agent consciousness** — persistent memory across sessions, combining conversation history, code context, and knowledge graphs
+```bash
+bash ~/.agents/skills/bstack/scripts/validate.sh
+```
 
-These skills compound. An agent with access to the control metalayer, a knowledge graph, and Symphony can reason about a ticket, reference project conventions from the graph, create a pull request that follows those conventions, iterate on review feedback, and merge — all autonomously.
+You now have seven layers of capability installed:
 
-## Cloud deployment patterns
+| Layer | What it gives you | First command |
+|-------|------------------|---------------|
+| **Foundation** | Safety gates, harness commands, AGENTS.md | `bootstrap control metalayer` |
+| **Memory** | Cross-session context, prompt library | `save this as a prompt` |
+| **Orchestration** | Agent dispatch, self-improvement | `symphony init` |
+| **Research** | Deep analysis, competitive intel | `deep research on X` |
+| **Design** | Glass UI, production templates | `create an arcan-glass component` |
+| **Platform** | Decision tools, content pipeline | `optimize this decision` |
+| **Strategy** | Risk analysis, daily briefs, decision logs | `pre-mortem this project` |
 
-For always-on agents, we discussed three deployment targets:
+The layers compound. Each one you activate multiplies what the layers above can do.
 
-| Platform | Best for | Notes |
-|----------|----------|-------|
-| Railway | Quick tests, personal agents | Simple setup, SSH access, fast iteration |
-| Azure VM | Production, team agents | Enterprise networking, existing credits, full control |
-| Local | Development, prototyping | Fast feedback loop, but stops when machine sleeps |
+---
 
-The recommendation: start on Railway to nail down configuration, then move to Azure for production workloads. Cloud deployment also unlocks the ability to trigger agents from Slack — multiple OpenClaw instances responding to team commands.
+## Scene 2: Bootstrap the control metalayer
 
-## Guardrails and human oversight
+The control metalayer is what turns a repository from a passive code store into an active control surface.
 
-Autonomy without oversight is a liability. The system uses pull requests as natural checkpoints:
+![The seven-layer architecture — foundation through strategy](/images/writing/autonomous-dev-workflows/seven-layers.png)
 
-1. Agent creates a PR from a Linear ticket
-2. CI checks run automatically
-3. Agent reviews its own PR, iterates on issues
-4. Other agents or humans can comment and request changes
-5. Agent only merges when all checks pass
+Initialize it in any project:
 
-This layered approach — automated reasoning plus human-reviewable artifacts — balances speed with safety. The agent handles the volume; the team handles the judgment calls.
+```bash
+python3 scripts/control_kernel_init.py . --profile governed
+```
 
-## Cost and resource management
+This installs four artifacts:
 
-Running multiple heartbeats and API calls adds up. The practical approach:
+- **`.control/policy.yaml`** — setpoints with explicit metrics and thresholds
+- **`schemas/`** — typed state, action, trace, and evaluator JSON schemas
+- **`METALAYER.md`** — the control loop definition with plant/shield/estimator sections
+- **Harness gates** wired to `make smoke`, `make check`, `make control-audit`
 
-- Set up automation first, optimize later
-- Monitor usage through the Anthropic console
-- Adjust heartbeat frequency based on actual consumption
-- Watch for rate limit errors as a signal to tune concurrency
+The core law of the control kernel:
 
-## Key takeaways
+> Do not grant an agent more mutation freedom than your evaluator can reliably judge.
 
-1. **Start simple, compound later.** A Telegram security bot is a great first agent. Once comfortable, layer in Symphony, knowledge graphs, and autonomous ticket handling.
-2. **Cloud deploy for reliability.** Local is fine for development, but production agents need to be always-on.
-3. **Skills are the multiplier.** Each skill you add compounds the agent's capability. Control metalayer + knowledge graph + Symphony turns a chatbot into an autonomous developer.
-4. **Pull requests are guardrails.** They give humans a natural review point without slowing down the autonomous loop.
-5. **The team learns together.** Sharing experiments, failures, and configurations accelerates everyone's adoption.
+In practice, this means your agents operate within typed boundaries. They emit **control directives** — not raw actions. A safety shield filters every proposed change before it reaches the codebase.
 
-The brownbag format works well for this — hands-on demos, live questions, and concrete next steps. We will keep iterating on these workflows and sharing what we learn.
+```
+Plant → observe() → Runtime → update estimator → belief state
+  → LLM Agent: decision(belief) → θ_t (typed directive)
+  → Controller: propose(belief, θ_t) → proposed action
+  → Safety Shield: filter(action, belief) → safe action + certificate
+  → Plant: apply(safe action) → result
+  → Evaluator/Ledger: append trace + score
+```
+
+The agent never touches the plant directly. Every mutation passes through the shield. Every mutation is logged.
+
+---
+
+## Scene 3: The control loop in action
+
+![The control loop — observe, plan, act, verify, adapt](/images/writing/autonomous-dev-workflows/control-loop.png)
+
+With the metalayer in place, your agent operates in a classical control loop applied to software development:
+
+**Observe.** Read the current state — open issues, test results, metrics, recent commits. The belief state `b_t` includes not just plant observations but prior session context from the consciousness stack.
+
+**Plan.** The LLM reasons about what change would improve the system. It outputs a typed control directive `θ_t` — not raw code, but a structured decision about what to do and why.
+
+**Act.** A deterministic controller module translates the directive into a concrete action: create a branch, write code, open a PR. The safety shield validates the action against policy constraints before execution.
+
+**Verify.** Harness gates run automatically — `make smoke` → `make check` → `make test`. If any gate fails, the agent diagnoses the failure and iterates.
+
+**Adapt.** Results feed back into the belief state. The ledger records what happened. The next cycle starts with richer context.
+
+This loop runs at different rates depending on the task:
+
+| Loop | Cadence | LLM involved? | What runs |
+|------|---------|---------------|-----------|
+| Servo | milliseconds | No | Lints, type checks, deterministic gates |
+| Execution | seconds | No | CI pipelines, test suites |
+| Supervisory | seconds-minutes | Yes | Goal setting, mode switching, tool selection |
+| Improvement | minutes-days | Yes | Controller synthesis, model learning |
+
+The agent handles the supervisory and improvement loops. The harness handles everything below.
+
+---
+
+## Scene 4: Wire up the consciousness stack
+
+An agent that starts blank every session will repeat solved problems, contradict prior decisions, and violate invisible constraints. The consciousness stack solves this with three memory substrates.
+
+![The consciousness stack — three substrates merging into persistent context](/images/writing/autonomous-dev-workflows/consciousness-stack.png)
+
+### Substrate 1: Control metalayer (behavioral governance)
+
+The `.control/` directory is machine-readable policy:
+
+- **Setpoints** = "what good looks like" (persistent goals)
+- **Gates** = "what must never happen" (crystallized lessons from past failures)
+- **State.json** = "where we are now" (live snapshot of project health)
+
+### Substrate 2: Knowledge graph (declarative memory)
+
+The Obsidian bridge captures per-session conversation docs with full reasoning chains, wikilinks for cross-referencing, and YAML frontmatter taxonomy for navigation:
+
+```bash
+# Bridge conversation logs to Obsidian
+make conversations
+```
+
+This creates searchable, interlinked session docs. When an agent needs context on a prior decision, it traverses the graph instead of guessing.
+
+### Substrate 3: Conversation logs (episodic memory)
+
+Dual-source parsing of event logs and transcripts, with noise filtering, callout formatting, and incremental generation. Every session is captured, indexed, and available for future recall.
+
+### How lessons graduate
+
+The system has a deliberate graduation path for knowledge:
+
+```
+Agent encounters failure → fix applied (working memory)
+  → User corrects behavior → feedback saved (auto-memory)
+    → Session captured with reasoning chain (conversation log)
+      → Pattern recurs across sessions → documented (knowledge graph)
+        → Pattern is enforceable → added as gate (.control/policy.yaml)
+          → Pattern is foundational → added to invariants (CLAUDE.md)
+```
+
+Each level is more permanent and more expensive to change. An agent that has run 100 sessions in a project carries the accumulated wisdom of all 100 — without loading all 100 into context.
+
+---
+
+## Scene 5: Orchestrate with Symphony
+
+Single-agent control loops are powerful. Multi-agent orchestration is where the leverage compounds.
+
+![Symphony — multi-agent dispatch and orchestration](/images/writing/autonomous-dev-workflows/symphony-dispatch.png)
+
+**Symphony** is a runtime daemon that listens to your issue tracker (Linear, GitHub) and dispatches agents per ticket. The pattern is: **poll → dispatch → per-issue worker → reconcile**.
+
+Initialize Symphony in your project:
+
+```bash
+symphony init
+```
+
+Configure `WORKFLOW.md` with your tracker and runtime:
+
+```yaml
+tracker:
+  kind: linear
+  project: "MY-PROJECT"
+
+runtime:
+  kind: arcan
+  base_url: "http://localhost:3000"
+  policy:
+    allow_capabilities: ["fs:read:**", "fs:write:**", "exec:*"]
+
+lifecycle:
+  before_run: "make smoke"
+  after_run: "make check"
+```
+
+When a ticket lands in your project, Symphony:
+
+1. **Polls** the tracker for new or updated issues
+2. **Dispatches** a worker agent per ticket in an isolated workspace
+3. **Runs** the `before_run` hook — if it fails, the worker aborts (fail-closed)
+4. **Renders** a prompt template with ticket context and project conventions
+5. **Drives** the agent through a turn loop (up to `max_turns`)
+6. **Runs** the `after_run` hook for validation
+7. **Reconciles** — kills stalled workers, checks states, cleans up
+
+Each worker gets its own isolated workspace (path-contained after canonicalization). Agents cannot escape their sandbox. The approval posture is fail-closed — if anything is uncertain, the system stops.
+
+### What this looks like in practice
+
+Over 40 tickets and pull requests handled autonomously in a single session. The agent:
+
+- Creates a PR from a Linear ticket
+- Reviews its own changes
+- Responds to CI failures, iterates until checks pass
+- Closes irrelevant tickets with reasoning
+- Merges when all gates are green
+
+Pull requests are the natural guardrail. They give humans a review point without slowing down the autonomous loop.
+
+---
+
+## Scene 6: Self-improvement with EGRI
+
+The final scene is where the system learns to improve itself.
+
+![EGRI — the recursive self-improvement spiral](/images/writing/autonomous-dev-workflows/egri-loop.png)
+
+**EGRI** (Evaluator-Governed Recursive Improvement) is the framework for turning vague optimization goals into bounded, safe improvement loops. The core constraint:
+
+> The evaluator is immutable. The artifact is mutable. The evaluator determines what "better" means. The artifact is what gets better.
+
+Define a problem spec for your controller:
+
+```yaml
+# problem-spec.control.yaml
+artifact: "src/controllers/ticket-handler.ts"
+evaluator: "tests/eval/ticket-handler-eval.ts"
+mutation_surface: ["prompt templates", "tool selection logic", "retry policy"]
+promotion_policy:
+  metric: "ticket_resolution_rate"
+  threshold: 0.85
+  window: "7d"
+rollback: "git revert HEAD"
+```
+
+The EGRI loop:
+
+1. **Mutate** — the agent proposes a change to the artifact within the defined mutation surface
+2. **Evaluate** — the immutable evaluator scores the change against defined metrics
+3. **Promote or rollback** — if the score exceeds the threshold, the change is promoted. Otherwise, it is rolled back
+4. **Log** — every trial is recorded to the Lago ledger with full trace data
+5. **Repeat** — the loop continues, each iteration informed by the history of prior trials
+
+The autoany modules handle the hard parts: dead-end detection (`dead_ends.rs`), stagnation detection across trials (`stagnation.rs`), strategy distillation from history (`strategy.rs`), and cross-run knowledge inheritance (`inheritance.rs`).
+
+Over time, the system converges. Not because the model gets smarter, but because the governance infrastructure around it accumulates knowledge, crystallizes lessons into gates, and narrows the space of possible mistakes.
+
+---
+
+## The thesis
+
+Autonomous development is not about smarter models. It is about better control surfaces.
+
+The repository is the plant. The agent is the controller. The harness is the safety shield. The consciousness stack is the memory. Symphony is the orchestrator. EGRI is the improvement loop.
+
+Every piece has a typed interface and an explicit safety boundary. Every mutation is logged. Every lesson graduates from working memory to permanent policy.
+
+The stack is open and modular. Start with Scene 1 — install bstack. Each scene you complete compounds the capability of every scene that follows.
+
+```bash
+npx skills add broomva/bstack
+```
+
+The full skills catalog, architecture diagrams, and reference docs are at [broomva.tech/skills](https://broomva.tech/skills).
