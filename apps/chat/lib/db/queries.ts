@@ -29,6 +29,7 @@ import {
 } from "@/lib/utils/message-mapping";
 import type { ArtifactKind } from "../artifacts/artifact-kind";
 import { db } from "./client";
+import { or } from "drizzle-orm";
 import {
   chat,
   type DBMessage,
@@ -40,8 +41,10 @@ import {
   suggestion,
   type User,
   type UserModelPreference,
+  type UserPrompt,
   user,
   userModelPreference,
+  userPrompt,
   vote,
 } from "./schema";
 
@@ -1218,4 +1221,73 @@ export async function upsertUserModelPreference({
     console.error("Failed to upsert user model preference in database", error);
     throw error;
   }
+}
+
+// ─── User Prompts ────────────────────────────────────
+
+export async function getUserPrompts(userId: string): Promise<UserPrompt[]> {
+  return db
+    .select()
+    .from(userPrompt)
+    .where(eq(userPrompt.userId, userId))
+    .orderBy(desc(userPrompt.updatedAt));
+}
+
+export async function getVisiblePrompts(
+  userId?: string
+): Promise<UserPrompt[]> {
+  const conditions = userId
+    ? or(
+        eq(userPrompt.userId, userId),
+        eq(userPrompt.visibility, "public")
+      )
+    : eq(userPrompt.visibility, "public");
+  return db
+    .select()
+    .from(userPrompt)
+    .where(conditions)
+    .orderBy(desc(userPrompt.updatedAt));
+}
+
+export async function getUserPromptById(
+  id: string
+): Promise<UserPrompt | undefined> {
+  const [result] = await db
+    .select()
+    .from(userPrompt)
+    .where(eq(userPrompt.id, id));
+  return result;
+}
+
+export async function createUserPrompt(
+  data: Omit<UserPrompt, "id" | "createdAt" | "updatedAt">
+): Promise<UserPrompt> {
+  const [result] = await db.insert(userPrompt).values(data).returning();
+  return result;
+}
+
+export async function updateUserPrompt(
+  id: string,
+  userId: string,
+  data: Partial<
+    Omit<UserPrompt, "id" | "userId" | "createdAt" | "updatedAt">
+  >
+): Promise<UserPrompt | undefined> {
+  const [result] = await db
+    .update(userPrompt)
+    .set(data)
+    .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
+    .returning();
+  return result;
+}
+
+export async function deleteUserPrompt(
+  id: string,
+  userId: string
+): Promise<boolean> {
+  const result = await db
+    .delete(userPrompt)
+    .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
+    .returning({ id: userPrompt.id });
+  return result.length > 0;
 }

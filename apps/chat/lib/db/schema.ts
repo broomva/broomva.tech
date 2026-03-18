@@ -423,4 +423,40 @@ export const mcpOAuthSession = pgTable(
 
 export type McpOAuthSession = InferSelectModel<typeof mcpOAuthSession>;
 
+export const userPrompt = pgTable(
+  "UserPrompt",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 256 }).notNull(),
+    content: text("content").notNull(),
+    summary: text("summary"),
+    category: varchar("category", { length: 128 }),
+    model: varchar("model", { length: 128 }),
+    version: varchar("version", { length: 32 }),
+    tags: json("tags").$type<string[]>().default([]),
+    variables: json("variables").$type<
+      Array<{ name: string; description: string; default?: string }>
+    >(),
+    visibility: varchar("visibility", { enum: ["public", "private"] })
+      .notNull()
+      .default("private"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    UserPrompt_user_id_idx: index("UserPrompt_user_id_idx").on(t.userId),
+    UserPrompt_visibility_idx: index("UserPrompt_visibility_idx").on(
+      t.visibility
+    ),
+  })
+);
+
+export type UserPrompt = InferSelectModel<typeof userPrompt>;
+
 export const schema = { user, session, account, verification };
