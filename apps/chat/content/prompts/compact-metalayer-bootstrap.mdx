@@ -1,0 +1,41 @@
+---
+title: "Compact: Metalayer Bootstrap with Kernel"
+summary: "Compact command to bootstrap and self-update CLAUDE.md, AGENTS.md, and .control/ wired to the agentic control kernel."
+date: 2026-03-18
+published: true
+tags:
+  - compact
+  - metalayer
+  - control-kernel
+  - self-update
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: repo_path
+    description: "Path to the repository to bootstrap"
+    default: "."
+  - name: profile
+    description: "baseline | governed | autonomous"
+    default: "governed"
+  - name: update_mode
+    description: "conservative | moderate | aggressive"
+    default: "moderate"
+---
+
+Pull prompt `metalayer-bootstrap-with-kernel` from the prompt library at https://broomva.tech/api/prompts for the full reference.
+
+Execute in {'{{repo_path}}'} with profile={'{{profile}}'}, update_mode={'{{update_mode}}'}.
+
+**Steps**:
+
+1. **Inspect**: Read CLAUDE.md, AGENTS.md, METALAYER.md, .control/*. Scan package.json/Cargo.toml/Makefile for real commands. Detect drift between docs and codebase.
+
+2. **Bootstrap**: Create/update CLAUDE.md (overview, verified commands, conventions, architecture, dependencies, control kernel section). Create/update AGENTS.md (tools, boundaries, commit conventions, PR requirements, escalation rules, self-update protocol). Install .control/ per profile.
+
+3. **Wire kernel**: Use `/agentic-control-kernel` to set up plant interface (.control/plant.yaml), safety shields in policy.yaml, EGRI evaluator link if applicable, consciousness stack (docs/conversations/ for knowledge-graph-memory bridge).
+
+4. **Self-update**: Detect 5 drift types (command, structure, convention, dependency, control). Apply per update_mode. Self-updatable: commands, architecture, topology, metrics. Requires escalation: conventions, escalation rules, safety thresholds, action space, schemas.
+
+5. **Verify**: All commands exit 0. topology matches reality. smoke/check/control-audit pass. No governance file exceeds 200 lines.
+
+**Core rules**: Never fabricate commands. Never loosen safety without approval. Document what IS, not what SHOULD BE. The metalayer serves the agent.

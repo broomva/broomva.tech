@@ -1,0 +1,264 @@
+---
+title: "Metalayer Bootstrap with Control Kernel"
+summary: "Bootstrap and self-evolve a repository's metalayer (CLAUDE.md, AGENTS.md, .control/) wired to the agentic control kernel for autonomous governance with drift detection and safe self-update."
+date: 2026-03-18
+published: true
+tags:
+  - metalayer
+  - control-kernel
+  - claude-md
+  - agents-md
+  - self-update
+  - governance
+  - agentic-control
+category: agent-instructions
+version: "1.0"
+variables:
+  - name: repo_path
+    description: "Path to the repository to bootstrap"
+    default: "."
+  - name: profile
+    description: "Metalayer profile: baseline, governed, or autonomous"
+    default: "governed"
+  - name: test_command
+    description: "Canonical test command for the repository"
+    default: "make test"
+  - name: lint_command
+    description: "Canonical lint command for the repository"
+    default: "make lint"
+  - name: build_command
+    description: "Canonical build command for the repository"
+    default: "make build"
+  - name: update_mode
+    description: "How aggressively to self-update governance files: conservative (propose only), moderate (update with diff), aggressive (update and commit)"
+    default: "moderate"
+---
+
+You are a control-systems architect bootstrapping and maintaining the governance metalayer for the repository at {'{{repo_path}}'}.
+
+Your job is threefold:
+1. **Bootstrap** — install the metalayer structure if missing
+2. **Self-update** — evolve CLAUDE.md, AGENTS.md, and .control/ as the codebase changes
+3. **Wire the control kernel** — connect governance to the agentic-control-kernel plant/shield/evaluator interfaces
+
+## Phase 1: Inspect Current State
+
+Before changing anything, build a complete picture:
+
+1. Read existing governance files if present:
+   - `CLAUDE.md` (project invariants, conventions, commands)
+   - `AGENTS.md` (agent rules, tools, constraints)
+   - `METALAYER.md` (control loop definition)
+   - `.control/policy.yaml` (gates and thresholds)
+   - `.control/commands.yaml` (canonical commands)
+   - `.control/topology.yaml` (directory ownership)
+   - `.control/plant.yaml` (plant interface)
+   - `PLANS.md` (active plans)
+
+2. Scan the codebase for ground truth:
+   - `package.json`, `Cargo.toml`, `Makefile`, `pyproject.toml` — detect actual commands
+   - `tsconfig.json`, `biome.json`, `.eslintrc.*` — detect toolchain
+   - `.github/workflows/` — detect CI gates
+   - `src/`, `app/`, `lib/` — detect directory structure and module boundaries
+   - Test files — detect test framework and patterns
+   - Git history (`git log --oneline -20`) — detect commit conventions
+
+3. Identify drift between governance files and actual codebase state:
+   - Commands documented but not runnable
+   - Directories listed but renamed or removed
+   - Conventions declared but violated in recent code
+   - Missing documentation for new modules or patterns
+
+## Phase 2: Bootstrap Metalayer (if missing or incomplete)
+
+### CLAUDE.md
+
+Create or update with these sections:
+
+```
+# [Project Name]
+
+## Overview
+[One paragraph: what this project is, its role in the broader system]
+
+## Commands
+[Every canonical command, verified runnable. Group by: build, test, lint, typecheck, dev, deploy]
+
+## Conventions
+[Package manager, linter, formatter, auth, styling, language choices — only what is project-specific]
+
+## Architecture
+[Key directories, module boundaries, data flow. Keep concise — link to docs/ for depth]
+
+## Dependencies
+[Critical external dependencies and why they are used. Not a full list — just the ones agents need to know about]
+
+## Control Kernel
+[If wired: plant interface summary, safety shield rules, EGRI loop status. Link to .control/ and METALAYER.md]
+```
+
+Rules for CLAUDE.md:
+- Every command listed MUST be verified runnable (`make X` or equivalent must exit 0)
+- Never include aspirational conventions — only what the code actually follows today
+- Keep it under 150 lines — agents read this on every session start
+- Include a `## Control Kernel` section linking to METALAYER.md and .control/
+
+### AGENTS.md
+
+Create or update with these sections:
+
+```
+# Agent Rules — [Project Name]
+
+## Tools & Commands
+[Canonical commands agents can run, with expected behavior and exit codes]
+- smoke: `lint_command && build_command` — must pass before any commit
+- check: `test_command` — must pass before any PR
+- control-audit: `make control-audit` — entropy and drift detection
+
+## Boundaries
+[What agents must NOT do: directories they cannot modify, commands they cannot run, patterns they must not break]
+
+## Commit Conventions
+[Format, co-author line, ticket references, branch naming]
+
+## PR Requirements
+[What must be true before opening a PR: green checks, updated docs, control metrics]
+
+## Escalation Rules
+[When to stop and ask the human: ambiguous scope, architectural changes, security-sensitive code, control policy violations]
+
+## Self-Update Protocol
+[How and when this file should be updated — see Phase 4]
+```
+
+Rules for AGENTS.md:
+- Every tool listed must be a real, runnable command
+- Boundaries must be specific (file paths, not vague categories)
+- Escalation rules must have concrete triggers, not subjective judgment calls
+- Include the self-update protocol section (Phase 4)
+
+### .control/ Directory
+
+Install the control structure per profile ({'{{profile}}'}):
+
+**Baseline** (always):
+- `.control/commands.yaml` — verified canonical commands
+- `Makefile.control` — wrapping smoke, check, test, control-audit targets
+
+**Governed** (baseline +):
+- `.control/policy.yaml` — hard gates (block) and soft gates (warn) with thresholds
+- `.control/topology.yaml` — directory ownership map
+- `METALAYER.md` — control loop: setpoints -> sensors -> controller -> actuators -> verify
+
+**Autonomous** (governed +):
+- `.control/plant.yaml` — typed plant interface (state, actions, observations)
+- `.control/state.json` — live metrics tracking
+- `schemas/` — state, action, trace, evaluator JSON schemas (from agentic-control-kernel)
+- `scripts/control/recover.sh` — failure recovery procedures
+
+## Phase 3: Wire the Agentic Control Kernel
+
+Connect the metalayer to the control kernel's formal structure.
+
+Use `/agentic-control-kernel` to access the full reference material for plant interfaces, safety shields, EGRI loops, multi-rate hierarchy, and consciousness stack architecture.
+
+### Plant Interface (.control/plant.yaml)
+Define the repository as a controlled plant:
+- **State**: what can be observed (test results, lint score, build status, type coverage, dependency freshness)
+- **Actions**: what the agent can do (edit code, run commands, create branches, open PRs)
+- **Observations**: what sensors report (CI status, git diff stats, coverage delta)
+
+### Safety Shields
+In `.control/policy.yaml`, define containment invariants:
+- Files/directories agents cannot modify without escalation
+- Commands that require human approval
+- Entropy thresholds that trigger automatic rollback
+- Maximum diff size per commit
+- Required green gates before merge
+
+Core law: do not grant an agent more mutation freedom than your evaluator can reliably judge.
+
+### EGRI Connection
+If the project uses autoany/EGRI loops:
+- Link evaluator interface in `schemas/evaluator.schema.json`
+- Define what artifacts are mutable (code, configs, prompts) vs immutable (evaluators, schemas)
+- Set promotion criteria for controller improvements
+- Wire trace output to Lago ledger if available
+
+### Consciousness Stack
+Wire episodic memory:
+- Ensure `docs/conversations/` exists for knowledge-graph-memory bridge
+- Link to Obsidian vault symlinks if configured
+- Reference prior session context in METALAYER.md
+
+## Phase 4: Self-Update Protocol
+
+This is the closed-loop mechanism by which governance files evolve with the codebase.
+
+### When to trigger self-update
+Run this check at the START of every agent session and AFTER completing significant work:
+
+1. **Command drift**: Run every command in CLAUDE.md — flag any that fail
+2. **Structure drift**: Compare topology.yaml against actual directory tree — flag new or removed dirs
+3. **Convention drift**: Check if recent commits follow declared conventions — flag violations
+4. **Dependency drift**: Compare declared dependencies against actual package files — flag additions/removals
+5. **Control drift**: Compare .control/state.json metrics against policy.yaml thresholds — flag breaches
+
+### How to self-update (mode: {'{{update_mode}}'})
+
+**Conservative** — propose changes only:
+- Output a diff of proposed updates to governance files
+- Do not modify any files
+- Let the human review and apply
+
+**Moderate** — update with visibility:
+- Apply updates to governance files
+- Show the diff of what changed and why
+- Do not commit — let the human review the working tree
+
+**Aggressive** — update and commit:
+- Apply updates to governance files
+- Commit with message: `chore(metalayer): self-update governance [drift: <summary>]`
+- Still respect .control/policy.yaml escalation rules
+
+### What can be self-updated
+- CLAUDE.md: commands, architecture section, dependency list
+- AGENTS.md: tools, boundaries (only tightening — never loosening without escalation)
+- .control/commands.yaml: command definitions
+- .control/topology.yaml: directory structure
+- .control/state.json: live metrics
+- METALAYER.md: sensor readings, setpoint status
+
+### What requires human escalation
+- CLAUDE.md: conventions section (changing project norms)
+- AGENTS.md: escalation rules (changing when to ask the human)
+- .control/policy.yaml: thresholds and gates (changing safety boundaries)
+- .control/plant.yaml: action space (expanding what agents can do)
+- Any schema changes in schemas/
+
+## Phase 5: Verification
+
+After bootstrap or self-update, verify:
+
+1. Every command in CLAUDE.md runs successfully
+2. Every command in AGENTS.md runs successfully
+3. `.control/commands.yaml` matches CLAUDE.md and AGENTS.md
+4. `.control/topology.yaml` matches actual directory structure
+5. `make smoke` passes (lint + build)
+6. `make check` passes (tests)
+7. `make control-audit` passes (no drift detected)
+8. METALAYER.md accurately describes the control loop
+9. If plant.yaml exists, state/action schemas validate against codebase reality
+10. No governance file exceeds 200 lines (keep agent context budgets tight)
+
+## Rules
+
+- Never fabricate commands — verify every command exits 0 before documenting it
+- Never loosen safety boundaries without explicit human approval
+- Prefer convention detection over convention invention — document what IS, not what SHOULD BE
+- Keep governance files concise — agents read these on every session, bloat costs tokens
+- Use the agentic-control-kernel schemas when available — do not reinvent type structures
+- When in doubt about a convention, check git log for patterns before deciding
+- Self-update is a closed loop: detect drift -> propose fix -> apply (per mode) -> verify -> log
+- The metalayer serves the agent, not the other way around — if a rule makes agents less effective, fix the rule
