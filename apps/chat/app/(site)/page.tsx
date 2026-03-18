@@ -45,16 +45,18 @@ export default async function Home() {
         staticity={18}
         ease={60}
       />
-      <section className="relative overflow-hidden rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-black to-zinc-900/20 px-6 py-16 sm:px-12">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-emerald-500/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-sky-500/10 blur-3xl" />
-        <p className="relative text-xs uppercase tracking-[0.25em] text-emerald-300">
+
+      {/* Hero */}
+      <section className="glass-card relative overflow-hidden px-6 py-16 sm:px-12">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-ai-blue/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-web3-green/10 blur-3xl" />
+        <p className="relative text-xs uppercase tracking-[0.25em] text-web3-green">
           Carlos D. Escobar-Valbuena
         </p>
-        <h1 className="relative mt-3 font-display text-4xl text-zinc-100 sm:text-6xl">
+        <h1 className="relative mt-3 font-display text-4xl text-text-primary sm:text-6xl">
           Building autonomous software systems
         </h1>
-        <p className="relative mt-5 max-w-3xl text-base leading-relaxed text-zinc-300 sm:text-lg">
+        <p className="relative mt-5 max-w-3xl text-base leading-relaxed text-text-secondary sm:text-lg">
           Rust Agent OS stack, control metalayers, and harness engineering for
           AI-native workflows. I ship OSS and write about what works in
           production.
@@ -62,24 +64,24 @@ export default async function Home() {
         <div className="relative mt-8 flex flex-wrap items-center gap-3">
           <Link
             href="/start-here"
-            className="rounded-full bg-emerald-300 px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-emerald-200"
+            className="glass-button glass-button-primary rounded-full px-5 py-2.5 text-sm font-semibold"
           >
             Start here
           </Link>
           <Link
             href="/contact"
-            className="rounded-full border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-zinc-500"
+            className="glass-button rounded-full px-5 py-2.5 text-sm font-semibold"
           >
             Collaborate
           </Link>
         </div>
-        <div className="relative mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs uppercase tracking-[0.18em] text-zinc-400">
+        <div className="relative mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs uppercase tracking-[0.18em] text-text-muted">
           {socials.map((social) => (
             social.href.startsWith("/") ? (
               <Link
                 key={social.href}
                 href={social.href as Route}
-                className="transition hover:text-zinc-200"
+                className="transition hover:text-text-primary"
               >
                 {social.label}
               </Link>
@@ -89,7 +91,7 @@ export default async function Home() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="transition hover:text-zinc-200"
+                className="transition hover:text-text-primary"
               >
                 {social.label}
               </a>
@@ -98,12 +100,13 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Stack */}
       <section className="mt-10">
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900/30 p-6 sm:p-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
+        <div className="glass rounded-3xl p-6 sm:p-8">
+          <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
             Agent OS Stack
           </p>
-          <h2 className="mt-2 font-display text-3xl text-zinc-100 sm:text-4xl">
+          <h2 className="mt-2 font-display text-3xl text-text-primary sm:text-4xl">
             The stack
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -111,40 +114,41 @@ export default async function Home() {
               <Link
                 key={item.name}
                 href={item.href as Route}
-                className="group rounded-2xl border border-zinc-700 bg-black/60 p-4 transition hover:border-emerald-300/50"
+                className="group glass-card p-4 transition hover:border-ai-blue/40"
               >
-                <p className="font-display text-lg text-zinc-100 transition group-hover:text-emerald-200">
+                <p className="font-display text-lg text-text-primary transition group-hover:text-ai-blue">
                   {item.name}
                 </p>
-                <p className="mt-1 text-sm text-zinc-400">{item.role}</p>
+                <p className="mt-1 text-sm text-text-muted">{item.role}</p>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Chat CTA */}
       <section className="mt-10">
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900/30 p-6 sm:p-8">
+        <div className="glass rounded-3xl p-6 sm:p-8">
           <div className="mx-auto max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
+            <p className="text-xs uppercase tracking-[0.2em] text-web3-green">
               Interactive
             </p>
-            <h2 className="mt-2 font-display text-3xl text-zinc-100 sm:text-4xl">
+            <h2 className="mt-2 font-display text-3xl text-text-primary sm:text-4xl">
               Talk with Broomva
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-300 sm:text-base">
+            <p className="mt-3 text-sm leading-relaxed text-text-secondary sm:text-base">
               Use the live chat workspace for prompts, tool calls, and threaded
               conversation history.
             </p>
             <Link
               href="/chat"
-              className="group mt-6 block rounded-2xl border border-zinc-700 bg-black/60 p-4 transition hover:border-emerald-300/50"
+              className="group glass-card mt-6 block p-4 transition hover:border-ai-blue/40"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-zinc-400">
+                <span className="text-sm text-text-muted">
                   Prompt Broomva...
                 </span>
-                <span className="rounded-full bg-emerald-300 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-black">
+                <span className="glass-button glass-button-primary rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em]">
                   Open chat
                 </span>
               </div>
@@ -153,14 +157,15 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Pinned Projects */}
       <section className="mt-14">
         <div className="mb-6 flex items-end justify-between">
-          <h2 className="font-display text-3xl text-zinc-100">
+          <h2 className="font-display text-3xl text-text-primary">
             Pinned Projects
           </h2>
           <Link
             href="/projects"
-            className="text-sm text-emerald-300 transition hover:text-emerald-200"
+            className="text-sm text-ai-blue transition hover:text-web3-green"
           >
             View all
           </Link>
@@ -179,15 +184,16 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Writing & Notes */}
       <section className="mt-14 grid gap-6 lg:grid-cols-2">
         <div>
           <div className="mb-6 flex items-end justify-between">
-            <h2 className="font-display text-3xl text-zinc-100">
+            <h2 className="font-display text-3xl text-text-primary">
               Latest Writing
             </h2>
             <Link
               href="/writing"
-              className="text-sm text-emerald-300 transition hover:text-emerald-200"
+              className="text-sm text-ai-blue transition hover:text-web3-green"
             >
               Read all
             </Link>
@@ -207,12 +213,12 @@ export default async function Home() {
 
         <div>
           <div className="mb-6 flex items-end justify-between">
-            <h2 className="font-display text-3xl text-zinc-100">
+            <h2 className="font-display text-3xl text-text-primary">
               Recent Notes
             </h2>
             <Link
               href="/notes"
-              className="text-sm text-emerald-300 transition hover:text-emerald-200"
+              className="text-sm text-ai-blue transition hover:text-web3-green"
             >
               Browse notes
             </Link>

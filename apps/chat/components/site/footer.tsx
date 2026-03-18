@@ -18,22 +18,22 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-zinc-800/80 bg-black">
+    <footer className="border-t border-[var(--ag-border-subtle)] bg-bg-dark">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-start sm:justify-between sm:px-6">
         <div>
           <Link
             href="/"
-            className="font-display text-lg text-zinc-100 transition hover:text-emerald-300"
+            className="font-display text-lg text-text-primary transition hover:text-ai-blue"
           >
             broomva.tech
           </Link>
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-text-muted">
             Building autonomous software systems.
           </p>
         </div>
         <div className="flex gap-10">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
               Pages
             </p>
             <ul className="mt-3 space-y-2">
@@ -41,7 +41,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href as Route}
-                    className="text-sm text-zinc-400 transition hover:text-zinc-100"
+                    className="text-sm text-text-secondary transition hover:text-text-primary"
                   >
                     {link.label}
                   </Link>
@@ -50,7 +50,7 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
               Social
             </p>
             <ul className="mt-3 space-y-2">
@@ -59,7 +59,7 @@ export function Footer() {
                   {link.href.startsWith("/") ? (
                     <Link
                       href={link.href as Route}
-                      className="text-sm text-zinc-400 transition hover:text-zinc-100"
+                      className="text-sm text-text-secondary transition hover:text-text-primary"
                     >
                       {link.label}
                     </Link>
@@ -68,7 +68,7 @@ export function Footer() {
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-zinc-400 transition hover:text-zinc-100"
+                      className="text-sm text-text-secondary transition hover:text-text-primary"
                     >
                       {link.label}
                     </a>

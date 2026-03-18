@@ -25,11 +25,11 @@ export function TopNav() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-black/70 backdrop-blur-xl">
+    <header className="glass-nav sticky top-0 z-40">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <Link
           href="/"
-          className="font-display text-lg text-zinc-100 transition hover:text-emerald-300"
+          className="font-display text-lg text-text-primary transition hover:text-ai-blue"
         >
           broomva.tech
         </Link>
@@ -44,8 +44,8 @@ export function TopNav() {
                     className={[
                       "rounded-full px-3 py-1.5 transition",
                       active
-                        ? "bg-emerald-400/15 text-emerald-200"
-                        : "text-zinc-400 hover:text-zinc-100",
+                        ? "bg-ai-blue/15 text-ai-blue"
+                        : "text-text-muted hover:text-text-primary",
                     ].join(" ")}
                   >
                     {link.label}

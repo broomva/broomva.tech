@@ -68,8 +68,8 @@ const calSans = localFont({
   variable: "--font-calsans",
 });
 
-const LIGHT_THEME_COLOR = "hsl(0 0% 100%)";
-const DARK_THEME_COLOR = "hsl(240deg 10% 3.92%)";
+const LIGHT_THEME_COLOR = "hsl(0 0% 97%)";
+const DARK_THEME_COLOR = "oklch(0.12 0.02 275)";
 const THEME_COLOR_SCRIPT = `\
 (function() {
   var html = document.documentElement;
@@ -122,7 +122,7 @@ export default async function RootLayout({
         <NuqsAdapter>
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
+            defaultTheme="dark"
             disableTransitionOnChange
             enableSystem
           >
