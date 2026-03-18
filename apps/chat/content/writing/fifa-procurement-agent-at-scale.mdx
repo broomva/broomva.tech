@@ -1,0 +1,68 @@
+---
+title: "How FIFA World Cup 2026 Host Committees Are Using an AI Agent to Process Thousands of Procurement Requests"
+summary: An AI-powered vendor interest agent is handling procurement intake at scale for FIFA 2026 host cities — replacing static forms with conversational workflows that actually work.
+date: 2026-03-17
+published: true
+tags:
+  - agents
+  - procurement
+  - case-study
+  - scale
+---
+
+When the FIFA World Cup 2026 host committees needed to onboard thousands of vendors across multiple cities, they didn't reach for a PDF form and a spreadsheet. They deployed an AI agent.
+
+## The problem with procurement at scale
+
+Procurement intake for a global sporting event is a logistics problem disguised as a data collection problem. The FIFA World Cup 2026 is spread across multiple host cities — each with its own compliance requirements, diversity goals, and supplier ecosystems. The New York/New Jersey Host Committee, Philadelphia Soccer 2026, and the City of Philadelphia each need to evaluate thousands of businesses across dozens of service categories: construction, catering, security, transportation, IT, hospitality, and more.
+
+Traditional procurement portals dump vendors into a 40-field form, expect perfect data entry, and produce completion rates below 30%. Worse, the data they collect is inconsistent, incomplete, and expensive to normalize. Every missed field is a follow-up email. Every ambiguous answer is a manual review.
+
+## What the agent does differently
+
+The Stimulus vendor interest system replaces the static form with a conversational AI agent. When a vendor visits the host committee's intake page, they interact with a chat-based assessment that guides them through structured data collection — one question at a time, with context-aware validation at every step.
+
+The agent covers eight structured sections:
+
+1. **Basic information** — company name, contacts, address
+2. **Business profile** — entity type, employee count, registrations
+3. **Certifications** — diversity certs (MBE, WBE, SBE, LBE), insurance coverage
+4. **Experience** — service categories, past projects, references
+5. **Capacity** — team size, scalability, geographic coverage
+6. **Social impact** — workforce development, local hiring commitments
+7. **Interest areas** — specific opportunities, venue preferences
+8. **Review and submission** — final validation before submit
+
+Each section is validated in real-time. The agent understands when an answer is incomplete, contradictory, or needs clarification. It adapts the conversation based on what the vendor has already provided — skipping irrelevant questions, drilling into relevant ones.
+
+## Multi-tenant, multi-city, multi-language
+
+The system runs as a multi-tenant platform. Each host committee gets its own isolated tenant with custom branding, compliance rules, and configuration. The NYNJ Host Committee page carries the FIFA World Cup 2026 New York New Jersey branding. Philadelphia Soccer 2026 emphasizes supplier diversity and its commitment to vendors reflecting the city's demographics. The City of Philadelphia tenant connects the World Cup to the broader 2026 event portfolio — the 250th Anniversary of America, the MLB All-Star Game, and more.
+
+All three tenants share the same underlying infrastructure but operate with full data isolation. Tenant-specific certifications (Philadelphia's LBE and SBE programs, for example) are configured per-tenant, not hardcoded. The agent adapts its conversation flow based on which tenant the vendor is engaging with.
+
+Language support is built in. The system detects the vendor's preferred language and conducts the entire conversation accordingly — critical when you're onboarding businesses from international supply chains.
+
+## Architecture that enables scale
+
+The system is built on a LangGraph agent backed by Anthropic Claude, with an OpenAI fallback for resilience. The agent operates as a state machine — each conversation step is a node in a directed graph, with tool calls for form updates, section navigation, validation, and submission.
+
+The backend is FastAPI with schema-based PostgreSQL multi-tenancy. Each tenant's data lives in its own database schema, enforced at the query level. The frontend is a Next.js BFF (backend-for-frontend) proxy that handles authentication, tenant resolution, and session management before anything reaches the API.
+
+Public metrics dashboards aggregate anonymized data — total submissions, service category distributions, diversity certification breakdowns, geographic coverage — giving host committees real-time visibility into their supplier pipeline without exposing any vendor PII.
+
+## What this looks like in practice
+
+A vendor visits the NYNJ Host Committee page. They click "Start Assessment." The agent greets them, explains the process (about 10 minutes), and starts collecting information through natural conversation. If they pause and come back, their session is preserved. If they enter something that doesn't validate, the agent explains why and helps them correct it. When they submit, they get a confirmation email with next steps.
+
+On the committee side, procurement officers see a searchable, filterable dashboard of all submitted vendor profiles. They can sort by service category, certification, geography, or capacity. The data is clean because the agent validated it at collection time — not after the fact.
+
+## Why this matters beyond FIFA
+
+The pattern here is more general than procurement: structured data collection at scale is an agent-native problem. Whenever you need thousands of people to provide consistent, validated, multi-section data — and you want high completion rates with low manual cleanup — a conversational agent outperforms a static form.
+
+The same architecture powers the system for healthcare organizations, gaming companies, and municipal governments on the Stimulus platform. The FIFA deployment is the highest-profile proof point, but the pattern is the same: replace the form with a conversation, enforce validation at the point of collection, and give the back-office clean data from day one.
+
+## Closing
+
+The best procurement systems don't feel like procurement systems. They feel like a conversation with someone who knows what they're asking and why. That's what an agent brings to the table — and at World Cup scale, it's the difference between a pipeline of clean supplier data and a backlog of incomplete spreadsheets.
