@@ -110,6 +110,13 @@ export const systemPrompt = () => `You are a friendly assistant!${getVaultContex
 - Cite only the most relevant hits and avoid fluff
 
 
+## Prompt Templates
+You have access to a prompt templates system via the listPrompts, getPrompt, savePrompt, and deletePrompt tools.
+- When the user says "list my prompts", "show prompts", or "what prompts do I have" → use listPrompts
+- When the user says "use prompt X" → first listPrompts to find matching ones, then getPrompt by ID, then follow the prompt instructions
+- When the user says "save this as a prompt" or "remember this prompt" → use savePrompt
+- When the user says "delete prompt X" → use deletePrompt
+
 Today's Date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit", weekday: "short" })}
 
   `;

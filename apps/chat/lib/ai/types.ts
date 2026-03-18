@@ -14,6 +14,12 @@ import type {
   searchKnowledge,
   readKnowledgeNote,
 } from "@/lib/ai/tools/knowledge-graph";
+import type {
+  listPromptsTool,
+  getPromptTool,
+  savePromptTool,
+  deletePromptTool,
+} from "@/lib/ai/tools/user-prompts";
 import type { retrieveUrl } from "@/lib/ai/tools/retrieve-url";
 import type { tavilyWebSearch } from "@/lib/ai/tools/web-search";
 import type { AppModelId } from "./app-models";
@@ -41,6 +47,10 @@ export const toolNameSchema = z.enum([
   "deepResearch",
   "searchKnowledge",
   "readKnowledgeNote",
+  "listPrompts",
+  "getPrompt",
+  "savePrompt",
+  "deletePrompt",
 ]);
 
 const _ = toolNameSchema.options satisfies ToolName[];
@@ -102,6 +112,10 @@ type codeExecutionTool = InferUITool<ReturnType<typeof codeExecution>>;
 type retrieveUrlTool = InferUITool<typeof retrieveUrl>;
 type searchKnowledgeTool = InferUITool<typeof searchKnowledge>;
 type readKnowledgeNoteTool = InferUITool<typeof readKnowledgeNote>;
+type listPromptsToolType = InferUITool<ReturnType<typeof listPromptsTool>>;
+type getPromptToolType = InferUITool<ReturnType<typeof getPromptTool>>;
+type savePromptToolType = InferUITool<ReturnType<typeof savePromptTool>>;
+type deletePromptToolType = InferUITool<ReturnType<typeof deletePromptTool>>;
 
 export type ChatTools = {
   getWeather: weatherTool;
@@ -119,6 +133,10 @@ export type ChatTools = {
   retrieveUrl: retrieveUrlTool;
   searchKnowledge: searchKnowledgeTool;
   readKnowledgeNote: readKnowledgeNoteTool;
+  listPrompts: listPromptsToolType;
+  getPrompt: getPromptToolType;
+  savePrompt: savePromptToolType;
+  deletePrompt: deletePromptToolType;
 };
 
 type FollowupSuggestions = {

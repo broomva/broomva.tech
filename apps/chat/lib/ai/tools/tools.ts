@@ -25,6 +25,12 @@ import { createModuleLogger } from "@/lib/logger";
 import type { StreamWriter } from "../types";
 import { deepResearch } from "./deep-research/deep-research";
 import type { ToolSession } from "./types";
+import {
+  deletePromptTool,
+  getPromptTool,
+  listPromptsTool,
+  savePromptTool,
+} from "./user-prompts";
 
 const log = createModuleLogger("tools:mcp");
 
@@ -104,6 +110,10 @@ export function getTools({
     ...(config.features.knowledgeGraph
       ? { searchKnowledge, readKnowledgeNote }
       : {}),
+    listPrompts: listPromptsTool({ session }),
+    getPrompt: getPromptTool(),
+    savePrompt: savePromptTool({ session }),
+    deletePrompt: deletePromptTool({ session }),
   };
 }
 

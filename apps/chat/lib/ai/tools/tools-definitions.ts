@@ -78,6 +78,26 @@ export const toolsDefinitions: Record<ToolName, ToolDefinition> = {
     description: "Read a note from the knowledge graph",
     cost: 0, // filesystem only
   },
+  listPrompts: {
+    name: "listPrompts",
+    description: "List saved prompt templates",
+    cost: 0,
+  },
+  getPrompt: {
+    name: "getPrompt",
+    description: "Get a prompt template by ID",
+    cost: 0,
+  },
+  savePrompt: {
+    name: "savePrompt",
+    description: "Save a prompt template",
+    cost: 0,
+  },
+  deletePrompt: {
+    name: "deletePrompt",
+    description: "Delete a prompt template",
+    cost: 0,
+  },
 };
 
 export const allTools = toolNameSchema.options;
