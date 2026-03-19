@@ -38,6 +38,8 @@ export async function POST(request: Request) {
       scope,
       clientId,
       status: "pending",
+      userId: null,
+      sessionToken: null,
       expiresAt,
       pollingInterval: interval,
       createdAt: new Date(),
