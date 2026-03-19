@@ -18,6 +18,9 @@ export const metadata: Metadata = {
     template: `%s | ${config.appName}`,
   },
   description: config.appDescription,
+  alternates: {
+    canonical: config.appUrl,
+  },
   keywords: [
     "Agent OS",
     "AI agents",

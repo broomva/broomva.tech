@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   cacheComponents: true,
 
+  async rewrites() {
+    return [
+      { source: "/llms.txt", destination: "/api/llms" },
+      { source: "/llms-full.txt", destination: "/api/llms-full" },
+    ];
+  },
+
   async headers() {
     return [
       {
