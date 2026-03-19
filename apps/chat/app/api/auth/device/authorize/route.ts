@@ -13,6 +13,18 @@ import { getSafeSession } from "@/lib/auth";
  * Body: { "user_code": "ABCD-1234", "action": "approve" | "deny" }
  */
 export async function POST(request: Request) {
+  try {
+    return await handleAuthorize(request);
+  } catch (error) {
+    console.error("Device authorize failed:", error);
+    return NextResponse.json(
+      { error: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleAuthorize(request: Request) {
   // Require browser session
   const { data: sessionData } = await getSafeSession({
     fetchOptions: { headers: await headers() },

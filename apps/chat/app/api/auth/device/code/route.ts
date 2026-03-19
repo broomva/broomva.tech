@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     const interval = 5; // seconds
 
     await db.insert(deviceAuthCode).values({
+      id: crypto.randomUUID(),
       deviceCode,
       userCode,
       scope,
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
       status: "pending",
       expiresAt,
       pollingInterval: interval,
+      createdAt: new Date(),
     });
 
     const baseUrl =
