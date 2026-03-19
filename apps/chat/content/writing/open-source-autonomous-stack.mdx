@@ -1,0 +1,108 @@
+---
+title: "Estoy Liberando en Open Source Todo Mi Stack para Desarrollo Autónomo"
+summary: "No es vibe coding — es una especie nueva construida sobre harness engineering y orquestación de agentes de AI. 24 skills, 7 capas, 31 crates de Rust, todo documentado y en producción."
+date: 2026-03-19
+published: true
+tags:
+  - open-source
+  - agents
+  - bstack
+  - rust
+  - harness-engineering
+links:
+  - label: "bstack en GitHub"
+    url: "https://github.com/broomva/bstack"
+  - label: "Todos los repos"
+    url: "https://github.com/broomva"
+---
+
+Llevo meses construyendo un sistema completo para desarrollo autónomo con agentes de AI. Hoy lo estoy liberando todo en open source.
+
+<video src="/images/writing/open-source-autonomous-stack/open-source-stack.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:32px 0"></video>
+
+## Esto no es vibe coding
+
+Es una especie nueva. Construida alrededor de dos ideas fundamentales: **harness engineering** — flujos deterministas con gates de seguridad que hacen que los agentes sean confiables — y **orquestación de agentes** — un daemon que convierte tickets en pull requests autónomos.
+
+Este es el playbook con el que estoy creando sistemas de forma escalable y automática, el mismo flujo con el que he desplegado soluciones que utilizan empresas como FIFA y con el que creo proyectos personales en tiempo récord.
+
+![Arquitectura del stack autónomo](/images/writing/open-source-autonomous-stack/hero-social-card-opt.png)
+
+## Los números
+
+| Métrica | Valor |
+|---------|-------|
+| Crates de Rust | 31 |
+| Agent Skills | 24 |
+| Capas del Stack | 7 |
+| Repos Públicos | 30 |
+| Productos en producción | 5+ |
+
+## bstack: 24 Skills, 7 Capas
+
+El stack se llama **bstack** y se instala con un solo comando:
+
+```bash
+npx skills add broomva/bstack
+```
+
+Las 7 capas cubren todo el ciclo de vida del desarrollo autónomo:
+
+**Foundation** — Control metalayer con safety shields y harness gates. El repositorio se trata como un sistema de control donde los agentes son controladores y el código es la planta.
+
+**Memory** — Consciousness persistente a través de tres sustratos: memoria de trabajo (contexto), knowledge graph (Obsidian vault), y memoria episódica (logs de conversación).
+
+**Orchestration** — [Symphony](https://github.com/broomva/symphony), un daemon Rust que poll-ea trackers de issues y ejecuta sesiones autónomas. [AutoAny](https://github.com/broomva/autoany) implementa EGRI — Evaluator-Governed Recursive Improvement — para mejora recursiva gobernada.
+
+**Research** — Deep research multi-agente con síntesis verificada de 20+ fuentes. Competitive intelligence y catálogo de skills.
+
+**Design** — [Arcan Glass](https://github.com/broomva/arcan-glass), el sistema de diseño web con efectos glass, dark-first, Tailwind v4 + OKLCh.
+
+**Platform** — [Haima](https://github.com/broomva/haima), engine de finanzas agénticas con protocolo x402 para pagos máquina-a-máquina. Content pipeline automatizado.
+
+**Strategy** — 8 skills de decisión: pre-mortem, braindump, morning briefing, drift check, strategy critique, stakeholder updates, decision log, weekly review.
+
+## Life Agent OS: La infraestructura en Rust
+
+Todo corre sobre **Life Agent OS** — un monorepo Rust con 7 crates que implementan un sistema operativo completo para agentes:
+
+- **[Arcan](https://github.com/broomva/arcan)** — Runtime del agente: event loop, lifecycle, multi-provider LLM, SSE streaming
+- **[Lago](https://github.com/broomva/lago)** — Persistencia event-sourced: journal append-only, blob store SHA-256, branching FS
+- **[Autonomic](https://github.com/broomva/autonomic)** — Controlador homeostático: regulación operacional, cognitiva y económica
+- **[Praxis](https://github.com/broomva/praxis)** — Ejecución de herramientas: sandbox, filesystem policy, MCP bridge
+- **[Vigil](https://github.com/broomva/vigil)** — Observabilidad: OpenTelemetry nativo, GenAI semantic conventions
+- **[Haima](https://github.com/broomva/haima)** — Finanzas: x402, wallet secp256k1, payment policies
+- **[Spaces](https://github.com/broomva/lago)** — Networking distribuido: SpacetimeDB, pub/sub inter-agente
+
+## En producción. No en teoría.
+
+**FIFA World Cup 2026** — El [agente de procurement](https://broomva.tech/writing/fifa-procurement-agent-at-scale) que construí en Stimulus procesa miles de solicitudes de vendors para los comités organizadores. Chat conversacional que reemplaza formularios de 40 campos con completion rates dramáticamente más altos.
+
+**Stimulus** — Soluciones enterprise de AI a escala. El stack que libero hoy es el mismo flujo con el que creo estas soluciones profesionalmente.
+
+**broomva.tech** — Mi sitio personal y todos los proyectos que ves ahí fueron construidos con este stack. Cada blog post, cada feature, cada deployment — agentes autónomos gobernados por el control metalayer.
+
+## Todo está documentado
+
+Cada pieza del stack tiene un post técnico detallado:
+
+- [Autonomous Repos Are Control Systems](https://broomva.tech/writing/autonomous-repos-are-control-systems) — La tesis central
+- [The Control Metalayer](https://broomva.tech/writing/control-metalayer-autonomous-development) — Cómo los agentes aprenden y se gobiernan
+- [Reliable Agentic Systems Need Better Harnesses](https://broomva.tech/writing/reliable-agentic-systems) — Por qué harness engineering importa
+- [Autonomous Development Workflows](https://broomva.tech/writing/autonomous-agents-brownbag) — Storyboard completo de zero a autónomo
+- [One Binary to Rule Them All](https://broomva.tech/writing/one-binary-to-rule-them-all) — El CLI de Rust que instala todo
+- [FIFA Procurement Agent at Scale](https://broomva.tech/writing/fifa-procurement-agent-at-scale) — Case study real
+
+## Empieza aquí
+
+```bash
+# Instala el stack completo
+npx skills add broomva/bstack
+
+# O instala el CLI
+curl -fsSL https://broomva.tech/install.sh | bash
+```
+
+Todo el código está en [github.com/broomva](https://github.com/broomva). PRs y feedback son bienvenidos.
+
+Esto apenas empieza.
