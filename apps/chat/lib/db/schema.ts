@@ -463,4 +463,36 @@ export const userPrompt = pgTable(
 
 export type UserPrompt = InferSelectModel<typeof userPrompt>;
 
+export const deviceAuthCode = pgTable(
+  "DeviceAuthCode",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    deviceCode: varchar("deviceCode", { length: 64 }).notNull().unique(),
+    userCode: varchar("userCode", { length: 12 }).notNull().unique(),
+    /** Scopes requested (space-separated). Empty = full access. */
+    scope: text("scope").notNull().default(""),
+    /** Client identifier (e.g. "broomva-cli", "agent-browser") */
+    clientId: varchar("clientId", { length: 128 }).notNull().default("cli"),
+    /** pending | approved | denied | expired */
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    /** Set when the user approves */
+    userId: text("userId").references(() => user.id, { onDelete: "cascade" }),
+    /** The session token issued on approval */
+    sessionToken: text("sessionToken"),
+    expiresAt: timestamp("expiresAt").notNull(),
+    pollingInterval: integer("pollingInterval").notNull().default(5),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    DeviceAuthCode_device_code_idx: index("DeviceAuthCode_device_code_idx").on(
+      t.deviceCode
+    ),
+    DeviceAuthCode_user_code_idx: index("DeviceAuthCode_user_code_idx").on(
+      t.userCode
+    ),
+  })
+);
+
+export type DeviceAuthCode = InferSelectModel<typeof deviceAuthCode>;
+
 export const schema = { user, session, account, verification };
