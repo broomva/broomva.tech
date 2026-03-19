@@ -19,6 +19,18 @@ import { eq } from "drizzle-orm";
  *   - 200 + { access_token, token_type, expires_in }: approved
  */
 export async function POST(request: Request) {
+  try {
+    return await handleTokenRequest(request);
+  } catch (error) {
+    console.error("Device token request failed:", error);
+    return NextResponse.json(
+      { error: "server_error", error_description: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleTokenRequest(request: Request) {
   let deviceCode: string;
 
   try {
