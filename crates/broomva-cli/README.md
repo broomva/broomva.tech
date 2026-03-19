@@ -4,16 +4,16 @@ CLI and daemon for [broomva.tech](https://broomva.tech) — prompts, skills, con
 
 ## Install
 
-### From crates.io
+### One command (CLI + skills + bstack)
 
 ```sh
-cargo install broomva-cli
+curl -fsSL https://broomva.tech/api/install | bash
 ```
 
-### From GitHub Releases
+### CLI only (from crates.io)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/broomva/broomva.tech/main/crates/broomva-cli/install.sh | sh
+cargo install broomva
 ```
 
 ### From source

@@ -439,7 +439,7 @@ function HeroSection() {
 
 function InstallSection() {
   const [copied, setCopied] = useState(false);
-  const cmd = "curl -fsSL https://broomva.tech/install.sh | bash";
+  const cmd = "curl -fsSL https://broomva.tech/api/install | bash";
 
   const copy = useCallback(() => {
     navigator.clipboard.writeText(cmd);
