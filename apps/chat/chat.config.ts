@@ -54,7 +54,7 @@ const config = {
     attachments: true, // Requires BLOB_READ_WRITE_TOKEN
     followupSuggestions: true,
     knowledgeGraph: true, // Requires VAULT_PATH
-    memoryVault: false, // Requires LAGO_URL
+    memoryVault: true, // Requires LAGO_URL
   },
   legal: {
     minimumAge: 13,
