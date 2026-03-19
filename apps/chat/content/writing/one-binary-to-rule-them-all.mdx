@@ -1,0 +1,140 @@
+---
+title: "One Binary to Rule Them All: Building a Rust CLI for broomva.tech"
+summary: A 3.7MB Rust binary replaces a Node.js CLI, installs 24 agent skills, and monitors infrastructure — all from cargo install broomva.
+date: 2026-03-19
+published: true
+tags:
+  - rust
+  - cli
+  - infrastructure
+  - agent-os
+---
+
+A single `cargo install broomva` now gives you the entire Broomva stack: CLI commands, a monitoring daemon, and 24 agent skills. No Node runtime. No package manager dance. One binary.
+
+## The problem with the old CLI
+
+The original `@broomva/cli` was a TypeScript package distributed via npm. It worked, but it carried baggage:
+
+- **Runtime dependency**: users needed Node.js or Bun installed
+- **Cold start overhead**: every invocation loaded a JS runtime
+- **Misaligned with the core stack**: the Agent OS infrastructure (Symphony, Arcan, Lago, Autonomic) is Rust — the CLI was the odd one out
+- **Daemon limitations**: `setInterval` + `clearInterval` is not how you build a production monitoring daemon
+
+The Rust rewrite solves all of these. The binary is **3.7MB stripped**, starts instantly, and follows the exact same patterns as [Symphony](https://github.com/broomva/symphony) — clap, reqwest, axum, thiserror, tokio.
+
+## What the CLI does
+
+```
+broomva auth login          # Device code OAuth (opens browser)
+broomva prompts list        # Browse prompt library
+broomva prompts pull <slug> # Download prompt with frontmatter
+broomva skills list         # Browse 24 bstack skills
+broomva context show        # Project conventions & stack info
+broomva daemon start        # Infrastructure monitoring
+```
+
+Six command groups covering the full broomva.tech API surface: **auth**, **prompts**, **skills**, **context**, **config**, and **daemon**.
+
+## Backward compatibility by design
+
+The TS CLI writes `~/.broomva/config.json` with camelCase keys. Users have tokens stored there. Ripping that out would break existing setups.
+
+The fix is one line of Rust:
+
+```rust
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CliConfig {
+    pub token: Option<String>,
+    pub token_expires_at: Option<String>,
+    pub api_base: Option<String>,
+    // ...
+}
+```
+
+`token_expires_at` in Rust maps to `tokenExpiresAt` in JSON — identical to what the TS CLI produces. Both CLIs read and write the same config file. Zero migration needed.
+
+## The daemon: async Rust done right
+
+The daemon runs a heartbeat loop that polls three sensors (site health, API health, Railway services) on a configurable interval. The TS version used `setInterval`. The Rust version uses `tokio::select!` with a `CancellationToken`:
+
+```rust
+pub async fn run(&self) {
+    let mut interval = tokio::time::interval(
+        Duration::from_millis(self.interval_ms)
+    );
+    loop {
+        tokio::select! {
+            _ = interval.tick() => self.tick().await,
+            _ = self.cancel.cancelled() => break,
+        }
+    }
+}
+```
+
+Clean cancellation, proper signal handling (`SIGTERM` via PID file), shared state via `Arc<RwLock<HeartbeatState>>` between the heartbeat loop and the Axum dashboard server.
+
+The dashboard runs on port `7890` and serves a live HTML page showing sensor status, latency, and tick count — plus JSON endpoints at `/api/health` and `/api/symphony` for programmatic consumption.
+
+## Environment targeting
+
+The daemon supports two modes:
+
+| Flag | broomva.tech | Symphony | Arcan | Lago | Autonomic |
+|------|-------------|----------|-------|------|-----------|
+| `--env railway` | broomva.tech | config URL | config URL | config URL | config URL |
+| `--env local` | localhost:3000 | localhost:8080 | :8081 | :8082 | :8083 |
+
+Individual `--symphony-url`, `--arcan-url`, etc. overrides take precedence in both modes. This means you can test against local Symphony while pointing at production broomva.tech.
+
+## One install command
+
+The real power move is the installer. One curl command installs everything:
+
+```bash
+curl -fsSL https://broomva.tech/api/install | bash
+```
+
+This does three things:
+
+1. **Installs the broomva binary** via `cargo install` (or downloads a pre-built binary as fallback)
+2. **Installs the broomva.tech skill** for Claude Code / agent workflows
+3. **Bootstraps bstack** — all 24 Broomva Stack skills across 7 layers
+
+The full stack, from CLI to skills to monitoring, from a single command.
+
+## Architecture decisions
+
+A few choices that kept the project simple:
+
+- **Single crate, not a workspace**: Symphony needs 8 internal library crates because it has complex domain logic. The CLI has four concerns (parsing, API client, config, daemon) — modules within one crate suffice
+- **No dependency on symphony-core or aios-protocol**: the CLI is a pure HTTP client. Adding gRPC and protobuf for zero benefit would be engineering theater
+- **`thiserror` for the library, `anyhow` for main**: clean error types where they matter, ergonomic error handling at the top level
+- **Native async fn in trait via `Pin<Box<dyn Future>>`**: no `async_trait` crate needed on Rust 1.88+
+
+## The numbers
+
+| Metric | Value |
+|--------|-------|
+| Source files | 34 |
+| Lines of Rust | 5,914 |
+| Binary size (release, stripped) | 3.7 MB |
+| Dependencies | 17 direct |
+| Tests | 5 (config serialization, frontmatter roundtrip, CLI parsing) |
+| Clippy warnings | 0 |
+| Time from plan to crates.io | Same session |
+
+## What comes next
+
+The CLI is a client. It doesn't participate in event envelopes, journal writes, or the aios-protocol contract — yet. As the Agent OS stack matures, the CLI becomes the primary interface for operators:
+
+- `broomva daemon start` becomes the entry point for edge monitoring
+- `broomva prompts push` feeds the prompt library from any machine
+- `broomva skills install` provisions agent capabilities in one command
+
+The binary is on [crates.io](https://crates.io/crates/broomva). The source is in the [broomva.tech monorepo](https://github.com/broomva/broomva.tech/tree/main/crates/broomva-cli). Install it and see what 3.7MB can do.
+
+```bash
+cargo install broomva
+```
