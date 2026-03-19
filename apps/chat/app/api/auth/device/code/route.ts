@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { deviceAuthCode } from "@/lib/db/schema";
 
 /**
  * POST /api/auth/device/code
@@ -31,19 +31,13 @@ export async function POST(request: Request) {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     const interval = 5; // seconds
 
-    await db.insert(deviceAuthCode).values({
-      id: crypto.randomUUID(),
-      deviceCode,
-      userCode,
-      scope,
-      clientId,
-      status: "pending",
-      userId: null,
-      sessionToken: null,
-      expiresAt,
-      pollingInterval: interval,
-      createdAt: new Date(),
-    });
+    const id = crypto.randomUUID();
+    const now = new Date();
+
+    await db.execute(sql`
+      INSERT INTO "DeviceAuthCode" ("id", "deviceCode", "userCode", "scope", "clientId", "status", "expiresAt", "pollingInterval", "createdAt")
+      VALUES (${id}, ${deviceCode}, ${userCode}, ${scope}, ${clientId}, ${"pending"}, ${expiresAt}, ${interval}, ${now})
+    `);
 
     const baseUrl =
       process.env.APP_URL ||
