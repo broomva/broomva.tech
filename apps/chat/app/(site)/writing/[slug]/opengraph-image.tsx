@@ -1,7 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { getContentBySlug, getAllSlugs } from "@/lib/content";
+
+export const runtime = "nodejs";
 
 export const alt = "broomva.tech";
 export const size = { width: 1200, height: 630 };
@@ -20,6 +20,8 @@ export default async function OGImage({
   const { slug } = await params;
   const entry = await getContentBySlug("writing", slug);
 
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
   const calSansData = await readFile(
     join(process.cwd(), "public/fonts/CalSans-SemiBold.ttf"),
   );
