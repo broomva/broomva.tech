@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
     await db.execute(sql`
       INSERT INTO "DeviceAuthCode" ("id", "deviceCode", "userCode", "scope", "clientId", "status", "expiresAt", "pollingInterval", "createdAt")
-      VALUES (${id}, ${deviceCode}, ${userCode}, ${scope}, ${clientId}, ${"pending"}, ${expiresAt}, ${interval}, ${now})
+      VALUES (${id}, ${deviceCode}, ${userCode}, ${scope}, ${clientId}, ${"pending"}, ${expiresAt.toISOString()}, ${interval}, ${now.toISOString()})
     `);
 
     const baseUrl =
