@@ -1,10 +1,10 @@
 [package]
-name = "broomva-cli"
+name = "broomva"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
-repository = "https://github.com/broomva/broomva-cli"
+repository = "https://github.com/broomva/broomva.tech"
 homepage = "https://broomva.tech"
 authors = ["Carlos Escobar-Valbuena <carlosbvalbuena@gmail.com>"]
 description = "CLI and daemon for broomva.tech — prompts, skills, context, and infrastructure monitoring"
