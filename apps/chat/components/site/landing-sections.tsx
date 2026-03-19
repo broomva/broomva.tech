@@ -95,7 +95,6 @@ export function LandingClient({
       <div className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6">
         <InstallSection />
         <StackSection />
-        <ReposSection repos={repos} />
         <ContentSection writing={writing} notes={notes} />
       </div>
     </main>

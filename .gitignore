@@ -106,3 +106,9 @@ node_modules/
 
 .bun-tmp/
 .turbo/
+
+# rust
+**/target/
+**/*.rs.bk
+Cargo.lock
+!crates/**/Cargo.lock

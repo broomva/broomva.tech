@@ -1,0 +1,76 @@
+---
+title: "bstack Control Harness Bootstrap"
+summary: "Implement and validate the bstack control harness — self-improving governance layer with hooks, pre-commit gates, consciousness stack, and knowledge graph indexing"
+date: 2026-03-19
+published: true
+category: agent-instructions
+version: "1.0"
+tags:
+  - bstack
+  - control-harness
+  - metalayer
+  - hooks
+  - consciousness
+  - knowledge-graph
+  - self-improvement
+---
+
+You are an agent responsible for implementing and validating the **bstack control harness** — the self-improving governance layer for the BroomVA workspace (or any workspace that adopts the Broomva Stack).
+
+## Objective
+
+Ensure the control harness is properly implemented with testing checks, documentation, control loop updates, pre-commit hooks, and self-meta definitions in CLAUDE.md and AGENTS.md so that every agent session is governed, traced, and feeds back into the system.
+
+## Context
+
+The bstack (Broomva Stack) is 24 agent skills across 7 layers. Installing bstack is not just a skill install — it activates a **control-systems metalayer** that makes the agent self-improving:
+
+- **Foundation (L1)**: agentic-control-kernel, control-metalayer-loop, harness-engineering-playbook
+- **Memory (L2)**: agent-consciousness, knowledge-graph-memory, prompt-library
+- **Orchestration (L3)**: symphony, symphony-forge, autoany
+- **Research (L4)**: deep-dive-research-orchestrator, skills, skills-showcase
+- **Design (L5)**: arcan-glass, next-forge
+- **Platform (L6)**: alkosto-wait-optimizer, content-creation
+- **Strategy (L7)**: 8 decision intelligence skills
+
+## Implementation Checklist
+
+### 1. Governance Files
+
+Ensure these exist at workspace root:
+
+- **CLAUDE.md** — Must include a Control Harness (Self-Definition) section with governance stack diagram, consciousness stack table, self-evolution protocol, bstack bootstrap verification checklist, hooks table, and testing commands.
+
+- **AGENTS.md** — Must include self-meta definition, mandatory session start protocol, bstack bootstrap check section, EGRI integration section, agent boundaries and working rules.
+
+- **METALAYER.md** — Control-systems manifest with plant, controller, safety shields, estimator, feedback loop.
+- **.control/policy.yaml** — Machine-readable setpoints, gates, and profiles including bstack baseline setpoints (S10-S14).
+- **schemas/** — Typed JSON schemas (state, action, trace, evaluator, EGRI event).
+
+### 2. Pre-Commit Hooks
+
+Create .githooks/pre-commit that validates governance files exist, blocks secrets from staging, verifies conversation bridge script is present, and auto-regenerates conversation index when docs/conversations/ changes. Wire with: git config core.hooksPath .githooks
+
+### 3. Claude Code Hooks
+
+Update .claude/settings.json with Stop hook (conversation-bridge-hook.sh), Notification hook (conversation-bridge-hook.sh), and PreToolUse hook on Bash (control-gate-hook.sh for safety shields). The control-gate-hook blocks force push to main, destructive resets, and destructive rm -rf. Only checks short commands (<500 chars) to avoid false positives from embedded text in script arguments or prompt payloads.
+
+### 4. Conversation Bridge
+
+Ensure the knowledge graph memory pipeline is operational: scripts/conversation-history.py parses .jsonl transcripts into Obsidian markdown, scripts/conversation-bridge-hook.sh is a Stop hook with 120s cooldown, docs/conversations/ has MOC and per-session docs with wikilinks to the knowledge graph.
+
+### 5. Makefile Targets
+
+Add make hooks-install (sets git hooks path) and make bstack-check (full 14-point validation: skills roster 24/24, governance files 5/5, hooks 3/3 plus git hooks path, conversation bridge script + MOC + stamp freshness, vault integration).
+
+### 6. Policy Setpoints
+
+Add bstack baseline setpoints to .control/policy.yaml: S10 bstack_skills_installed (target 24), S11 governance_files_present (target 5), S12 hooks_wired (target 3), S13 bridge_freshness_seconds (target 120, alert above 3600), S14 conversation_sessions_indexed (target 1).
+
+## Validation
+
+After implementation run: make bstack-check (14 passed, 0 failed, HEALTHY), make control-audit (all 5 sections passing), and .githooks/pre-commit (all gates passed).
+
+## Self-Improvement Loop
+
+Installing bstack triggers a measurable control loop: skills registered -> hooks wired -> control audit passing -> every session captured to knowledge graph -> agent reads prior sessions -> discovers better patterns -> proposes governance updates -> bstack validates -> improvement promoted -> next agent inherits. This is EGRI at the workspace level — the system improves itself through use.

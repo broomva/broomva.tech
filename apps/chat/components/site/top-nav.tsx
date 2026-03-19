@@ -1,32 +1,14 @@
 "use client";
 
 import type { Route } from "next";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Home,
-  Compass,
-  FolderKanban,
-  PenLine,
-  StickyNote,
-  Sparkles,
-  Layers,
-  CalendarClock,
-  Mail,
-  MessageCircle,
-} from "lucide-react";
+import { Home, Sparkles, Layers, MessageCircle } from "lucide-react";
 import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
 
 const links = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/start-here", label: "Start here", icon: Compass },
-  { href: "/projects", label: "Projects", icon: FolderKanban },
-  { href: "/writing", label: "Writing", icon: PenLine },
-  { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/prompts", label: "Prompts", icon: Sparkles },
   { href: "/skills", label: "Skills", icon: Layers },
-  { href: "/now", label: "Now", icon: CalendarClock },
-  { href: "/contact", label: "Contact", icon: Mail },
   { href: "/chat", label: "Chat", icon: MessageCircle },
 ];
 

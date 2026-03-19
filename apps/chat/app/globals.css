@@ -356,6 +356,59 @@
 @utility text-balance { text-wrap: balance; }
 
 /* ============================================================================
+   5b. PROSE TABLE OVERRIDES (Arcan Glass theme)
+   ============================================================================ */
+
+.prose table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.875rem;
+  border-radius: var(--ag-radius-md);
+  border: 1px solid var(--ag-border-subtle);
+}
+
+.prose thead {
+  background: var(--ag-bg-elevated);
+}
+
+.prose thead th {
+  padding: 0.625rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--ag-text-primary);
+  border-bottom: 1px solid var(--ag-border-default);
+  white-space: nowrap;
+}
+
+.prose tbody td {
+  padding: 0.5rem 1rem;
+  color: var(--ag-text-secondary);
+  border-bottom: 1px solid var(--ag-border-subtle);
+}
+
+.prose tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.prose tbody tr {
+  transition: background var(--ag-transition-fast);
+}
+
+.prose tbody tr:hover {
+  background: var(--ag-bg-hover);
+}
+
+.prose :where(code):not(:where(pre *)) {
+  background: var(--ag-bg-elevated);
+  border-radius: var(--ag-radius-sm);
+  padding: 0.15em 0.4em;
+  font-size: 0.85em;
+}
+
+/* ============================================================================
    6. BASE LAYER
    ============================================================================ */
 

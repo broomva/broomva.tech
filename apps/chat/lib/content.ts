@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import { remark } from "remark";
+import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
 
 export type ContentKind = "notes" | "projects" | "writing" | "prompts";
@@ -185,7 +186,10 @@ export async function getContentBySlug(
   const summary = toSummary(kind, slug, parsed.data as ContentFrontmatter);
   if (!summary.published) return null;
 
-  const processed = await remark().use(remarkHtml, { sanitize: false }).process(parsed.content);
+  const processed = await remark()
+    .use(remarkGfm)
+    .use(remarkHtml, { sanitize: false })
+    .process(parsed.content);
 
   return {
     ...summary,
