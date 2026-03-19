@@ -13,8 +13,6 @@ tags:
 
 We ran 145 optimization trials in 297 seconds and got zero promotions. Then we changed one variable the optimizer wasn't allowed to touch and got a 531% altitude gain. That contrast is the entire lesson.
 
-![Rocket simulation blueprint — trajectory arc with data visualization overlay](/images/writing/rocket-sim-egri/hero.png)
-
 <video src="/images/writing/rocket-sim-egri/rocket-egri-showcase.mp4" autoplay muted loop playsinline style="width:100%;border-radius:8px;margin-bottom:1.5rem"></video>
 
 We took OpenRocket — an open-source model rocket simulator — stripped out the GUI, and wired it into an EGRI (Evaluator-Governed Recursive Improvement) loop. The pipeline: a headless CLI that outputs structured JSON, a Python harness that runs grid sweeps with constraint checking, a JSONL ledger that records every trial, and a formal problem spec that defines the optimization contract. We then expanded the mutation surface across 5 motor configurations, 15 rocket designs, and extended parameter ranges to measure exactly where the altitude sensitivity lives.
