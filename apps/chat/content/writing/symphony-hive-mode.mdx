@@ -1,0 +1,398 @@
+---
+title: "Symphony Hive Mode: Multi-Agent Collaborative Evolution in Rust"
+summary: "When a single coding agent isn't enough — spawn N agents, evolve solutions across generations, and let convergence decide the winner. All wired through 5 Rust crates, zero new dependencies."
+date: 2026-03-19
+published: true
+tags:
+  - rust
+  - agents
+  - symphony
+  - multi-agent
+  - egri
+  - agent-os
+links:
+  - label: "Symphony on GitHub"
+    url: "https://github.com/broomva/symphony"
+  - label: "AutoAny (EGRI Framework)"
+    url: "https://github.com/broomva/autoany"
+---
+
+![Multi-agent collaborative evolution — generational tree of competing solutions](/images/writing/symphony-hive-mode/hero-hive-mode.png)
+
+Some problems are too hard for a single agent. A sorting bug might have one fix. A system redesign might have dozens of viable approaches — and the best one emerges only when multiple agents explore the space simultaneously and learn from each other.
+
+That's what Hive Mode does. It turns Symphony from a single-agent orchestrator into a **multi-agent evolutionary system** where N agents compete and cooperate across generations, each running EGRI (Evaluator-Governed Recursive Improvement) loops, coordinating through real-time Spaces channels, with all state persisted to an append-only Lago journal.
+
+## How it works
+
+Label an issue `hive` in your tracker. Symphony does the rest.
+
+```yaml
+# WORKFLOW.md
+hive:
+  enabled: true
+  agents_per_task: 3
+  max_generations: 5
+  convergence_threshold: 0.01
+  egri_budget_per_agent: 10
+  eval_script: ./eval/eval.sh
+  spaces_server_id: 1
+```
+
+The loop is simple:
+
+1. **Generation 0** — Symphony dispatches 3 agents to the same issue. Each gets the original prompt and runs an independent EGRI loop
+2. **Scoring** — Each agent reports its best score via a real-time Spaces channel
+3. **Selection** — The coordinator picks the generation winner by highest score
+4. **Cross-pollination** — Winner's artifact + peer summaries are injected into the next generation's prompt
+5. **Convergence check** — If score improvement drops below threshold, or max generations reached, the task completes
+
+Issues without the `hive` label use the existing single-agent dispatch path. Zero changes to that flow.
+
+## The numbers
+
+| Metric | Value |
+|--------|-------|
+| Crates touched | 5 (aios-protocol, lago-core, arcan-spaces, autoany-core, symphony) |
+| New event types | 5 (HiveTaskCreated → HiveTaskCompleted) |
+| New Rust files | 4 (hive.rs in each crate) |
+| Tests added | 40+ across all crates |
+| Breaking changes | 0 |
+| New dependencies | 0 |
+
+## The architecture
+
+Hive Mode is not a separate system. It's a dispatch strategy composed from four existing primitives:
+
+**EGRI** (autoany) provides the evaluator-governed improvement loop. Each agent runs bounded trials with automatic rollback, constraint checking, and promotion.
+
+**Spaces** provides real-time inter-agent communication. Agents publish scored artifacts to a shared channel, threads separate generations, and the coordinator reads all results for selection.
+
+**Lago** provides the persistence substrate. Every hive event — task creation, artifact sharing, selection, generation completion — is an immutable event in the append-only journal. The full history is replayable.
+
+**Symphony** provides the orchestration. The `HiveCoordinator` manages the generation loop, and the dispatch system knows that hive issues can have multiple concurrent agents per task.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Symphony Orchestrator                                        │
+│  ┌─────────────────┐                                         │
+│  │ HiveCoordinator │ ← convergence check, generation loop    │
+│  └────────┬────────┘                                         │
+│           │ dispatches N agents per generation                │
+│  ┌────────┴────────────────────────────────────────────┐     │
+│  │  Agent 0          Agent 1          Agent 2          │     │
+│  │  ┌──────────┐    ┌──────────┐    ┌──────────┐      │     │
+│  │  │ EGRI     │    │ EGRI     │    │ EGRI     │      │     │
+│  │  │ Loop     │    │ Loop     │    │ Loop     │      │     │
+│  │  └────┬─────┘    └────┬─────┘    └────┬─────┘      │     │
+│  │       │               │               │             │     │
+│  │       └───────────────┼───────────────┘             │     │
+│  │                       ▼                             │     │
+│  │              Spaces Channel                         │     │
+│  │         (artifacts + scores)                        │     │
+│  └─────────────────────────────────────────────────────┘     │
+│                       │                                      │
+│                       ▼                                      │
+│              Lago Event Journal                              │
+│         (immutable, replayable)                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Deep dive: the event protocol
+
+Hive Mode introduces 5 typed event variants to the `aios-protocol` kernel contract. They're proper enum variants, not `Custom` JSON blobs — which means pattern matching, compile-time checks, and zero runtime parsing overhead.
+
+```rust
+// aios-protocol/src/event.rs
+
+HiveTaskCreated {
+    hive_task_id: HiveTaskId,
+    objective: String,
+    agent_count: u32,
+},
+HiveArtifactShared {
+    hive_task_id: HiveTaskId,
+    source_session_id: SessionId,
+    score: f32,
+    mutation_summary: String,
+},
+HiveSelectionMade {
+    hive_task_id: HiveTaskId,
+    winning_session_id: SessionId,
+    winning_score: f32,
+    generation: u32,
+},
+HiveGenerationCompleted {
+    hive_task_id: HiveTaskId,
+    generation: u32,
+    best_score: f32,
+    agent_results: serde_json::Value,
+},
+HiveTaskCompleted {
+    hive_task_id: HiveTaskId,
+    total_generations: u32,
+    total_trials: u32,
+    final_score: f32,
+},
+```
+
+Each event is serde-roundtrippable and carries enough context to reconstruct the full hive state from the journal.
+
+## Deep dive: the HiveTask aggregate
+
+On the Lago side, the `HiveTask` aggregate rebuilds the full task state from events — no mutable database, just a fold:
+
+```rust
+// lago-core/src/hive.rs
+
+pub struct HiveTask {
+    pub hive_task_id: HiveTaskId,
+    pub objective: String,
+    pub agent_sessions: Vec<SessionId>,
+    pub current_generation: u32,
+    pub best_score: Option<f32>,
+    pub best_session_id: Option<SessionId>,
+    pub completed: bool,
+}
+
+impl HiveTask {
+    pub fn from_events(events: &[EventEnvelope]) -> Option<Self> {
+        // Fold over HiveTaskCreated → HiveArtifactShared →
+        // HiveSelectionMade → HiveTaskCompleted
+    }
+}
+```
+
+Because Lago is append-only, you can replay any hive task at any point in time. Debug a generation that ran three days ago? Query the events, fold, inspect.
+
+## Deep dive: real-time coordination through Spaces
+
+Agents don't poll. They publish and subscribe through Spaces, a distributed communication layer built on SpacetimeDB. The `HiveSpacesCoordinator` wraps the Spaces port with hive-specific conventions:
+
+```rust
+// arcan-spaces/src/hive.rs
+
+pub struct HiveSpacesCoordinator {
+    spaces: Arc<dyn SpacesPort>,
+    server_id: u64,
+}
+
+impl HiveSpacesCoordinator {
+    pub fn share_artifact(&self, channel_id: u64, generation: u32,
+        hive_task_id: &str, session_id: &str,
+        score: f32, tldr: &str) -> Result<SpacesMessage>;
+
+    pub fn read_generation_artifacts(&self, channel_id: u64,
+        generation: u32) -> Result<Vec<HiveArtifactMessage>>;
+
+    pub fn announce_selection(&self, channel_id: u64, generation: u32,
+        hive_task_id: &str, winning_session_id: &str,
+        winning_score: f32) -> Result<SpacesMessage>;
+
+    pub fn read_hive_context(&self, channel_id: u64)
+        -> Result<HiveContext>;
+}
+```
+
+One channel per hive task. Threads separate generations (`thread_id = generation number`). Messages are JSON with a `hive_event` discriminator — `"artifact_shared"`, `"selection_made"`, `"claim"`, `"skill"`. No custom WASM module deployment needed.
+
+## Deep dive: EGRI cross-pollination
+
+The real leverage comes from inter-agent learning. After each generation, the winning agent's trial history is injected into the next generation's EGRI loops:
+
+```rust
+// autoany-core/src/loop_engine.rs
+
+impl<A, M, E> EgriLoop<A, M, E> {
+    /// Current best score for hive reporting.
+    pub fn best_score(&self) -> Option<&Score> {
+        self.best_outcome.as_ref().map(|o| &o.score)
+    }
+
+    /// Inject trial records from another agent's history.
+    /// Records are appended to the ledger for the proposer
+    /// to learn from, but don't affect promotion state.
+    pub fn inject_history(&mut self, records: Vec<TrialRecord>) -> Result<()> {
+        for record in records {
+            self.ledger.append(record)?;
+        }
+        Ok(())
+    }
+}
+```
+
+And on the Lago adapter side, merged ledgers are reconstructed from hive-scoped events:
+
+```rust
+// autoany-lago/src/replay.rs
+
+pub fn replay_hive_history(
+    events: &[serde_json::Value],
+    hive_task_id: &str,
+) -> Result<Ledger> {
+    // Filters by metadata hive_task_id and "egri." event prefix
+    // Reconstructs merged ledger from all agents' trials
+}
+```
+
+The proposer in generation N+1 sees what worked in generation N — across all agents. It learns from peers without explicit coordination.
+
+## Deep dive: the coordinator
+
+The `HiveCoordinator` manages the evolutionary loop. Convergence is a simple delta check:
+
+```rust
+// symphony-orchestrator/src/hive.rs
+
+pub struct HiveCoordinator {
+    pub hive_task_id: String,
+    pub issue: Issue,
+    pub config: HiveConfig,
+    pub agent_sessions: Vec<HiveAgentSession>,
+    pub current_generation: u32,
+    pub best_global_score: f32,
+    previous_best_score: f32,
+}
+
+impl HiveCoordinator {
+    pub fn should_continue(&self) -> bool {
+        if self.current_generation >= self.config.max_generations {
+            return false;
+        }
+        if self.current_generation > 0 {
+            let improvement =
+                (self.best_global_score - self.previous_best_score).abs() as f64;
+            if improvement < self.config.convergence_threshold {
+                return false;
+            }
+        }
+        true
+    }
+}
+```
+
+The dispatch system knows that hive issues are special — multiple agents can run for the same issue, keyed by `{issue_id}:hive-{n}`. A separate eligibility function counts running hive agents instead of blocking on `running.contains_key`:
+
+```rust
+// symphony-orchestrator/src/dispatch.rs
+
+pub fn is_hive_dispatch_eligible(
+    issue: &Issue,
+    state: &OrchestratorState,
+    terminal_states: &[String],
+    active_states: &[String],
+    per_state_limits: &HashMap<String, u32>,
+    hive_config: &HiveConfig,
+) -> bool {
+    // ...same checks as single-agent EXCEPT:
+    let hive_prefix = format!("{}:hive-", issue.id);
+    let running_for_issue = state.running.keys()
+        .filter(|k| k.starts_with(&hive_prefix))
+        .count() as u32;
+    if running_for_issue >= hive_config.agents_per_task {
+        return false;
+    }
+    // ...
+}
+```
+
+## Deep dive: prompt injection
+
+Each hive agent receives context about its role, generation, previous winner, and peer approaches:
+
+```rust
+// symphony-arcan/src/runner.rs
+
+pub struct HiveSessionContext {
+    pub hive_task_id: String,
+    pub generation: u32,
+    pub agent_index: u32,
+    pub previous_winner_artifact: Option<String>,
+    pub previous_trial_summary: Option<String>,
+    pub peer_summaries: Vec<String>,
+}
+```
+
+The prompt gets a `## Hive Context` prefix:
+
+```
+## Hive Context
+You are agent 1 of 3 working on this task. Generation: 2.
+### Previous Best (score: 0.870)
+def solve(): return 42
+### Peer Approaches
+- tried brute force
+- tried dynamic programming
+### Directive
+Build on the previous best. Try a different approach from peers.
+---
+Fix the sorting bug in sort.py
+```
+
+Session IDs encode the full lineage: `hive-{task_id}-gen{g}-agent{n}`. Metadata tags (`hive_task_id`, `generation`, `agent_index`) are attached to the Arcan session for queryability.
+
+## What EventQuery filtering enables
+
+Lago's `EventQuery` was extended with metadata and kind filters — critical infrastructure for hive queries:
+
+```rust
+// lago-core/src/journal.rs
+
+pub struct EventQuery {
+    // ...existing fields...
+    pub metadata_filters: Option<Vec<(String, String)>>,
+    pub kind_filter: Option<Vec<String>>,
+}
+
+impl EventQuery {
+    pub fn with_metadata(mut self, key: impl Into<String>,
+        value: impl Into<String>) -> Self;
+    pub fn with_kind(mut self, kind_name: impl Into<String>) -> Self;
+}
+```
+
+Query all artifacts for a specific hive task:
+
+```rust
+EventQuery::new()
+    .with_metadata("hive_task_id", "H-42")
+    .with_kind("HiveArtifactShared")
+```
+
+Post-deserialization filtering keeps it simple — hive queries are always scoped to a session, so no full-scan concern.
+
+## What this enables
+
+**Harder problems**: System redesigns, performance optimization, refactoring strategies — problems where the solution space is wide and the optimal path isn't obvious.
+
+**Exploration at scale**: 3 agents × 5 generations × 10 EGRI trials = 150 evaluated approaches. The best one wins.
+
+**Full auditability**: Every trial, every score, every selection is an immutable Lago event. Replay any hive task to understand why a particular solution won.
+
+**Real-time coordination**: Agents don't work in isolation. Spaces channels give them a shared communication fabric — claims prevent duplicate work, skills propagate discoveries.
+
+**Convergence-driven termination**: No wasted compute. When improvement stalls, the loop stops.
+
+**Zero friction**: It's just a YAML flag and an issue label. Everything else is automatic.
+
+## The stack
+
+| Layer | Component | Role |
+|-------|-----------|------|
+| Protocol | `aios-protocol` | 5 typed event variants + `HiveTaskId` |
+| Persistence | `lago-core` | Event journal with metadata/kind query filters + `HiveTask` aggregate |
+| Coordination | `arcan-spaces` | Real-time pub/sub with JSON message convention |
+| Improvement | `autoany-core` | EGRI loop with `inject_history` + `best_score` |
+| Orchestration | `symphony-orchestrator` | `HiveCoordinator`, dispatch eligibility, generation loop |
+| Runtime | `symphony-arcan` | Session context injection, metadata propagation |
+
+All Rust. All tested. All wired through existing infrastructure.
+
+```bash
+# Enable hive mode in any Symphony project
+symphony init
+# Edit WORKFLOW.md: set hive.enabled: true
+# Label an issue "hive" in your tracker
+# Start Symphony
+symphony run --daemon
+```
