@@ -1,18 +1,10 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "nodejs";
-
 export const alt = "broomva.tech — Build, Create, Converge";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function OGImage() {
-  const { readFile } = await import("node:fs/promises");
-  const { join } = await import("node:path");
-  const calSansData = await readFile(
-    join(process.cwd(), "public/fonts/CalSans-SemiBold.ttf"),
-  );
-
   return new ImageResponse(
     (
       <div
@@ -24,7 +16,6 @@ export default async function OGImage() {
           justifyContent: "space-between",
           padding: "60px 72px",
           background: "linear-gradient(145deg, #000B18 0%, #001F3F 40%, #0A3D8F 100%)",
-          fontFamily: "CalSans",
           color: "#e2e0f0",
         }}
       >
@@ -35,6 +26,7 @@ export default async function OGImage() {
             fontSize: 24,
             letterSpacing: "0.15em",
             color: "#5B9BFF",
+            fontWeight: 700,
           }}
         >
           BROOMVA.TECH
@@ -45,9 +37,9 @@ export default async function OGImage() {
           <div
             style={{
               fontSize: 58,
-              fontFamily: "CalSans",
               color: "#FFFFFF",
               lineHeight: 1.1,
+              fontWeight: 700,
             }}
           >
             Build what you love.
@@ -55,9 +47,9 @@ export default async function OGImage() {
           <div
             style={{
               fontSize: 58,
-              fontFamily: "CalSans",
               color: "#FFFFFF",
               lineHeight: 1.1,
+              fontWeight: 700,
             }}
           >
             Let agents handle the rest.
@@ -77,16 +69,6 @@ export default async function OGImage() {
         </div>
       </div>
     ),
-    {
-      ...size,
-      fonts: [
-        {
-          name: "CalSans",
-          data: calSansData,
-          style: "normal" as const,
-          weight: 600 as const,
-        },
-      ],
-    },
+    { ...size },
   );
 }

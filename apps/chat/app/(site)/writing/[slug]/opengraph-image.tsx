@@ -1,8 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getContentBySlug, getAllSlugs } from "@/lib/content";
 
-export const runtime = "nodejs";
-
 export const alt = "broomva.tech";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -20,12 +18,6 @@ export default async function OGImage({
   const { slug } = await params;
   const entry = await getContentBySlug("writing", slug);
 
-  const { readFile } = await import("node:fs/promises");
-  const { join } = await import("node:path");
-  const calSansData = await readFile(
-    join(process.cwd(), "public/fonts/CalSans-SemiBold.ttf"),
-  );
-
   const title = entry?.title ?? "broomva.tech";
   const summary = entry?.summary ?? "";
   const tags = entry?.tags ?? [];
@@ -41,7 +33,6 @@ export default async function OGImage({
           justifyContent: "space-between",
           padding: "60px 72px",
           background: "linear-gradient(145deg, #000B18 0%, #001F3F 40%, #0A3D8F 80%, #001F3F 100%)",
-          fontFamily: "CalSans",
           color: "#e2e0f0",
         }}
       >
@@ -53,11 +44,11 @@ export default async function OGImage({
             gap: "12px",
             fontSize: 22,
             letterSpacing: "0.12em",
-            textTransform: "uppercase" as const,
             color: "#5B9BFF",
+            fontWeight: 700,
           }}
         >
-          broomva.tech
+          BROOMVA.TECH
         </div>
 
         {/* Middle: title + summary */}
@@ -66,9 +57,9 @@ export default async function OGImage({
             style={{
               fontSize: title.length > 60 ? 42 : 52,
               lineHeight: 1.15,
-              fontFamily: "CalSans",
               color: "#ffffff",
               maxWidth: "1050px",
+              fontWeight: 700,
             }}
           >
             {title}
@@ -126,16 +117,6 @@ export default async function OGImage({
         </div>
       </div>
     ),
-    {
-      ...size,
-      fonts: [
-        {
-          name: "CalSans",
-          data: calSansData,
-          style: "normal",
-          weight: 600,
-        },
-      ],
-    },
+    { ...size },
   );
 }
