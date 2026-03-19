@@ -1,0 +1,88 @@
+---
+title: Autoany
+summary: Evaluator-Governed Recursive Improvement (EGRI) — turn ambiguous goals into safe, measurable, rollback-capable optimization loops over any mutable artifact.
+date: 2026-03-12
+published: true
+pinned: true
+status: Active
+tags:
+  - rust
+  - egri
+  - optimization
+links:
+  - label: Repository
+    url: https://github.com/broomva/autoany
+---
+
+<video src="/images/projects/autoany/autoany-video.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
+## Problem
+
+"Make X better" is the most common request to an autonomous agent — and the most dangerous. Without a formal framework, recursive self-improvement is unbounded: the agent mutates artifacts without knowing if the result is actually better, has no rollback path when it isn't, and compounds errors across iterations.
+
+## Approach
+
+Autoany formalizes the pattern behind [autoresearch](https://github.com/karpathy/autoresearch) as a reusable systems primitive. The core insight: autoresearch is not "AI doing ML research." It is a **bounded closed-loop optimizer over executable artifacts**. That pattern generalizes to any domain.
+
+A problem instance is a tuple:
+
+| Symbol | Name | Example |
+|--------|------|---------|
+| **X** | Artifact state space | Code, config, prompts, workflows |
+| **M** | Mutation operators | LLM edits, parameter sweeps, template expansion |
+| **H** | Immutable harness | Test suite, benchmark, linter |
+| **E** | Execution backend | Local shell, sandbox, CI runner |
+| **J** | Evaluator | Scoring function, acceptance criteria |
+| **C** | Hard constraints | Budget caps, safety invariants |
+| **B** | Budget policy | Max iterations, token spend, wall time |
+| **P** | Promotion policy | Score threshold, regression gates |
+| **L** | Ledger | Audit trail of all mutations and scores |
+
+The **core law**: do not grant an agent more mutation freedom than your evaluator can reliably judge.
+
+## Architecture overview
+
+Autoany ships as three Rust crates plus integration adapters:
+
+**`autoany-core`** — the EGRI microkernel. Defines the loop: `specify mutable surface → freeze harness → propose mutation → execute under budget → score with trusted evaluator → promote / discard / branch → record lineage → repeat`. All loop state is serializable for checkpoint/resume.
+
+**`autoany-aios`** — adapter that maps EGRI loops onto Arcan agent sessions. Each iteration is an agent turn with tool calls; the evaluator runs as a separate agent with read-only access to the artifact.
+
+**`autoany-lago`** — persistence adapter that writes every mutation, score, and promotion decision to the Lago event journal. The full lineage of an optimization run is replayable from journal events.
+
+The loop is deliberately simple:
+
+```
+while budget.has_remaining() {
+    let candidate = mutator.propose(&current, &context);
+    let result = harness.execute(&candidate);
+    let score = evaluator.score(&result, &constraints);
+
+    if promotion_policy.should_promote(&score, &current_score) {
+        current = candidate;
+        ledger.record_promotion(candidate, score);
+    } else {
+        ledger.record_discard(candidate, score);
+    }
+}
+```
+
+## Use cases
+
+EGRI applies wherever you have a mutable artifact and a way to measure quality:
+
+- **Prompt optimization** — mutate system prompts, evaluate on a test suite of expected outputs
+- **Configuration tuning** — sweep parameters, score on latency/throughput/cost metrics
+- **Code improvement** — propose refactors, gate on test passage + coverage + lint score
+- **Workflow refinement** — adjust pipeline stages, evaluate on end-to-end accuracy
+- **Model fine-tuning** — select training data, score on eval benchmarks
+
+The framework is domain-agnostic by design — the problem specification is the only thing that changes.
+
+## Current status
+
+Active development. `autoany-core` has the loop runtime, checkpoint/resume, and budget enforcement. `autoany-aios` and `autoany-lago` bridge crates are in integration. Python test harness validates end-to-end loop behavior.
+
+## Why it matters
+
+EGRI makes recursive improvement safe by construction. The evaluator is immutable, the budget is bounded, and every mutation is auditable. This is the difference between "let the agent try stuff" and "run a governed optimization loop with rollback."

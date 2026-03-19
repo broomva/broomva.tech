@@ -1,0 +1,76 @@
+---
+title: Life
+summary: The Agent OS monorepo — 8 Rust workspaces, 50+ crates, 136K lines, 596 tests. Arcan, Lago, aiOS, Autonomic, Haima, Praxis, Vigil, and Spaces unified under one roof.
+date: 2026-03-15
+published: true
+pinned: true
+status: Active
+tags:
+  - rust
+  - agent-os
+  - monorepo
+links:
+  - label: Repository
+    url: https://github.com/broomva/life
+---
+
+<video src="/images/projects/life/life-video.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
+## Problem
+
+Building an Agent OS requires dozens of crates that share types, traits, and conventions. Separate repositories create version drift, integration pain, and duplicated CI. The alternative — a single workspace — breaks down when subsystems have conflicting dependency trees or need independent release cadences.
+
+## Approach
+
+Life uses **8 Cargo workspaces** under one Git repository, each subsystem owning its dependency tree while sharing the `aios-protocol` contract crate:
+
+| Workspace | Crates | Purpose |
+|-----------|--------|---------|
+| **aiOS** | 9 | Kernel contract — `aios-protocol`, events, policy, runtime, sandbox, tools |
+| **Arcan** | 11 | Runtime daemon — agent loop, providers, store, TUI, console, bridges |
+| **Lago** | 12 | Persistence — journal (redb), blob store, knowledge index, SSE, RBAC |
+| **Autonomic** | 5 | Homeostasis — rule engine, projections, economic modes, hysteresis |
+| **Haima** | 6 | Finance — wallets, x402 protocol, payment policies, billing |
+| **Praxis** | 4 | Tool execution — sandbox, skills registry, MCP bridge, canonical tools |
+| **Vigil** | 1 | Observability — OpenTelemetry, GenAI semantic conventions, span builders |
+| **Spaces** | 2 | Networking — SpacetimeDB WASM module, real-time client |
+
+**By the numbers:** 369 Rust source files, 136,387 lines, 596 tests passing (61 aiOS + 236 Arcan + 299 Lago).
+
+## Architecture overview
+
+Every subsystem implements traits from `aios-protocol` — the kernel contract that defines `AgentStateVector`, `EventEnvelope`, `OperatingMode`, and the `Provider`/`Tool`/`Policy`/`Store` trait family. This means any subsystem can be swapped or extended without breaking others.
+
+The data flow through a single agent turn:
+
+```
+Arcan (reconstruct state from Lago)
+  → Provider (call LLM via arcan-provider)
+    → Praxis (execute tool calls in sandbox)
+      → Lago (persist events to journal)
+        → Vigil (emit OpenTelemetry spans)
+          → Autonomic (evaluate homeostasis rules)
+            → Haima (gate on payment policy if needed)
+```
+
+Cross-workspace bridges (`arcan-lago`, `arcan-spaces`, `autonomic-lago`, `haima-lago`) handle the integration seams with typed adapters.
+
+## Subsystem highlights
+
+**Arcan** ships as `arcand` — a daemon that runs the agent loop (reconstruct → provider → execute → stream). Supports Anthropic, OpenAI-compatible, and Mock providers. Content-addressed hashline editing via Blake3 for deterministic conflict resolution.
+
+**Lago** is fully event-sourced — every state can be reconstructed by replaying journal entries. The knowledge index builds a searchable graph over stored documents with BFS traversal and scored search. Multi-format SSE streaming supports OpenAI, Anthropic, and Vercel AI SDK wire formats.
+
+**Autonomic** runs a pure deterministic rule engine with hysteresis anti-flapping gates. Economic modes (Sovereign, Conserving, Hustle, Hibernate) adapt agent behavior to resource availability. Advisory only — Arcan consults via HTTP GET, failures are non-fatal.
+
+**Haima** implements the x402 protocol for machine-to-machine HTTP payments. Wallets use secp256k1 keypairs with ChaCha20-Poly1305 encryption. Financial state is projected from Lago events — no separate database.
+
+**Praxis** enforces workspace boundaries via `FsPolicy` and executes tools in a sandboxed command runner. The skill registry parses `SKILL.md` files and the MCP bridge uses rmcp 0.15 for external tool servers.
+
+## Current status
+
+Active development across all 8 workspaces. Arcan, Lago, and aiOS are the most mature, with Autonomic, Haima, and Spaces in active integration. The monorepo CI runs `cargo check`, `cargo test`, and `cargo clippy` across all workspaces.
+
+## Why it matters
+
+Life is the proof that an Agent OS can be built as a cohesive system — not a loose collection of libraries, but a unified architecture where every subsystem speaks the same typed language and contributes to a single, auditable agent lifecycle.

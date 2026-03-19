@@ -25,6 +25,13 @@ const socials = [
 
 const stack = [
   {
+    name: "bstack",
+    role: "Agent skills platform",
+    description:
+      "24 curated agent skills across 7 layers — install the full Broomva development workflow with one command.",
+    href: "/skills",
+  },
+  {
     name: "Symphony",
     role: "Orchestration",
     description:
@@ -39,31 +46,24 @@ const stack = [
     href: "/projects/control-metalayer",
   },
   {
+    name: "Life",
+    role: "Agent OS monorepo",
+    description:
+      "Arcan runtime, Lago persistence, Vigil observability, Praxis tool execution, Haima finance, and Spaces networking — unified in one Cargo workspace.",
+    href: "/projects/life",
+  },
+  {
     name: "Autoany",
     role: "Recursive improvement",
     description:
-      "Evaluator-Governed Recursive Improvement (EGRI) — safe, measurable, rollback-capable optimization.",
-    href: "/projects/aios",
+      "Evaluator-Governed Recursive Improvement (EGRI) — safe, measurable, rollback-capable optimization loops.",
+    href: "/projects/autoany",
   },
   {
     name: "aiOS",
-    role: "Agent OS kernel",
+    role: "Kernel contract",
     description:
-      "The contract layer — state, memory, tools, and event taxonomy for agent runtimes.",
-    href: "/projects/aios",
-  },
-  {
-    name: "Arcan",
-    role: "Runtime",
-    description:
-      "Production runtime implementing the aiOS kernel contract.",
-    href: "/projects/aios",
-  },
-  {
-    name: "Lago · Vigil · Praxis",
-    role: "Infrastructure",
-    description:
-      "Durable persistence, OpenTelemetry-native observability, and canonical tool execution.",
+      "The canonical type system — state vectors, event taxonomy, trait interfaces, and operating modes for all Agent OS crates.",
     href: "/projects/aios",
   },
 ];
@@ -520,8 +520,8 @@ function StackSection() {
             The stack
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-            10 Rust crates, 500+ tests. A control-theory-native ecosystem
-            for autonomous software development.
+            10 Rust crates, 24 agent skills, 500+ tests. A control-theory-native
+            ecosystem for autonomous software development.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
