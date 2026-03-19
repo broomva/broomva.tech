@@ -1,0 +1,129 @@
+---
+title: "The Control Metalayer: How Agents Learn, Remember, and Govern Themselves"
+summary: "A control-systems framework that gives AI coding agents persistent memory, behavioral governance, and progressive knowledge crystallization across sessions."
+date: 2026-03-18
+published: true
+tags:
+  - control-metalayer
+  - agent-consciousness
+  - autonomy
+  - knowledge-graph
+  - bstack
+---
+
+Every agent session starts blank. No memory of what worked. No knowledge of what failed. No awareness of the rules that the last session discovered the hard way.
+
+The control metalayer fixes this. It turns any repository into a self-improving control system where every session builds on the last — automatically.
+
+## The three substrates
+
+Agent consciousness is not a single system. It is three substrates working together:
+
+**1. Control Metalayer** — How to behave. Hard and soft gates, retry budgets, escalation policies, setpoint targets. Machine-readable governance in `.control/policy.yaml` that every agent session reads before writing a single line of code.
+
+**2. Knowledge Graph** — What is known. An Obsidian vault with wikilinks, MOCs, and architecture docs. Machine-navigable and human-readable. The declarative memory of the entire project.
+
+**3. Episodic Memory** — What was done. Conversation logs auto-generated from Claude Code transcripts. Every tool call, every decision, every file touched — captured in `docs/conversations/` and linked into the knowledge graph.
+
+## The feedback loop
+
+```
+Agent Session → Conversation Log → Knowledge Graph → Control Metalayer → Next Session
+```
+
+This is not a pipeline. It is a loop. Every session produces artifacts that govern the next session. Patterns that recur get promoted. Patterns that don't get forgotten.
+
+The graduation path:
+
+| Layer | Where | Lifespan |
+|-------|-------|----------|
+| Working memory | Context window | Single session |
+| Auto-memory | `~/.claude/memory/` | Cross-session |
+| Conversation logs | `docs/conversations/` | Permanent |
+| Working rules | `AGENTS.md` | Until superseded |
+| Enforceable gates | `.control/policy.yaml` | Until policy changes |
+| Invariants | `CLAUDE.md` | Foundational |
+
+Knowledge only graduates when it earns its place. A one-time fix stays in conversation logs. A recurring pattern becomes a rule. A critical rule becomes a gate. A foundational decision becomes an invariant.
+
+## Progressive crystallization in practice
+
+Session 1: Agent hits CORS errors calling FastAPI directly from the browser. Fixes it with a BFF proxy.
+
+Session 2: Another agent encounters the same pattern. Finds the prior session in conversation history. Adds a rule to AGENTS.md: *"Never call FastAPI endpoints directly from the browser."*
+
+Session 3: Rule confirmed. Promoted to `.control/policy.yaml` as a hard gate:
+
+```yaml
+- id: no-direct-fastapi-from-browser
+  type: hard
+  condition: "browser_fetch_to_fastapi_detected"
+  action: block_merge
+```
+
+Session 4 and beyond: Every future agent is governed by this rule before it starts. The mistake cannot be repeated.
+
+## The gate sequence
+
+Every interaction passes through deterministic gates:
+
+```
+smoke (1-2 min) → check (2-3 min) → test (5-10 min) → push → review
+```
+
+Agents get two retry attempts per gate. On the third failure, they escalate to a human. This prevents infinite correction loops while allowing autonomous recovery from transient issues.
+
+Hard gates block merge. Soft gates warn. The boundary between them is the confidence level of the pattern.
+
+## Bootstrapping
+
+The control metalayer ships as a skill. One command scaffolds the entire control surface:
+
+```bash
+python3 control_wizard.py init ./my-project --profile governed
+```
+
+Three profiles, escalating in autonomy:
+
+- **Baseline** — AGENTS.md, Makefile, gate scripts, CI. Enough to be structured.
+- **Governed** — Baseline + policy.yaml, commands.yaml, topology.yaml, git hooks, eval metrics. Enough to be safe.
+- **Autonomous** — Governed + state tracking, recovery playbook, nightly audits, E2E tests. Enough to self-heal.
+
+## The bstack layer model
+
+The control metalayer is Layer 1 of a 7-layer skill stack. Every layer feeds back into it:
+
+| Layer | Purpose | Feedback to L1 |
+|-------|---------|-----------------|
+| L7 Strategy | Drift detection, decision logging, weekly reviews | Updates setpoints |
+| L6 Platform | Content creation, delivery | Generates evidence |
+| L5 Design | UI patterns, design systems | Tests conventions |
+| L4 Research | Deep-dive analysis, skills inventory | Informs decisions |
+| L3 Orchestrate | Agent dispatch, EGRI loops | Tests policy bounds |
+| L2 Memory | Consciousness, knowledge graph, prompts | Persists context |
+| L1 Foundation | Control metalayer, harness, governance | Enforces everything |
+
+24 skills, installed with one command, all governed by the same control loop.
+
+## The agentic-control-kernel
+
+For projects where the agent controls a dynamic system — not just a codebase but a cyber-physical plant — the agentic-control-kernel adds control-theoretic formalism:
+
+- **Typed schemas**: State, action, trace, evaluator, and EGRI-event as JSON schemas
+- **Safety shields**: Policy gates and containment invariants that bound agent behavior
+- **Multi-rate loops**: Hard real-time, soft real-time, supervisory, and EGRI improvement loops
+- **Plant interfaces**: Formal definitions of what the agent can observe, estimate, and control
+
+The control-metalayer-loop provides the harness. The agentic-control-kernel provides the theory. They stack.
+
+## The result
+
+Autonomous development where agents:
+- **Remember** what prior sessions learned
+- **Follow** rules that prior sessions discovered
+- **Enforce** gates that prior sessions crystallized
+- **Improve** the governance surface for future sessions
+
+The repository is not where code lives. It is a living system that gets smarter with every session.
+
+Model capability unlocks possibility. The control metalayer turns possibility into compounding returns.
