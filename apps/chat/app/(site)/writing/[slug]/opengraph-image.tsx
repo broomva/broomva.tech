@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { getContentBySlug, getAllSlugs } from "@/lib/content";
 
@@ -18,9 +20,9 @@ export default async function OGImage({
   const { slug } = await params;
   const entry = await getContentBySlug("writing", slug);
 
-  const calSansData = await fetch(
-    new URL("../../../../public/fonts/CalSans-SemiBold.ttf", import.meta.url),
-  ).then((res) => res.arrayBuffer());
+  const calSansData = await readFile(
+    join(process.cwd(), "public/fonts/CalSans-SemiBold.ttf"),
+  );
 
   const title = entry?.title ?? "broomva.tech";
   const summary = entry?.summary ?? "";

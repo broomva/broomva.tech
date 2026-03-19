@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 export const alt = "broomva.tech — Build, Create, Converge";
@@ -5,9 +7,9 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function OGImage() {
-  const calSansData = await fetch(
-    new URL("../public/fonts/CalSans-SemiBold.ttf", import.meta.url),
-  ).then((res) => res.arrayBuffer());
+  const calSansData = await readFile(
+    join(process.cwd(), "public/fonts/CalSans-SemiBold.ttf"),
+  );
 
   return new ImageResponse(
     (
@@ -79,8 +81,8 @@ export default async function OGImage() {
         {
           name: "CalSans",
           data: calSansData,
-          style: "normal",
-          weight: 600,
+          style: "normal" as const,
+          weight: 600 as const,
         },
       ],
     },
