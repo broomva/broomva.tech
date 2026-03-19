@@ -495,4 +495,30 @@ export const deviceAuthCode = pgTable(
 
 export type DeviceAuthCode = InferSelectModel<typeof deviceAuthCode>;
 
+export const userVault = pgTable(
+  "UserVault",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    lagoSessionId: varchar("lagoSessionId", { length: 32 }).notNull(),
+    name: varchar("name", { length: 256 }).notNull().default("default"),
+    isPrimary: boolean("isPrimary").notNull().default(true),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    UserVault_user_id_idx: index("UserVault_user_id_idx").on(t.userId),
+    UserVault_lago_session_unique: uniqueIndex(
+      "UserVault_lago_session_unique"
+    ).on(t.lagoSessionId),
+  })
+);
+
+export type UserVault = InferSelectModel<typeof userVault>;
+
 export const schema = { user, session, account, verification };

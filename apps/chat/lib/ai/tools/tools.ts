@@ -13,8 +13,8 @@ import { generateImageTool } from "@/lib/ai/tools/generate-image";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { readDocument } from "@/lib/ai/tools/read-document";
 import {
-  searchKnowledge,
-  readKnowledgeNote,
+  searchKnowledgeTool,
+  readKnowledgeNoteTool,
 } from "@/lib/ai/tools/knowledge-graph";
 import { retrieveUrl } from "@/lib/ai/tools/retrieve-url";
 import { tavilyWebSearch } from "@/lib/ai/tools/web-search";
@@ -108,7 +108,10 @@ export function getTools({
         }
       : {}),
     ...(config.features.knowledgeGraph
-      ? { searchKnowledge, readKnowledgeNote }
+      ? {
+          searchKnowledge: searchKnowledgeTool({ session }),
+          readKnowledgeNote: readKnowledgeNoteTool({ session }),
+        }
       : {}),
     listPrompts: listPromptsTool({ session }),
     getPrompt: getPromptTool(),

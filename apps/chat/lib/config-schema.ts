@@ -249,6 +249,9 @@ export const featuresConfigSchema = z
     knowledgeGraph: z
       .boolean()
       .describe("Obsidian vault knowledge graph search (requires VAULT_PATH)"),
+    memoryVault: z
+      .boolean()
+      .describe("User memory vault via Lago (requires LAGO_URL)"),
   })
   .default({
     sandbox: false,
@@ -260,6 +263,7 @@ export const featuresConfigSchema = z
     attachments: false,
     followupSuggestions: false,
     knowledgeGraph: false,
+    memoryVault: false,
   });
 
 export const authenticationConfigSchema = z
