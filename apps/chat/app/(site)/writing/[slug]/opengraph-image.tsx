@@ -36,7 +36,7 @@ export default async function OGImage({
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "60px 72px",
-          background: "linear-gradient(145deg, #0d0b1a 0%, #1a1333 40%, #0f172a 100%)",
+          background: "linear-gradient(145deg, #000B18 0%, #001F3F 40%, #0A3D8F 80%, #001F3F 100%)",
           fontFamily: "CalSans",
           color: "#e2e0f0",
         }}
@@ -50,7 +50,7 @@ export default async function OGImage({
             fontSize: 22,
             letterSpacing: "0.12em",
             textTransform: "uppercase" as const,
-            color: "#8b7fcc",
+            color: "#5B9BFF",
           }}
         >
           broomva.tech
@@ -74,7 +74,7 @@ export default async function OGImage({
               style={{
                 fontSize: 22,
                 lineHeight: 1.45,
-                color: "#a3a0c0",
+                color: "#7EB8FF",
                 maxWidth: "900px",
               }}
             >
@@ -101,9 +101,9 @@ export default async function OGImage({
                   fontSize: 15,
                   padding: "6px 16px",
                   borderRadius: "999px",
-                  background: "rgba(139, 127, 204, 0.15)",
-                  border: "1px solid rgba(139, 127, 204, 0.3)",
-                  color: "#8b7fcc",
+                  background: "rgba(59, 123, 247, 0.15)",
+                  border: "1px solid rgba(59, 123, 247, 0.3)",
+                  color: "#5B9BFF",
                 }}
               >
                 {tag}
@@ -113,7 +113,7 @@ export default async function OGImage({
           <div
             style={{
               fontSize: 16,
-              color: "#6b6890",
+              color: "#3B7BF7",
               letterSpacing: "0.08em",
             }}
           >
