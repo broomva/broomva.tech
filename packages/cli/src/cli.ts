@@ -4,6 +4,7 @@ import { promptsCommand } from "./commands/prompts.js";
 import { skillsCommand } from "./commands/skills.js";
 import { contextCommand } from "./commands/context.js";
 import { configCommand } from "./commands/config.js";
+import { daemonCommand } from "./commands/daemon.js";
 import { setNoColor, error as printError } from "./lib/output.js";
 import { CliError } from "./lib/errors.js";
 import { readConfig } from "./lib/config-store.js";
@@ -36,6 +37,7 @@ export function createProgram(): Command {
   program.addCommand(skillsCommand());
   program.addCommand(contextCommand());
   program.addCommand(configCommand());
+  program.addCommand(daemonCommand());
 
   return program;
 }
