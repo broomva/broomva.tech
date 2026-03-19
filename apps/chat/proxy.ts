@@ -15,7 +15,9 @@ function isMetadataRoute(pathname: string): boolean {
   return (
     pathname === "/sitemap.xml" ||
     pathname === "/robots.txt" ||
-    pathname === "/manifest.webmanifest"
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/llms.txt" ||
+    pathname === "/llms-full.txt"
   );
 }
 
@@ -91,6 +93,6 @@ export const config = {
      * - compare
      * - docs (Mintlify documentation)
      */
-    "/((?!api|docs|_next/static|_next/image|favicon.ico|opengraph-image|manifest|models|compare|privacy|terms|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|mp4|webm|ogg|pdf)$).*)",
+    "/((?!api|docs|_next/static|_next/image|favicon.ico|opengraph-image|manifest|models|compare|privacy|terms|llms|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|mp4|webm|ogg|pdf)$).*)",
   ],
 };

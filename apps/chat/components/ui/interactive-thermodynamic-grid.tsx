@@ -42,14 +42,9 @@ const ThermodynamicGrid = ({
     };
 
     const getThermalColor = (t: number) => {
-      // 0.0 = near-black (#0a0a12)
-      // 0.3 = deep navy (#001a4d)
-      // 0.5 = ai-blue (#0066ff)
-      // 0.8 = bright cyan (#33ccff)
-      // 1.0 = white-blue (#d0eaff)
-      const r = Math.min(255, Math.max(0, t * t * 200));
-      const g = Math.min(255, Math.max(0, t * 160 + t * t * 80));
-      const b = Math.min(255, Math.max(0, t * 255 + 20));
+      const r = Math.min(255, Math.max(0, t * 80 + t * t * 120));
+      const g = Math.min(255, Math.max(0, t * 100 + t * t * 110));
+      const b = Math.min(255, Math.max(0, t * 180 + 20));
       return `rgb(${r}, ${g}, ${b})`;
     };
 

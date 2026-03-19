@@ -57,7 +57,7 @@ export default async function OGImage() {
           </div>
         </div>
 
-        {/* Subtitle */}
+        {/* Subtitle + singularity mark */}
         <div
           style={{
             display: "flex",

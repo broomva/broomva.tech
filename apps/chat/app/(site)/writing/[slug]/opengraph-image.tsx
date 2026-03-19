@@ -96,8 +96,8 @@ export default async function OGImage({
                   fontSize: 15,
                   padding: "6px 16px",
                   borderRadius: "999px",
-                  background: "rgba(59, 123, 247, 0.15)",
-                  border: "1px solid rgba(59, 123, 247, 0.3)",
+                  background: "rgba(123, 143, 204, 0.15)",
+                  border: "1px solid rgba(123, 143, 204, 0.3)",
                   color: "#5B9BFF",
                 }}
               >

@@ -26,7 +26,7 @@ A **deep-space observatory** aesthetic — dark, immersive, and precision-engine
 
 ### Accent & Interactive
 
-- **Resonant AI Blue** (`oklch(0.55 0.25 260)` / `#0066ff`) — Primary brand color. Used exclusively for primary CTAs, active navigation links, focus rings, and interactive element accents. Enhanced to `oklch(0.55 0.28 260)` on P3 displays for extra vibrancy
+- **Resonant AI Blue** (`oklch(0.62 0.12 265)` / `#7B8FCC`) — Primary brand color. Used exclusively for primary CTAs, active navigation links, focus rings, and interactive element accents. Enhanced to `oklch(0.62 0.14 265)` on P3 displays for subtle extra depth
 - **Phosphor Web3 Green** (`oklch(0.72 0.19 155)` / `#00cc66`) — Secondary brand accent. Used for success states, secondary CTAs, blockchain/web3-related indicators, and complementary highlights. Enhanced to `oklch(0.72 0.22 155)` on P3 displays
 
 ### Typography & Text Hierarchy
@@ -41,18 +41,18 @@ A **deep-space observatory** aesthetic — dark, immersive, and precision-engine
 - **Signal Green** (`oklch(0.72 0.19 155)`) — Success confirmations, completed states, positive indicators (shares value with Web3 Green)
 - **Amber Flare** (`oklch(0.87 0.18 85)`) — Warnings, caution states, pending actions
 - **Cinnabar Red** (`oklch(0.58 0.24 27)`) — Errors, destructive actions, critical alerts
-- **Cerulean Pulse** (`oklch(0.55 0.25 260)`) — Informational states, tooltips, help indicators (shares value with AI Blue)
+- **Cerulean Pulse** (`oklch(0.62 0.12 265)`) — Informational states, tooltips, help indicators (shares value with AI Blue)
 
 ### Borders
 
 - **Whisper Edge** (`oklch(0.30 0.02 275 / 0.40)`) — Subtle borders for glass containers, cards, and dividers
 - **Slate Divide** (`oklch(0.40 0.02 275 / 0.50)`) — Default borders for inputs, form elements, and standard separators
 - **Iron Frame** (`oklch(0.50 0.02 275 / 0.60)`) — Strong borders for emphasis, selected states, and interactive containers
-- **Focus Beacon** (`oklch(0.55 0.25 260)`) — Focus-visible outlines, keyboard navigation indicator (matches AI Blue)
+- **Focus Beacon** (`oklch(0.62 0.12 265)`) — Focus-visible outlines, keyboard navigation indicator (matches AI Blue)
 
 ### Charts & Data Visualization
 
-1. Resonant AI Blue (`oklch(0.55 0.25 260)`)
+1. Resonant AI Blue (`oklch(0.62 0.12 265)`)
 2. Phosphor Web3 Green (`oklch(0.72 0.19 155)`)
 3. Orchid Magenta (`oklch(0.65 0.22 330)`)
 4. Amber Flare (`oklch(0.87 0.18 85)`)
@@ -197,12 +197,12 @@ Each glass surface includes a subtle top-down gradient highlight (`white 5% → 
 
 When prompting for Arcan Glass screens, frame requests as:
 
-> "Design a [component/page] with the Arcan Glass aesthetic — dark translucent surfaces with 275-hue blue-purple undertone, AI Blue (#0066ff) primary accents, glass-morphism cards with backdrop blur, CalSans headings over Geist body text."
+> "Design a [component/page] with the Arcan Glass aesthetic — dark translucent surfaces with 275-hue blue-purple undertone, AI Blue (#7B8FCC) primary accents, glass-morphism cards with backdrop blur, CalSans headings over Geist body text."
 
 ### Color Reference Format
 
 Always reference colors as: **Descriptive Name** + OKLCH value + hex fallback. Example:
-> "Use Resonant AI Blue (`oklch(0.55 0.25 260)` / `#0066ff`) for primary interactive elements."
+> "Use Resonant AI Blue (`oklch(0.62 0.12 265)` / `#7B8FCC`) for primary interactive elements."
 
 ### Component Prompt Examples
 
