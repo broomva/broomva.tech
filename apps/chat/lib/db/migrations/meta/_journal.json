@@ -316,6 +316,20 @@
       "when": 1773845026602,
       "tag": "0044_fearless_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1774060800000,
+      "tag": "0045_add_prompt_slug_links_deleted",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1774147200000,
+      "tag": "0046_add_device_auth_code",
+      "breakpoints": true
     }
   ]
 }
