@@ -16,10 +16,10 @@ const config = {
     "Rust Agent OS stack, control metalayers, and harness engineering for AI-native workflows. Chat, projects, writing, and notes by Carlos D. Escobar-Valbuena.",
   appUrl: "https://broomva.tech",
   organization: {
-    name: "broomva.tech",
+    name: "Broomva Tech Corp",
     contact: {
-      privacyEmail: "carlos@broomva.tech",
-      legalEmail: "carlos@broomva.tech",
+      privacyEmail: "contact@broomva.tech",
+      legalEmail: "contact@broomva.tech",
     },
   },
   services: {
@@ -63,11 +63,11 @@ const config = {
   policies: {
     privacy: {
       title: "Privacy Policy",
-      lastUpdated: "July 24, 2025",
+      lastUpdated: "March 19, 2026",
     },
     terms: {
       title: "Terms of Service",
-      lastUpdated: "July 24, 2025",
+      lastUpdated: "March 19, 2026",
     },
   },
   authentication: {
