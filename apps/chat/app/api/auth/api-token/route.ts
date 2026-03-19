@@ -4,6 +4,7 @@ import { getSafeSession } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { session } from "@/lib/db/schema";
 import { eq, and, gt, desc } from "drizzle-orm";
+import { signLagoJWT } from "@/lib/ai/vault/jwt";
 
 /**
  * GET /api/auth/api-token
@@ -46,13 +47,25 @@ export async function GET() {
     );
   }
 
+  // Sign a JWT for Lago auth (shared secret with lagod)
+  let lagoToken: string | undefined;
+  try {
+    lagoToken = await signLagoJWT({
+      id: sessionData.user.id,
+      email: sessionData.user.email ?? "",
+    });
+  } catch {
+    // Non-fatal — Lago JWT is optional
+  }
+
   return NextResponse.json({
     token: activeSession.token,
+    ...(lagoToken ? { lagoToken } : {}),
     expiresAt: activeSession.expiresAt.toISOString(),
     usage: {
       header: `Authorization: Bearer ${activeSession.token}`,
-      env: `export BROOMVA_API_TOKEN="${activeSession.token}"`,
-      cli: `prompt-sync.py remote-push --token "${activeSession.token}" ...`,
+      env: `export BROOMVA_API_TOKEN="${lagoToken ?? activeSession.token}"`,
+      cli: `lago memory search "query" --token "${lagoToken ?? activeSession.token}"`,
     },
   });
 }

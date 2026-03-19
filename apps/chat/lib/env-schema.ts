@@ -120,6 +120,13 @@ export const serverEnvSchema = {
     .optional()
     .describe("Absolute path to the Obsidian vault directory"),
 
+  // Lago context engine
+  LAGO_URL: z
+    .string()
+    .url()
+    .optional()
+    .describe("Lago daemon URL for user memory vault (e.g. http://localhost:8080)"),
+
   // App URL (for non-Vercel deployments) - full URL including https://
   APP_URL: z
     .url()
