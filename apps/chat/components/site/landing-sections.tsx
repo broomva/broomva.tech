@@ -93,6 +93,7 @@ export function LandingClient({
     <main className="relative">
       <HeroSection />
       <div className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6">
+        <InstallSection />
         <StackSection />
         <ReposSection repos={repos} />
         <ContentSection writing={writing} notes={notes} />
@@ -428,6 +429,78 @@ function HeroSection() {
           </motion.div>
         )}
       </AnimatePresence>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Install                                                            */
+/* ------------------------------------------------------------------ */
+
+function InstallSection() {
+  const [copied, setCopied] = useState(false);
+  const cmd = "curl -fsSL https://broomva.tech/install.sh | bash";
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(cmd);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [cmd]);
+
+  return (
+    <section className="mt-16 sm:mt-20">
+      <ScrollReveal>
+        <div className="glass rounded-3xl p-6 sm:p-10">
+          <p className="text-xs uppercase tracking-[0.25em] text-ai-blue">
+            Get Started
+          </p>
+          <h2 className="mt-3 font-display text-3xl text-text-primary sm:text-4xl">
+            Install
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
+            One command installs the Broomva CLI, the broomva.tech skill, and
+            the full bstack (24 agent skills across 7 layers).
+          </p>
+
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={copy}
+              className="group glass-card flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-mono transition hover:border-ai-blue/40"
+            >
+              <code className="text-sm text-text-primary sm:text-base">
+                <span className="text-text-muted">$ </span>
+                {cmd}
+              </code>
+              <span className="shrink-0 text-xs text-text-muted transition group-hover:text-ai-blue">
+                {copied ? "Copied!" : "Copy"}
+              </span>
+            </button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <span className="rounded-full border border-border/40 px-3 py-1 text-xs text-text-muted">
+              cargo install broomva
+            </span>
+            <a
+              href="https://crates.io/crates/broomva"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-border/40 px-3 py-1 text-xs text-text-muted transition hover:border-ai-blue/50 hover:text-ai-blue"
+            >
+              crates.io
+            </a>
+            <a
+              href="https://github.com/broomva/broomva.tech/tree/main/crates/broomva-cli"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-border/40 px-3 py-1 text-xs text-text-muted transition hover:border-ai-blue/50 hover:text-ai-blue"
+            >
+              Source
+            </a>
+          </div>
+        </div>
+      </ScrollReveal>
     </section>
   );
 }
