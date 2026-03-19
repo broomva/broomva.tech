@@ -15,6 +15,8 @@ We ran 145 optimization trials in 297 seconds and got zero promotions. Then we c
 
 ![Rocket simulation blueprint — trajectory arc with data visualization overlay](/images/writing/rocket-sim-egri/hero.png)
 
+<video src="/images/writing/rocket-sim-egri/rocket-egri-showcase.mp4" autoplay muted loop playsinline style="width:100%;border-radius:8px;margin-bottom:1.5rem"></video>
+
 We took OpenRocket — an open-source model rocket simulator — stripped out the GUI, and wired it into an EGRI (Evaluator-Governed Recursive Improvement) loop. The pipeline: a headless CLI that outputs structured JSON, a Python harness that runs grid sweeps with constraint checking, a JSONL ledger that records every trial, and a formal problem spec that defines the optimization contract. We then expanded the mutation surface across 5 motor configurations, 15 rocket designs, and extended parameter ranges to measure exactly where the altitude sensitivity lives.
 
 ## The Stack
@@ -180,6 +182,8 @@ We swept 4 launch parameters across 144 combinations plus 1 baseline:
 
 The altitude range across all 144 candidates: **0.445 meters**. Standard deviation: **8.6 centimeters**. The promotion threshold was 0.5m. No candidate ever exceeded it.
 
+![144 grid trials altitude distribution — all data points within a 0.445m band, promotion threshold unreached](/images/writing/rocket-sim-egri/grid-sweep-distribution.png)
+
 ### Parameter Sensitivity (Altitude Delta per Variable)
 
 | Parameter | Best Value | Worst Value | Delta |
@@ -217,6 +221,8 @@ The null result triggered the escalation logic: *10+ consecutive trials without 
 
 At 10 m/s wind, altitude drops 10.6% and ground hit velocity approaches the 10 m/s safety constraint. The relationship is non-linear — the degradation accelerates past 4 m/s.
 
+![Wind speed sensitivity — altitude degrades non-linearly while ground hit velocity approaches constraint](/images/writing/rocket-sim-egri/wind-sensitivity.png)
+
 **Rod angle** (0–30°, 9 data points) — strong effect at extreme angles:
 
 | Angle (°) | Altitude (m) | Delta | Velocity (m/s) |
@@ -231,6 +237,8 @@ At 10 m/s wind, altitude drops 10.6% and ground hit velocity approaches the 10 m
 | 30 | 35.37 | **-15.34** | 30.18 |
 
 At 30°, altitude drops 30% while max velocity actually *increases* — the rocket accelerates more on the tilted rod but wastes energy on horizontal flight. This shows why the original grid (0–10°) was too conservative to observe the effect.
+
+![Rod angle vs max altitude — 30-degree angle wastes 30% of altitude on horizontal flight](/images/writing/rocket-sim-egri/rod-angle-sensitivity.png)
 
 **Launch altitude** (0–4000m ASL, 9 data points) — thinner air = higher altitude:
 
@@ -262,6 +270,8 @@ The simple rocket has 5 pre-configured motor options. We ran all 5 with identica
 
 The C6-3 vs. C6-5 vs. C6-7 comparison is also instructive: same motor impulse, different ejection delay. C6-7 (7-second delay) gains 41.3m over C6-3 (3-second delay) purely from better delay timing — the parachute deploys closer to apogee instead of during the coast phase.
 
+![Motor configuration comparison — same rocket, same parameters, only motor changed, showing 531% altitude gain](/images/writing/rocket-sim-egri/motor-comparison.png)
+
 ### Cross-Design Benchmark (15 Rockets)
 
 We ran every example .ork file in the OpenRocket distribution:
@@ -285,6 +295,8 @@ We ran every example .ork file in the OpenRocket distribution:
 | Sim scripting | 2464.7 | 240.8 | 0.715 | 169.6 | 7.16 |
 
 A 77× altitude range from 31.9m to 2466.3m — all from the same physics engine, same weather model, same evaluation pipeline. The only variables: rocket geometry, staging, motor selection, and recovery systems.
+
+![Cross-design benchmark — 15 rockets from 31.9m to 2466.3m, 77x altitude range](/images/writing/rocket-sim-egri/cross-design-benchmark.png)
 
 ### Wind Sensitivity by Design Class
 
@@ -313,6 +325,8 @@ Here is what the data proves, with measured numbers:
 The 144-trial grid sweep exhaustively proved that launch parameters are a **dead mutation surface** for a simple model rocket. That null result is not a failure — it is the evaluator telling you the truth. Zero promotions means the optimizer has converged, and convergence at baseline means the mutable artifact does not contain the dominant variable.
 
 This is the general principle: **in any EGRI loop, the first question is not "how many trials?" but "what are we allowed to change?"** If the mutable artifact does not contain the dominant variable, the loop will converge immediately to a local optimum that looks identical to the baseline. Running more trials on the wrong surface is pure waste.
+
+![Mutation surface impact — log scale showing motor selection produces 605x more altitude range than launch parameters](/images/writing/rocket-sim-egri/mutation-surface-impact.png)
 
 ## EGRI Anatomy of This Run
 
