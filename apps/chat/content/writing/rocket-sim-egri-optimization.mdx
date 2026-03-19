@@ -1,0 +1,136 @@
+---
+title: Rocket Simulation Meets Recursive Improvement
+summary: We turned OpenRocket into a headless simulation engine, built a CLI tool, and ran 144 EGRI optimization trials in 5 minutes. Here is what we learned about mutation surfaces.
+date: 2026-03-19
+published: true
+tags:
+  - simulation
+  - optimization
+  - EGRI
+  - rocketry
+  - autoany
+---
+
+A physics simulation engine is the perfect evaluator. It is deterministic, fast, and never games its own score.
+
+![Rocket simulation blueprint — trajectory arc with data visualization overlay](/images/writing/rocket-sim-egri/hero.png)
+
+We took OpenRocket — an open-source model rocket simulator — stripped out the GUI, and wired it into an EGRI (Evaluator-Governed Recursive Improvement) loop. The result: **144 optimization trials in under 5 minutes**, a CLI tool that outputs structured JSON, and a published agent skill anyone can install.
+
+## The Stack
+
+| Layer | Tool | Role |
+|-------|------|------|
+| **Evaluator** | OpenRocket core (Java 17) | 6DOF physics simulation, ~2s per trial |
+| **CLI** | `rocket-sim` | Headless interface: `run`, `info`, `sweep`, `events` |
+| **Harness** | EGRI loop (Python) | Grid sweep, constraint checking, ledger, promotion |
+| **Skill** | `openrocket-sim` | Reusable agent skill for future sessions |
+
+## Why Simulation Is the Ideal Evaluator
+
+EGRI's core law: **never grant more mutation freedom than your evaluator can reliably judge.**
+
+A physics simulation satisfies this perfectly:
+
+- **Deterministic** — same inputs always produce the same outputs
+- **Fast** — each trial takes ~2 seconds, enabling hundreds of trials per session
+- **Trusted** — the evaluator is the laws of physics, not a heuristic
+- **Structured** — outputs are typed scalars (altitude, velocity, Mach number)
+- **Constraint-checkable** — hard limits on ground hit velocity, Mach, flight time
+
+This means we can safely run in **auto-promote mode** — the strongest autonomy level in EGRI. No human gate needed. The evaluator is the gate.
+
+## What We Built
+
+### rocket-sim CLI
+
+Four commands, all outputting structured JSON for pipeline composition:
+
+```bash
+# Inspect a rocket design
+rocket-sim info "A simple model rocket.ork"
+
+# Run simulation
+rocket-sim run "A simple model rocket.ork"
+# → {"summary": {"max_altitude_m": 50.7, "max_velocity_ms": 29.3, ...}}
+
+# Parameter sweep
+rocket-sim sweep "A simple model rocket.ork" wind_speed 0,2,5,8,10
+
+# Flight event timeline
+rocket-sim events "A simple model rocket.ork"
+```
+
+The CLI wraps OpenRocket's headless `core` module — a pure Java simulation engine with zero GUI dependency. We use `OpenRocketCore.initialize()` for one-line bootstrapping and the `Simulation` class for execution.
+
+### EGRI Problem Spec
+
+The optimization was formalized as an EGRI problem:
+
+```yaml
+objective:
+  metric: max_altitude_m
+  direction: maximize
+
+constraints:
+  - "ground_hit_velocity_ms <= 10.0"   # Safe recovery
+  - "max_mach < 1.0"                   # Subsonic only
+  - "flight_time_s > 5.0"             # Minimum flight time
+
+artifacts:
+  mutable: launch parameters (rod length, angle, altitude, wind)
+  immutable: simulation engine, rocket design file
+
+promotion:
+  policy: keep_if_improves
+  threshold: 0.5  # meters
+```
+
+### The Grid Sweep
+
+We swept 4 launch parameters across 144 combinations:
+
+- **Rod length**: 0.5, 1.0, 1.5, 2.0 meters
+- **Rod angle**: 0, 5, 10 degrees
+- **Launch altitude**: 0, 500, 1000, 2000 meters ASL
+- **Wind speed**: 0, 2, 5 m/s
+
+Result: **zero promotions**. Every single candidate produced nearly identical altitude (~50.5m ± 0.6m). All 144 trials passed constraints. None improved by the 0.5m promotion threshold.
+
+## The Insight: Mutation Surface Matters More Than Trial Count
+
+This is the most important finding. Running more trials on the wrong mutation surface produces no value.
+
+For a simple model rocket with an A8-3 motor:
+- **Motor selection** determines ~95% of max altitude
+- **Aerodynamic design** (fins, nose cone, body tube) determines ~4%
+- **Launch parameters** (what we swept) determine ~1%
+
+We were optimizing the wrong variables. The mutation surface was too narrow.
+
+This is a general principle. In any EGRI loop, the first question is not "how many trials?" but "**what are we allowed to change?**" If the mutable artifact does not contain the dominant variable, the loop will converge immediately to a local optimum that looks like the baseline.
+
+## What Comes Next
+
+The mutation surface needs to expand:
+
+1. **Motor selection** — sweep across the motor database (A8 → B4 → C6 → D12)
+2. **Component geometry** — fin span, nose cone length, body tube diameter
+3. **Multi-objective** — Pareto frontier of altitude vs. recovery safety
+4. **LLM-guided phase** — Claude analyzes results and proposes non-obvious design changes
+
+The CLI tool, EGRI harness, and evaluator are all in place. The next session starts from a validated baseline with a clear expansion path.
+
+## Install the Skill
+
+```bash
+npx skills add broomva/openrocket-sim
+```
+
+The skill gives any Claude Code session access to the full headless simulation API, CLI tool docs, EGRI integration patterns, and 8 compounding strategies for building on top of OpenRocket.
+
+## The Thesis
+
+Physics simulations are the strongest class of EGRI evaluator: deterministic, fast, trusted, and structured. But the quality of the optimization depends entirely on the mutation surface. A perfect evaluator over the wrong variables is worthless.
+
+Start narrow. Measure. Expand deliberately. The evaluator tells you when to stop — but only if you are changing the right things.
