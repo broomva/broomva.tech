@@ -1,7 +1,7 @@
 import { GitIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
-const GITHUB_URL = "https://github.com/broomva/broomva.tech";
+const GITHUB_URL = "https://github.com/franciscomoretti/chat.js";
 
 export function GitHubLink() {
   return (

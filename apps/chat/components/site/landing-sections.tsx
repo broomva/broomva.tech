@@ -25,13 +25,6 @@ const socials = [
 
 const stack = [
   {
-    name: "bstack",
-    role: "Agent skills platform",
-    description:
-      "24 curated agent skills across 7 layers — install the full Broomva development workflow with one command.",
-    href: "/skills",
-  },
-  {
     name: "Symphony",
     role: "Orchestration",
     description:
@@ -46,24 +39,31 @@ const stack = [
     href: "/projects/control-metalayer",
   },
   {
-    name: "Life",
-    role: "Agent OS monorepo",
-    description:
-      "Arcan runtime, Lago persistence, Vigil observability, Praxis tool execution, Haima finance, and Spaces networking — unified in one Cargo workspace.",
-    href: "/projects/aios",
-  },
-  {
     name: "Autoany",
     role: "Recursive improvement",
     description:
-      "Evaluator-Governed Recursive Improvement (EGRI) — safe, measurable, rollback-capable optimization loops.",
+      "Evaluator-Governed Recursive Improvement (EGRI) — safe, measurable, rollback-capable optimization.",
     href: "/projects/aios",
   },
   {
     name: "aiOS",
-    role: "Kernel contract",
+    role: "Agent OS kernel",
     description:
-      "The canonical type system — state vectors, event taxonomy, trait interfaces, and operating modes for all Agent OS crates.",
+      "The contract layer — state, memory, tools, and event taxonomy for agent runtimes.",
+    href: "/projects/aios",
+  },
+  {
+    name: "Arcan",
+    role: "Runtime",
+    description:
+      "Production runtime implementing the aiOS kernel contract.",
+    href: "/projects/aios",
+  },
+  {
+    name: "Lago · Vigil · Praxis",
+    role: "Infrastructure",
+    description:
+      "Durable persistence, OpenTelemetry-native observability, and canonical tool execution.",
     href: "/projects/aios",
   },
 ];
@@ -160,40 +160,40 @@ function HeroSection() {
           <svg viewBox="0 0 512 512" className="h-20 w-20 sm:h-24 sm:w-24" aria-label="broomva.tech logo">
             <defs>
               <radialGradient id="hero-sg" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#A8B8DD" />
-                <stop offset="40%" stopColor="#7B8FCC" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#0F1524" stopOpacity="0" />
+                <stop offset="0%" stopColor="#7EB8FF" />
+                <stop offset="40%" stopColor="#3B7BF7" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#001F3F" stopOpacity="0" />
               </radialGradient>
               <radialGradient id="hero-cg" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#FFF" />
-                <stop offset="40%" stopColor="#C4CEE6" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#0F1524" stopOpacity="0" />
+                <stop offset="40%" stopColor="#B8D4FF" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#001F3F" stopOpacity="0" />
               </radialGradient>
               <linearGradient id="hero-ag" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#A8B8DD" stopOpacity="0" />
-                <stop offset="40%" stopColor="#7B8FCC" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#A8B8DD" stopOpacity="0" />
+                <stop offset="0%" stopColor="#7EB8FF" stopOpacity="0" />
+                <stop offset="40%" stopColor="#3B7BF7" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#7EB8FF" stopOpacity="0" />
               </linearGradient>
               <radialGradient id="hero-sp" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="#FFF" stopOpacity="0.9" />
-                <stop offset="50%" stopColor="#A8B8DD" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#7B8FCC" stopOpacity="0" />
+                <stop offset="50%" stopColor="#7EB8FF" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#3B7BF7" stopOpacity="0" />
               </radialGradient>
             </defs>
             {/* Lensing rings */}
-            <circle cx="256" cy="256" r="195" fill="none" stroke="#3A4468" strokeWidth="0.5" opacity="0.2" />
-            <circle cx="256" cy="256" r="165" fill="none" stroke="#3A4468" strokeWidth="0.6" opacity="0.25" />
-            <circle cx="256" cy="256" r="135" fill="none" stroke="#4F5F8A" strokeWidth="0.7" opacity="0.3" />
-            <circle cx="256" cy="256" r="108" fill="none" stroke="#4F5F8A" strokeWidth="0.8" opacity="0.35" />
-            <circle cx="256" cy="256" r="84" fill="none" stroke="#7B8FCC" strokeWidth="0.9" opacity="0.4" />
-            <circle cx="256" cy="256" r="63" fill="none" stroke="#7B8FCC" strokeWidth="1.0" opacity="0.5" />
-            <circle cx="256" cy="256" r="45" fill="none" stroke="#95A5D4" strokeWidth="1.1" opacity="0.6" />
-            <circle cx="256" cy="256" r="30" fill="none" stroke="#A8B8DD" strokeWidth="1.3" opacity="0.7" />
+            <circle cx="256" cy="256" r="195" fill="none" stroke="#0A3D8F" strokeWidth="0.5" opacity="0.2" />
+            <circle cx="256" cy="256" r="165" fill="none" stroke="#0A3D8F" strokeWidth="0.6" opacity="0.25" />
+            <circle cx="256" cy="256" r="135" fill="none" stroke="#1A5BC4" strokeWidth="0.7" opacity="0.3" />
+            <circle cx="256" cy="256" r="108" fill="none" stroke="#1A5BC4" strokeWidth="0.8" opacity="0.35" />
+            <circle cx="256" cy="256" r="84" fill="none" stroke="#3B7BF7" strokeWidth="0.9" opacity="0.4" />
+            <circle cx="256" cy="256" r="63" fill="none" stroke="#3B7BF7" strokeWidth="1.0" opacity="0.5" />
+            <circle cx="256" cy="256" r="45" fill="none" stroke="#5B9BFF" strokeWidth="1.1" opacity="0.6" />
+            <circle cx="256" cy="256" r="30" fill="none" stroke="#7EB8FF" strokeWidth="1.3" opacity="0.7" />
             {/* Orbital arcs */}
             <path d="M 380 140 A 180 180 0 0 1 410 270" fill="none" stroke="url(#hero-ag)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
             <path d="M 132 372 A 180 180 0 0 1 102 242" fill="none" stroke="url(#hero-ag)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-            <path d="M 290 170 A 90 90 0 0 1 340 260" fill="none" stroke="#95A5D4" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
-            <path d="M 222 342 A 90 90 0 0 1 172 252" fill="none" stroke="#95A5D4" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
+            <path d="M 290 170 A 90 90 0 0 1 340 260" fill="none" stroke="#5B9BFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
+            <path d="M 222 342 A 90 90 0 0 1 172 252" fill="none" stroke="#5B9BFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
             {/* Accretion disk */}
             <circle cx="256" cy="256" r="18" fill="none" stroke="#7EB8FF" strokeWidth="2" opacity="0.7" />
             {/* Core */}
@@ -520,8 +520,8 @@ function StackSection() {
             The stack
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-            10 Rust crates, 24 agent skills, 500+ tests. A control-theory-native
-            ecosystem for autonomous software development.
+            10 Rust crates, 500+ tests. A control-theory-native ecosystem
+            for autonomous software development.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">

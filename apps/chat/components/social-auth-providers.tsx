@@ -44,12 +44,7 @@ export function SocialAuthProviders() {
       {config.authentication.google ? (
         <Button
           className="w-full"
-          onClick={() =>
-            authClient.signIn.social({
-              provider: "google",
-              callbackURL: "/chat",
-            })
-          }
+          onClick={() => authClient.signIn.social({ provider: "google" })}
           type="button"
           variant="outline"
         >
@@ -60,12 +55,7 @@ export function SocialAuthProviders() {
       {config.authentication.github ? (
         <Button
           className="w-full"
-          onClick={() =>
-            authClient.signIn.social({
-              provider: "github",
-              callbackURL: "/chat",
-            })
-          }
+          onClick={() => authClient.signIn.social({ provider: "github" })}
           type="button"
           variant="outline"
         >
@@ -76,12 +66,7 @@ export function SocialAuthProviders() {
       {config.authentication.vercel ? (
         <Button
           className="w-full"
-          onClick={() =>
-            authClient.signIn.social({
-              provider: "vercel",
-              callbackURL: "/chat",
-            })
-          }
+          onClick={() => authClient.signIn.social({ provider: "vercel" })}
           type="button"
           variant="outline"
         >
