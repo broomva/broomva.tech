@@ -8,6 +8,27 @@ export const metadata = {
   title: "Projects",
   description:
     "Projects where I build orchestration runtimes, governance layers, and agent OS infrastructure.",
+  openGraph: {
+    title: "Projects | broomva.tech",
+    description:
+      "Orchestration runtimes, governance layers, and agent OS infrastructure I build and ship.",
+    url: "https://broomva.tech/projects",
+    images: [
+      {
+        url: "https://broomva.tech/projects/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Projects | broomva.tech",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image" as const,
+    title: "Projects | broomva.tech",
+    description:
+      "Orchestration runtimes, governance layers, and agent OS infrastructure I build and ship.",
+    images: ["https://broomva.tech/projects/opengraph-image"],
+  },
 };
 
 export default async function ProjectsPage() {

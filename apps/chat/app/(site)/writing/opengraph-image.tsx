@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "broomva.tech — Building autonomous software systems";
+export const alt = "Writing | broomva.tech";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -20,12 +20,11 @@ export default async function OGImage() {
           color: "#e2e0f0",
         }}
       >
-        {/* Site name */}
         <div
           style={{
             display: "flex",
-            fontSize: 24,
-            letterSpacing: "0.15em",
+            fontSize: 22,
+            letterSpacing: "0.12em",
             color: "#5B9BFF",
             fontWeight: 700,
           }}
@@ -33,31 +32,30 @@ export default async function OGImage() {
           BROOMVA.TECH
         </div>
 
-        {/* Tagline */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           <div
             style={{
-              fontSize: 56,
+              fontSize: 64,
               color: "#FFFFFF",
-              lineHeight: 1.15,
+              lineHeight: 1.1,
               fontWeight: 700,
             }}
           >
-            Building autonomous
+            Writing
           </div>
           <div
             style={{
-              fontSize: 56,
-              color: "#FFFFFF",
-              lineHeight: 1.15,
-              fontWeight: 700,
+              fontSize: 24,
+              lineHeight: 1.45,
+              color: "#7EB8FF",
+              maxWidth: "900px",
             }}
           >
-            software systems
+            Architecture decisions, tradeoffs, and operating models from real
+            implementation work.
           </div>
         </div>
 
-        {/* Subtitle + singularity mark */}
         <div
           style={{
             display: "flex",
@@ -68,19 +66,18 @@ export default async function OGImage() {
           <div
             style={{
               display: "flex",
-              fontSize: 22,
+              fontSize: 18,
               color: "#7EB8FF",
               letterSpacing: "0.04em",
             }}
           >
-            Rust Agent OS stack, control metalayers, and harness engineering
+            broomva.tech/writing
           </div>
-          {/* Singularity mark */}
           <div
             style={{
               display: "flex",
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               borderRadius: "50%",
               background:
                 "radial-gradient(circle, #FFFFFF 0%, #B8D4FF 20%, #3B7BF7 45%, #0A3D8F 70%, transparent 100%)",

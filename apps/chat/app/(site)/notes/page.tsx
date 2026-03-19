@@ -7,6 +7,27 @@ export const metadata = {
   title: "Notes",
   description:
     "Short operational notes and quick takes from day-to-day agent engineering work.",
+  openGraph: {
+    title: "Notes | broomva.tech",
+    description:
+      "Short-form entries capturing one idea, one pattern, or one lesson from agent engineering work.",
+    url: "https://broomva.tech/notes",
+    images: [
+      {
+        url: "https://broomva.tech/notes/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Notes | broomva.tech",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image" as const,
+    title: "Notes | broomva.tech",
+    description:
+      "Short-form entries capturing one idea, one pattern, or one lesson from agent engineering work.",
+    images: ["https://broomva.tech/notes/opengraph-image"],
+  },
 };
 
 export default async function NotesPage() {

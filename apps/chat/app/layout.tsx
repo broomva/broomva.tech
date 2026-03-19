@@ -41,7 +41,14 @@ export const metadata: Metadata = {
     url: config.appUrl,
     title: config.appTitle ?? config.appName,
     description: config.appDescription,
-    images: [{ url: "/opengraph-image.png", width: 1200, height: 630 }],
+    images: [
+      {
+        url: `${config.appUrl}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: "broomva.tech — Building autonomous software systems",
+      },
+    ],
     locale: "en-US",
     type: "website",
   },
@@ -51,7 +58,14 @@ export const metadata: Metadata = {
     creator: "@broomva",
     title: config.appTitle ?? config.appName,
     description: config.appDescription,
-    images: ["/opengraph-image.png"],
+    images: [
+      {
+        url: `${config.appUrl}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: "broomva.tech — Building autonomous software systems",
+      },
+    ],
   },
   robots: {
     index: true,

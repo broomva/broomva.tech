@@ -264,7 +264,7 @@ function HeroSection() {
               <Link
                 key={item.href}
                 href={item.href as Route}
-                className="rounded-full border border-border/60 bg-bg-surface/20 px-4 py-1.5 text-xs tracking-wide text-text-muted backdrop-blur-sm transition hover:border-ai-blue/50 hover:text-ai-blue"
+                className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
               >
                 {item.label}
               </Link>
@@ -274,7 +274,7 @@ function HeroSection() {
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-border/60 bg-bg-surface/20 px-4 py-1.5 text-xs tracking-wide text-text-muted backdrop-blur-sm transition hover:border-ai-blue/50 hover:text-ai-blue"
+                className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
               >
                 {item.label}
               </a>

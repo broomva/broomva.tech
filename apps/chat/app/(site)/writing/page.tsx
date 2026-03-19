@@ -7,6 +7,27 @@ export const metadata = {
   title: "Writing",
   description:
     "Long-form essays on harness engineering, control systems, and building AI-native infrastructure.",
+  openGraph: {
+    title: "Writing | broomva.tech",
+    description:
+      "Architecture decisions, tradeoffs, and operating models from real implementation work.",
+    url: "https://broomva.tech/writing",
+    images: [
+      {
+        url: "https://broomva.tech/writing/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Writing | broomva.tech",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image" as const,
+    title: "Writing | broomva.tech",
+    description:
+      "Architecture decisions, tradeoffs, and operating models from real implementation work.",
+    images: ["https://broomva.tech/writing/opengraph-image"],
+  },
 };
 
 export default async function WritingPage() {
