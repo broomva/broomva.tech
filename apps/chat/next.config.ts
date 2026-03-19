@@ -4,6 +4,15 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   cacheComponents: true,
 
+  async rewrites() {
+    return [
+      {
+        source: "/install.sh",
+        destination: "/api/install",
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
