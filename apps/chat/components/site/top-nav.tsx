@@ -5,12 +5,20 @@ import { usePathname, useRouter } from "next/navigation";
 import { Home, Sparkles, Layers, MessageCircle } from "lucide-react";
 import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
 
-const links = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/prompts", label: "Prompts", icon: Sparkles },
-  { href: "/skills", label: "Skills", icon: Layers },
-  { href: "/chat", label: "Chat", icon: MessageCircle },
+const allLinks = [
+  { href: "/", label: "Home", icon: Home, chatOnly: true },
+  { href: "/prompts", label: "Prompts", icon: Sparkles, chatOnly: false },
+  { href: "/skills", label: "Skills", icon: Layers, chatOnly: false },
+  { href: "/chat", label: "Chat", icon: MessageCircle, chatOnly: false },
 ];
+
+const chatRoutes = ["/chat", "/project", "/settings"];
+
+function isInChatLayout(pathname: string): boolean {
+  return chatRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
 
 function isCurrent(pathname: string, href: string): boolean {
   if (href === "/") {
@@ -22,6 +30,9 @@ function isCurrent(pathname: string, href: string): boolean {
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
+
+  const inChat = isInChatLayout(pathname);
+  const links = allLinks.filter((link) => !link.chatOnly || inChat);
 
   return (
     <header className="pointer-events-none fixed bottom-4 left-0 right-0 z-40">

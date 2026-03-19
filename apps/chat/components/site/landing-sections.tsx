@@ -139,7 +139,7 @@ function HeroSection() {
   );
 
   return (
-    <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 sm:px-6">
+    <section className="relative -mt-16 flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 pt-16 sm:px-6">
       <ThermodynamicGrid
         resolution={12}
         coolingFactor={0.96}
