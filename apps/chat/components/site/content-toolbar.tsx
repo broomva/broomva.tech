@@ -54,19 +54,183 @@ function getPreferredVoice(): SpeechSynthesisVoice | undefined {
 
 type PlaybackState = "idle" | "playing" | "paused";
 
+const BTN_CLASS =
+  "inline-flex size-9 items-center justify-center rounded-full border border-[var(--ag-border-subtle)] text-text-muted transition hover:border-ai-blue/40 hover:text-ai-blue";
+
+/* ---- Audio file player (used when `audio` frontmatter is set) ---- */
+
+function AudioFilePlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [state, setState] = useState<PlaybackState>("idle");
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const audio = new Audio(src);
+    audio.preload = "metadata";
+    audioRef.current = audio;
+
+    audio.addEventListener("loadedmetadata", () =>
+      setDuration(audio.duration),
+    );
+    audio.addEventListener("timeupdate", () => {
+      setCurrentTime(audio.currentTime);
+      if (audio.duration > 0) {
+        setProgress((audio.currentTime / audio.duration) * 100);
+      }
+    });
+    audio.addEventListener("play", () => setState("playing"));
+    audio.addEventListener("pause", () => {
+      if (audio.ended) {
+        setState("idle");
+        setProgress(0);
+        setCurrentTime(0);
+      } else {
+        setState("paused");
+      }
+    });
+    audio.addEventListener("ended", () => {
+      setState("idle");
+      setProgress(0);
+      setCurrentTime(0);
+    });
+
+    return () => {
+      audio.pause();
+      audio.src = "";
+    };
+  }, [src]);
+
+  const handlePlay = useCallback(() => audioRef.current?.play(), []);
+  const handlePause = useCallback(() => audioRef.current?.pause(), []);
+  const handleStop = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+    setState("idle");
+    setProgress(0);
+    setCurrentTime(0);
+  }, []);
+  const handleSkip = useCallback((seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = Math.max(
+      0,
+      Math.min(audio.currentTime + seconds, audio.duration),
+    );
+  }, []);
+
+  function formatTime(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  if (state === "idle") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handlePlay}
+            aria-label="Listen to post"
+            className={BTN_CLASS}
+          >
+            <Headphones className="size-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Listen</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => handleSkip(-10)}
+            aria-label="Back 10 seconds"
+            className={BTN_CLASS}
+          >
+            <RotateCcw className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">-10s</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={state === "playing" ? handlePause : handlePlay}
+            aria-label={state === "playing" ? "Pause" : "Resume"}
+            className={BTN_CLASS}
+          >
+            {state === "playing" ? (
+              <Pause className="size-4" />
+            ) : (
+              <Play className="size-4" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {state === "playing" ? "Pause" : "Resume"}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => handleSkip(10)}
+            aria-label="Forward 10 seconds"
+            className={BTN_CLASS}
+          >
+            <RotateCw className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">+10s</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handleStop}
+            aria-label="Stop"
+            className={BTN_CLASS}
+          >
+            <Square className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Stop</TooltipContent>
+      </Tooltip>
+
+      <span className="ml-1 text-[10px] tabular-nums text-text-muted">
+        {formatTime(currentTime)}/{formatTime(duration)}
+      </span>
+    </div>
+  );
+}
+
+/* ---- Web Speech API fallback (used when no audio file) ---- */
+
 interface ListenButtonProps {
   html: string;
   title: string;
 }
 
-function ListenButton({ html, title }: ListenButtonProps) {
+function SpeechFallbackPlayer({ html, title }: ListenButtonProps) {
   const [state, setState] = useState<PlaybackState>("idle");
   const [progress, setProgress] = useState(0);
   const fullTextRef = useRef("");
   const charOffsetRef = useRef(0);
   const lastBoundaryRef = useRef(0);
 
-  // build full text once
   useEffect(() => {
     fullTextRef.current = `${title}. ${stripHtml(html)}`;
   }, [html, title]);
@@ -108,7 +272,6 @@ function ListenButton({ html, title }: ListenButtonProps) {
     };
 
     utterance.onerror = (e) => {
-      // "interrupted" fires on cancel() during skip — not a real error
       if (e.error === "interrupted") return;
       setState("idle");
       setProgress(0);
@@ -154,9 +317,6 @@ function ListenButton({ html, title }: ListenButtonProps) {
     };
   }, []);
 
-  const btnClass =
-    "inline-flex size-9 items-center justify-center rounded-full border border-[var(--ag-border-subtle)] text-text-muted transition hover:border-ai-blue/40 hover:text-ai-blue";
-
   if (state === "idle") {
     return (
       <Tooltip>
@@ -165,7 +325,7 @@ function ListenButton({ html, title }: ListenButtonProps) {
             type="button"
             onClick={handlePlay}
             aria-label="Listen to post"
-            className={btnClass}
+            className={BTN_CLASS}
           >
             <Headphones className="size-4" />
           </button>
@@ -177,14 +337,13 @@ function ListenButton({ html, title }: ListenButtonProps) {
 
   return (
     <div className="flex items-center gap-1">
-      {/* Skip back 10s */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             type="button"
             onClick={() => handleSkip(-10)}
             aria-label="Back 10 seconds"
-            className={btnClass}
+            className={BTN_CLASS}
           >
             <RotateCcw className="size-3.5" />
           </button>
@@ -192,14 +351,13 @@ function ListenButton({ html, title }: ListenButtonProps) {
         <TooltipContent side="bottom">-10s</TooltipContent>
       </Tooltip>
 
-      {/* Play / Pause */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             type="button"
             onClick={state === "playing" ? handlePause : handlePlay}
             aria-label={state === "playing" ? "Pause" : "Resume"}
-            className={btnClass}
+            className={BTN_CLASS}
           >
             {state === "playing" ? (
               <Pause className="size-4" />
@@ -213,14 +371,13 @@ function ListenButton({ html, title }: ListenButtonProps) {
         </TooltipContent>
       </Tooltip>
 
-      {/* Skip forward 10s */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             type="button"
             onClick={() => handleSkip(10)}
             aria-label="Forward 10 seconds"
-            className={btnClass}
+            className={BTN_CLASS}
           >
             <RotateCw className="size-3.5" />
           </button>
@@ -228,14 +385,13 @@ function ListenButton({ html, title }: ListenButtonProps) {
         <TooltipContent side="bottom">+10s</TooltipContent>
       </Tooltip>
 
-      {/* Stop */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             type="button"
             onClick={handleStop}
             aria-label="Stop"
-            className={btnClass}
+            className={BTN_CLASS}
           >
             <Square className="size-3.5" />
           </button>
@@ -243,12 +399,26 @@ function ListenButton({ html, title }: ListenButtonProps) {
         <TooltipContent side="bottom">Stop</TooltipContent>
       </Tooltip>
 
-      {/* Progress indicator */}
       <span className="ml-1 text-[10px] tabular-nums text-text-muted">
         {Math.round(progress)}%
       </span>
     </div>
   );
+}
+
+/* ---- Unified listen button: audio file or speech fallback ---- */
+
+interface UnifiedListenProps {
+  html: string;
+  title: string;
+  audioSrc?: string;
+}
+
+function ListenButton({ html, title, audioSrc }: UnifiedListenProps) {
+  if (audioSrc) {
+    return <AudioFilePlayer src={audioSrc} />;
+  }
+  return <SpeechFallbackPlayer html={html} title={title} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -389,6 +559,7 @@ interface ContentToolbarProps {
   title: string;
   summary: string;
   slug: string;
+  audioSrc?: string;
 }
 
 export function ContentToolbar({
@@ -396,10 +567,11 @@ export function ContentToolbar({
   title,
   summary,
   slug,
+  audioSrc,
 }: ContentToolbarProps) {
   return (
     <div className="flex items-center gap-2">
-      <ListenButton html={html} title={title} />
+      <ListenButton html={html} title={title} audioSrc={audioSrc} />
       <ShareButton title={title} summary={summary} slug={slug} />
       <ScrollToTop />
     </div>

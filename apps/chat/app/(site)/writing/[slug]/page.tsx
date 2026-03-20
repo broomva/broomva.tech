@@ -66,6 +66,7 @@ export default async function WritingSlugPage({
         slug={slug}
         tags={entry.tags}
         readingTime={readingTime}
+        audioSrc={entry.audio}
       />
     </main>
   );

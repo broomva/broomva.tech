@@ -77,6 +77,7 @@ export default async function ProjectPage({
         slug={slug}
         tags={project.tags}
         readingTime={readingTime}
+        audioSrc={project.audio}
       />
     </main>
   );

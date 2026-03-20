@@ -54,6 +54,7 @@ export default async function NoteSlugPage({
         slug={slug}
         tags={entry.tags}
         readingTime={readingTime}
+        audioSrc={entry.audio}
       />
     </main>
   );

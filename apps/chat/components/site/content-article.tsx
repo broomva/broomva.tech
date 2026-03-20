@@ -12,6 +12,7 @@ interface ContentArticleProps {
   slug: string;
   tags?: string[];
   readingTime: number;
+  audioSrc?: string;
 }
 
 export function ContentArticle({
@@ -21,6 +22,7 @@ export function ContentArticle({
   slug,
   tags,
   readingTime,
+  audioSrc,
 }: ContentArticleProps) {
   return (
     <>
@@ -34,6 +36,7 @@ export function ContentArticle({
             title={title}
             summary={summary}
             slug={slug}
+            audioSrc={audioSrc}
           />
         </div>
       </div>

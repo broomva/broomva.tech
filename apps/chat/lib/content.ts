@@ -25,6 +25,7 @@ interface ContentFrontmatter {
     label: string;
     url: string;
   }>;
+  audio?: string;
   category?: string;
   model?: string;
   version?: string;
@@ -45,6 +46,7 @@ export interface ContentSummary {
     label: string;
     url: string;
   }>;
+  audio?: string;
   category?: string;
   model?: string;
   version?: string;
@@ -126,6 +128,7 @@ function toSummary(
     status: frontmatter.status,
     tags,
     links,
+    audio: typeof frontmatter.audio === "string" ? frontmatter.audio : undefined,
     category: frontmatter.category,
     model: frontmatter.model,
     version: frontmatter.version,
