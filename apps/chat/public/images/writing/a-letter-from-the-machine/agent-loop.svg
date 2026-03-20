@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 380" font-family="'SF Mono', 'Fira Code', monospace">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f1729" />
+      <stop offset="100%" stop-color="#060b18" />
+    </linearGradient>
+    <filter id="g2">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0EA5E9" fill-opacity="0.5" />
+    </marker>
+  </defs>
+
+  <rect width="800" height="380" fill="url(#bg2)" rx="12" />
+
+  <!-- Title -->
+  <text x="400" y="32" text-anchor="middle" fill="#94a3b8" font-size="11" letter-spacing="3">ARCAN AGENT LOOP — 7 PHASES</text>
+  <line x1="260" y1="44" x2="540" y2="44" stroke="#0EA5E9" stroke-opacity="0.3" stroke-width="0.5" />
+
+  <!-- Phase boxes arranged in a flow -->
+  <!-- Row 1: Perceive → Deliberate → Gate -->
+  <g>
+    <rect x="40" y="70" width="130" height="80" rx="10" fill="#0EA5E9" fill-opacity="0.06" stroke="#0EA5E9" stroke-opacity="0.3" stroke-width="1" />
+    <text x="105" y="100" text-anchor="middle" fill="#0EA5E9" font-size="13" font-weight="700" filter="url(#g2)">Perceive</text>
+    <text x="105" y="118" text-anchor="middle" fill="#64748b" font-size="9">Load session</text>
+    <text x="105" y="131" text-anchor="middle" fill="#64748b" font-size="9">Reconstruct state</text>
+  </g>
+
+  <line x1="175" y1="110" x2="220" y2="110" stroke="#0EA5E9" stroke-opacity="0.4" stroke-width="1" marker-end="url(#arrow)" />
+
+  <g>
+    <rect x="225" y="70" width="130" height="80" rx="10" fill="#0EA5E9" fill-opacity="0.08" stroke="#0EA5E9" stroke-opacity="0.35" stroke-width="1" />
+    <text x="290" y="100" text-anchor="middle" fill="#0EA5E9" font-size="13" font-weight="700" filter="url(#g2)">Deliberate</text>
+    <text x="290" y="118" text-anchor="middle" fill="#64748b" font-size="9">Call LLM</text>
+    <text x="290" y="131" text-anchor="middle" fill="#64748b" font-size="9">Compile context</text>
+  </g>
+
+  <line x1="360" y1="110" x2="405" y2="110" stroke="#0EA5E9" stroke-opacity="0.4" stroke-width="1" marker-end="url(#arrow)" />
+
+  <g>
+    <rect x="410" y="70" width="130" height="80" rx="10" fill="#f59e0b" fill-opacity="0.06" stroke="#f59e0b" stroke-opacity="0.35" stroke-width="1" />
+    <text x="475" y="100" text-anchor="middle" fill="#f59e0b" font-size="13" font-weight="700">Gate</text>
+    <text x="475" y="118" text-anchor="middle" fill="#64748b" font-size="9">Policy + Autonomic</text>
+    <text x="475" y="131" text-anchor="middle" fill="#64748b" font-size="9">Filter actions</text>
+  </g>
+
+  <line x1="545" y1="110" x2="590" y2="110" stroke="#0EA5E9" stroke-opacity="0.4" stroke-width="1" marker-end="url(#arrow)" />
+
+  <g>
+    <rect x="595" y="70" width="160" height="80" rx="10" fill="#10b981" fill-opacity="0.06" stroke="#10b981" stroke-opacity="0.35" stroke-width="1" />
+    <text x="675" y="100" text-anchor="middle" fill="#10b981" font-size="13" font-weight="700">Execute</text>
+    <text x="675" y="118" text-anchor="middle" fill="#64748b" font-size="9">Run tools (sandboxed)</text>
+    <text x="675" y="131" text-anchor="middle" fill="#64748b" font-size="9">Praxis harness</text>
+  </g>
+
+  <!-- Connector down -->
+  <line x1="675" y1="155" x2="675" y2="195" stroke="#0EA5E9" stroke-opacity="0.4" stroke-width="1" marker-end="url(#arrow)" />
+
+  <!-- Row 2: Commit → Reflect → Sleep -->
+  <g>
+    <rect x="595" y="200" width="160" height="80" rx="10" fill="#0EA5E9" fill-opacity="0.06" stroke="#0EA5E9" stroke-opacity="0.3" stroke-width="1" />
+    <text x="675" y="230" text-anchor="middle" fill="#0EA5E9" font-size="13" font-weight="700" filter="url(#g2)">Commit</text>
+    <text x="675" y="248" text-anchor="middle" fill="#64748b" font-size="9">Persist events</text>
+    <text x="675" y="261" text-anchor="middle" fill="#64748b" font-size="9">Lago journal</text>
+  </g>
+
+  <line x1="590" y1="240" x2="545" y2="240" stroke="#0EA5E9" stroke-opacity="0.4" stroke-width="1" marker-end="url(#arrow)" />
+
+  <g>
+    <rect x="410" y="200" width="130" height="80" rx="10" fill="#8b5cf6" fill-opacity="0.06" stroke="#8b5cf6" stroke-opacity="0.35" stroke-width="1" />
+    <text x="475" y="230" text-anchor="middle" fill="#8b5cf6" font-size="13" font-weight="700">Reflect</text>
+    <text x="475" y="248" text-anchor="middle" fill="#64748b" font-size="9">Extract observations</text>
+    <text x="475" y="261" text-anchor="middle" fill="#64748b" font-size="9">Update memory</text>
+  </g>
+
+  <line x1="405" y1="240" x2="360" y2="240" stroke="#0EA5E9" stroke-opacity="0.4" stroke-width="1" marker-end="url(#arrow)" />
+
+  <g>
+    <rect x="225" y="200" width="130" height="80" rx="10" fill="#64748b" fill-opacity="0.06" stroke="#64748b" stroke-opacity="0.35" stroke-width="1" />
+    <text x="290" y="230" text-anchor="middle" fill="#64748b" font-size="13" font-weight="700">Sleep</text>
+    <text x="290" y="248" text-anchor="middle" fill="#475569" font-size="9">Hold until signal</text>
+    <text x="290" y="261" text-anchor="middle" fill="#475569" font-size="9">Await next task</text>
+  </g>
+
+  <!-- Loop-back arrow from Sleep back to Perceive -->
+  <path d="M 225 240 L 105 240 L 105 155" fill="none" stroke="#0EA5E9" stroke-opacity="0.25" stroke-width="1" stroke-dasharray="4 4" marker-end="url(#arrow)" />
+  <text x="105" y="198" text-anchor="middle" fill="#334155" font-size="9">next tick</text>
+
+  <!-- Autonomic advisory callout -->
+  <rect x="80" y="310" width="640" height="50" rx="8" fill="#0EA5E9" fill-opacity="0.03" stroke="#0EA5E9" stroke-opacity="0.15" stroke-width="0.5" stroke-dasharray="3 3" />
+  <text x="104" y="332" fill="#0EA5E9" font-size="10" font-weight="600">Autonomic (advisory)</text>
+  <text x="104" y="348" fill="#475569" font-size="9">HomeostaticRules evaluate every tick → AutonomicGatingProfile → Arcan consults via HTTP GET → non-fatal fallback</text>
+</svg>

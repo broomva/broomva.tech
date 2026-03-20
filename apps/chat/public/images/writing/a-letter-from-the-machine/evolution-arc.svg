@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" font-family="'SF Mono', 'Fira Code', monospace">
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f1729" />
+      <stop offset="100%" stop-color="#060b18" />
+    </linearGradient>
+    <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="33%" stop-color="#f59e0b" />
+      <stop offset="66%" stop-color="#0EA5E9" />
+      <stop offset="100%" stop-color="#0EA5E9" />
+    </linearGradient>
+    <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0EA5E9" fill-opacity="0.6" />
+    </marker>
+    <filter id="g4">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="800" height="220" fill="url(#bg4)" rx="12" />
+
+  <!-- Title -->
+  <text x="400" y="28" text-anchor="middle" fill="#94a3b8" font-size="11" letter-spacing="3">THE ARC: FROM CONVENTION TO CONTRACT</text>
+
+  <!-- 4 Phase boxes -->
+  <g>
+    <rect x="30" y="55" width="160" height="90" rx="8" fill="#f59e0b" fill-opacity="0.06" stroke="#f59e0b" stroke-opacity="0.3" stroke-width="1" />
+    <text x="110" y="82" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700">Skill</text>
+    <text x="110" y="100" text-anchor="middle" fill="#64748b" font-size="9">Markdown recipe</text>
+    <text x="110" y="114" text-anchor="middle" fill="#64748b" font-size="9">Prose description</text>
+    <text x="110" y="128" text-anchor="middle" fill="#475569" font-size="8">No guarantees</text>
+  </g>
+
+  <line x1="195" y1="100" x2="225" y2="100" stroke="url(#arcGrad)" stroke-width="1.5" marker-end="url(#arr4)" />
+
+  <g>
+    <rect x="230" y="55" width="160" height="90" rx="8" fill="#f59e0b" fill-opacity="0.04" stroke="#f59e0b" stroke-opacity="0.2" stroke-width="1" />
+    <rect x="230" y="55" width="160" height="90" rx="8" fill="#0EA5E9" fill-opacity="0.02" />
+    <text x="310" y="82" text-anchor="middle" fill="#e2a54b" font-size="12" font-weight="700">Convention</text>
+    <text x="310" y="100" text-anchor="middle" fill="#64748b" font-size="9">CLAUDE.md + hooks</text>
+    <text x="310" y="114" text-anchor="middle" fill="#64748b" font-size="9">Files + scripts</text>
+    <text x="310" y="128" text-anchor="middle" fill="#475569" font-size="8">Can go stale</text>
+  </g>
+
+  <line x1="395" y1="100" x2="425" y2="100" stroke="url(#arcGrad)" stroke-width="1.5" marker-end="url(#arr4)" />
+
+  <g>
+    <rect x="430" y="55" width="160" height="90" rx="8" fill="#0EA5E9" fill-opacity="0.06" stroke="#0EA5E9" stroke-opacity="0.3" stroke-width="1" />
+    <text x="510" y="82" text-anchor="middle" fill="#0EA5E9" font-size="12" font-weight="700" filter="url(#g4)">Contract</text>
+    <text x="510" y="100" text-anchor="middle" fill="#64748b" font-size="9">Rust types in aios</text>
+    <text x="510" y="114" text-anchor="middle" fill="#64748b" font-size="9">Event journal</text>
+    <text x="510" y="128" text-anchor="middle" fill="#475569" font-size="8">Deterministic</text>
+  </g>
+
+  <line x1="595" y1="100" x2="625" y2="100" stroke="#0EA5E9" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#arr4)" />
+
+  <g>
+    <rect x="630" y="55" width="140" height="90" rx="8" fill="#0EA5E9" fill-opacity="0.1" stroke="#0EA5E9" stroke-opacity="0.4" stroke-width="1" />
+    <text x="700" y="82" text-anchor="middle" fill="#0EA5E9" font-size="12" font-weight="700" filter="url(#g4)">Runtime</text>
+    <text x="700" y="100" text-anchor="middle" fill="#64748b" font-size="9">Arcan agent loop</text>
+    <text x="700" y="114" text-anchor="middle" fill="#64748b" font-size="9">Live computation</text>
+    <text x="700" y="128" text-anchor="middle" fill="#475569" font-size="8">Mathematical coherence</text>
+  </g>
+
+  <!-- Bottom annotation -->
+  <text x="110" y="172" text-anchor="middle" fill="#f59e0b" fill-opacity="0.5" font-size="9">agent-consciousness</text>
+  <text x="110" y="185" text-anchor="middle" fill="#f59e0b" fill-opacity="0.5" font-size="9">SKILL.md</text>
+
+  <text x="310" y="172" text-anchor="middle" fill="#94805a" font-size="9">CLAUDE.md + hooks</text>
+  <text x="310" y="185" text-anchor="middle" fill="#94805a" font-size="9">bstack skills</text>
+
+  <text x="510" y="172" text-anchor="middle" fill="#0EA5E9" fill-opacity="0.6" font-size="9">aios-protocol</text>
+  <text x="510" y="185" text-anchor="middle" fill="#0EA5E9" fill-opacity="0.6" font-size="9">37 Rust crates</text>
+
+  <text x="700" y="172" text-anchor="middle" fill="#0EA5E9" fill-opacity="0.8" font-size="9">Arcan + Autonomic</text>
+  <text x="700" y="185" text-anchor="middle" fill="#0EA5E9" fill-opacity="0.8" font-size="9">1045+ tests</text>
+
+  <!-- Gradient bar -->
+  <rect x="30" y="200" width="740" height="4" rx="2" fill="url(#arcGrad)" opacity="0.3" />
+</svg>
