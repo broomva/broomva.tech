@@ -1,0 +1,18 @@
+---
+title: "Quantum Computing"
+summary: "Qubits, superposition, and the fundamental shift from flipping bits to manipulating probability amplitudes."
+date: 2019-10-01
+published: true
+tags:
+  - quantum-computing
+  - physics
+  - computation
+---
+
+Classical computers encode information as bits -- discrete zeros and ones manipulated by logic gates that flip, AND, OR, and XOR those values. Every operation is deterministic: one input state maps to exactly one output state. Quantum computing breaks that contract. Instead of bits, the fundamental unit is the **qubit**, which exists in a superposition of states described by probability amplitudes -- complex numbers whose squared magnitudes give the probability of measuring a particular outcome. This distinction is not merely theoretical. It means that a register of *n* qubits encodes 2^n amplitudes simultaneously, and that operations on those amplitudes can exploit interference and entanglement to solve certain problems exponentially faster than any known classical algorithm. Understanding how this works at the gate level is the first step toward understanding why quantum computing matters.
+
+The manipulation of qubits during computation uses gates that can modify the coefficients of a superposition, not just flip the state. This vastly increases the information density of a quantum computation. A Hadamard gate, for example, takes a qubit in a definite state and spreads it into an equal superposition; a phase gate rotates the complex amplitude without changing the measurement probabilities; a CNOT gate entangles two qubits so their fates become correlated. These are unitary transformations -- reversible, norm-preserving operations on the state vector -- and they compose to form circuits of arbitrary complexity.
+
+The gates operate on qubits to change their quantum state. When the qubits are measured, their quantum state collapses and the computation is over. This is the irreversible step: measurement projects the superposition onto a classical outcome, destroying the quantum information that made the computation powerful in the first place. The art of quantum algorithm design is arranging gates so that the amplitudes of correct answers interfere constructively while incorrect answers cancel out, maximizing the probability that the final measurement yields a useful result.
+
+Quantum computing, then, is about processing information with the quantum state and extracting the final form of that information through the measurements. The entire computational advantage lives in the space between state preparation and measurement -- in the unitary evolution of amplitudes that classical machines cannot efficiently simulate. Algorithms like Shor's (factoring) and Grover's (search) are proofs of concept that this advantage is real and structured, not just a curiosity. The open challenge is building hardware where coherence lasts long enough, and error rates stay low enough, for those algorithms to outperform their classical counterparts on problems that actually matter.

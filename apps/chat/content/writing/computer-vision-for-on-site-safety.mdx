@@ -1,0 +1,63 @@
+---
+title: "Computer Vision for On-Site Safety"
+summary: "Using computer vision and temporal feature analysis to build safer, more controlled environments in Oil & Gas — from a mechatronics engineer in Colombia."
+date: 2020-06-01
+published: true
+tags:
+  - computer-vision
+  - safety
+  - oil-and-gas
+  - deep-learning
+---
+
+There is a moment that stays with you when you work in Oil & Gas. You are standing on a production pad — pumps cycling, separators humming, flare stacks burning off excess gas — and you realize that the difference between a normal shift and a catastrophic event is often a detail that a human eye missed under fatigue, or a process variable that drifted just outside its envelope while nobody was watching. As a Mechatronics Engineer working in the development of A.I. solutions in the Colombian Oil & Gas field, that realization became the driving force behind my work: finding optimal approaches to make processes efficient and safe, to predict asset behavior and proactively act on critical events before they cascade.
+
+Computer vision is the technology that bridges the gap between what instruments measure and what actually happens on the ground.
+
+---
+
+## The Vision: Why Computer Vision Belongs on the Well Pad
+
+Traditional safety monitoring in Oil & Gas relies on two parallel streams. The first is process instrumentation — pressure transmitters, flow meters, temperature sensors, level gauges — feeding SCADA systems that trigger alarms when a reading crosses a threshold. The second is human inspection — operators walking the facility, looking for leaks, corrosion, improper PPE usage, unauthorized personnel in hazardous zones, or equipment behaving in ways that no sensor was designed to catch.
+
+Both streams have blind spots. Instruments measure what they were installed to measure; they cannot detect a pool of condensate forming beneath a flange, a missing hard hat in a confined-space entry, or a valve handwheel left in the wrong position. Human inspectors are limited by shift duration, cognitive load, and the simple fact that one pair of eyes cannot cover an entire facility continuously. In environments classified as hazardous — where H2S concentrations, hydrocarbon vapors, and high-pressure equipment coexist — those blind spots translate directly into risk.
+
+Computer vision offers a third stream: continuous, automated visual monitoring that can detect spatial and temporal anomalies across an entire facility, around the clock, without fatigue.
+
+---
+
+## The Technical Approach: Temporal Features Meet RGB
+
+The approach I have been developing goes beyond deploying a camera and running an object detector. The core idea is to fuse two kinds of temporal features into a single analytical framework.
+
+**Process-variable time series.** Every wellhead, separator, and compressor already generates streams of structured data — pressures, temperatures, flow rates, vibration signatures. These signals encode the internal state of the asset. A slow drift in differential pressure across a heat exchanger tells you about fouling; a sudden spike in casing pressure tells you about barrier integrity.
+
+**RGB video sequences.** Cameras mounted at strategic points capture the physical reality of the asset — the color of a flame tip, the presence of a vapor cloud, the position of personnel relative to a danger zone, the visual condition of external piping. Convolutional neural networks extract spatial features from individual frames, and recurrent or transformer-based architectures capture how those features evolve across time.
+
+The power is in the fusion. When the process data says pressures are nominal but the video stream shows an unusual vapor pattern near a wellhead, the system flags a potential leak that neither stream would catch in isolation. When the video shows normal conditions but the vibration signature of a rotating machine is degrading, the system anticipates a mechanical failure before it becomes visible. This holistic approach — correlating the physics inside the pipe with the reality outside it — is what transforms monitoring from reactive alarm management into genuine predictive safety.
+
+From a deep learning perspective, the architecture involves parallel encoding branches: one for the multivariate time series (using 1D convolutions or LSTM layers) and one for the video stream (using a pretrained CNN backbone followed by temporal pooling). A fusion layer combines the learned representations, and the final classifier or regressor outputs risk scores, anomaly flags, or maintenance recommendations. Training data comes from historical incident logs, inspection reports, and labeled video archives — the kind of data that Oil & Gas operations generate in abundance but rarely exploit at scale.
+
+---
+
+## The Colombian Context: Technology as a Lever
+
+In a country like Colombia, where the Oil & Gas sector is a pillar of the economy yet the implementation of novel technologies is still lagging behind the pace set by operators in the North Sea or the Permian Basin, there is both a challenge and an extraordinary opportunity. The challenge is the gap: many facilities still rely on manual rounds and paper-based inspection checklists. The opportunity is that the infrastructure is being built now — edge computing hardware is becoming affordable, cloud platforms are accessible, and the engineering talent exists. What is often missing is the bridge between the academic state of the art and the operational reality of a production field in the Llanos or the Magdalena Medio.
+
+I see my role as part of that bridge. Having the opportunity to work at the intersection of mechatronics, deep learning, and industrial operations means being able to translate research into deployable solutions — models that run on ruggedized edge devices at the wellsite, inference pipelines that integrate with existing SCADA and DCS systems, and dashboards that present actionable information to operators who are experts in their process but not in neural network outputs. Closing that gap does not just improve one facility; it creates a template that can be replicated across the sector.
+
+---
+
+## The Environmental Angle: Safety and Sustainability Are the Same Problem
+
+There is a dimension that is easy to overlook when discussing industrial safety, but it is inseparable from it: environmental impact. In Oil & Gas, the events that harm people — uncontrolled releases, fires, equipment failures — are the same events that harm the environment. A hydrocarbon spill that reaches a river system in the Colombian Amazon or the wetlands of the Magdalena does not just represent a safety failure; it represents irreversible ecological damage in one of the most biodiverse regions on the planet.
+
+Computer vision systems that detect leaks earlier, flag anomalies faster, and enable predictive maintenance before catastrophic failure are, by definition, environmental protection systems. Every incident prevented is a spill that never reached the soil, a flare event that never released unburned hydrocarbons, a piece of equipment that was repaired instead of replaced.
+
+Colombia's ecosystems — its paramos, its rainforests, its river basins — are not abstractions. They are the landscapes I grew up around and the ones that future generations depend on. Building intelligent monitoring systems for the industry that operates within those landscapes is not just a technical challenge. It is a responsibility. The frail balance between economic activity and ecological preservation demands that we bring the best tools available — and right now, computer vision and deep learning are among the most powerful tools we have.
+
+---
+
+## Looking Forward
+
+This work is a seed. The architectures I am developing today for wellsite monitoring can extend to pipeline surveillance, refinery operations, and offshore platforms. The fusion of process data and visual intelligence is not limited to Oil & Gas — it applies wherever critical infrastructure operates in environments where the cost of failure is measured in lives and ecosystems. But it starts here, in the field, with a camera, a time series, and the conviction that engineering exists to protect as much as it exists to produce.

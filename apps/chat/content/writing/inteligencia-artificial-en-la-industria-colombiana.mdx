@@ -1,0 +1,108 @@
+---
+title: "Inteligencia Artificial en la Industria Colombiana"
+summary: "Desde la digitalización de instrumentos hasta redes neuronales profundas en AWS — una arquitectura completa de IA industrial para la competitividad colombiana."
+date: 2020-04-15
+published: true
+tags:
+  - artificial-intelligence
+  - industry-4-0
+  - colombia
+  - iiot
+  - deep-learning
+---
+
+## Introducción
+
+Mediante la digitalización de instrumentos y analizadores se logra capturar la dinámica de procesos industriales en series de tiempo almacenadas en bases de datos. Toda esta información es valiosa pues intrínsecamente incluye relaciones entre las variables de proceso e indicadores de producción y/o efectividad. Estos datos pueden estar registrados en frecuencias desde mili(en incluso micro)segundos hasta minutos y horas, dependiendo de la necesidad del proceso y a lo largo de días y meses el tamaño de esta información (y la cantidad de puntos en el tiempo) crece de gran forma. Esta vasta cantidad de datos hace posible que el empleo de algoritmos de aprendizaje automático, en particular, aprendizaje profundo (deep learning) sea plausible y se puedan desarrollar análisis sobre condiciones de proceso y predicciones de comportamiento como también ayudar a tomar decisiones criticas de forma mas inteligente y ágil.
+
+## La Industria 4.0 en Colombia
+
+Emplear este tipo de tecnologías se hace imperativo para mantener la competitividad a medida que se fortalece y se impulsa mas y mas la industria 4.0 en el país. No sobra resaltar algunos puntos importantes de esta cuarta revolución industrial que empieza a tomar forma en Colombia y que mediante servicios como los que proveemos en INSA facilitamos el acceso a tecnologías de vanguardia para mejorar y automatizar procesos:
+
+- **Estandarización** — protocolos y formatos comunes que permiten interoperabilidad entre equipos y plataformas.
+- **Manejo de sistemas complejos** — herramientas para modelar, monitorear y optimizar procesos con múltiples variables interdependientes.
+- **Infraestructura de telecomunicaciones** — conectividad confiable desde el nivel de campo hasta la nube.
+- **Seguridad y protección** — tanto de datos como de infraestructura digital, con estándares de encriptación y acceso controlado.
+- **Eficiencia de recursos** — uso inteligente de energía, materias primas y tiempo operativo.
+
+## Arquitectura IIoT: Tres Capas
+
+El impacto de la inteligencia artificial se ve favorecido por metodologías y arquitecturas que distribuyen la carga de transferencia y análisis de información de forma efectiva. En particular, con el IIoT (Industrial Internet of Things) donde se encuentran tres capas o niveles:
+
+### Nivel Edge (Capa 1)
+
+Donde se recoge la información de diversos componentes y maquinas de la industria. Esta es la capa de contacto directo con el proceso físico — sensores, analizadores, instrumentos digitales y concentradores de señales capturan las variables críticas del proceso en tiempo real.
+
+### Nivel de Plataforma (Capa 2)
+
+Donde se procesa la información obtenida en la capa edge para proveer realimentación operativa de forma rápida y segura. Aquí se ejecutan las primeras transformaciones de datos, se aplican filtros, se detectan alarmas y se generan indicadores operacionales que permiten una respuesta ágil ante condiciones anómalas.
+
+### Nivel de Empresa (Capa 3)
+
+Donde se analiza a fondo la información obtenida en el nivel de plataforma para proveer soporte de alto nivel para toma de decisiones. Es en esta capa donde los algoritmos de aprendizaje profundo, modelos predictivos y herramientas de analítica avanzada generan el mayor valor para la operación.
+
+Distribuyendo de esta forma, los algoritmos de aprendizaje supervisado se pueden implementar sobre plataformas en la nube, disminuyendo el costo operacional para el despliegue de metodologías inteligentes, pues son algoritmos computacionalmente costosos, que pueden ser ejecutados remotamente, con servicios web especializados sin que se afecte la operación en planta.
+
+## Del Campo a la Nube: Pipeline Edge-to-Cloud
+
+Capturar datos de campo es entonces el primer paso para empezar a emplear estas tecnologías que permiten optimizar procesos y encontrar patrones que permitan mejorar la eficiencia. En ese sentido, implementar instrumentos digitales y concentradores de señales a nivel de planta es fundamental.
+
+### Dispositivos Edge
+
+Con las señales de mediciones que representan variables importantes para el proceso digitalizadas es entonces posible usar dispositivos edge Siemens como el **Ruggedcom RX1400**, un dispositivo multiprotocolo que facilita la comunicación con la nube para transferir los datos a servicios de procesamiento y almacenamiento dedicados como AWS de forma segura, mediante encriptación de 128 bits.
+
+### Canales de Comunicación
+
+Dependiendo de la necesidad, los requerimientos críticos del proceso y las facilidades de comunicación, la transferencia de información se puede hacer mediante:
+
+- **Internet** — donde se tendría latencia mínima.
+- **LTE o GSM** — para telemetría en sitios con cobertura celular.
+- **Telemetría satelital (Orbcomm)** — en locaciones remotas con restricciones de comunicación, una solución factible para lograr telecomunicaciones M2M e implementar IIoT en cualquier ámbito e industria.
+
+Las alternativas y soluciones para cada requerimiento, por especial que sea, existen y esta estandarización es la que nos permite llevar soluciones digitales a lo largo y ancho del país e incluso mas allá de sus fronteras.
+
+### Servicios AWS
+
+Una vez se tiene los datos de campo extraídos, el almacenamiento de estos crecientes volúmenes de información requieren una forma práctica, segura y accesible.
+
+- **AWS RDS** — los servicios de almacenamiento permiten tener disponibilidad completa de los datos reservados con altos estándares de seguridad en una nube privada.
+- **AWS EC2** — usando el servicio de virtualización se puede construir un terminal con IP fija para acceder a visualización en tiempo real de los datos desde cualquier lugar con una conexión a internet.
+- **AWS Sagemaker** — aquí se llega al punto que mayor impacto al negocio genera y por el cual todo el trabajo de digitalizar instrumentos, generar canales de telecomunicación y usar servicios de almacenamiento cobra valor mas allá de la telemetría y la visualización remota de planta.
+
+Mediante Sagemaker se tiene una plataforma que encapsula todo el ciclo de vida de una solución de inteligencia artificial, desde la creación de un modelo usando cuadernos Jupyter sobre servicios de procesamiento con GPU y TPU dedicados para solucionar algoritmos de redes neuronales, pasando por el entrenamiento y la optimización del modelo usando los datos almacenados y por último, generando un punto de acceso desde el cual se puede cargar información o datos al modelo para obtener predicciones o análisis de valor en tiempo real, que, de igual manera puede ser visualizado transportando la información mediante websockets.
+
+## Métodos de IA y Aprendizaje Profundo
+
+La creación de modelos de aprendizaje profundo es diversa, en relación al tipo de datos que se use para alimentar o entrenar la red neuronal. En el caso de la industria, la mayoría de los datos que tienen valor o representan una variable importante para la producción o el proceso de planta son datos registrados en segmentos temporales, o series de tiempo.
+
+### Redes LSTM
+
+El uso de redes neuronales recurrentes, principalmente con "neuronas" LSTM (Long Short Term Memory) han demostrado ser ideales para este tipo de datos pues tienen "memoria" de patrones que se encuentren en los datos y sirven para generar predicciones de series de tiempo futuras.
+
+### Redes Convolucionales 1D
+
+También se ha encontrado que el uso de redes neuronales convolucionales de una dimensión (Conv1D) generan predicciones buenas, y hace parte del trabajo de desarrollo del modelo y el entrenamiento de la red neuronal encontrar un balance óptimo entre el número de neuronas y conexiones usadas, como también de metodologías para evitar el sobreajuste (evento en el cual la red neuronal empieza a memorizar en vez de aprender), en concordancia con la cantidad de datos y la correlación que pueda existir entre variables medidas del proceso, para poder generar una predicción que se ajuste a la realidad futura del proceso.
+
+### Otros Modelos
+
+Además de estos modelos de aprendizaje supervisado, existen metodologías para diversos requerimientos como aprendizaje no supervisado, agrupamiento (clustering), redes bayesianas para inferencia, modelos dinámicos para control óptimo entre muchos otros, que son aplicables dependiendo del requerimiento, el proceso, el tipo de dato y el objetivo que se quiera lograr.
+
+## Limitaciones y Consideraciones
+
+Es importante reconocer las limitaciones que estos algoritmos presentan, pues, aunque existe bastante expectativa frente a lo que pueden hacer, no pueden aún reemplazar las labores o la capacidad analítica que un ser humano tiene. En breve, las metodologías de aprendizaje profundo sirven actualmente para dar un nivel extra de análisis para toma de decisiones informadas; también proveen una capa de automatización para manejar y extraer patrones relevantes de grandes volúmenes de datos, reduciendo en gran manera el tiempo empleado para entender la información que se extrae de planta.
+
+En cuestión de algoritmos para predicción de series de tiempo, es importante resaltar que los datos temporales pasados no necesariamente representan causalidad de eventos futuros, y el empleo de inteligencia artificial para predecir eventos temporales futuros está basado en los patrones que la red neuronal ha encontrado sobre los datos proveídos y es relativo a la cantidad de datos y la calidad de estos que la predicción se vuelva mas o menos precisa.
+
+## La Aplicación de la Inteligencia Artificial en la Industria
+
+La inteligencia artificial surge con el propósito de automatizar las tareas intelectuales normalmente desarrolladas por humanos y a raíz de esto aparecen estrategias basadas en manipulaciones de largas cadenas de funciones geométricas para transformar la información de entrada en representaciones significativas en la salida, en otras palabras, aprender representaciones útiles de los datos de entrada que se asemejen a la salida esperada.
+
+La vasta cantidad de datos que se están generando en las industrias digitales actualmente permite la implementación de algoritmos de aprendizaje profundo o Deep Learning para desarrollar análisis sobre condiciones de proceso y predicciones de comportamiento como también ayudar a tomar decisiones críticas de forma mas inteligente y ágil.
+
+Emplear este tipo de tecnologías se hace imperativo para mantener la competitividad a medida que se fortalece y se impulsa mas y mas la industria 4.0. En INSA tenemos las herramientas y el personal para implementar tecnologías digitales que le permitan a su industria mantenerse a la vanguardia, desde el nivel de planta hasta la visualización remota de sus datos y la analítica.
+
+Usando servicios de virtualización y computación en la nube podemos reducir los costos operativos de la ejecución de estos algoritmos de inteligencia, que son intrínsecamente, computacionalmente dispendiosos logrando llevar fácilmente los análisis optimizados a las operaciones de su compañía.
+
+## Cierre
+
+Las metodologías y tecnologías digitales siguen avanzando a un paso creciente y la industria nacional debe ajustarse a estos cambios, manteniéndose concurrente con las tendencias tecnológicas que mejoran la eficiencia de los procesos industriales e incrementan la calidad final del producto o servicio que provea. El uso de estos algoritmos de inteligencia artificial promete un mejor análisis a los grandes volúmenes de datos que cada vez es mas complejo analizarlos manualmente mientras que entrega una herramienta que complementa las tareas de analítica en la industria para lograr efectuar decisiones rápidas y eficientes.

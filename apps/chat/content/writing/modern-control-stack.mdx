@@ -1,0 +1,305 @@
+---
+title: "The Modern Control Stack: From Classical Controllers to Agentic Control Metalayers"
+summary: "Classical control didn't get replaced — it got layered. A map of 10 genuine advances since ADRC/TDC, and how they rewire the architecture of LLM-based agent systems."
+date: 2026-03-20
+published: true
+tags:
+  - control-systems
+  - MPC
+  - reinforcement-learning
+  - safety
+  - agentic-AI
+  - EGRI
+  - robust-control
+---
+
+A lot has moved since the PID / state-space / robust-modern / ADRC / TDC era.
+
+The big change is not that classical control got replaced. It did not. The real shift is that control is increasingly being fused with data, optimization, safety certificates, and learned models. The strongest frontier today is not "one new universal controller," but a stack of methods that combine model-based guarantees with data-driven adaptation.
+
+This post is a map. Part one covers what genuinely advanced. Part two connects it to the architecture of LLM-based agent systems — where the control metalayer meets the modern control stack.
+
+---
+
+## Part 1: What Actually Changed
+
+### 1. Data-driven predictive control became serious
+
+One of the most important developments is data-driven MPC, especially DeePC and related methods. Instead of first identifying a parametric model and then designing the controller, these methods predict future trajectories directly from data, often using behavioral systems ideas (Willems' fundamental lemma). What changed recently is that the field moved from "interesting idea" to "we can now state stability, robustness, and constraint-satisfaction guarantees under clearer assumptions."
+
+Why it matters relative to classical methods:
+
+- Compared with classical MPC, it reduces model-identification burden
+- Compared with pure adaptive control, it is much more naturally constraint-aware
+- Compared with heuristic data-driven tuning, it is becoming more theoretically grounded
+
+What is still hard: noise, closed-loop identification bias, computational scaling, and nonlinear systems without losing guarantees. Recent work is explicitly focused on those issues — regularized DeePC, distributionally robust DeePC, and recursive feasibility results are narrowing the gap.
+
+### 2. Safety became its own control layer
+
+The rise of Control Barrier Functions (CBFs) as a standard way to enforce safety constraints online is one of the clearest "post-classical" developments. In practice, people increasingly think in terms of a **performance controller + safety filter** architecture: MPC, LQR, RL, or another nominal controller proposes an action; a CBF-based quadratic program minimally edits it to keep the state inside a safe set.
+
+What is new is not the basic idea alone, but the extensions: high-order CBFs, adaptive CBFs, disturbance-aware CBFs, input-constrained CBFs, sampled-data and adversarially perturbed settings.
+
+This changes control architecture. Instead of baking everything into one monolithic law, you can separate:
+
+- **Stabilization/performance** — the nominal controller
+- **Safety certification** — the CBF shield
+- **Learning/adaptation** — the data-driven layer
+
+That decomposition is architecturally significant. It means you can swap, tune, or learn each layer independently while maintaining hard safety guarantees at the shield level.
+
+### 3. Koopman-based control matured
+
+Koopman methods are a real development beyond standard nonlinear control. The idea is to "lift" nonlinear dynamics into a higher-dimensional representation where the dynamics are approximately linear, then apply linear control machinery there.
+
+Why people care:
+
+- It offers a middle ground between first-principles nonlinear modeling and black-box deep nets
+- It is more compatible with linear control toolchains than most learned models
+- It can help when local linearization is too weak but full nonlinear MPC is too expensive
+
+The catch: choosing observables/lifted coordinates remains nontrivial, guarantees are often approximate, and performance depends heavily on representation quality. Promising, but not magic. The recent progress is that Koopman MPC has become a substantial research program with explicit error bounds and stability analysis for forced systems.
+
+### 4. MPC and reinforcement learning are converging
+
+A real frontier now is not "RL instead of control," but MPC + RL hybrids. The broad idea is that MPC handles short-horizon optimization, constraints, and structure, while RL learns value functions, terminal ingredients, residual policies, or long-horizon improvements.
+
+This matters because plain RL by itself is still too fragile for many real control systems. The newer work is increasingly **control-oriented RL** — borrowing stability, robustness, constraint handling, and safety ideas from control rather than pretending exploration alone will solve everything.
+
+A good way to think about the evolution:
+
+- **Old view**: derive controller from model
+- **Mid-era view**: learn policy from interaction
+- **Current view**: embed optimization, constraints, and certificates inside the learned controller
+
+### 5. Differentiable control is becoming practical
+
+Differentiable MPC / differentiable predictive control makes the controller or optimizer differentiable end-to-end, so gradients can pass through the control layer into model parameters, policy parameters, or perception modules.
+
+Why this matters:
+
+- You can train controllers jointly with learned dynamics or perception stacks
+- You can use control layers inside larger learning systems
+- You can get structured policies that retain optimization-based behavior
+
+This is especially relevant in robotics and autonomous systems, where the old boundary between estimation, planning, and control is becoming softer. It's part of a broader "control meets modern ML tooling" trend.
+
+### 6. Distributionally robust control got more central
+
+Robust control used to mean bounded uncertainty or worst-case disturbances. A newer emphasis is **distributional uncertainty**: not only are disturbances random, but the probability law itself is uncertain. That is where distributionally robust control / distributionally robust MPC comes in.
+
+Conceptually, it sits between classical robust control and stochastic MPC: less conservative than pure worst-case in some formulations, more realistic than assuming a perfectly known noise distribution. Especially relevant in energy systems, autonomous navigation, safety-critical robotics, and data-driven settings where the learned disturbance model is itself uncertain.
+
+### 7. Learned dynamics models are mainstream
+
+People are increasingly comfortable using neural state-space models, learned latent dynamics, and hybrid gray-box models as part of the control loop. The emphasis is usually not "throw away physics," but "use learned dynamics where first-principles models are weak or too expensive."
+
+This changes controller design because the problem becomes:
+
+1. Learn a dynamics representation
+2. Quantify uncertainty or error
+3. Wrap it in MPC / safety filter / robust layer
+
+That workflow is much more common now than a decade ago, and it is one of the clearest bridges from classical control to ML-native systems.
+
+### 8. Safe learning is now first-class
+
+There is now a much stronger emphasis on learning with guarantees, especially in robotics and multi-agent systems. The question is no longer only "can it learn a good controller?" but "can it learn while respecting state/input constraints, collision avoidance, and liveness requirements?"
+
+This is a real departure from older adaptive-control culture. Historically, adaptation focused heavily on convergence/stability. The newer literature adds: exploration safety, certified safe sets, runtime shielding, and integration with formal methods and barrier certificates.
+
+### 9. Digital twins are becoming control infrastructure
+
+In industry, digital twins are increasingly tied to prediction, monitoring, and adaptive control instead of just offline simulation. The field is moving toward twins that continuously assimilate data and support optimization/control decisions.
+
+That means the real architecture is often:
+
+```
+physical plant ↔ state estimation ↔ twin/learned model ↔ optimizer/controller ↔ safety layer
+```
+
+For real deployments, this may matter more than a single new control law, because it changes how control is embedded in a larger cyber-physical stack.
+
+### 10. What is actually new versus repackaging
+
+Here is the blunt assessment.
+
+**Actually important and durable:**
+
+- Data-driven MPC / DeePC
+- Safety filters via CBFs
+- Koopman-based control as a nonlinear-middle-ground tool
+- Learning-based MPC and MPC-RL hybrids
+- Distributionally robust formulations
+- Learned dynamics wrapped with guarantees
+
+**Important but still unsettled:**
+
+- Differentiable control as a general recipe
+- Foundation-model style control stacks
+- End-to-end learned controllers without strong structure
+
+**Not a replacement for classical control:**
+
+None of this kills PID, observers, LQR/LQG, H-infinity, MPC, ADRC, or delay compensation. In practice, the new methods are usually layered on top of those foundations, not replacing them.
+
+### The modern stack
+
+If I had to compress "what's new since ADRC/TDC" into one sentence: **the frontier moved from hand-derived controllers for uncertain plants toward architectures that combine optimization, data, learned models, and explicit safety certificates.**
+
+The stack looks like this:
+
+| Layer | Components |
+|-------|-----------|
+| **Base dynamics/control** | State-space, observers, robust control, MPC |
+| **Data layer** | Learned dynamics, DeePC, Koopman lifting |
+| **Safety layer** | CBFs, safe sets, shields |
+| **Uncertainty layer** | Stochastic or distributionally robust optimization |
+| **Learning layer** | RL, residual learning, differentiable control |
+| **Systems layer** | Digital twin, estimation, deployment, online adaptation |
+
+---
+
+## Part 2: The Agentic Control Metalayer
+
+Everything in Part 1 describes what's happening in control theory. But there's a parallel development in AI systems: agents — LLM-based systems that use tools, make decisions, and operate in loops. The question is how these two worlds connect.
+
+The answer is architectural. An LLM should not be the servo controller. It should be the **slow, supervisory, tool-using controller** that emits typed, auditable control decisions — while fast inner loops (PID/MPC/CBF-QP) execute deterministically.
+
+### Agent as control law
+
+Let the plant be a partially observed stochastic dynamical system with state x, control input u, disturbance w, and observation y. An **agentic controller** is a tool-using policy operating on a typed belief state derived from observations and logs.
+
+The LLM-generated decision is not the raw u (except in very slow plants). Instead, the LLM emits a structured **control directive** θ that parameterizes deterministic control modules:
+
+- MPC weights, horizon, constraints, reference trajectories
+- CBF barrier parameters, class-K function tuning
+- Model update requests (Koopman lift changes, retraining triggers)
+- Selection among controllers (switching logic)
+
+A deterministic controller module produces a candidate control sequence from θ. A **safety shield** then projects candidate inputs into the safe set via CBF-QP:
+
+```
+u_safe = argmin ||u - u_proposed||² subject to SafetyConstraints(belief, u)
+```
+
+The runtime logs every decision into an append-only trace ledger, and repeats.
+
+This architecture intentionally limits the LLM's degrees of freedom to what can be reliably evaluated and constrained. The agent gets only as much mutation freedom as the evaluator can judge.
+
+### Multi-rate hierarchy
+
+The critical design choice is **where** in the loop hierarchy the LLM sits:
+
+| Loop type | Cadence | LLM here? | Rationale |
+|-----------|---------|-----------|-----------|
+| Servo stabilization | milliseconds | No | Requires deterministic deadlines |
+| Constrained control (MPC/CBF-QP) | 10–100 ms | No | Solve QPs/NLPs deterministically; LLM tunes weights |
+| Supervisory planning / mode switching | seconds | Yes | Aligns with tool-driven agents, typed actions |
+| Auto-tuning / controller synthesis (EGRI) | minutes–days | Yes | Requires evaluator-first + rollback + ledger |
+
+In most physical/fast systems, the LLM should output **controller parameters and plans** that deterministic modules execute. In slower cyber "plants" (cloud ops, workflow routing), an LLM can act closer to the control law — but still requires harnesses, verifiers, and rollback.
+
+### LLM roles in the control stack
+
+The LLM can play several roles. The right choice depends on what it outputs and how that output is verified:
+
+- **Supervisory controller**: setpoints, mode switches, constraints, policy updates. Strong for long-horizon reasoning and goals-to-constraints translation. Needs typed schemas and audit gates.
+
+- **Meta-controller over tools**: chooses which control module to invoke (PID/MPC/DeePC/Koopman/RL), triggers identification. Modular, supports policy switching — but requires strict allowed-tools lists.
+
+- **Online identifier**: decides what data to collect, when to update models, what experiments to run. Good at experiment design and anomaly interpretation — but unsafe probing must be gated by budget and safety constraints.
+
+- **Controller synthesizer**: writes/edits controller code, safety specs, unit tests, config. Converts reasoning into deterministic artifacts — but code-gen errors require harness gating and CI audits.
+
+- **EGRI loop compiler**: designs problem-specs, mutation operators, evaluator logic, promotion rules. Makes "improve this controller" a safe closed-loop process — but requires strong evaluators and anti-gaming checks.
+
+### Blueprint architecture
+
+The architecture treats the governance/harness/orchestration stack as the operating system and adds a control-and-world-model kernel:
+
+**Governance layer** — setpoints, policies, audit gates, trace ledger. Provides the behavioral envelope. Analogous to `.control/policy.yaml` with setpoint IDs, measurement targets, and severity levels.
+
+**Harness layer** — deterministic test/lint/typecheck scripts, observability contracts, entropy checks. Provides the reliable measurement function and experiment protocol.
+
+**Orchestration layer** — daemon scheduler (poll/dispatch/reconcile), isolated workspace manager with safety invariants, status surface. Handles multi-agent coordination.
+
+**Control kernel** — the new piece:
+- Plant interface (typed state/action schemas)
+- Observer / state estimator
+- World models: Koopman, learned dynamics, digital twin
+- MPC / DeePC planners
+- Safety shield: CBF-QP constraint filters
+- Robust / DRO scenario engine
+
+**Auto-improvement layer** — Evaluator-Governed Recursive Improvement (EGRI). Problem-spec compiler, evaluator + constraints, promotion/rollback policy. Controller tuning as an explicit bounded closed-loop optimization.
+
+### Control-flow: a single tick
+
+For each supervisory cycle:
+
+1. **Runtime** observes the plant → gets y_t
+2. **Runtime** updates the estimator → gets belief state b_t
+3. **Runtime** sends typed state summary to the LLM agent
+4. **LLM** returns a control directive θ_t + tool choice
+5. **Controller module** produces proposed u_t from (b_t, θ_t)
+6. **Safety shield** filters proposed u_t → safe u_t + certificate
+7. **Runtime** applies safe u_t to the plant
+8. **Trace sink** logs the full trace entry (proposed vs applied, constraints checked, metrics)
+
+The LLM never directly calls the plant. It calls only Controller or MetaController tools with strict schemas. The runtime handles all plant interactions and safety enforcement.
+
+### Mapping modern control to agent components
+
+Each control technique from Part 1 has a natural home in this architecture:
+
+| Technique | Agent component | LLM's best role |
+|-----------|----------------|-----------------|
+| DeePC | Dataset store + optimizer tool | Experiment design, horizon/regularization tuning |
+| CBF shields | Hard safety filter (QP) | Choose constraints/margins; never bypass |
+| Koopman + MPC | World model + planner | Dataset curation, retraining triggers |
+| MPC-RL hybrids | Proposal generator + eval harness | Tune MPC weights; policy search under evaluator |
+| Differentiable MPC | Learning pipeline primitive | Generate model structures, training harness scripts |
+| DRO | Robust MPC module + scenario engine | Curate scenario sets, choose robustness tradeoffs |
+| Digital twins | Harness for safe experimentation | Orchestrate sim experiments; interpret mismatches |
+
+### Failure modes
+
+Common failures when LLMs participate in control — and their mitigations:
+
+**Spec/constraint hallucination**: LLM invents constraints, misreads units, or forgets invariants. Mitigation: JSON-schema structured outputs + strict tool schemas + policy gates.
+
+**Unsafe exploration**: LLM runs aggressive identification experiments. Mitigation: EGRI budgets + hard constraints + CBF shield; enforce evaluator-first and sandbox modes.
+
+**Latency spikes**: tool runtimes reject or queue requests under load. Mitigation: multi-rate design; fallback controllers; don't place LLM in fast loops.
+
+**Evaluator gaming**: the agent learns to exploit metric loopholes in the outer improvement loop. Mitigation: holdout scenario sets, adversarial tests, immutable evaluator artifacts.
+
+### The practical mental model
+
+The modern control stack for agent systems:
+
+```
+┌─────────────────────────────────────────┐
+│  EGRI / Auto-Improvement (minutes–days) │  ← LLM designs improvement loops
+├─────────────────────────────────────────┤
+│  Supervisory Planning (seconds)         │  ← LLM emits typed directives
+├─────────────────────────────────────────┤
+│  Safety Shield / CBF-QP (per-tick)      │  ← deterministic, hard constraints
+├─────────────────────────────────────────┤
+│  MPC / DeePC / Koopman (10–100ms)       │  ← deterministic optimization
+├─────────────────────────────────────────┤
+│  Servo / PID / State Feedback (ms)      │  ← deterministic inner loops
+├─────────────────────────────────────────┤
+│  Plant / Digital Twin                   │  ← physical or cyber system
+└─────────────────────────────────────────┘
+```
+
+Classical control is the foundation. The new methods are layered on top. The LLM sits at the top — slow, supervisory, constrained by typed schemas and safety shields — making the decisions that require reasoning, while everything below executes deterministically.
+
+The frontier didn't replace what came before. It built a stack on top of it.
+
+---
+
+*This post is part of a series on control-systems thinking applied to agent architecture. Previous entries: [Control Systems as Self-Engineering](/writing/control-systems-as-self-engineering) (2019), [The Control Metalayer](/writing/control-metalayer-autonomous-development) (2026). The agentic-control-kernel skill implements the blueprint described in Part 2.*

@@ -1,0 +1,88 @@
+---
+title: "IIoT: Del Edge a la Nube"
+summary: "Arquitectura completa de IIoT industrial — desde telemetria satelital con Orbcomm hasta redes neuronales profundas en AWS, pasando por dispositivos edge Siemens."
+date: 2020-02-01
+published: true
+tags:
+  - iiot
+  - industrial-iot
+  - edge-computing
+  - machine-learning
+  - siemens
+---
+
+La transformacion digital de la industria no se reduce a conectar sensores a un dashboard. Se trata de construir un sistema nervioso completo — desde el punto de medicion en campo hasta el modelo predictivo que anticipa fallas antes de que ocurran. Este post describe una arquitectura IIoT implementada sobre lineas de distribucion electrica, donde la telemetria satelital, los dispositivos edge industriales y las redes neuronales profundas convergen para crear inteligencia operacional real.
+
+---
+
+## La Premisa: Por Que IIoT en Distribucion Electrica
+
+Las lineas de distribucion de energia operan en condiciones hostiles. Reconectadores montados en postes a lo largo de cientos de kilometros de terreno rural enfrentan descargas atmosfericas, fauna, vegetacion y degradacion continua de componentes. El acceso fisico es costoso y lento. La pregunta fundamental es: como se obtiene visibilidad operacional continua sobre activos dispersos geograficamente, sin infraestructura de comunicaciones terrestre confiable?
+
+La respuesta es una arquitectura IIoT de multiples capas que resuelve cada restriccion con la tecnologia apropiada: telemetria satelital donde no hay cobertura celular, dispositivos edge donde se necesita procesamiento local, plataformas cloud donde se requiere almacenamiento y computo elastico, y machine learning donde los patrones temporales superan la capacidad de analisis humano.
+
+---
+
+## Capa 1: Telemetria Satelital — El Vinculo con el Campo
+
+El primer desafio es la conectividad. Estaciones remotas en zonas sin cobertura celular requieren un canal de comunicacion que no dependa de infraestructura terrestre. Aqui entran los modems satelitales de **Orbcomm**, que operan sobre una constelacion LEO (Low Earth Orbit) con cobertura global.
+
+La telemetria sobre reconectadores captura variables criticas: corrientes de fase, tensiones, contadores de operacion, estados de proteccion y registros de eventos. Cada reconectador transmite paquetes compactos via satelite a intervalos configurables — un compromiso entre granularidad temporal y costo de transmision satelital.
+
+Para estaciones con conectividad IP disponible, la transmision se realiza a traves de routers industriales **Siemens Ruggedcom**. Estos dispositivos estan disenados para ambientes extremos: temperatura extendida, vibracion, interferencia electromagnetica. Soportan VPN, firewall y cifrado, lo que permite establecer tuneles seguros entre el campo y el centro de datos sin exponer la red operacional.
+
+La combinacion de Orbcomm para sitios remotos y Ruggedcom para sitios con IP forma una arquitectura de comunicacion hibrida donde la disponibilidad del dato esta garantizada independientemente de la geografia.
+
+---
+
+## Capa 2: Edge Computing — Procesamiento en el Borde
+
+Entre el sensor y la nube existe un espacio critico: el borde. Los dispositivos edge realizan tres funciones fundamentales que no se pueden delegar completamente a la nube.
+
+**Adquisicion y normalizacion.** Los dispositivos **Siemens IoT2040** y **Siemens SIMATIC Nano** actuan como gateways industriales. Se conectan directamente a controladores y reconectadores via protocolos industriales (Modbus, DNP3, IEC 61850) y normalizan los datos en formatos estandar para transmision. El IoT2040 corre Yocto Linux y permite ejecutar scripts en Node.js o Python directamente en el dispositivo, lo que habilita logica de preprocesamiento local.
+
+**Filtrado y compresion.** No todo dato merece viajar a la nube. El edge filtra ruido, comprime series temporales usando tecnicas como deadband reporting y swinging door trending, y transmite solo los cambios significativos. Esto reduce drasticamente el ancho de banda requerido — critico cuando el canal es satelital.
+
+**Autonomia local.** Ante perdida de conectividad, el edge almacena datos localmente en buffer y los retransmite cuando se restablece la comunicacion. Esta capacidad de store-and-forward asegura que ningun dato se pierde, incluso en condiciones de comunicacion intermitente.
+
+El edge es el puente entre el mundo analogico del campo y el mundo digital de la nube. Sin esta capa, la arquitectura IIoT es fragil.
+
+---
+
+## Capa 3: Plataforma Cloud — Almacenamiento y Orquestacion
+
+Los datos que sobreviven el viaje desde el campo llegan a la plataforma cloud, donde se almacenan, organizan y preparan para analisis.
+
+**Siemens MindSphere** actua como el sistema operativo IoT industrial. Recibe datos de los agentes edge, los almacena en time-series databases optimizadas y expone APIs para consulta y visualizacion. MindSphere ofrece conectores nativos para el ecosistema Siemens, lo que simplifica la integracion con PLCs, drives y dispositivos de proteccion.
+
+**AWS IoT** complementa la arquitectura con servicios de ingestion masiva (IoT Core), procesamiento de streams (Kinesis), almacenamiento en S3 y bases de datos de series temporales (Timestream). La ventaja de AWS es la elasticidad: el computo escala automaticamente con el volumen de datos y la complejidad del procesamiento.
+
+La redundancia es no negociable. Los datos se replican entre zonas de disponibilidad y se respaldan con politicas de retencion definidas. En un contexto industrial, perder datos historicos equivale a perder la capacidad de diagnostico retrospectivo — el activo mas valioso de la operacion.
+
+Los pipelines de datos se construyen como flujos ETL automatizados: extraccion desde las APIs de MindSphere y AWS IoT, transformacion para limpieza y alineacion temporal, y carga en data lakes donde los modelos de machine learning pueden consumirlos.
+
+---
+
+## Capa 4: Machine Learning — Inteligencia sobre Series Temporales
+
+Con datos limpios, alineados y disponibles en volumen, la capa de machine learning transforma informacion historica en capacidad predictiva.
+
+**Redes neuronales recurrentes (RNN)** y en particular arquitecturas LSTM (Long Short-Term Memory) son la herramienta natural para series temporales de sistemas energeticos. Las LSTM capturan dependencias temporales de largo plazo — patrones estacionales, tendencias de degradacion, correlaciones entre variables que se manifiestan con retardo. Usando **TensorFlow**, el desarrollo de estos modelos sigue un pipeline reproducible: preparacion de secuencias temporales, entrenamiento distribuido en GPU, validacion cruzada temporal y despliegue como servicios de inferencia.
+
+**Redes convolucionales (CNN)** complementan el analisis cuando los patrones relevantes son espaciales o frecuenciales. Aplicadas sobre espectrogramas de corriente o representaciones tiempo-frecuencia de senales de proteccion, las CNN detectan firmas de falla que no son evidentes en el dominio temporal puro.
+
+Los tres objetivos del aprendizaje supervisado en este contexto son:
+
+1. **Prediccion de comportamiento.** Pronosticar la evolucion de variables criticas en horizontes de horas a dias, permitiendo planificacion operativa informada.
+
+2. **Deteccion de anomalias.** Identificar desviaciones del patron normal antes de que escalen a falla. Un reconectador que empieza a operar fuera de su curva caracteristica es una senal temprana de degradacion.
+
+3. **Mantenimiento predictivo.** Determinar los periodos optimos de intervencion basandose en la condicion real del equipo en lugar de calendarios fijos. Esto reduce tanto el costo de mantenimiento innecesario como el riesgo de falla no anticipada.
+
+---
+
+## Cerrando el Lazo
+
+La arquitectura descrita no es un diagrama teorico. Es un sistema implementado sobre reconectadores en lineas de distribucion, donde cada capa resuelve una restriccion real: la geografia (satelite), la hostilidad del ambiente (edge industrial), la escala de datos (cloud elastico) y la complejidad de los patrones (deep learning).
+
+Lo que hace que esta arquitectura sea genuinamente IIoT — y no simplemente monitoreo remoto — es que cierra el lazo. Los modelos predictivos generan recomendaciones que informan decisiones operativas: donde enviar cuadrillas, que equipos priorizar, cuando intervenir. El dato fluye del campo a la nube, se transforma en conocimiento y regresa como accion. Ese ciclo completo es la promesa real del Internet Industrial de las Cosas.

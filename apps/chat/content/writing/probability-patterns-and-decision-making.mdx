@@ -1,0 +1,46 @@
+---
+title: "Probability, Patterns & Decision Making"
+summary: "Expected value as a framework for reasoning through uncertain decisions — from marble games to information asymmetry."
+date: 2019-08-01
+published: true
+tags:
+  - probability
+  - mathematics
+  - decision-making
+---
+
+Decision making, patterns and art.
+
+When making difficult decisions, sometimes we compare the costs and benefits of our options. Sometimes we make decisions based on the best-possible and worst-possible outcomes.
+
+Is there a better way to make decisions?
+
+We make use of **expected value** to reason through making decisions when outcomes are uncertain.
+
+## The Marble Game
+
+His bag has 4 red, 4 blue, and 2 green marbles. If you draw a red marble, you win \$2. If you draw a blue marble, you lose \$5. If you draw a green marble, you win \$10. Assuming that you want to gain, and not lose, money, should you play?
+
+The bag has 10 marbles, so in theory, if you play 10 times, you should draw 4 red, 4 blue, and 2 green marbles. Therefore, in theory, on average your net payout after these 10 rounds would be:
+
+$$
+2 + 2 + 2 + 2 - 5 - 5 - 5 - 5 + 10 + 10 = 8
+$$
+
+Given that your average net payout after 10 games is positive, you could expect that if you played this game many times, in the long run, you would gain more money than you lose.
+
+## Expected Value
+
+Expected value tells us what to expect, on average, in the long run. We can find an expected value by multiplying each numerical outcome by the probability of that outcome, and then summing those products together.
+
+For the marble game:
+
+$$
+\frac{4}{10}(2) + \frac{4}{10}(-5) + \frac{2}{10}(10) = 0.80 - 2.00 + 2.00 = \$0.80
+$$
+
+## Information Changes Everything
+
+Often, in games, different people have different information available to them. (Think of how boring poker would be if everyone knew each other's cards.) However, this has a significant implication: the expected value of something can be different depending on how much you know, and it can even change for the same person as they get more information.
+
+However, in order to affect the expectation calculation, any information will suffice, regardless of whether it is causal or not.

@@ -1,0 +1,102 @@
+---
+title: "IIoT-as-a-Service y Consideraciones de Privacidad"
+summary: "Modelos de despliegue IIoT (multi-tenant, single-tenant, on-premise, private cloud), propiedad de datos y el marco legal necesario para servicios industriales digitales."
+date: 2020-07-14
+published: true
+tags:
+  - iiot
+  - privacy
+  - cloud-architecture
+  - saas
+  - data-monetization
+---
+
+Ofrecer digitalizacion industrial como servicio no es solo un problema de ingenieria. Es un problema legal. Cada sensor conectado genera datos que pertenecen a alguien, transitan por infraestructura de alguien y se almacenan bajo terminos que alguien debe definir explicitamente. Este post analiza los modelos de despliegue para IIoT-as-a-Service, las implicaciones de propiedad sobre los datos generados y el marco legal que una operacion seria necesita construir antes de escalar.
+
+---
+
+## La Necesidad Legal del Servicio Digital
+
+Una politica de privacidad de datos es parte fundamental de la documentacion para hacer plausible el despliegue de cualquier servicio web. En ella se establecen las responsabilidades tecnicas — alcance, facilidades, limites del servicio — pero tambien las responsabilidades legales. Esta segunda dimension puede pasar desapercibida en un contexto industrial donde la atencion se concentra en comisionamiento de campo, obra electrica y configuracion de dispositivos edge. Pero toda la estructura a nivel nube requiere formalidades equivalentes.
+
+Es el mismo principio que opera cuando un usuario marca el checkbox de terminos y condiciones al crear una cuenta en cualquier plataforma digital. La diferencia en el contexto IIoT industrial es la sensibilidad de los datos: telemetria de procesos productivos, estados de activos criticos, patrones operacionales que revelan eficiencia, capacidad y vulnerabilidades de la operacion del cliente. Los datos son el activo mas importante de esta revolucion, y sus implicaciones legales no se pueden tratar como un accesorio.
+
+Lo que ofrecemos es, en esencia, un servicio de servicios: la integracion de diversos sistemas y softwares — cada uno un servicio en si mismo — como un conglomerado hecho a la medida para un cliente industrial y entregado bajo un modelo de suscripcion temporal. Esta naturaleza compuesta multiplica la complejidad legal, porque cada capa del stack tiene sus propios terminos, sus propios procesadores de datos y sus propias jurisdicciones.
+
+---
+
+## Modelos de Despliegue: Cuatro Arquitecturas, Cuatro Perfiles de Riesgo
+
+La forma del despliegue determina directamente el perfil legal, la estructura de costos y las responsabilidades sobre los datos. Existen cuatro modelos fundamentales, cada uno con implicaciones distintas.
+
+### Multi-Tenant
+
+En el modelo multi-tenant, una sola instancia de computo sirve la plataforma IoT a multiples clientes simultaneamente. Dentro de nuestro VPC en AWS, una instancia EC2 ejecuta el software de plataforma (Thingsboard, Ignition) y una instancia RDS gestiona la base de datos. Los clientes — inquilinos del servicio — estan segmentados entre si mediante usuarios, roles y restricciones de control de acceso a nivel de aplicacion.
+
+Este es el modelo mas eficiente economicamente. El costo de infraestructura se distribuye entre multiples clientes, y la operacion se simplifica al mantener una sola instancia de cada servicio. Sin embargo, es tambien el modelo con mayor superficie legal: los datos de multiples organizaciones coexisten en la misma infraestructura de computo y almacenamiento. La segmentacion es logica, no fisica. Un error de configuracion en el control de acceso, una vulnerabilidad en la capa de aplicacion o una falla en el aislamiento de consultas de base de datos podria exponer datos de un cliente a otro.
+
+La politica de privacidad para un despliegue multi-tenant debe ser explicita sobre este modelo de coexistencia, los mecanismos de aislamiento implementados y las responsabilidades en caso de brecha.
+
+### Single-Tenant
+
+El modelo single-tenant asigna instancias dedicadas de computo (EC2) y base de datos (RDS) a cada cliente, todo dentro de nuestro VPC. Los servicios web se ejecutan de la misma forma que en multi-tenant, pero la segmentacion es a nivel de infraestructura, no solo de aplicacion.
+
+El aislamiento fisico reduce significativamente el riesgo de contaminacion cruzada de datos. Cada cliente tiene su propio entorno completo, lo que simplifica auditorias, cumplimiento regulatorio y la posibilidad de personalizar configuraciones sin afectar a otros inquilinos. El costo es mayor — se multiplica la infraestructura por cada cliente — pero el perfil de riesgo legal es sustancialmente mas limpio.
+
+### On-Premise
+
+La instalacion on-premise implica desplegar los servicios de software de forma local en la red privada del cliente, sin conexion a internet. El cliente provee la infraestructura de computo y almacenamiento, y nosotros instalamos, configuramos y comisionamos la plataforma IoT dentro de su perimetro.
+
+Desde la perspectiva de propiedad de datos, este modelo es el mas directo: los datos nunca salen de la infraestructura del cliente. Pero introduce otras complejidades legales — responsabilidades sobre mantenimiento, actualizaciones, soporte remoto (si se habilita un canal VPN), y la delimitacion clara de donde termina nuestra responsabilidad y donde empieza la del equipo de TI del cliente.
+
+### Private Cloud
+
+El modelo private cloud es el mas delicado. Consiste en brindar acompanamiento y consultoria para que el cliente configure su propio VPC en AWS (u otro proveedor), y nosotros implementamos y soportamos los servicios dentro de esa infraestructura propietaria del cliente.
+
+La delicadeza radica en que este modelo implica, de cierta forma, entregar parte del know-how de forma privada a un tercero. La propiedad intelectual de la arquitectura, las configuraciones, los pipelines de datos y las integraciones personalizadas queda en un territorio ambiguo si no se define contractualmente. Se requieren clausulas especificas sobre propiedad intelectual, restricciones de uso, no competencia y limites de transferencia de conocimiento.
+
+---
+
+## Propiedad de Datos y Monetizacion
+
+El servicio IIoT, entendido como la propuesta holistica desde campo hasta nube para soluciones de industria 4.0, se entrega sobre plazos temporales extensos a clientes de actividades economicas diversas. Esta temporalidad es estrategica: meses y anos de operacion generan volumenes masivos de datos de sistemas industriales.
+
+Lo que sigue despues de la estabilizacion del servicio es la capitalizacion de esos datos. La forma de escalar a cientos y miles de usuarios en la red es mediante un servicio propiamente digital, derivado de la experiencia y los datos almacenados durante largos periodos de operacion.
+
+Para que esta capitalizacion sea viable, las politicas y terminos de uso del servicio deben contemplar desde el diseno la adjudicacion y pertenencia de los datos a la compania operadora. Al tener datos de diversos sistemas industriales de forma propia, la informacion que alli reside es valor con potencial de extraccion: patrones de consumo energetico por sector, benchmarks de eficiencia operacional, modelos predictivos entrenados sobre datos reales de multiples industrias.
+
+Existen mercados de datos donde la monetizacion de lo que representan gigabytes de telemetria industrial tiene valor comercial concreto. Proprietary data — la obtencion de una licencia para apropiarse de los datos almacenados, poder comercializarlos y extraer valor neto de la informacion — es un activo que requiere fundamentos legales solidos desde el primer contrato firmado.
+
+Esta estrategia no es inusual. Es exactamente lo que hacen los grandes proveedores de SaaS industrial: Siemens con MindSphere, PTC con ThingWorx, GE con Predix. La diferencia esta en que ellos comenzaron con el marco legal desde el dia uno.
+
+---
+
+## El Marco Legal Necesario
+
+Es evidente que esta estructura requiere fundaciones legales robustas. No solo por el proposito final de monetizacion de datos, sino tambien para otras definiciones criticas del servicio:
+
+**Responsabilidades operativas.** Delimitar con precision que cubre el servicio y que no. Si un sensor falla y genera datos erroneos que alimentan un modelo predictivo que genera una recomendacion equivocada, la cadena de responsabilidad debe estar definida contractualmente.
+
+**Propiedad intelectual.** Las configuraciones, dashboards, reglas de negocio, modelos analiticos y automatizaciones desarrolladas durante la implementacion — quien las posee? El cliente que pago por el servicio, o el proveedor que las diseno? Este punto es especialmente critico en el modelo private cloud.
+
+**Clausulas de datos.** Definir explicitamente quien es el controlador de datos (data controller), quien es el procesador (data processor), los derechos de portabilidad del cliente al terminar el contrato, las politicas de retencion y eliminacion, y los derechos del proveedor sobre datos anonimizados y agregados.
+
+**Gestion de riesgos.** Clausulas de limitacion de responsabilidad, seguros, SLAs con penalidades definidas, procedimientos de notificacion de brechas y planes de continuidad de negocio.
+
+**Cumplimiento regulatorio.** Dependiendo de la jurisdiccion y el sector industrial del cliente, pueden aplicar regulaciones especificas: habeas data en Colombia, GDPR si hay clientes europeos, regulaciones sectoriales de energia, mineria o manufactura que imponen requisitos adicionales sobre el manejo de datos operacionales.
+
+Un contrato tipo para IIoT-as-a-Service debe contemplar todas estas dimensiones con clausulas especificas, no genericas. La invitacion que surgio de este analisis fue clara: antes de escalar el servicio a nuevos clientes, construir la estructura legal como prerequisito, no como complemento.
+
+---
+
+## Referencia de Costos
+
+Como punto de referencia para la infraestructura base: un prototipo funcional sobre Thingsboard desplegado en AWS Marketplace se situaba entre USD $1,200 y $1,800 anuales. Este costo cubre unicamente la infraestructura de computo y almacenamiento — no incluye el soporte, la configuracion, ni el componente legal que, como se ha argumentado, es tan critico como el componente tecnico.
+
+---
+
+## Conclusion
+
+El IIoT-as-a-Service es una propuesta de negocio viable y escalable. Pero su escalabilidad depende menos de la capacidad tecnica para desplegar instancias y mas de la madurez legal para operar como un proveedor de servicios digitales sobre datos industriales sensibles. Cada modelo de despliegue — multi-tenant, single-tenant, on-premise, private cloud — tiene un perfil de riesgo legal distinto que debe reflejarse en contratos, politicas y terminos de servicio disenados para ese modelo especifico.
+
+Los datos industriales son el activo estrategico. Pero un activo sin marco legal que lo proteja, lo defina y lo habilite para monetizacion no es un activo — es un pasivo.
