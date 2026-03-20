@@ -156,6 +156,35 @@ pub struct DeviceTokenError {
     pub error_description: Option<String>,
 }
 
+// ── Console ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServiceHealth {
+    pub status: String,
+    pub latency_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConsoleHealth {
+    pub arcan: ServiceHealth,
+    pub lago: ServiceHealth,
+    pub autonomic: ServiceHealth,
+    pub haima: ServiceHealth,
+    pub timestamp: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSession {
+    pub id: String,
+    pub status: Option<String>,
+    pub agent: Option<String>,
+    pub started_at: Option<String>,
+    pub ended_at: Option<String>,
+}
+
 // ── API Wrapper ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
