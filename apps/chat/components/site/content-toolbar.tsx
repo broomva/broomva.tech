@@ -7,7 +7,11 @@ import {
   Headphones,
   Linkedin,
   Pause,
+  Play,
+  RotateCcw,
+  RotateCw,
   Share2,
+  Square,
   Twitter,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -34,49 +38,115 @@ function stripHtml(html: string): string {
   return div.textContent ?? "";
 }
 
+// ~150 words per minute at rate=1, ~5 chars per word → ~750 chars/min → ~12.5 chars/sec
+const CHARS_PER_SECOND = 12.5;
+
+function getPreferredVoice(): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis.getVoices();
+  return voices.find(
+    (v) =>
+      v.lang.startsWith("en") &&
+      (v.name.includes("Samantha") ||
+        v.name.includes("Google") ||
+        v.name.includes("Natural")),
+  );
+}
+
+type PlaybackState = "idle" | "playing" | "paused";
+
 interface ListenButtonProps {
   html: string;
   title: string;
 }
 
 function ListenButton({ html, title }: ListenButtonProps) {
-  const [playing, setPlaying] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [state, setState] = useState<PlaybackState>("idle");
+  const [progress, setProgress] = useState(0);
+  const fullTextRef = useRef("");
+  const charOffsetRef = useRef(0);
+  const lastBoundaryRef = useRef(0);
 
-  const stop = useCallback(() => {
-    window.speechSynthesis.cancel();
-    setPlaying(false);
-    utteranceRef.current = null;
-  }, []);
+  // build full text once
+  useEffect(() => {
+    fullTextRef.current = `${title}. ${stripHtml(html)}`;
+  }, [html, title]);
 
-  const play = useCallback(() => {
+  const speakFrom = useCallback((offset: number) => {
     if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
 
-    stop();
+    const text = fullTextRef.current;
+    const clampedOffset = Math.max(0, Math.min(offset, text.length));
+    charOffsetRef.current = clampedOffset;
+    lastBoundaryRef.current = clampedOffset;
 
-    const text = `${title}. ${stripHtml(html)}`;
-    const utterance = new SpeechSynthesisUtterance(text);
+    if (clampedOffset >= text.length) {
+      setState("idle");
+      setProgress(0);
+      charOffsetRef.current = 0;
+      return;
+    }
+
+    const remaining = text.slice(clampedOffset);
+    const utterance = new SpeechSynthesisUtterance(remaining);
     utterance.rate = 1;
     utterance.pitch = 1;
 
-    // prefer a natural voice
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(
-      (v) =>
-        v.lang.startsWith("en") &&
-        (v.name.includes("Samantha") ||
-          v.name.includes("Google") ||
-          v.name.includes("Natural")),
-    );
-    if (preferred) utterance.voice = preferred;
+    const voice = getPreferredVoice();
+    if (voice) utterance.voice = voice;
 
-    utterance.onend = () => setPlaying(false);
-    utterance.onerror = () => setPlaying(false);
+    utterance.onboundary = (e) => {
+      const absPos = clampedOffset + e.charIndex;
+      lastBoundaryRef.current = absPos;
+      setProgress(text.length > 0 ? (absPos / text.length) * 100 : 0);
+    };
 
-    utteranceRef.current = utterance;
+    utterance.onend = () => {
+      setState("idle");
+      setProgress(0);
+      charOffsetRef.current = 0;
+    };
+
+    utterance.onerror = (e) => {
+      // "interrupted" fires on cancel() during skip — not a real error
+      if (e.error === "interrupted") return;
+      setState("idle");
+      setProgress(0);
+    };
+
     window.speechSynthesis.speak(utterance);
-    setPlaying(true);
-  }, [html, title, stop]);
+    setState("playing");
+  }, []);
+
+  const handlePlay = useCallback(() => {
+    if (state === "paused") {
+      window.speechSynthesis.resume();
+      setState("playing");
+    } else {
+      speakFrom(charOffsetRef.current);
+    }
+  }, [state, speakFrom]);
+
+  const handlePause = useCallback(() => {
+    window.speechSynthesis.pause();
+    setState("paused");
+  }, []);
+
+  const handleStop = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setState("idle");
+    setProgress(0);
+    charOffsetRef.current = 0;
+  }, []);
+
+  const handleSkip = useCallback(
+    (seconds: number) => {
+      const charDelta = Math.round(seconds * CHARS_PER_SECOND);
+      const newOffset = lastBoundaryRef.current + charDelta;
+      speakFrom(newOffset);
+    },
+    [speakFrom],
+  );
 
   useEffect(() => {
     return () => {
@@ -84,26 +154,100 @@ function ListenButton({ html, title }: ListenButtonProps) {
     };
   }, []);
 
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={playing ? stop : play}
-          aria-label={playing ? "Stop listening" : "Listen to post"}
-          className="inline-flex size-9 items-center justify-center rounded-full border border-[var(--ag-border-subtle)] text-text-muted transition hover:border-ai-blue/40 hover:text-ai-blue"
-        >
-          {playing ? (
-            <Pause className="size-4" />
-          ) : (
+  const btnClass =
+    "inline-flex size-9 items-center justify-center rounded-full border border-[var(--ag-border-subtle)] text-text-muted transition hover:border-ai-blue/40 hover:text-ai-blue";
+
+  if (state === "idle") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handlePlay}
+            aria-label="Listen to post"
+            className={btnClass}
+          >
             <Headphones className="size-4" />
-          )}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        {playing ? "Stop" : "Listen"}
-      </TooltipContent>
-    </Tooltip>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Listen</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      {/* Skip back 10s */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => handleSkip(-10)}
+            aria-label="Back 10 seconds"
+            className={btnClass}
+          >
+            <RotateCcw className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">-10s</TooltipContent>
+      </Tooltip>
+
+      {/* Play / Pause */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={state === "playing" ? handlePause : handlePlay}
+            aria-label={state === "playing" ? "Pause" : "Resume"}
+            className={btnClass}
+          >
+            {state === "playing" ? (
+              <Pause className="size-4" />
+            ) : (
+              <Play className="size-4" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {state === "playing" ? "Pause" : "Resume"}
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Skip forward 10s */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => handleSkip(10)}
+            aria-label="Forward 10 seconds"
+            className={btnClass}
+          >
+            <RotateCw className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">+10s</TooltipContent>
+      </Tooltip>
+
+      {/* Stop */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handleStop}
+            aria-label="Stop"
+            className={btnClass}
+          >
+            <Square className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Stop</TooltipContent>
+      </Tooltip>
+
+      {/* Progress indicator */}
+      <span className="ml-1 text-[10px] tabular-nums text-text-muted">
+        {Math.round(progress)}%
+      </span>
+    </div>
   );
 }
 

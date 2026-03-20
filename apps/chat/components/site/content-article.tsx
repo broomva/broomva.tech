@@ -27,7 +27,7 @@ export function ContentArticle({
       <ReadingProgress />
 
       {/* Sticky toolbar */}
-      <div className="sticky top-3 z-40 flex justify-end">
+      <div className="sticky top-16 z-40 flex justify-end">
         <div className="glass rounded-full px-2 py-1.5">
           <ContentToolbar
             html={html}
