@@ -195,6 +195,22 @@ export const BSTACK_LAYERS: BstackLayer[] = [
         installCommand: "npx skills add broomva/finance-substrate",
         skillsUrl: "https://skills.sh/broomva/finance-substrate",
       },
+      {
+        slug: "wealth-management",
+        name: "Wealth Management",
+        description:
+          "Portfolio projections, asset allocation, Monte Carlo simulation, tax-efficient withdrawal planning.",
+        installCommand: "npx skills add broomva/wealth-management",
+        skillsUrl: "https://skills.sh/broomva/wealth-management",
+      },
+      {
+        slug: "investment-management",
+        name: "Investment Management",
+        description:
+          "Portfolio construction, factor models, backtesting, and multi-platform execution (Alpaca, Coinbase, Polymarket).",
+        installCommand: "npx skills add broomva/investment-management",
+        skillsUrl: "https://skills.sh/broomva/investment-management",
+      },
     ],
   },
   {

@@ -1,0 +1,62 @@
+---
+title: Autonomic
+summary: Homeostasis controller for the Agent OS — three-pillar regulation (operational, cognitive, economic) with hysteresis anti-flapping gates and advisory gating profiles.
+date: 2026-03-20
+published: true
+status: Active
+tags:
+  - rust
+  - agent-os
+  - homeostasis
+  - control-systems
+links:
+  - label: Repository
+    url: https://github.com/broomva/autonomic
+---
+
+## Problem
+
+An autonomous agent without self-regulation is dangerous. It will burn tokens without awareness, escalate errors without backing off, and flip behavioral modes every time a metric crosses a threshold. The agent needs a homeostasis controller — something that watches its vital signs and adjusts behavior before things go wrong.
+
+## Approach
+
+Autonomic implements **three-pillar regulation** — operational, cognitive, and economic — as a pure deterministic rule engine with no I/O in the core.
+
+| Pillar | What it regulates | Key metrics |
+|--------|------------------|-------------|
+| **Operational** | Agent health | Error streak, success rate, mode transitions |
+| **Cognitive** | Context capacity | Tokens used/remaining, context pressure, turns completed |
+| **Economic** | Resource survival | Balance, burn rate, cost velocity, revenue |
+
+**Economic modes** adapt agent behavior to resource availability:
+
+- **Sovereign** — Balance > 2x monthly burn. Full autonomy.
+- **Conserving** — 1–2x burn. Prefer cheaper models, limit expensive tools.
+- **Hustle** — 0–1x burn. Cheapest model only, no expensive tools.
+- **Hibernate** — Balance ≤ 0. Skip LLM calls, heartbeats only.
+
+**Hysteresis gates** prevent mode flapping — 30-second minimum hold time with split thresholds (activate at 0.7, deactivate at 0.3). If a metric oscillates near a threshold, the agent holds its stance until the signal is clear.
+
+## Architecture
+
+5 crates, 88 tests, pure-functional core:
+
+```
+aios-protocol (canonical contract)
+    ↓
+autonomic-core (types, traits, hysteresis gates)
+    ↓
+autonomic-controller (rule engine + projection fold)
+    ↓
+autonomic-lago (event subscription + publishing)
+    ↓
+autonomic-api (HTTP: /gating, /projection, /health)
+    ↓
+autonomicd (daemon binary)
+```
+
+The controller is **advisory only** — Arcan consults via HTTP GET, failures are non-fatal. This separation means the agent retains agency even when the regulator is down.
+
+## Current status
+
+Active development. 88 tests passing. The `AutonomicGatingMiddleware` in Arcan now enforces gating decisions: tool call caps, side-effect restrictions, model tier hints, and mode-change event emission. Strategy events (drift checks, decision logs) are folded into the homeostatic projection via `StrategyRule`.

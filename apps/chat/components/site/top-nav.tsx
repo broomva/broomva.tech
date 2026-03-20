@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
 import { ContentToolbar } from "./content-toolbar";
 import { DockAudioControls } from "./dock-audio-controls";
+import { DockSearch } from "./dock-search";
 import { useToolbarDock } from "./toolbar-dock-context";
 import { useAudioPlayback } from "@/providers/audio-playback-provider";
 
@@ -118,6 +119,11 @@ export function TopNav() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <div className="flex items-center pl-1">
+            <div className="mr-2 h-5 w-px shrink-0 bg-zinc-700/50" />
+            <DockSearch />
+          </div>
         </Dock>
       </nav>
     </header>

@@ -1,0 +1,50 @@
+---
+title: Vigil
+summary: OpenTelemetry-native observability for the Agent OS — contract-derived spans, GenAI semantic conventions, and graceful degradation to structured logging.
+date: 2026-03-20
+published: true
+status: Active
+tags:
+  - rust
+  - agent-os
+  - observability
+  - opentelemetry
+links:
+  - label: Repository
+    url: https://github.com/broomva/vigil
+---
+
+## Problem
+
+An agent that cannot observe its own execution is operating blind. Without spans on LLM calls, tool executions, and loop phases, there is no way to debug latency, track token budgets, or detect behavioral drift. The agent needs proprioception — self-awareness of its own performance.
+
+## Approach
+
+Vigil provides four modules in a single crate:
+
+| Module | Purpose |
+|--------|---------|
+| `config` | `VigConfig` pipeline setup with env var overrides |
+| `semconv` | 43 semantic conventions across 4 namespaces (GenAI, Life, Autonomic, Lago) |
+| `spans` | Contract-derived span builders for agent/phase/chat/tool |
+| `metrics` | Pre-created OTel instruments for tokens, duration, tool calls, budget, modes |
+
+**Contract-derived spans** mirror the agent loop 1:1:
+
+```
+agent_span(session, name)
+  ├── phase_span(Perceive)  → record budget
+  ├── phase_span(Deliberate) → chat_span(model, provider)
+  │   └── record_token_usage, record_finish_reason
+  ├── phase_span(Execute)   → tool_span(name, call_id)
+  │   └── record_tool_status
+  └── phase_span(Reflect)   → record_mode_transition
+```
+
+**Dual-write architecture** writes OTel trace context (trace_id, span_id) into Lago EventEnvelopes, so distributed traces correlate with the immutable event journal.
+
+**Graceful degradation** — without an OTLP endpoint, Vigil falls back to structured logging. Zero overhead for local development.
+
+## Current status
+
+Fully instrumented into Arcan's agent loop. 26 tests passing. Supports Langfuse, LangSmith, Jaeger, and Grafana Tempo via standard OTLP export. Budget metrics recorded every tick, mode transitions tracked, trace context dual-written to Lago events.

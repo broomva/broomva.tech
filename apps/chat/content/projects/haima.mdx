@@ -1,0 +1,53 @@
+---
+title: Haima
+summary: Agentic finance engine — x402 machine-to-machine payments, secp256k1 wallets, payment policy evaluation, and per-task revenue billing for the Agent OS.
+date: 2026-03-20
+published: true
+status: Active
+tags:
+  - rust
+  - agent-os
+  - finance
+  - x402
+  - payments
+links:
+  - label: Repository
+    url: https://github.com/broomva/haima
+---
+
+## Problem
+
+An agent that cannot pay for resources or charge for services is economically inert. It depends entirely on pre-provisioned API keys and has no concept of cost. The x402 protocol enables HTTP-native machine payments — when a resource returns 402 Payment Required, the agent should be able to evaluate, sign, and settle the payment autonomously.
+
+## Approach
+
+Haima (αἷμα, Greek for "blood") is the circulatory system of the Agent OS. It distributes economic resources through the organism via three mechanisms:
+
+**x402 Protocol Flow:**
+1. Agent makes HTTP request → receives 402 Payment Required
+2. Haima parses the `payment-required` header (base64-encoded JSON)
+3. PaymentPolicy evaluates: auto-approve (≤100μc), require-approval, or deny (>1Mc)
+4. WalletBackend signs the payment authorization (secp256k1)
+5. Agent retries with `payment-signature` header
+6. Facilitator settles on-chain (Base L2, USDC)
+
+**Per-task billing** lets agents charge for completed work — `TaskBilled` events create pending invoices, `RevenueReceived` events clear them.
+
+## Architecture
+
+6 crates, 65 tests:
+
+| Crate | Purpose |
+|-------|---------|
+| `haima-core` | Payment types, policy evaluation, event taxonomy |
+| `haima-wallet` | secp256k1 keypair + ChaCha20-Poly1305 encrypted storage |
+| `haima-x402` | Header parsing, signing, facilitator client |
+| `haima-lago` | Financial state projection from Lago events |
+| `haima-api` | HTTP endpoints (/health, /state) |
+| `haimad` | Daemon binary |
+
+Every financial action is an immutable Lago event. Financial state is a deterministic projection — no separate database.
+
+## Current status
+
+Phase F1 complete. x402 header parsing and signing fully implemented (27 tests in haima-x402). The `HaimaPaymentMiddleware` in Arcan detects HTTP 402 responses from tool execution, evaluates payment policy, and emits finance events to Lago. Autonomic reads the balance-to-burn ratio and adjusts EconomicMode accordingly.
