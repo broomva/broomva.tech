@@ -313,7 +313,10 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                     summary,
                     category,
                     model,
+                    version: None,
                     tags,
+                    variables: None,
+                    links: None,
                     visibility,
                 };
                 prompts::handle_create(&client, req, format).await
@@ -334,7 +337,10 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                     summary,
                     category,
                     model,
+                    version: None,
                     tags,
+                    variables: None,
+                    links: None,
                     visibility,
                 };
                 prompts::handle_update(&client, &slug, req, format).await

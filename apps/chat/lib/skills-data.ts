@@ -187,6 +187,86 @@ export const BSTACK_LAYERS: BstackLayer[] = [
         installCommand: "npx skills add broomva/content-creation",
         skillsUrl: "https://skills.sh/broomva",
       },
+      {
+        slug: "finance-substrate",
+        name: "Finance Substrate",
+        description:
+          "Personal finance and Colombian tax management. Bank imports, DIAN projection, Form 210 estimation.",
+        installCommand: "npx skills add broomva/finance-substrate",
+        skillsUrl: "https://skills.sh/broomva/finance-substrate",
+      },
+    ],
+  },
+  {
+    id: "strategy",
+    name: "Strategy & Decision Intelligence",
+    description:
+      "Strategic thinking, decision logging, risk analysis, and productivity reviews integrated with the Obsidian vault.",
+    skills: [
+      {
+        slug: "morning-briefing",
+        name: "Morning Briefing",
+        description:
+          "Daily briefing: calendar, priorities, blockers, and strategic context from vault and git history.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "pre-mortem",
+        name: "Pre-Mortem",
+        description:
+          "Structured risk analysis: imagine failure, identify causes, design mitigations before launch.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "drift-check",
+        name: "Drift Check",
+        description:
+          "Detect priority drift between stated goals and actual execution patterns across sessions.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "decision-log",
+        name: "Decision Log",
+        description:
+          "Structured decision records: context, options evaluated, decision rationale, and review triggers.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "weekly-review",
+        name: "Weekly Review",
+        description:
+          "End-of-week retrospective: wins, blockers, lessons learned, and priorities for next week.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "braindump",
+        name: "Braindump",
+        description:
+          "Rapid thought capture to structured Obsidian notes with tags, links, and action items.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "strategy-critique",
+        name: "Strategy Critique",
+        description:
+          "Red-team your strategy: challenge assumptions, find blind spots, stress-test decisions.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "stakeholder-update",
+        name: "Stakeholder Update",
+        description:
+          "Multi-audience status updates: adjusts detail, framing, and tone per stakeholder type.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
     ],
   },
 ];

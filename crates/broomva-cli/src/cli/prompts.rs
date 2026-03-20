@@ -192,7 +192,10 @@ pub async fn handle_push(
             summary: pf.frontmatter.get("summary").cloned(),
             category,
             model,
+            version: pf.frontmatter.get("version").cloned(),
             tags,
+            variables: None,
+            links: None,
             visibility,
         };
         let prompt = client.create_prompt(req).await?;
@@ -211,7 +214,10 @@ pub async fn handle_push(
             summary: pf.frontmatter.get("summary").cloned(),
             category,
             model,
+            version: pf.frontmatter.get("version").cloned(),
             tags,
+            variables: None,
+            links: None,
             visibility,
         };
         let prompt = client.update_prompt(&slug, req).await?;

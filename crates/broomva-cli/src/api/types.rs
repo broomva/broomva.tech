@@ -44,7 +44,13 @@ pub struct CreatePromptRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variables: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub links: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub visibility: Option<String>,
 }
@@ -63,7 +69,13 @@ pub struct UpdatePromptRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variables: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub links: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub visibility: Option<String>,
 }

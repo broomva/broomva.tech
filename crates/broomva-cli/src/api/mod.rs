@@ -127,7 +127,7 @@ impl BroomvaClient {
         req: UpdatePromptRequest,
     ) -> BroomvaResult<PromptDetail> {
         let resp = self
-            .request(Method::PATCH, &format!("/api/prompts/{slug}"))
+            .request(Method::PUT, &format!("/api/prompts/{slug}"))
             .json(&req)
             .send()
             .await?;
