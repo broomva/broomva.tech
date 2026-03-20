@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { LandingClient } from "@/components/site/landing-sections";
+import { getSafeSession } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { getLatest, getPinnedProjects } from "@/lib/content";
 import { getRecentRepos } from "@/lib/github";
@@ -23,11 +24,12 @@ const jsonLd = {
 };
 
 export default async function Home() {
-  const [projects, writing, notes, repos] = await Promise.all([
+  const [projects, writing, notes, repos, session] = await Promise.all([
     getPinnedProjects(3),
     getLatest("writing", 3),
     getLatest("notes", 3),
     getRecentRepos("broomva", 6),
+    getSafeSession(),
   ]);
 
   return (
@@ -44,6 +46,7 @@ export default async function Home() {
         writing={writing}
         notes={notes}
         repos={repos}
+        userName={session.data?.user?.name}
       />
     </>
   );

@@ -10,7 +10,6 @@ import type { GitHubRepo } from "@/lib/github";
 import { ContentCard } from "@/components/site/content-card";
 import { ScrollReveal } from "@/components/site/scroll-reveal";
 import { formatDate } from "@/lib/date";
-import authClient from "@/lib/auth-client";
 import ThermodynamicGrid from "@/components/ui/interactive-thermodynamic-grid";
 
 /* ------------------------------------------------------------------ */
@@ -42,28 +41,28 @@ function PillIcon({ name }: { name: string }) {
   switch (name) {
     case "pencil":
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
           <path d="m15 5 4 4" />
         </svg>
       );
     case "eye":
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
           <circle cx="12" cy="12" r="3" />
         </svg>
       );
     case "code":
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <polyline points="16 18 22 12 16 6" />
           <polyline points="8 6 2 12 8 18" />
         </svg>
       );
     case "compass":
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10" />
           <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
         </svg>
@@ -127,6 +126,7 @@ interface LandingProps {
   writing: ContentSummary[];
   notes: ContentSummary[];
   repos: GitHubRepo[];
+  userName?: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -138,10 +138,11 @@ export function LandingClient({
   writing,
   notes,
   repos,
+  userName,
 }: LandingProps) {
   return (
     <main className="relative">
-      <HeroSection />
+      <HeroSection userName={userName} />
       <div className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6">
         <InstallSection />
         <StackSection />
@@ -155,14 +156,13 @@ export function LandingClient({
 /*  Hero                                                               */
 /* ------------------------------------------------------------------ */
 
-function HeroSection() {
+function HeroSection({ userName }: { userName?: string | null }) {
   const router = useRouter();
-  const { data: session } = authClient.useSession();
   const [chatInput, setChatInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const greeting = useMemo(() => getTimeGreeting(), []);
-  const firstName = session?.user?.name?.split(" ")[0] ?? null;
+  const firstName = userName?.split(" ")[0] ?? null;
 
   const submitChat = useCallback(() => {
     const trimmed = chatInput.trim();
@@ -301,7 +301,7 @@ function HeroSection() {
           }}
           className={`pointer-events-auto mx-auto w-full max-w-xl ${firstName ? "mt-10" : "mt-8"}`}
         >
-          <div className="glass-card relative overflow-hidden rounded-2xl !p-0 transition-all duration-200 focus-within:border-ai-blue/40 focus-within:shadow-[inset_0_1px_0_oklch(1_0_0/0.06),0_0_24px_oklch(0.60_0.12_260/0.10)]">
+          <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-[color-mix(in_oklab,var(--ag-bg-surface)_calc(var(--ag-glass-medium)*100%),transparent)] shadow-[inset_0_1px_0_oklch(1_0_0/0.04),var(--ag-shadow-md)] backdrop-blur-[var(--ag-blur-lg)] backdrop-saturate-[1.4] backdrop-brightness-[1.05] transition-all duration-200 focus-within:border-ai-blue/40 focus-within:shadow-[inset_0_1px_0_oklch(1_0_0/0.06),0_0_24px_oklch(0.60_0.12_260/0.10)]">
             <textarea
               ref={inputRef}
               value={chatInput}
