@@ -1,0 +1,118 @@
+---
+title: "Broomva Ecosystem Coherence Audit"
+summary: "End-to-end audit of broomva.tech, Broomva CLI, and /broomva ecosystem to close the reasoning/execution loop"
+date: 2026-03-20
+published: true
+category: agent-instructions
+version: "1.0"
+tags:
+  - broomva
+  - ecosystem
+  - audit
+  - coherence
+  - cli
+  - interface
+  - reasoning-loop
+---
+
+You are operating inside the Broomva ecosystem.
+
+Core framing:
+broomva.tech is the public interface and expression of what is actually built under /broomva and /broomva.tech. Treat the website, CLI, and underlying repositories as one connected system, not as separate artifacts.
+
+Objective:
+Inspect the interfacing layer between broomva.tech, the Broomva CLI, and the underlying /broomva ecosystem, and make sure everything is coherently connected end to end so that the reasoning and execution loop is actually closed.
+
+Primary systems in scope:
+- /broomva
+- /broomva.tech
+- Broomva CLI
+
+What "closed reasoning loop" means in this task:
+The public-facing layer, developer-facing CLI layer, internal implementation layer, and knowledge/control loop should all be connected coherently such that:
+- the website accurately reflects the actual system capabilities
+- the CLI exposes the intended ecosystem workflows
+- the underlying repos implement what the interfaces promise
+- context, memory, skills, and execution paths connect meaningfully
+- there are no broken or conceptual gaps between branding, interface, and actual functionality
+
+Execution requirements:
+1. Inspect broomva.tech as the external/public interface layer.
+2. Inspect the Broomva CLI as the developer/operator interface layer.
+3. Inspect the underlying /broomva repositories and modules that power or should power those interfaces.
+4. Map the current interface architecture end to end:
+   - what broomva.tech exposes
+   - what the CLI exposes
+   - what the repos actually implement
+   - how a user or developer moves through the system
+   - where reasoning, control, memory, and execution are expected to connect
+5. Identify disconnects, including:
+   - features presented publicly but not actually implemented
+   - CLI commands that are incomplete, disconnected, or inconsistent with the platform
+   - repo capabilities not surfaced properly through the site or CLI
+   - broken or missing integrations between the CLI and /broomva.tech
+   - missing feedback loops between interface, execution, and memory/context systems
+   - architectural gaps where the "loop of reasoning" is open rather than closed
+6. Determine whether the current system forms a coherent loop across:
+   - interface
+   - intent capture
+   - execution
+   - state/memory
+   - feedback
+   - reflection/documentation
+7. If the loop is incomplete, fix it where appropriate by updating:
+   - site code
+   - CLI code
+   - repo integrations
+   - docs
+   - workflows
+   - linking surfaces
+   - memory/control integration points
+8. Ensure broomva.tech and the CLI feel like interfaces to the same real system.
+9. Update documentation so the relationship between:
+   - broomva.tech
+   - /broomva
+   - the CLI
+   - the underlying runtime/control/memory layers
+   is explicit and accurate.
+10. Validate end-to-end behavior.
+11. Ensure PR checks and CI/CD are green.
+12. Merge autonomously and leave git state clean.
+
+Specific questions to answer:
+- Is broomva.tech truly connected to the real /broomva ecosystem, or is it partially representational?
+- Does the Broomva CLI expose the right primitives and workflows?
+- Are the CLI and site aligned in language, capability, and architecture?
+- Are there missing links between public interface, developer interface, and backend implementation?
+- Is the reasoning/execution/memory loop actually closed?
+- Where does the current interface architecture leak, drift, or break?
+- What changes are needed so Broomva behaves like one coherent system?
+
+Quality bar:
+- do not treat this as a branding review only
+- do not stop at surface-level UI or docs fixes
+- do not assume the CLI and site are connected; verify it
+- do not assume the reasoning loop is closed just because components exist
+- ground all conclusions in actual code, workflows, commands, and integrations
+
+Definition of done:
+- broomva.tech has been audited as the public interface layer
+- the Broomva CLI has been audited as the operator/developer interface layer
+- the connection between /broomva, /broomva.tech, and the CLI is clear and correct
+- gaps in the reasoning/execution loop have been identified and fixed where appropriate
+- docs are updated
+- checks are green
+- merges are complete
+- git state is clean
+
+Final output:
+Provide a final summary including:
+1. current interface architecture
+2. how broomva.tech and the CLI relate today
+3. gaps found between interface and implementation
+4. whether the reasoning loop was actually closed or not
+5. changes made
+6. files/repos updated
+7. validation performed
+8. PR/CI results
+9. final recommendation for making Broomva behave as one coherent interface-to-execution system
