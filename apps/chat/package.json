@@ -4,7 +4,8 @@
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
-    "prebuild": "bun run check-env",
+    "prebuild": "bun run generate:search-index && bun run check-env",
+    "generate:search-index": "bun scripts/generate-search-index.ts",
     "dev": "bun run check-env && bash scripts/with-db.sh next dev --webpack --port 3001",
     "dev:inspect": "bash scripts/with-db.sh next dev --webpack --port 3001 --inspect",
     "dev:turbo": "bun run check-env && bash scripts/with-db.sh next dev --turbopack --port 3001",
@@ -123,6 +124,7 @@
     "drizzle-orm": "^0.45.1",
     "echarts-for-react": "^3.0.2",
     "fast-deep-equal": "^3.1.3",
+    "fuse.js": "^7.1.0",
     "gray-matter": "^4.0.3",
     "js-tiktoken": "^1.0.19",
     "langfuse": "^3.37.0",

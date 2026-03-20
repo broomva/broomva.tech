@@ -14,25 +14,23 @@ import {
   MessageCircle,
   Home,
   ArrowRight,
+  Globe,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
+import { useSearchIndex, type SearchEntry } from "@/hooks/use-search-index";
 
-interface SearchResult {
-  id: string;
-  title: string;
-  summary: string;
-  kind: string;
-  slug: string;
-  href: string;
-  tags: string[];
-}
-
-const KIND_META: Record<string, { icon: typeof FileText; color: string; label: string }> = {
+const KIND_META: Record<
+  string,
+  { icon: typeof FileText; color: string; label: string }
+> = {
   writing: { icon: NotebookPen, color: "text-blue-400", label: "Writing" },
   notes: { icon: FileText, color: "text-emerald-400", label: "Note" },
   projects: { icon: FolderOpen, color: "text-amber-400", label: "Project" },
   prompts: { icon: Sparkles, color: "text-purple-400", label: "Prompt" },
+  skill: { icon: Layers, color: "text-cyan-400", label: "Skill" },
+  repo: { icon: Globe, color: "text-orange-400", label: "Repo" },
+  page: { icon: Home, color: "text-zinc-400", label: "Page" },
 };
 
 const QUICK_LINKS = [
@@ -44,49 +42,17 @@ const QUICK_LINKS = [
   { href: "/chat", label: "Chat", icon: MessageCircle },
 ];
 
-function useDebounce<T>(value: T, delay = 200): T {
-  const [debounced, setDebounced] = useState<T>(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
-
 export function DockSearch() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [isFetching, setIsFetching] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const debouncedQuery = useDebounce(query, 200);
+  const { search, isReady } = useSearchIndex();
 
-  useEffect(() => {
-    if (!isExpanded) {
-      setResults([]);
-      return;
-    }
-
-    const controller = new AbortController();
-    setIsFetching(true);
-
-    fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`, {
-      signal: controller.signal,
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setResults(data.results ?? []);
-        setSelectedIndex(-1);
-      })
-      .catch(() => {})
-      .finally(() => setIsFetching(false));
-
-    return () => controller.abort();
-  }, [debouncedQuery, isExpanded]);
+  const results: SearchEntry[] = isExpanded && query.length > 0 ? search(query) : [];
 
   const handleExpand = useCallback(() => {
     setIsExpanded(true);
@@ -96,14 +62,17 @@ export function DockSearch() {
   const handleCollapse = useCallback(() => {
     setIsExpanded(false);
     setQuery("");
-    setResults([]);
     setSelectedIndex(-1);
   }, []);
 
   const navigateTo = useCallback(
     (href: string) => {
       handleCollapse();
-      router.push(href as Route);
+      if (href.startsWith("http")) {
+        window.open(href, "_blank", "noopener");
+      } else {
+        router.push(href as Route);
+      }
     },
     [handleCollapse, router],
   );
@@ -156,24 +125,32 @@ export function DockSearch() {
     return () => document.removeEventListener("keydown", onGlobalKey);
   }, [isExpanded, handleCollapse, handleExpand]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset selection when query changes
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [query]);
+
   const showResults = query.length > 0;
   const showQuickLinks = isExpanded && !showResults;
   const showDropdown = showQuickLinks || showResults;
 
   const anchorRef = useRef<HTMLDivElement>(null);
-  const [dropdownPos, setDropdownPos] = useState<{ bottom: number; right: number; width: number } | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{
+    bottom: number;
+    right: number;
+  } | null>(null);
 
   const updatePosition = useCallback(() => {
-    if (!anchorRef.current) {
+    const anchor = anchorRef.current ?? panelRef.current;
+    if (!anchor) {
       setDropdownPos(null);
       return;
     }
-    const rect = anchorRef.current.getBoundingClientRect();
+    const rect = anchor.getBoundingClientRect();
     if (rect.width < 10) return;
     setDropdownPos({
       bottom: window.innerHeight - rect.top + 8,
       right: window.innerWidth - rect.right,
-      width: Math.max(rect.width, 320),
     });
   }, []);
 
@@ -185,8 +162,9 @@ export function DockSearch() {
     let cancelled = false;
     const tryUpdate = (attempts: number) => {
       if (cancelled || attempts <= 0) return;
-      if (anchorRef.current) {
-        const rect = anchorRef.current.getBoundingClientRect();
+      const anchor = anchorRef.current ?? panelRef.current;
+      if (anchor) {
+        const rect = anchor.getBoundingClientRect();
         if (rect.width >= 10) {
           updatePosition();
           return;
@@ -195,118 +173,125 @@ export function DockSearch() {
       setTimeout(() => tryUpdate(attempts - 1), 50);
     };
     requestAnimationFrame(() => tryUpdate(10));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [showDropdown, updatePosition]);
 
-  const dropdownContent = showDropdown && dropdownPos && createPortal(
-    <AnimatePresence>
-      <motion.div
-        ref={dropdownRef}
-        initial={{ opacity: 0, y: 8, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 8, scale: 0.96 }}
-        transition={{ duration: 0.15 }}
-        className="pointer-events-auto fixed z-50 max-h-80 overflow-y-auto rounded-xl border border-zinc-700/60 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-xl"
-        style={{
-          bottom: dropdownPos.bottom,
-          right: dropdownPos.right,
-          width: dropdownPos.width,
-        }}
-      >
-        {showQuickLinks && (
-          <>
-            <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-              Quick links
-            </div>
-            {QUICK_LINKS.map((link, i) => {
-              const Icon = link.icon;
-              return (
-                <button
-                  key={link.href}
-                  type="button"
-                  onClick={() => navigateTo(link.href)}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
-                    selectedIndex === i
-                      ? "bg-zinc-700/60 text-zinc-100"
-                      : "text-zinc-300 hover:bg-zinc-800/80"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-                  <span className="text-sm">{link.label}</span>
-                  <ArrowRight className="ml-auto h-3 w-3 text-zinc-600" />
-                </button>
-              );
-            })}
-            <div className="mt-1 border-t border-zinc-800 px-2 py-1.5">
-              <span className="text-[10px] text-zinc-600">
-                ⌘K to toggle &middot; ESC to close
-              </span>
-            </div>
-          </>
-        )}
+  const dropdownContent =
+    showDropdown &&
+    dropdownPos &&
+    createPortal(
+      <AnimatePresence>
+        <motion.div
+          ref={dropdownRef}
+          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.96 }}
+          transition={{ duration: 0.15 }}
+          className="pointer-events-auto fixed z-50 w-80 max-h-80 overflow-y-auto rounded-xl border border-zinc-700/60 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-xl"
+          style={{
+            bottom: dropdownPos.bottom,
+            right: dropdownPos.right,
+          }}
+        >
+          {showQuickLinks && (
+            <>
+              <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                Quick links
+              </div>
+              {QUICK_LINKS.map((link, i) => {
+                const Icon = link.icon;
+                return (
+                  <button
+                    key={link.href}
+                    type="button"
+                    onClick={() => navigateTo(link.href)}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                      selectedIndex === i
+                        ? "bg-zinc-700/60 text-zinc-100"
+                        : "text-zinc-300 hover:bg-zinc-800/80"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                    <span className="text-sm">{link.label}</span>
+                    <ArrowRight className="ml-auto h-3 w-3 text-zinc-600" />
+                  </button>
+                );
+              })}
+              <div className="mt-1 border-t border-zinc-800 px-2 py-1.5">
+                <span className="text-[10px] text-zinc-600">
+                  ⌘K to toggle &middot; ESC to close
+                </span>
+              </div>
+            </>
+          )}
 
-        {showResults && (
-          <>
-            {isFetching && results.length === 0 && (
-              <div className="px-2 py-3 text-center text-xs text-zinc-500">
-                Searching...
-              </div>
-            )}
-            {!isFetching && results.length === 0 && query.length > 0 && (
-              <div className="px-2 py-3 text-center text-xs text-zinc-500">
-                No results for &ldquo;{query}&rdquo;
-              </div>
-            )}
-            {results.length > 0 && (
-              <>
-                <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-                  {results.length} result{results.length !== 1 && "s"}
+          {showResults && (
+            <>
+              {!isReady && (
+                <div className="px-2 py-3 text-center text-xs text-zinc-500">
+                  Loading index...
                 </div>
-                {results.map((result, i) => {
-                  const meta = KIND_META[result.kind] ?? KIND_META.writing;
-                  const Icon = meta.icon;
-                  return (
-                    <motion.button
-                      key={result.id}
-                      type="button"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      onClick={() => navigateTo(result.href)}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
-                        selectedIndex === i
-                          ? "bg-zinc-700/60 text-zinc-100"
-                          : "text-zinc-300 hover:bg-zinc-800/80"
-                      }`}
-                    >
-                      <Icon className={`h-3.5 w-3.5 shrink-0 ${meta.color}`} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm">{result.title}</div>
-                        {result.summary && (
-                          <div className="truncate text-[11px] text-zinc-500">
-                            {result.summary}
-                          </div>
-                        )}
-                      </div>
-                      <span className="shrink-0 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
-                        {meta.label}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </>
-            )}
-            <div className="mt-1 border-t border-zinc-800 px-2 py-1.5">
-              <span className="text-[10px] text-zinc-600">
-                ↑↓ navigate &middot; ↵ open &middot; ESC close
-              </span>
-            </div>
-          </>
-        )}
-      </motion.div>
-    </AnimatePresence>,
-    document.body,
-  );
+              )}
+              {isReady && results.length === 0 && query.length > 0 && (
+                <div className="px-2 py-3 text-center text-xs text-zinc-500">
+                  No results for &ldquo;{query}&rdquo;
+                </div>
+              )}
+              {results.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                    {results.length} result{results.length !== 1 && "s"}
+                  </div>
+                  {results.map((result, i) => {
+                    const meta =
+                      KIND_META[result.kind] ?? KIND_META.page;
+                    const Icon = meta.icon;
+                    return (
+                      <motion.button
+                        key={result.id}
+                        type="button"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        onClick={() => navigateTo(result.href)}
+                        className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                          selectedIndex === i
+                            ? "bg-zinc-700/60 text-zinc-100"
+                            : "text-zinc-300 hover:bg-zinc-800/80"
+                        }`}
+                      >
+                        <Icon
+                          className={`h-3.5 w-3.5 shrink-0 ${meta.color}`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm">{result.title}</div>
+                          {result.summary && (
+                            <div className="truncate text-[11px] text-zinc-500">
+                              {result.summary}
+                            </div>
+                          )}
+                        </div>
+                        <span className="shrink-0 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
+                          {meta.label}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </>
+              )}
+              <div className="mt-1 border-t border-zinc-800 px-2 py-1.5">
+                <span className="text-[10px] text-zinc-600">
+                  ↑↓ navigate &middot; ↵ open &middot; ESC close
+                </span>
+              </div>
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>,
+      document.body,
+    );
 
   return (
     <div ref={panelRef} className="relative flex items-center">

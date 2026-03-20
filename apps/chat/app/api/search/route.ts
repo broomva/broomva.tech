@@ -1,29 +1,42 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { getContentList, type ContentKind } from "@/lib/content";
 
-const CONTENT_KINDS: ContentKind[] = ["writing", "notes", "projects", "prompts"];
+const CONTENT_KINDS: ContentKind[] = [
+  "writing",
+  "notes",
+  "projects",
+  "prompts",
+];
+
+const ONE_HOUR = 3600;
+
+const getCachedContent = unstable_cache(
+  async () => {
+    const allContent = await Promise.all(
+      CONTENT_KINDS.map(async (kind) => {
+        const items = await getContentList(kind);
+        return items.map((item) => ({
+          id: `${kind}/${item.slug}`,
+          title: item.title,
+          summary: item.summary,
+          kind,
+          slug: item.slug,
+          href: `/${kind}/${item.slug}`,
+          tags: item.tags,
+        }));
+      }),
+    );
+    return allContent.flat();
+  },
+  ["site-search-content"],
+  { revalidate: ONE_HOUR },
+);
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.toLowerCase().trim() ?? "";
 
-  const allContent = await Promise.all(
-    CONTENT_KINDS.map(async (kind) => {
-      const items = await getContentList(kind);
-      return items.map((item) => ({
-        id: `${kind}/${item.slug}`,
-        title: item.title,
-        summary: item.summary,
-        kind,
-        slug: item.slug,
-        href: kind === "writing" || kind === "notes" || kind === "projects" || kind === "prompts"
-          ? `/${kind}/${item.slug}`
-          : `/${kind}`,
-        tags: item.tags,
-      }));
-    }),
-  );
-
-  const flat = allContent.flat();
+  const flat = await getCachedContent();
 
   if (!q) {
     return NextResponse.json({ results: flat.slice(0, 12) });

@@ -20,6 +20,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Generate search index
+        run: bun run generate:search-index
+        working-directory: apps/chat
+
+      - name: Verify search index
+        run: test -f apps/chat/public/search-index.json && echo "Search index OK ($(wc -c < apps/chat/public/search-index.json) bytes)"
+
       - name: Validate Type Generation
         run: bun run test:types
 
