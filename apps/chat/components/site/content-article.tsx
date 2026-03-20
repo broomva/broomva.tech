@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { ContentToolbar } from "./content-toolbar";
 import { PostReactions } from "./post-reactions";
 import { ProseContent } from "./prose-content";
 import { ReadingProgress } from "./reading-progress";
+import { useToolbarDock } from "./toolbar-dock-context";
 
 interface ContentArticleProps {
   html: string;
@@ -15,6 +18,8 @@ interface ContentArticleProps {
   audioSrc?: string;
 }
 
+const DOCK_THRESHOLD = 200;
+
 export function ContentArticle({
   html,
   title,
@@ -24,21 +29,48 @@ export function ContentArticle({
   readingTime,
   audioSrc,
 }: ContentArticleProps) {
+  const [shouldDock, setShouldDock] = useState(false);
+  const { setDocked } = useToolbarDock();
+
+  useEffect(() => {
+    function handleScroll() {
+      const past = window.scrollY > DOCK_THRESHOLD;
+      setShouldDock(past);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    setDocked(shouldDock, { html, title, summary, slug, audioSrc });
+    return () => setDocked(false);
+  }, [shouldDock, setDocked, html, title, summary, slug, audioSrc]);
+
   return (
     <>
       <ReadingProgress />
 
-      {/* Sticky toolbar */}
       <div className="sticky top-16 z-40 flex justify-end">
-        <div className="glass rounded-full px-2 py-1.5">
-          <ContentToolbar
-            html={html}
-            title={title}
-            summary={summary}
-            slug={slug}
-            audioSrc={audioSrc}
-          />
-        </div>
+        <AnimatePresence>
+          {!shouldDock && (
+            <motion.div
+              className="glass rounded-full px-2 py-1.5"
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 40, scale: 0.9 }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <ContentToolbar
+                html={html}
+                title={title}
+                summary={summary}
+                slug={slug}
+                audioSrc={audioSrc}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Meta: reading time + tags */}
@@ -48,7 +80,7 @@ export function ContentArticle({
         </span>
         {tags && tags.length > 0 && (
           <>
-            <span className="text-text-muted/40">·</span>
+            <span className="text-text-muted/40">&middot;</span>
             <div className="flex flex-wrap gap-1.5">
               {tags.map((tag) => (
                 <span key={tag} className="glass-badge text-[11px]">

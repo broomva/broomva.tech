@@ -3,7 +3,10 @@
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Sparkles, Layers, MessageCircle } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
+import { ContentToolbar } from "./content-toolbar";
+import { useToolbarDock } from "./toolbar-dock-context";
 
 const allLinks = [
   { href: "/", label: "Home", icon: Home, chatOnly: true },
@@ -30,6 +33,7 @@ function isCurrent(pathname: string, href: string): boolean {
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isDocked, payload } = useToolbarDock();
 
   const inChat = isInChatLayout(pathname);
   const links = allLinks.filter((link) => !link.chatOnly || inChat);
@@ -66,6 +70,29 @@ export function TopNav() {
               </DockItem>
             );
           })}
+
+          <AnimatePresence>
+            {isDocked && payload && (
+              <motion.div
+                className="flex items-center overflow-hidden border-l border-zinc-700/50 pl-3"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{
+                  width: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
+                  opacity: { duration: 0.2, delay: 0.1 },
+                }}
+              >
+                <ContentToolbar
+                  html={payload.html}
+                  title={payload.title}
+                  summary={payload.summary}
+                  slug={payload.slug}
+                  audioSrc={payload.audioSrc}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Dock>
       </nav>
     </header>
