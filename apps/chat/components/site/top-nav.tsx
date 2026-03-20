@@ -6,7 +6,9 @@ import { Home, Sparkles, Layers, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
 import { ContentToolbar } from "./content-toolbar";
+import { DockAudioControls } from "./dock-audio-controls";
 import { useToolbarDock } from "./toolbar-dock-context";
+import { useAudioPlayback } from "@/providers/audio-playback-provider";
 
 const allLinks = [
   { href: "/", label: "Home", icon: Home, chatOnly: true },
@@ -34,9 +36,14 @@ export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { isDocked, payload } = useToolbarDock();
+  const { track, state: audioState } = useAudioPlayback();
 
   const inChat = isInChatLayout(pathname);
   const links = allLinks.filter((link) => !link.chatOnly || inChat);
+
+  const hasActiveAudio = !!track && audioState !== "idle";
+  const showFullToolbar = isDocked && payload;
+  const showDockAudio = hasActiveAudio && !showFullToolbar;
 
   return (
     <header className="pointer-events-none fixed bottom-4 left-0 right-0 z-40">
@@ -71,10 +78,11 @@ export function TopNav() {
             );
           })}
 
-          <AnimatePresence>
-            {isDocked && payload && (
+          <AnimatePresence mode="wait">
+            {showFullToolbar && (
               <motion.div
-                className="flex items-center overflow-hidden border-l border-zinc-700/50 pl-3"
+                key="full-toolbar"
+                className="flex items-center overflow-hidden pl-3"
                 initial={{ opacity: 0, width: 0 }}
                 animate={{ opacity: 1, width: "auto" }}
                 exit={{ opacity: 0, width: 0 }}
@@ -83,6 +91,7 @@ export function TopNav() {
                   opacity: { duration: 0.2, delay: 0.1 },
                 }}
               >
+                <div className="mr-3 h-5 w-px shrink-0 bg-zinc-700/50" />
                 <ContentToolbar
                   html={payload.html}
                   title={payload.title}
@@ -90,6 +99,22 @@ export function TopNav() {
                   slug={payload.slug}
                   audioSrc={payload.audioSrc}
                 />
+              </motion.div>
+            )}
+            {showDockAudio && (
+              <motion.div
+                key="dock-audio"
+                className="flex items-center overflow-hidden pl-3"
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{
+                  width: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+                  opacity: { duration: 0.2, delay: 0.08 },
+                }}
+              >
+                <div className="mr-3 h-5 w-px shrink-0 bg-zinc-700/50" />
+                <DockAudioControls />
               </motion.div>
             )}
           </AnimatePresence>

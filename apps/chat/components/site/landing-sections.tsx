@@ -3,13 +3,14 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
 import type { ContentSummary } from "@/lib/content";
 import type { GitHubRepo } from "@/lib/github";
 import { ContentCard } from "@/components/site/content-card";
 import { ScrollReveal } from "@/components/site/scroll-reveal";
 import { formatDate } from "@/lib/date";
+import authClient from "@/lib/auth-client";
 import ThermodynamicGrid from "@/components/ui/interactive-thermodynamic-grid";
 
 /* ------------------------------------------------------------------ */
@@ -22,6 +23,55 @@ const socials = [
   { href: "https://x.com/broomva_tech", label: "X" },
   { href: "/links", label: "Link hub" },
 ];
+
+const suggestionPills = [
+  { icon: "pencil", label: "Write", prompt: "Help me write a " },
+  { icon: "eye", label: "Learn", prompt: "Explain how " },
+  { icon: "code", label: "Code", prompt: "Write code that " },
+  { icon: "compass", label: "Explore", prompt: "Tell me about " },
+];
+
+function getTimeGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function PillIcon({ name }: { name: string }) {
+  switch (name) {
+    case "pencil":
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+          <path d="m15 5 4 4" />
+        </svg>
+      );
+    case "eye":
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      );
+    case "code":
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      );
+    case "compass":
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 const stack = [
   {
@@ -107,16 +157,12 @@ export function LandingClient({
 
 function HeroSection() {
   const router = useRouter();
-  const [chatOpen, setChatOpen] = useState(false);
+  const { data: session } = authClient.useSession();
   const [chatInput, setChatInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const openChat = useCallback(() => {
-    setChatOpen(true);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    });
-  }, []);
+  const greeting = useMemo(() => getTimeGreeting(), []);
+  const firstName = session?.user?.name?.split(" ")[0] ?? null;
 
   const submitChat = useCallback(() => {
     const trimmed = chatInput.trim();
@@ -130,12 +176,22 @@ function HeroSection() {
         e.preventDefault();
         submitChat();
       }
-      if (e.key === "Escape") {
-        setChatOpen(false);
-        setChatInput("");
-      }
     },
     [submitChat],
+  );
+
+  const handlePillClick = useCallback(
+    (prompt: string) => {
+      setChatInput(prompt);
+      requestAnimationFrame(() => {
+        const el = inputRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(prompt.length, prompt.length);
+        }
+      });
+    },
+    [],
   );
 
   return (
@@ -149,102 +205,185 @@ function HeroSection() {
       <div className="pointer-events-none absolute -right-32 top-1/4 z-[1] h-[28rem] w-[28rem] rounded-full bg-ai-blue/10 blur-[120px]" />
       <div className="pointer-events-none absolute -left-24 bottom-1/4 z-[1] h-96 w-96 rounded-full bg-web3-green/8 blur-[100px]" />
 
-      <div className="pointer-events-none relative z-10 mx-auto w-full max-w-4xl text-center">
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-          className="text-xs uppercase tracking-[0.3em] text-ai-blue"
-        >
-          Carlos D. Escobar-Valbuena
-        </motion.p>
-
+      <div className="pointer-events-none relative z-10 mx-auto w-full max-w-3xl text-center">
+        {/* Greeting */}
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
             duration: 0.7,
-            delay: 0.15,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-6 font-display text-5xl leading-[1.1] text-text-primary sm:text-7xl"
+          className="font-display text-4xl leading-[1.15] text-text-primary sm:text-5xl md:text-6xl"
         >
-          Building systems
-          <br />
-          that last
+          {firstName ? (
+            <>
+              {greeting},{" "}
+              <span className="relative inline-block text-ai-blue">
+                {firstName}
+                <motion.span
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
+                  className="absolute -bottom-1 left-0 h-[2px] w-full origin-left rounded-full bg-ai-blue/50"
+                />
+              </span>
+            </>
+          ) : (
+            <>
+              Building systems
+              <br />
+              that last
+            </>
+          )}
         </motion.h1>
 
+        {/* Subtitle — changes when logged in */}
         <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.6,
+            delay: 0.2,
+            ease: [0.25, 0.1, 0.25, 1],
+          }}
+          className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg"
+        >
+          {firstName
+            ? "How can I help you today?"
+            : "Lead AI at Stimulus. Databricks expert. Rust Agent OS builder. From scalable data pipelines to autonomous agent infrastructure — reliability engineering across software, body, and craft."}
+        </motion.p>
+
+        {/* Social links — only when not logged in */}
+        {!firstName && (
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.5,
+              delay: 0.35,
+              ease: [0.25, 0.1, 0.25, 1],
+            }}
+            className="mt-6 flex flex-wrap justify-center gap-3 pointer-events-auto"
+          >
+            {socials.map((item) =>
+              item.href.startsWith("/") ? (
+                <Link
+                  key={item.href}
+                  href={item.href as Route}
+                  className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
+                >
+                  {item.label}
+                </a>
+              ),
+            )}
+          </motion.div>
+        )}
+
+        {/* Chat input */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
             duration: 0.6,
-            delay: 0.35,
+            delay: firstName ? 0.3 : 0.5,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg"
+          className={`pointer-events-auto mx-auto w-full max-w-xl ${firstName ? "mt-10" : "mt-8"}`}
         >
-          Lead AI at Stimulus. Databricks expert. Rust Agent OS builder.
-          From scalable data pipelines to autonomous agent infrastructure
-          — reliability engineering across software, body, and craft.
-        </motion.p>
+          <div className="glass-card relative overflow-hidden rounded-2xl !p-0 transition-all duration-200 focus-within:border-ai-blue/40 focus-within:shadow-[inset_0_1px_0_oklch(1_0_0/0.06),0_0_24px_oklch(0.60_0.12_260/0.10)]">
+            <textarea
+              ref={inputRef}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="How can I help you today?"
+              rows={1}
+              className="w-full resize-none bg-transparent px-5 pb-12 pt-4 text-sm text-text-primary placeholder:text-text-muted/60 focus:outline-none sm:text-base"
+            />
 
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.5,
-            delay: 0.45,
-            ease: [0.25, 0.1, 0.25, 1],
-          }}
-          className="mt-6 flex flex-wrap justify-center gap-3 pointer-events-auto"
-        >
-          {socials.map((item) =>
-            item.href.startsWith("/") ? (
-              <Link
-                key={item.href}
-                href={item.href as Route}
-                className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
+            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2.5">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded-lg p-1.5 text-text-muted/50 transition hover:bg-bg-elevated/60 hover:text-text-secondary"
+                  aria-label="Attach file"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg p-1.5 text-text-muted/50 transition hover:bg-bg-elevated/60 hover:text-text-secondary"
+                  aria-label="Chat history"
+                  onClick={() => router.push("/chat")}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={submitChat}
+                disabled={!chatInput.trim()}
+                className="flex size-8 items-center justify-center rounded-full bg-ai-blue/90 text-white shadow-sm transition-all hover:bg-ai-blue disabled:opacity-30 disabled:hover:bg-ai-blue/90"
+                aria-label="Send"
               >
-                {item.label}
-              </Link>
-            ) : (
-              <a
-                key={item.href}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
-              >
-                {item.label}
-              </a>
-            ),
-          )}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: firstName ? 0.5 : 0.7, duration: 0.5 }}
+            className="mt-2 text-center text-[11px] text-text-muted/40"
+          >
+            AI can make mistakes. Please check important information.
+          </motion.p>
         </motion.div>
 
-        {/* Inline chat prompt trigger */}
+        {/* Suggestion pills */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
             duration: 0.5,
-            delay: 0.55,
+            delay: firstName ? 0.45 : 0.65,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mt-10"
+          className="mt-5 flex flex-wrap justify-center gap-2.5 pointer-events-auto"
         >
-          <button
-            type="button"
-            onClick={openChat}
-            className="group glass-card pointer-events-auto mx-auto flex w-full max-w-xl cursor-text items-center justify-between gap-3 px-5 py-4 transition hover:border-ai-blue/40"
-          >
-            <span className="text-sm text-text-muted transition group-hover:text-text-secondary">
-              Prompt Broomva...
-            </span>
-            <span className="glass-button glass-button-primary shrink-0 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em]">
-              Chat
-            </span>
-          </button>
+          {suggestionPills.map((pill) => (
+            <button
+              key={pill.label}
+              type="button"
+              onClick={() => handlePillClick(pill.prompt)}
+              className="flex items-center gap-1.5 rounded-full border border-border/40 bg-bg-elevated/30 px-4 py-2 text-xs font-medium text-text-secondary backdrop-blur-sm transition-all duration-200 hover:border-ai-blue/30 hover:bg-bg-elevated/50 hover:text-text-primary"
+            >
+              <PillIcon name={pill.icon} />
+              {pill.label}
+            </button>
+          ))}
         </motion.div>
       </div>
 
@@ -276,98 +415,6 @@ function HeroSection() {
           />
         </motion.svg>
       </motion.div>
-
-      {/* Full-screen chat overlay */}
-      <AnimatePresence>
-        {chatOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            onClick={() => {
-              setChatOpen(false);
-              setChatInput("");
-            }}
-          >
-            {/* Thermodynamic grid backdrop behind blur */}
-            <ThermodynamicGrid
-              resolution={18}
-              coolingFactor={0.97}
-              className="pointer-events-auto absolute inset-0 opacity-60"
-            />
-            <div className="absolute inset-0 bg-bg-deep/60 backdrop-blur-xl" />
-            <div className="pointer-events-none absolute -right-32 top-1/4 h-[32rem] w-[32rem] rounded-full bg-ai-blue/15 blur-[140px]" />
-            <div className="pointer-events-none absolute -left-24 bottom-1/4 h-[28rem] w-[28rem] rounded-full bg-web3-green/10 blur-[120px]" />
-            <div className="pointer-events-none absolute left-1/2 top-1/3 h-64 w-64 -translate-x-1/2 rounded-full bg-ai-blue/8 blur-[100px]" />
-
-            {/* Chat input card */}
-            <motion.div
-              initial={{ opacity: 0, y: 40, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.98 }}
-              transition={{
-                duration: 0.45,
-                ease: [0.25, 0.1, 0.25, 1],
-              }}
-              className="relative w-full max-w-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15, duration: 0.4 }}
-                className="mb-4 text-center text-xs uppercase tracking-[0.25em] text-ai-blue"
-              >
-                Ask me anything
-              </motion.p>
-
-              <div className="glass-heavy relative overflow-hidden rounded-2xl border border-border/50 shadow-lg shadow-ai-blue/5">
-                <textarea
-                  ref={inputRef}
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask about systems thinking, agent architecture, or what I'm building now..."
-                  rows={3}
-                  className="w-full resize-none bg-transparent px-6 pb-14 pt-6 text-base text-text-primary placeholder:text-text-muted/60 focus:outline-none sm:text-lg"
-                />
-
-                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-border/30 px-4 py-3">
-                  <span className="text-[11px] text-text-muted/50">
-                    <kbd className="rounded border border-border/40 px-1.5 py-0.5 font-mono text-[10px]">
-                      Enter
-                    </kbd>
-                    {" "}to send{" · "}
-                    <kbd className="rounded border border-border/40 px-1.5 py-0.5 font-mono text-[10px]">
-                      Esc
-                    </kbd>
-                    {" "}to close
-                  </span>
-                  <button
-                    type="button"
-                    onClick={submitChat}
-                    disabled={!chatInput.trim()}
-                    className="glass-button glass-button-primary rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] disabled:opacity-30 disabled:hover:transform-none"
-                  >
-                    Send
-                  </button>
-                </div>
-              </div>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                className="mt-4 text-center text-xs text-text-muted/40"
-              >
-                Powered by Broomva AI
-              </motion.p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </section>
   );
 }
