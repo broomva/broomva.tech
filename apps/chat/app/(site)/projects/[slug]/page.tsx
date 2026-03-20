@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ContentArticle } from "@/components/site/content-article";
 import { PageHero } from "@/components/site/page-hero";
-import { ProseContent } from "@/components/site/prose-content";
 import { formatDate } from "@/lib/date";
-import { getAllSlugs, getContentBySlug } from "@/lib/content";
+import { getAllSlugs, getContentBySlug, estimateReadingTime } from "@/lib/content";
 
 export async function generateStaticParams() {
   const slugs = await getAllSlugs("projects");
@@ -39,6 +39,8 @@ export default async function ProjectPage({
     notFound();
   }
 
+  const readingTime = estimateReadingTime(project.content);
+
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <PageHero title={project.title} description={project.summary} />
@@ -68,9 +70,14 @@ export default async function ProjectPage({
         </div>
       ) : null}
 
-      <div className="mt-10 glass rounded-2xl p-6 sm:p-8">
-        <ProseContent html={project.html} />
-      </div>
+      <ContentArticle
+        html={project.html}
+        title={project.title}
+        summary={project.summary}
+        slug={slug}
+        tags={project.tags}
+        readingTime={readingTime}
+      />
     </main>
   );
 }

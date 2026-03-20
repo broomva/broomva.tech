@@ -198,6 +198,12 @@ export async function getContentBySlug(
   };
 }
 
+export function estimateReadingTime(content: string): number {
+  const text = content.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  const words = text.split(" ").length;
+  return Math.max(1, Math.round(words / 230));
+}
+
 export async function getLatest(
   kind: ContentKind,
   limit = 3,
