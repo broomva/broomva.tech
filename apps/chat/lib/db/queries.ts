@@ -31,6 +31,8 @@ import type { ArtifactKind } from "../artifacts/artifact-kind";
 import { db } from "./client";
 import { or } from "drizzle-orm";
 import {
+  audioPlaybackState,
+  type AudioPlaybackState,
   chat,
   type DBMessage,
   document,
@@ -1344,4 +1346,79 @@ export async function softDeleteUserPrompt(
     .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
     .returning({ id: userPrompt.id });
   return result.length > 0;
+}
+
+export async function getAudioPlaybackState({
+  userId,
+}: {
+  userId: string;
+}): Promise<AudioPlaybackState | null> {
+  try {
+    const rows = await db
+      .select()
+      .from(audioPlaybackState)
+      .where(eq(audioPlaybackState.userId, userId))
+      .limit(1);
+    return rows[0] ?? null;
+  } catch (error) {
+    console.error("Failed to get audio playback state", error);
+    return null;
+  }
+}
+
+export async function upsertAudioPlaybackState({
+  userId,
+  audioSrc,
+  slug,
+  title,
+  currentTime,
+  duration,
+}: {
+  userId: string;
+  audioSrc: string;
+  slug: string;
+  title: string;
+  currentTime: number;
+  duration: number;
+}): Promise<void> {
+  try {
+    await db
+      .insert(audioPlaybackState)
+      .values({
+        userId,
+        audioSrc,
+        slug,
+        title,
+        currentTime,
+        duration,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [audioPlaybackState.userId],
+        set: {
+          audioSrc,
+          slug,
+          title,
+          currentTime,
+          duration,
+          updatedAt: new Date(),
+        },
+      });
+  } catch (error) {
+    console.error("Failed to upsert audio playback state", error);
+  }
+}
+
+export async function deleteAudioPlaybackState({
+  userId,
+}: {
+  userId: string;
+}): Promise<void> {
+  try {
+    await db
+      .delete(audioPlaybackState)
+      .where(eq(audioPlaybackState.userId, userId));
+  } catch (error) {
+    console.error("Failed to delete audio playback state", error);
+  }
 }

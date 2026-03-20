@@ -521,4 +521,22 @@ export const userVault = pgTable(
 
 export type UserVault = InferSelectModel<typeof userVault>;
 
+export const audioPlaybackState = pgTable("AudioPlaybackState", {
+  userId: text("userId")
+    .primaryKey()
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  audioSrc: text("audioSrc").notNull(),
+  slug: text("slug").notNull(),
+  title: text("title").notNull(),
+  currentTime: integer("currentTime").notNull().default(0),
+  duration: integer("duration").notNull().default(0),
+  updatedAt: timestamp("updatedAt")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type AudioPlaybackState = InferSelectModel<typeof audioPlaybackState>;
+
 export const schema = { user, session, account, verification };

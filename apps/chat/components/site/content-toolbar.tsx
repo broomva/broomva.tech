@@ -27,6 +27,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAudioPlayback } from "@/providers/audio-playback-provider";
 
 /* ------------------------------------------------------------------ */
 /*  Text-to-Speech                                                     */
@@ -38,7 +39,6 @@ function stripHtml(html: string): string {
   return div.textContent ?? "";
 }
 
-// ~150 words per minute at rate=1, ~5 chars per word → ~750 chars/min → ~12.5 chars/sec
 const CHARS_PER_SECOND = 12.5;
 
 function getPreferredVoice(): SpeechSynthesisVoice | undefined {
@@ -52,75 +52,35 @@ function getPreferredVoice(): SpeechSynthesisVoice | undefined {
   );
 }
 
-type PlaybackState = "idle" | "playing" | "paused";
+type SpeechState = "idle" | "playing" | "paused";
 
 const BTN_CLASS =
   "inline-flex size-9 items-center justify-center rounded-full border border-[var(--ag-border-subtle)] text-text-muted transition hover:border-ai-blue/40 hover:text-ai-blue";
 
-/* ---- Audio file player (used when `audio` frontmatter is set) ---- */
+/* ---- Global audio player (uses AudioPlaybackProvider) ---- */
 
-function AudioFilePlayer({ src }: { src: string }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [state, setState] = useState<PlaybackState>("idle");
-  const [progress, setProgress] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+function GlobalAudioPlayer({
+  src,
+  slug,
+  title,
+}: {
+  src: string;
+  slug: string;
+  title: string;
+}) {
+  const { track, state, currentTime, duration, play, pause, resume, stop, skip } =
+    useAudioPlayback();
 
-  useEffect(() => {
-    const audio = new Audio(src);
-    audio.preload = "metadata";
-    audioRef.current = audio;
+  const isThisTrack = track?.audioSrc === src;
+  const activeState = isThisTrack ? state : "idle";
 
-    audio.addEventListener("loadedmetadata", () =>
-      setDuration(audio.duration),
-    );
-    audio.addEventListener("timeupdate", () => {
-      setCurrentTime(audio.currentTime);
-      if (audio.duration > 0) {
-        setProgress((audio.currentTime / audio.duration) * 100);
-      }
-    });
-    audio.addEventListener("play", () => setState("playing"));
-    audio.addEventListener("pause", () => {
-      if (audio.ended) {
-        setState("idle");
-        setProgress(0);
-        setCurrentTime(0);
-      } else {
-        setState("paused");
-      }
-    });
-    audio.addEventListener("ended", () => {
-      setState("idle");
-      setProgress(0);
-      setCurrentTime(0);
-    });
-
-    return () => {
-      audio.pause();
-      audio.src = "";
-    };
-  }, [src]);
-
-  const handlePlay = useCallback(() => audioRef.current?.play(), []);
-  const handlePause = useCallback(() => audioRef.current?.pause(), []);
-  const handleStop = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
-    setState("idle");
-    setProgress(0);
-    setCurrentTime(0);
-  }, []);
-  const handleSkip = useCallback((seconds: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(
-      0,
-      Math.min(audio.currentTime + seconds, audio.duration),
-    );
-  }, []);
+  const handlePlay = useCallback(() => {
+    if (isThisTrack && state === "paused") {
+      resume();
+    } else {
+      play({ audioSrc: src, slug, title });
+    }
+  }, [isThisTrack, state, resume, play, src, slug, title]);
 
   function formatTime(s: number) {
     const m = Math.floor(s / 60);
@@ -128,7 +88,7 @@ function AudioFilePlayer({ src }: { src: string }) {
     return `${m}:${sec.toString().padStart(2, "0")}`;
   }
 
-  if (state === "idle") {
+  if (activeState === "idle") {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -152,7 +112,7 @@ function AudioFilePlayer({ src }: { src: string }) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            onClick={() => handleSkip(-10)}
+            onClick={() => skip(-10)}
             aria-label="Back 10 seconds"
             className={BTN_CLASS}
           >
@@ -166,11 +126,11 @@ function AudioFilePlayer({ src }: { src: string }) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            onClick={state === "playing" ? handlePause : handlePlay}
-            aria-label={state === "playing" ? "Pause" : "Resume"}
+            onClick={activeState === "playing" ? pause : resume}
+            aria-label={activeState === "playing" ? "Pause" : "Resume"}
             className={BTN_CLASS}
           >
-            {state === "playing" ? (
+            {activeState === "playing" ? (
               <Pause className="size-4" />
             ) : (
               <Play className="size-4" />
@@ -178,7 +138,7 @@ function AudioFilePlayer({ src }: { src: string }) {
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          {state === "playing" ? "Pause" : "Resume"}
+          {activeState === "playing" ? "Pause" : "Resume"}
         </TooltipContent>
       </Tooltip>
 
@@ -186,7 +146,7 @@ function AudioFilePlayer({ src }: { src: string }) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            onClick={() => handleSkip(10)}
+            onClick={() => skip(10)}
             aria-label="Forward 10 seconds"
             className={BTN_CLASS}
           >
@@ -200,7 +160,7 @@ function AudioFilePlayer({ src }: { src: string }) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            onClick={handleStop}
+            onClick={stop}
             aria-label="Stop"
             className={BTN_CLASS}
           >
@@ -225,7 +185,7 @@ interface ListenButtonProps {
 }
 
 function SpeechFallbackPlayer({ html, title }: ListenButtonProps) {
-  const [state, setState] = useState<PlaybackState>("idle");
+  const [state, setState] = useState<SpeechState>("idle");
   const [progress, setProgress] = useState(0);
   const fullTextRef = useRef("");
   const charOffsetRef = useRef(0);
@@ -406,17 +366,18 @@ function SpeechFallbackPlayer({ html, title }: ListenButtonProps) {
   );
 }
 
-/* ---- Unified listen button: audio file or speech fallback ---- */
+/* ---- Unified listen button ---- */
 
 interface UnifiedListenProps {
   html: string;
   title: string;
+  slug: string;
   audioSrc?: string;
 }
 
-function ListenButton({ html, title, audioSrc }: UnifiedListenProps) {
+function ListenButton({ html, title, slug, audioSrc }: UnifiedListenProps) {
   if (audioSrc) {
-    return <AudioFilePlayer src={audioSrc} />;
+    return <GlobalAudioPlayer src={audioSrc} slug={slug} title={title} />;
   }
   return <SpeechFallbackPlayer html={html} title={title} />;
 }
@@ -451,7 +412,6 @@ function ShareButton({ title, summary, slug }: ShareButtonProps) {
   const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
   const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
 
-  // if native share is available (mobile), use that directly
   if (typeof navigator !== "undefined" && "share" in navigator) {
     return (
       <Tooltip>
@@ -571,7 +531,7 @@ export function ContentToolbar({
 }: ContentToolbarProps) {
   return (
     <div className="flex items-center gap-2">
-      <ListenButton html={html} title={title} audioSrc={audioSrc} />
+      <ListenButton html={html} title={title} slug={slug} audioSrc={audioSrc} />
       <ShareButton title={title} summary={summary} slug={slug} />
       <ScrollToTop />
     </div>

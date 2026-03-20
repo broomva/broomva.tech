@@ -1,6 +1,6 @@
 {
-  "id": "f90758fc-44da-4a1f-9b73-091461146d7f",
-  "prevId": "08d935bb-caba-49f3-8e5d-6a4791d08c92",
+  "id": "1aaccf1a-3c71-4f0e-9e5a-7ab40afc5bd6",
+  "prevId": "f90758fc-44da-4a1f-9b73-091461146d7f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -96,6 +96,78 @@
           "tableTo": "user",
           "columnsFrom": [
             "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.AudioPlaybackState": {
+      "name": "AudioPlaybackState",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "audioSrc": {
+          "name": "audioSrc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currentTime": {
+          "name": "currentTime",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "duration": {
+          "name": "duration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "AudioPlaybackState_userId_user_id_fk": {
+          "name": "AudioPlaybackState_userId_user_id_fk",
+          "tableFrom": "AudioPlaybackState",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
           ],
           "columnsTo": [
             "id"

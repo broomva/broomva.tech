@@ -9,6 +9,7 @@ import "./globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AudioPlaybackProvider } from "@/providers/audio-playback-provider";
 import { config } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -160,8 +161,10 @@ export default async function RootLayout({
             disableTransitionOnChange
             enableSystem
           >
-            <Toaster position="top-center" />
-            {children}
+            <AudioPlaybackProvider>
+              <Toaster position="top-center" />
+              {children}
+            </AudioPlaybackProvider>
           </ThemeProvider>
         </NuqsAdapter>
         <Analytics />

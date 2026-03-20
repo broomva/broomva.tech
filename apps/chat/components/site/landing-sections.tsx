@@ -150,66 +150,6 @@ function HeroSection() {
       <div className="pointer-events-none absolute -left-24 bottom-1/4 z-[1] h-96 w-96 rounded-full bg-web3-green/8 blur-[100px]" />
 
       <div className="pointer-events-none relative z-10 mx-auto w-full max-w-4xl text-center">
-        {/* Singularity logo mark */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mx-auto mb-6 flex items-center justify-center"
-        >
-          <svg viewBox="0 0 512 512" className="h-20 w-20 sm:h-24 sm:w-24" aria-label="broomva.tech logo">
-            <defs>
-              <radialGradient id="hero-sg" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#7EB8FF" />
-                <stop offset="40%" stopColor="#3B7BF7" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#001F3F" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="hero-cg" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#FFF" />
-                <stop offset="40%" stopColor="#B8D4FF" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#001F3F" stopOpacity="0" />
-              </radialGradient>
-              <linearGradient id="hero-ag" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7EB8FF" stopOpacity="0" />
-                <stop offset="40%" stopColor="#3B7BF7" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#7EB8FF" stopOpacity="0" />
-              </linearGradient>
-              <radialGradient id="hero-sp" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#FFF" stopOpacity="0.9" />
-                <stop offset="50%" stopColor="#7EB8FF" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#3B7BF7" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            {/* Lensing rings */}
-            <circle cx="256" cy="256" r="195" fill="none" stroke="#0A3D8F" strokeWidth="0.5" opacity="0.2" />
-            <circle cx="256" cy="256" r="165" fill="none" stroke="#0A3D8F" strokeWidth="0.6" opacity="0.25" />
-            <circle cx="256" cy="256" r="135" fill="none" stroke="#1A5BC4" strokeWidth="0.7" opacity="0.3" />
-            <circle cx="256" cy="256" r="108" fill="none" stroke="#1A5BC4" strokeWidth="0.8" opacity="0.35" />
-            <circle cx="256" cy="256" r="84" fill="none" stroke="#3B7BF7" strokeWidth="0.9" opacity="0.4" />
-            <circle cx="256" cy="256" r="63" fill="none" stroke="#3B7BF7" strokeWidth="1.0" opacity="0.5" />
-            <circle cx="256" cy="256" r="45" fill="none" stroke="#5B9BFF" strokeWidth="1.1" opacity="0.6" />
-            <circle cx="256" cy="256" r="30" fill="none" stroke="#7EB8FF" strokeWidth="1.3" opacity="0.7" />
-            {/* Orbital arcs */}
-            <path d="M 380 140 A 180 180 0 0 1 410 270" fill="none" stroke="url(#hero-ag)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-            <path d="M 132 372 A 180 180 0 0 1 102 242" fill="none" stroke="url(#hero-ag)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-            <path d="M 290 170 A 90 90 0 0 1 340 260" fill="none" stroke="#5B9BFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
-            <path d="M 222 342 A 90 90 0 0 1 172 252" fill="none" stroke="#5B9BFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
-            {/* Accretion disk */}
-            <circle cx="256" cy="256" r="18" fill="none" stroke="#7EB8FF" strokeWidth="2" opacity="0.7" />
-            {/* Core */}
-            <circle cx="256" cy="256" r="24" fill="url(#hero-sg)" opacity="0.9" />
-            <circle cx="256" cy="256" r="8" fill="url(#hero-cg)" />
-            <circle cx="256" cy="256" r="3" fill="#FFF" />
-            {/* Sparkles */}
-            <circle cx="340" cy="168" r="3" fill="url(#hero-sp)" />
-            <circle cx="155" cy="355" r="2.5" fill="url(#hero-sp)" />
-            <circle cx="380" cy="300" r="2" fill="url(#hero-sp)" />
-            <circle cx="130" cy="195" r="2" fill="url(#hero-sp)" />
-            {/* Star flare */}
-            <path d="M 256 238 L 258 254 L 274 256 L 258 258 L 256 274 L 254 258 L 238 256 L 254 254 Z" fill="#FFF" opacity="0.6" />
-          </svg>
-        </motion.div>
-
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
