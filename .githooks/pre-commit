@@ -1,0 +1,31 @@
+#!/bin/bash
+# Pre-commit hook: validate that staged content posts have matching audio files
+# Posts with `audio:` in frontmatter must have the referenced file in public/
+
+set -e
+
+CONTENT_DIR="apps/chat/content"
+PUBLIC_DIR="apps/chat/public"
+errors=0
+
+# Check staged .mdx files for audio field validation
+for file in $(git diff --cached --name-only --diff-filter=ACM | grep -E "^$CONTENT_DIR/(writing|notes|projects)/.*\.mdx$"); do
+  # Extract the audio field from frontmatter (first --- block only)
+  audio=$(awk '/^---$/{n++} n==1{print} n==2{exit}' "$file" | grep -E "^audio:" | head -1 | sed 's/audio: *//' | tr -d '"' | tr -d "'")
+
+  if [ -n "$audio" ]; then
+    # audio field is set — verify the file exists
+    audio_path="$PUBLIC_DIR${audio}"
+    if [ ! -f "$audio_path" ]; then
+      echo "ERROR: $file references audio: $audio but $audio_path does not exist"
+      errors=$((errors + 1))
+    fi
+  fi
+done
+
+if [ $errors -gt 0 ]; then
+  echo ""
+  echo "Pre-commit failed: $errors content file(s) reference missing audio files."
+  echo "Generate audio with: edge-tts -f <text-file> --voice en-US-AndrewNeural --write-media <output.mp3>"
+  exit 1
+fi
