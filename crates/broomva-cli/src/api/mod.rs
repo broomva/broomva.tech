@@ -185,6 +185,24 @@ impl BroomvaClient {
         Ok(body)
     }
 
+    // ── Console ──
+
+    pub async fn get_console_health(&self) -> BroomvaResult<ConsoleHealth> {
+        let resp = self.request(Method::GET, "/api/console/health").send().await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    pub async fn list_agent_sessions(&self) -> BroomvaResult<Vec<AgentSession>> {
+        let resp = self
+            .request(Method::GET, "/api/agent/sessions")
+            .send()
+            .await?;
+        let resp = self.check_response(resp).await?;
+        let body: ApiListResponse<AgentSession> = resp.json().await?;
+        Ok(body.data.unwrap_or_default())
+    }
+
     // ── Auth validation ──
 
     pub async fn validate_token(&self) -> BroomvaResult<bool> {

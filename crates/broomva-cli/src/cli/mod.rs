@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod config_cmd;
+pub mod console;
 pub mod context;
 pub mod daemon_cmd;
 pub mod output;
@@ -71,6 +72,11 @@ pub enum Command {
     Daemon {
         #[command(subcommand)]
         action: DaemonCommand,
+    },
+    /// Console — open dashboard, check service health, view sessions.
+    Console {
+        #[command(subcommand)]
+        command: Option<ConsoleCommand>,
     },
 }
 
@@ -262,6 +268,18 @@ pub enum DaemonCommand {
     },
 }
 
+// ── Console ──
+
+#[derive(Subcommand, Debug)]
+pub enum ConsoleCommand {
+    /// Show service health status.
+    Status,
+    /// List agent sessions.
+    Sessions,
+    /// Show service health (alias for status).
+    Health,
+}
+
 // ── Dispatch ──
 
 pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
@@ -369,6 +387,15 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             ConfigCommand::Set { key, value } => config_cmd::handle_set(&key, &value).await,
             ConfigCommand::Get { key } => config_cmd::handle_get(key.as_deref(), format).await,
             ConfigCommand::Reset => config_cmd::handle_reset().await,
+        },
+        Command::Console { command } => match command {
+            None => console::handle_console_open().await,
+            Some(ConsoleCommand::Status) | Some(ConsoleCommand::Health) => {
+                console::handle_console_status(&client, format).await
+            }
+            Some(ConsoleCommand::Sessions) => {
+                console::handle_console_sessions(&client, format).await
+            }
         },
         Command::Daemon { action } => match action {
             DaemonCommand::Start {
