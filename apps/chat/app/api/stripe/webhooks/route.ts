@@ -4,7 +4,7 @@ import { logAudit } from "@/lib/db/audit";
 import { db } from "@/lib/db/client";
 import { organization } from "@/lib/db/schema";
 import { updateOrganizationPlan } from "@/lib/db/organization";
-import { stripe, PLAN_TIERS, tierFromPriceId, type PlanTier } from "@/lib/stripe";
+import { getStripe, PLAN_TIERS, tierFromPriceId, type PlanTier } from "@/lib/stripe";
 import type Stripe from "stripe";
 
 
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!,
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         // Determine the plan tier from the subscription's price
         let plan: PlanTier = "pro"; // default
         if (session.subscription) {
-          const sub = await stripe.subscriptions.retrieve(
+          const sub = await getStripe().subscriptions.retrieve(
             session.subscription as string,
           );
           const priceId = sub.items.data[0]?.price?.id;

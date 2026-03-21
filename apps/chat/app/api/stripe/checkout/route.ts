@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getSafeSession } from "@/lib/auth";
 import { getOrganizationById } from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
-import { stripe, PLAN_TIERS, type PlanTier } from "@/lib/stripe";
+import { getStripe, PLAN_TIERS, type PlanTier } from "@/lib/stripe";
 
 
 export async function POST(request: Request) {
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   try {
     const appUrl = process.env.APP_URL || "http://localhost:3001";
 
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const checkoutSession = await getStripe().checkout.sessions.create({
       mode: "subscription",
       client_reference_id: organizationId,
       customer_email: session.user.email ?? undefined,

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getSafeSession } from "@/lib/auth";
 import { getOrganizationById } from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 
 export async function POST(request: Request) {
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   try {
     const appUrl = process.env.APP_URL || "http://localhost:3001";
 
-    const portalSession = await stripe.billingPortal.sessions.create({
+    const portalSession = await getStripe().billingPortal.sessions.create({
       customer: org.stripeCustomerId,
       return_url: `${appUrl}/settings/billing`,
     });
