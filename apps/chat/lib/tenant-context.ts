@@ -127,28 +127,42 @@ async function resolveFromApiKey(
 
 /**
  * Try to resolve tenant from subdomain (e.g., `alice.broomva.tech`).
+ *
+ * Checks (in order):
+ * 1. `x-tenant-slug` header — set by the middleware when a wildcard subdomain
+ *    is detected. This is the preferred path because it avoids re-parsing the
+ *    hostname and is guaranteed to match the middleware's detection logic.
+ * 2. Host / x-forwarded-host header — direct hostname inspection as a fallback.
  */
 async function resolveFromSubdomain(
   request: Request,
 ): Promise<TenantContext | null> {
   try {
-    const host = request.headers.get("host");
-    if (!host) return null;
+    // --- Fast path: middleware already extracted the slug ---
+    let slug = request.headers.get("x-tenant-slug");
 
-    // Strip port if present
-    const hostname = host.split(":")[0];
+    // --- Slow path: parse from hostname ---
+    if (!slug) {
+      const host =
+        request.headers.get("x-forwarded-host") ??
+        request.headers.get("host");
+      if (!host) return null;
 
-    // Match `<slug>.broomva.tech` or `<slug>.localhost`
-    const match = hostname.match(
-      /^([a-z0-9-]+)\.(broomva\.tech|localhost)$/i,
-    );
-    if (!match) return null;
+      // Strip port if present
+      const hostname = host.split(":")[0];
 
-    const slug = match[1].toLowerCase();
+      // Match `<slug>.broomva.tech` or `<slug>.localhost`
+      const match = hostname.match(
+        /^([a-z0-9-]+)\.(broomva\.tech|localhost)$/i,
+      );
+      if (!match) return null;
 
-    // Ignore known non-tenant subdomains
-    const nonTenantSubdomains = ["www", "api", "app", "chat", "admin", "console", "status", "docs"];
-    if (nonTenantSubdomains.includes(slug)) return null;
+      slug = match[1].toLowerCase();
+
+      // Ignore known non-tenant subdomains
+      const nonTenantSubdomains = ["www", "api", "app", "chat", "admin", "console", "status", "docs"];
+      if (nonTenantSubdomains.includes(slug)) return null;
+    }
 
     const [org] = await db
       .select({ id: organization.id })

@@ -87,11 +87,75 @@ function withSecurityHeaders(response?: NextResponse): NextResponse {
   return res;
 }
 
+// ── Subdomain detection ────────────────────────────────────────────────────
+
+/** Known subdomains that are NOT tenant slugs. */
+const NON_TENANT_SUBDOMAINS = new Set([
+  "www",
+  "api",
+  "app",
+  "chat",
+  "admin",
+  "console",
+  "status",
+  "docs",
+]);
+
+/**
+ * Extract a tenant slug from the request hostname.
+ *
+ * Production: `{slug}.broomva.tech`
+ * Development: `{slug}.localhost` (any port)
+ *
+ * Returns the slug string or null if the hostname is bare / non-tenant.
+ */
+function extractTenantSlug(req: NextRequest): string | null {
+  // Prefer x-forwarded-host (set by reverse proxies / load balancers),
+  // fall back to the Host header.
+  const host =
+    req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
+
+  // Strip port if present
+  const hostname = host.split(":")[0];
+
+  // Match `<slug>.broomva.tech` or `<slug>.localhost`
+  const match = hostname.match(
+    /^([a-z0-9-]+)\.(broomva\.tech|localhost)$/i,
+  );
+  if (!match) return null;
+
+  const slug = match[1].toLowerCase();
+
+  if (NON_TENANT_SUBDOMAINS.has(slug)) return null;
+
+  return slug;
+}
+
 // ── Proxy function (Next.js 16 middleware) ──────────────────────────────────
 
 export async function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const { pathname } = url;
+
+  // ── Wildcard subdomain detection ──────────────────────────────────────
+  // If the request arrives on a tenant subdomain (e.g. acme.broomva.tech),
+  // stamp the slug onto a request header so downstream code
+  // (tenant-context.ts, API routes) can resolve the organization without
+  // re-parsing the hostname.
+  const tenantSlug = extractTenantSlug(req);
+
+  /**
+   * Helper: create a NextResponse.next() that forwards the tenant slug
+   * as a request header when present.  All exit paths should use this
+   * instead of bare `NextResponse.next()`.
+   */
+  function nextWithTenant(): NextResponse {
+    if (!tenantSlug) return NextResponse.next();
+
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-tenant-slug", tenantSlug);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   // Always allow metadata, public pages, and public API routes
   if (
@@ -99,7 +163,7 @@ export async function proxy(req: NextRequest) {
     isPublicPage(pathname) ||
     isPublicApiRoute(pathname)
   ) {
-    return withSecurityHeaders();
+    return withSecurityHeaders(nextWithTenant());
   }
 
   // Auth pages need a session check to redirect logged-in users away
@@ -114,7 +178,7 @@ export async function proxy(req: NextRequest) {
         NextResponse.redirect(new URL("/", url)),
       );
     }
-    return withSecurityHeaders();
+    return withSecurityHeaders(nextWithTenant());
   }
 
   // Block all other routes for unauthenticated users
@@ -124,7 +188,7 @@ export async function proxy(req: NextRequest) {
     );
   }
 
-  return withSecurityHeaders();
+  return withSecurityHeaders(nextWithTenant());
 }
 
 // ── Matcher: only exclude static assets and build artifacts ─────────────────
