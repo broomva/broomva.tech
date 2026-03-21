@@ -134,20 +134,16 @@ export function DockSearch() {
   const showQuickLinks = isExpanded && !showResults;
   const showDropdown = showQuickLinks || showResults;
 
-  const anchorRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{
     bottom: number;
     right: number;
   } | null>(null);
 
   const updatePosition = useCallback(() => {
-    const anchor = anchorRef.current ?? panelRef.current;
-    if (!anchor) {
-      setDropdownPos(null);
-      return;
-    }
-    const rect = anchor.getBoundingClientRect();
-    if (rect.width < 10) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    if (rect.width < 1 && rect.height < 1) return;
     setDropdownPos({
       bottom: window.innerHeight - rect.top + 8,
       right: window.innerWidth - rect.right,
@@ -159,22 +155,23 @@ export function DockSearch() {
       setDropdownPos(null);
       return;
     }
-    let cancelled = false;
-    const tryUpdate = (attempts: number) => {
-      if (cancelled || attempts <= 0) return;
-      const anchor = anchorRef.current ?? panelRef.current;
-      if (anchor) {
-        const rect = anchor.getBoundingClientRect();
-        if (rect.width >= 10) {
-          updatePosition();
-          return;
-        }
-      }
-      setTimeout(() => tryUpdate(attempts - 1), 50);
-    };
-    requestAnimationFrame(() => tryUpdate(10));
+
+    updatePosition();
+
+    const panel = panelRef.current;
+    let ro: ResizeObserver | undefined;
+    if (panel) {
+      ro = new ResizeObserver(updatePosition);
+      ro.observe(panel);
+    }
+
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
     return () => {
-      cancelled = true;
+      ro?.disconnect();
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
   }, [showDropdown, updatePosition]);
 
@@ -189,10 +186,10 @@ export function DockSearch() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.96 }}
           transition={{ duration: 0.15 }}
-          className="pointer-events-auto fixed z-50 w-80 max-h-80 overflow-y-auto rounded-xl border border-zinc-700/60 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-xl"
+          className="pointer-events-auto fixed z-50 w-80 max-w-[calc(100vw-1rem)] max-h-80 overflow-y-auto rounded-xl border border-zinc-700/60 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-xl"
           style={{
             bottom: dropdownPos.bottom,
-            right: dropdownPos.right,
+            right: Math.max(8, dropdownPos.right),
           }}
         >
           {showQuickLinks && (
@@ -312,7 +309,6 @@ export function DockSearch() {
         ) : (
           <motion.div
             key="search-expanded"
-            ref={anchorRef}
             initial={{ width: 32, opacity: 0 }}
             animate={{ width: 280, opacity: 1 }}
             exit={{ width: 32, opacity: 0 }}

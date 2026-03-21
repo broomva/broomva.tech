@@ -30,7 +30,7 @@ export function DockAudioControls() {
   if (!track || state === "idle") return null;
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-1 md:gap-0.5">
       <Tooltip>
         <TooltipTrigger asChild>
           <button type="button" className={BTN} aria-label="Now playing">
@@ -104,7 +104,7 @@ export function DockAudioControls() {
         <TooltipContent side="top">Stop</TooltipContent>
       </Tooltip>
 
-      <span className="ml-0.5 text-[10px] tabular-nums text-text-muted whitespace-nowrap">
+      <span className="ml-1 text-[11px] tabular-nums text-text-muted whitespace-nowrap md:ml-0.5 md:text-[10px]">
         {formatTime(currentTime)}/{formatTime(duration)}
       </span>
     </div>

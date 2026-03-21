@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { ConsoleHeader } from "@/components/console/console-header";
-import { ConsoleNav } from "@/components/console/console-nav";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getSafeSession } from "@/lib/auth";
 
 export default async function ConsoleLayout({
@@ -18,13 +19,23 @@ export default async function ConsoleLayout({
     redirect("/login");
   }
 
+  const user = session.user
+    ? {
+        name: session.user.name ?? "Agent",
+        email: session.user.email ?? "agent@life.os",
+        avatar: session.user.image ?? "",
+      }
+    : undefined;
+
   return (
-    <div className="flex h-dvh bg-bg-deep text-text-primary">
-      <ConsoleNav />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <ConsoleHeader />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
+    <SidebarProvider>
+      <AppSidebar variant="inset" user={user} />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col">
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

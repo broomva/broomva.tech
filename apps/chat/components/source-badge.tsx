@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { SearchResultItem } from "@/lib/ai/tools/research-updates-schema";
@@ -11,6 +12,7 @@ import { Favicon } from "./favicon";
 
 export function WebSourceBadge({ result }: { result: SearchResultItem }) {
   return (
+    <TooltipProvider>
     <Tooltip>
       <TooltipTrigger asChild>
         <Link
@@ -31,7 +33,7 @@ export function WebSourceBadge({ result }: { result: SearchResultItem }) {
           </Badge>
         </Link>
       </TooltipTrigger>
-      <TooltipContent className="max-w-xs space-y-1 p-3" variant="base">
+      <TooltipContent className="max-w-xs space-y-1 p-3">
         <div className="flex items-center gap-2">
           <Favicon className="size-4" url={getFaviconUrl(result)} />
           <p className="font-semibold">{result.title}</p>
@@ -42,5 +44,6 @@ export function WebSourceBadge({ result }: { result: SearchResultItem }) {
         </p>
       </TooltipContent>
     </Tooltip>
+    </TooltipProvider>
   );
 }

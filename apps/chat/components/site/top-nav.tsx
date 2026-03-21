@@ -45,9 +45,36 @@ export function TopNav() {
   const hasActiveAudio = !!track && audioState !== "idle";
   const showFullToolbar = isDocked && payload;
   const showDockAudio = hasActiveAudio && !showFullToolbar;
+  const showMobileFloater = showFullToolbar || showDockAudio;
 
   return (
     <header className="pointer-events-none fixed bottom-4 left-0 right-0 z-40">
+      {/* Mobile: playback / toolbar floats above the dock */}
+      <AnimatePresence>
+        {showMobileFloater && (
+          <motion.div
+            key="mobile-floater"
+            className="pointer-events-auto mx-auto mb-2 flex w-fit items-center rounded-2xl border border-zinc-800/50 bg-zinc-900/80 px-4 py-2 backdrop-blur-md md:hidden"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          >
+            {showFullToolbar ? (
+              <ContentToolbar
+                html={payload.html}
+                title={payload.title}
+                summary={payload.summary}
+                slug={payload.slug}
+                audioSrc={payload.audioSrc}
+              />
+            ) : (
+              <DockAudioControls />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <nav aria-label="Main navigation">
         <Dock
           magnification={60}
@@ -79,11 +106,12 @@ export function TopNav() {
             );
           })}
 
+          {/* Desktop: playback / toolbar inlined in the dock */}
           <AnimatePresence mode="wait">
             {showFullToolbar && (
               <motion.div
                 key="full-toolbar"
-                className="flex items-center overflow-hidden pl-3"
+                className="hidden items-center overflow-hidden pl-3 md:flex"
                 initial={{ opacity: 0, width: 0 }}
                 animate={{ opacity: 1, width: "auto" }}
                 exit={{ opacity: 0, width: 0 }}
@@ -105,7 +133,7 @@ export function TopNav() {
             {showDockAudio && (
               <motion.div
                 key="dock-audio"
-                className="flex items-center overflow-hidden pl-3"
+                className="hidden items-center overflow-hidden pl-3 md:flex"
                 initial={{ opacity: 0, width: 0 }}
                 animate={{ opacity: 1, width: "auto" }}
                 exit={{ opacity: 0, width: 0 }}

@@ -9,6 +9,7 @@ import "./globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AudioPlaybackProvider } from "@/providers/audio-playback-provider";
 import { config } from "@/lib/config";
 
@@ -161,10 +162,12 @@ export default async function RootLayout({
             disableTransitionOnChange
             enableSystem
           >
-            <AudioPlaybackProvider>
-              <Toaster position="top-center" />
-              {children}
-            </AudioPlaybackProvider>
+            <TooltipProvider>
+              <AudioPlaybackProvider>
+                <Toaster position="top-center" />
+                {children}
+              </AudioPlaybackProvider>
+            </TooltipProvider>
           </ThemeProvider>
         </NuqsAdapter>
         <Analytics />
