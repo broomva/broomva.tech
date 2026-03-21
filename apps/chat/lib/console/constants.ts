@@ -5,6 +5,7 @@
 import {
   BarChart3,
   Brain,
+  Building2,
   CircuitBoard,
   DollarSign,
   Home,
@@ -90,5 +91,11 @@ export const CONSOLE_NAV: NavItem[] = [
     label: "Usage",
     href: "/console/usage",
     icon: BarChart3,
+  },
+  {
+    key: "organization",
+    label: "Organization",
+    href: "/console/organization",
+    icon: Building2,
   },
 ] as const;
