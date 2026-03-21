@@ -16,6 +16,12 @@ const socialLinks = [
   { href: "/links", label: "Link hub" },
 ];
 
+const legalLinks = [
+  { href: "/pricing", label: "Pricing" },
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
+];
+
 export function Footer() {
   return (
     <footer className="border-t border-[var(--ag-border-subtle)] bg-bg-dark">
@@ -73,6 +79,23 @@ export function Footer() {
                       {link.label}
                     </a>
                   )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-text-muted">
+              Legal
+            </p>
+            <ul className="mt-3 space-y-2">
+              {legalLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href as Route}
+                    className="text-sm text-text-secondary transition hover:text-text-primary"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
