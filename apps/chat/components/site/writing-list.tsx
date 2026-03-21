@@ -59,7 +59,7 @@ export function WritingList({ entries }: WritingListProps) {
     } else {
       setNeedsCollapse(false);
     }
-  }, [entries]);
+  }, [allTags.length]); // eslint-disable-line -- re-measure when tag count changes
 
   const filtered = useMemo(() => {
     if (!activeTag) return entries;
