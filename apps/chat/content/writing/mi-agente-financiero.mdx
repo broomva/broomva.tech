@@ -1,6 +1,6 @@
 ---
-title: "Olvidé los Bancos: Mi Agente AI Ahora Gestiona Mis Finanzas, Impuestos e Inversión"
-summary: "Ya no abro extractos bancarios. Un agente AI parsea mis certificados, proyecta mis impuestos y optimiza mi portafolio — todo local, todo automático."
+title: "Olvidé los Bancos: Mi Agente AI Gestiona Mis Finanzas — Y Ahora Puedes Usarlo Tú"
+summary: "Tres skills open source que parsean certificados bancarios, proyectan impuestos colombianos, y optimizan portafolios. Instálalos hoy."
 date: 2026-03-21
 published: true
 tags:
@@ -9,7 +9,7 @@ tags:
   - impuestos
   - inversión
   - agent-OS
-  - rust
+  - open-source
 audio: /audio/writing/mi-agente-financiero.mp3
 ---
 
@@ -19,7 +19,13 @@ La última vez que abrí un extracto bancario fue hace meses.
 
 No porque no me importe mi dinero — sino porque tengo algo mejor que un banco: un agente que entiende cada transacción, proyecta mis impuestos al centavo, y optimiza mi portafolio mientras duermo.
 
-Esto no es un prototipo. No es un demo de fin de semana. Es un sistema que uso todos los días para gestionar mis finanzas personales, mis impuestos en Colombia, y mis inversiones. Y quiero contarte que esto ya es posible.
+Esto no es un prototipo. Es un sistema que uso todos los días. Y hoy lo estoy publicando como open source.
+
+```bash
+npx skills add broomva/finance-substrate
+npx skills add broomva/wealth-management
+npx skills add broomva/investment-management
+```
 
 ---
 
@@ -29,7 +35,7 @@ Todos los años, millones de personas hacemos lo mismo: descargamos PDFs de los 
 
 Es un ritual. Nadie lo cuestiona porque *siempre ha sido así*.
 
-Piénsalo: tu banco te genera un certificado tributario en PDF — protegido con tu cédula como contraseña — porque asume que *eres tú* quien lo va a abrir, leer, interpretar, y transcribir manualmente a un formulario del gobierno. En 2026.
+Tu banco te genera un certificado tributario en PDF — protegido con tu cédula como contraseña — porque asume que *eres tú* quien lo va a abrir, leer, interpretar, y transcribir manualmente a un formulario del gobierno. En 2026.
 
 Cada fuente financiera te da su propio formato. Davivienda tiene un formato. Skandia otro. Nu otro. La DIAN otro. Y tú, el humano, eres el middleware que integra todo.
 
@@ -37,66 +43,54 @@ Cada fuente financiera te da su propio formato. Davivienda tiene un formato. Ska
 
 ---
 
-## Lo que mi agente hace hoy
+## Tres skills, tres capas
 
-No voy a mostrarte el código. No voy a revelar la arquitectura interna. Pero sí voy a contarte qué es capaz de hacer, porque creo que cambia la conversación sobre lo que es posible con agentes AI.
+El sistema son tres skills de Claude Code que se apilan como capas. Todo corre en tu máquina. Tus datos financieros nunca salen de tu laptop.
 
-**Importa transacciones de múltiples fuentes** — bancos, fintechs, brokers, planillas de seguridad social. No necesito descargar nada manualmente. El agente sabe dónde buscar y cómo leer cada formato.
+**[finance-substrate](https://github.com/broomva/finance-substrate)** — la base. Importa transacciones de Davivienda, Nu, Nequi, ARQ. Parsea certificados tributarios con un motor declarativo (11 bancos incluidos). Proyecta tu declaración de renta (Form 210) calibrada contra el borrador real de la DIAN.
 
-**Parsea certificados tributarios** — incluidos PDFs protegidos con contraseña. Le describes el formato una vez, y a partir de ahí puede leer cualquier certificado de ese tipo. No es OCR. No es regex frágil. Es un motor de parseo declarativo que entiende la estructura del documento.
+**[wealth-management](https://github.com/broomva/wealth-management)** — las proyecciones. ¿Cuánto tendré en 20 años? ¿Cuánto necesito ahorrar para mi meta? Monte Carlo con 10,000 simulaciones, 7 escenarios de estrés (crisis 2008, COVID, devaluación del peso), probabilidad de éxito, tasa de retiro segura.
 
-**Proyecta mi declaración de renta** — Form 210, el formulario de declaración de renta en Colombia. Con precisión calibrada contra el borrador real de la DIAN. Cada renglón cita el artículo del Estatuto Tributario que lo respalda. No estoy adivinando — estoy validando contra datos reales del gobierno.
+**[investment-management](https://github.com/broomva/investment-management)** — las decisiones. Screening de acciones con filosofías probadas (Buffett, Dalio, Bogle, Marks). Scoring multi-dimensional. Backtesting contra datos históricos con 6 estrategias built-in. Datos de yfinance, CoinGecko, FRED y datos.gov.co.
 
-**Gestiona mi portafolio de inversión** — no solo tracking, sino análisis activo. Combina filosofías de inversión probadas (Buffett, Dalio, Bogle, Marks) con datos en tiempo real. Puede evaluar un activo, proyectar escenarios con Monte Carlo, y sugerir rebalanceos basados en mi perfil de riesgo.
-
-**Me da un estado financiero en lenguaje natural** — cuando le pregunto "¿cómo voy?", me responde con contexto: patrimonio, proyección fiscal, rendimientos del portafolio, presupuesto disponible. No números crudos en una tabla — una conversación informada.
-
-Esto no es un chatbot que busca en Google. Es un agente que entiende *mi* situación financiera completa.
+Los tres se conectan con [autoany](https://github.com/broomva/autoany) para optimización autónoma — le dices "optimiza mi portafolio" y el agente ejecuta 50 variaciones de backtest, evoluciona los pesos, y te devuelve la mejor estrategia con el registro completo de qué intentó y por qué.
 
 ---
 
-## Las pistas
+## Por qué esto importa
 
-No puedo mostrarte todo. Pero sí puedo darte algunas pistas de cómo funciona.
+La mayoría de la gente ve los LLMs como chatbots. Pero son **controladores**: observan un sistema, razonan sobre su estado, y ejecutan acciones para llevarlo a un objetivo.
 
-**Parseo declarativo, no programático.** No escribo un parser para cada banco. Le describo el formato del documento — dónde están los campos, qué significan, cómo se relacionan — y un motor genérico hace el resto. Cuando aparece un nuevo certificado, es cuestión de describir su estructura, no de escribir código nuevo.
-
-**Calibración contra ground truth.** Las proyecciones fiscales no son aproximaciones — están calibradas contra el borrador que genera la DIAN con datos reales. Cada discrepancia es investigada y corregida. El target es precisión a nivel de certificado, no de orden de magnitud.
-
-**Filosofías de inversión como políticas.** El agente no inventa estrategias. Implementa frameworks de inversión documentados y probados. Los principios de Dalio sobre diversificación, la paciencia de Buffett, la simplicidad de Bogle — codificados como políticas que el agente ejecuta consistentemente, sin la volatilidad emocional del humano.
-
-**Todo corre local.** Tus datos financieros nunca salen de tu máquina. No hay API de terceros procesando tus extractos. No hay "cloud" que almacene tus certificados tributarios. Es un stack de Rust y TypeScript que vive en mi laptop.
-
-**El agente tiene contexto, no solo datos.** Sabe que compré un apartamento este año, que cambié de esquema de AFC para pagar el crédito hipotecario, que mis ingresos subieron con el cambio de trabajo. No le tengo que explicar cada vez — *recuerda*.
-
----
-
-## Por qué esto importa ahora
-
-Hay un cambio fundamental ocurriendo en cómo pensamos sobre los LLMs. La mayoría de la gente los ve como chatbots — herramientas para responder preguntas. Pero la verdad es que son **controladores**: pueden observar un sistema, razonar sobre su estado, y ejecutar acciones para llevarlo a un objetivo deseado.
-
-Tu infraestructura financiera fue diseñada para humanos con calculadoras. Los bancos generan PDFs porque asumen que un humano los va a leer. La DIAN genera formularios porque asume que un humano los va a llenar. Todo el sistema financiero está construido alrededor de la premisa de que el usuario final es una persona.
+Tu infraestructura financiera fue diseñada para humanos con calculadoras. Los bancos generan PDFs porque asumen que un humano los va a leer. La DIAN genera formularios porque asumen que un humano los va a llenar.
 
 ¿Y si el usuario final fuera un agente?
 
-Un agente que puede leer cualquier formato. Que puede cruzar información de 15 fuentes en segundos. Que puede proyectar escenarios fiscales instantáneamente. Que puede ejecutar rebalanceos de portafolio sin dudar.
+Un agente que lee cualquier formato. Que cruza 15 fuentes en segundos. Que proyecta escenarios fiscales instantáneamente. Que optimiza tu portafolio sin la volatilidad emocional del humano.
 
-Esto ya está pasando. El protocolo x402 permite pagos machine-to-machine vía HTTP — tu agente puede literalmente pagar por un servicio sin intervención humana. Los agentes financieros autónomos no son ciencia ficción. Son la siguiente capa de infraestructura.
+Los agentes financieros autónomos no son ciencia ficción. Son la siguiente capa de infraestructura. Y hoy puedes instalar uno.
 
 ---
 
-## El futuro que ya empezó
+## Úsalo
 
-Esto no es un proyecto de investigación. Es un sistema que uso todos los días. Cuando necesito saber cuánto voy a pagar de renta este año, no abro un Excel — le pregunto a mi agente. Cuando quiero evaluar si debería rebalancear mi portafolio, no abro tres plataformas — le pido un análisis.
+```bash
+# Instala los tres skills
+npx skills add broomva/finance-substrate
+npx skills add broomva/wealth-management
+npx skills add broomva/investment-management
+```
 
-La visión más grande es un **sistema operativo financiero personal** — una capa que se sienta entre tú y toda la infraestructura financiera del mundo, traduciendo la complejidad en decisiones claras y acciones ejecutables.
+Todo es open source. Python 3.10+. Cero servicios de pago. Los datos que necesitas son tus certificados tributarios en PDF — los que te manda el banco cada año. El agente hace el resto.
 
-¿Es open source? Todavía no. Maneja datos financieros reales, y el nivel de sensibilidad es demasiado alto para publicar sin las abstracciones correctas. Pero la intención es que las piezas más útiles eventualmente salgan.
+**Repos:**
+- [finance-substrate](https://github.com/broomva/finance-substrate)
+- [wealth-management](https://github.com/broomva/wealth-management)
+- [investment-management](https://github.com/broomva/investment-management)
 
-Lo que sí puedo decir: si estás construyendo agentes AI y no has pensado en finanzas personales como dominio, estás dejando sobre la mesa uno de los casos de uso más poderosos que existen. Cada persona tiene datos financieros dispersos, obligaciones fiscales complejas, y decisiones de inversión que tomar. Y la infraestructura actual les falla espectacularmente.
+Pruébalos, rompe cosas, abre issues.
 
 ---
 
 El mejor banco es el que no necesitas abrir.
 
-Si esto te suena interesante, sígueme en [@broomva_tech](https://x.com/broomva_tech). Lo que viene es más grande.
+[@broomva_tech](https://x.com/broomva_tech) | [GitHub](https://github.com/broomva)
