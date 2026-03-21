@@ -6,20 +6,18 @@ const neonAuthBaseUrl = process.env.NEON_AUTH_BASE_URL;
 const cookieSecret =
   process.env.NEON_AUTH_COOKIE_SECRET || env.AUTH_SECRET || "";
 
-if (
-  neonAuthBaseUrl &&
-  process.env.NODE_ENV === "production" &&
-  cookieSecret.length < 32
-) {
+if (neonAuthBaseUrl && (!cookieSecret || cookieSecret.length < 32)) {
   throw new Error(
-    "AUTH_SECRET or NEON_AUTH_COOKIE_SECRET must be set (>=32 chars) in production",
+    "AUTH_SECRET or NEON_AUTH_COOKIE_SECRET must be set (>=32 chars) when Neon Auth is enabled",
   );
 }
 
 export const auth = createNeonAuth({
   baseUrl: neonAuthBaseUrl || process.env.APP_URL || "http://localhost:3001",
   cookies: {
-    secret: cookieSecret || "insecure-dev-only-secret-do-not-use-in-prod",
+    secret: neonAuthBaseUrl
+      ? cookieSecret
+      : cookieSecret || "insecure-dev-only-secret-do-not-use-in-prod",
   },
 });
 

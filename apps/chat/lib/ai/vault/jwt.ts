@@ -28,6 +28,8 @@ export async function signLifeJWT(user: {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRY)
+    .setIssuer("https://broomva.tech")
+    .setAudience("broomva-life-services")
     .sign(new TextEncoder().encode(secret));
 
   return jwt;
@@ -47,6 +49,7 @@ export async function verifyLifeJWT(
     const { payload } = await jwtVerify(
       token,
       new TextEncoder().encode(secret),
+      { issuer: "https://broomva.tech", audience: "broomva-life-services" },
     );
     if (!payload.sub) return null;
     return { sub: payload.sub, email: (payload.email as string) ?? "" };

@@ -42,5 +42,6 @@ export async function setAnonymousSession(
     maxAge: ANONYMOUS_LIMITS.SESSION_DURATION,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
   });
 }

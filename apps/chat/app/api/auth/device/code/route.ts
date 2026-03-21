@@ -56,7 +56,13 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Device code request failed:", error);
     return NextResponse.json(
-      { error: "internal_error", error_description: String(error) },
+      {
+        error: "internal_error",
+        error_description:
+          process.env.NODE_ENV === "production"
+            ? "Internal server error"
+            : String(error),
+      },
       { status: 500 }
     );
   }
