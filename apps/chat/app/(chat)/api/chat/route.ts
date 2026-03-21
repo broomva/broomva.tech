@@ -38,6 +38,7 @@ import { createAnonymousSession } from "@/lib/create-anonymous-session";
 import { CostAccumulator } from "@/lib/credits/cost-accumulator";
 import { canSpend, deductCredits } from "@/lib/db/credits";
 import { getMcpConnectorsByUserId } from "@/lib/db/mcp-queries";
+import { recordUsageEvent } from "@/lib/db/usage";
 import {
   getChatById,
   getMessageById,
@@ -789,6 +790,20 @@ async function finalizeMessageAndCredits({
     // Deduct credits for authenticated users
     if (userId && !isAnonymous) {
       await deductCredits(userId, totalCost);
+
+      // Record usage event (fire-and-forget, non-blocking)
+      const tokenBreakdown = costAccumulator.getTokenBreakdown();
+      recordUsageEvent({
+        userId,
+        type: "ai_tokens",
+        resource: tokenBreakdown.modelId ?? undefined,
+        inputTokens: tokenBreakdown.inputTokens,
+        outputTokens: tokenBreakdown.outputTokens,
+        costCents: totalCost,
+        chatId,
+      }).catch((err) => {
+        log.error({ error: err }, "Failed to record usage event");
+      });
     }
 
     // Note: Anonymous credits are pre-deducted before streaming starts (cookies can't be set after response begins)

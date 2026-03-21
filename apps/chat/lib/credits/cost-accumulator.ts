@@ -105,4 +105,28 @@ export class CostAccumulator {
   hasEntries(): boolean {
     return this.entries.length > 0;
   }
+
+  /** Get aggregated token counts across all LLM entries */
+  getTokenBreakdown(): {
+    inputTokens: number;
+    outputTokens: number;
+    modelId: string | null;
+  } {
+    const llmEntries = this.entries.filter(
+      (entry): entry is LLMCostEntry => entry.type === "llm"
+    );
+
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let modelId: string | null = null;
+
+    for (const entry of llmEntries) {
+      inputTokens += entry.usage.inputTokens ?? 0;
+      outputTokens += entry.usage.outputTokens ?? 0;
+      // Use the last model ID (typically the main chat model)
+      modelId = entry.modelId;
+    }
+
+    return { inputTokens, outputTokens, modelId };
+  }
 }
