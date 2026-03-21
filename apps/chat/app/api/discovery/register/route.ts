@@ -97,7 +97,7 @@ export async function POST(request: Request) {
         organizationId: organizationId ?? null,
         status: "pending",
         trustScore: 0,
-        trustLevel: "none",
+        trustLevel: "unrated",
       })
       .returning({ id: agentRegistration.id, status: agentRegistration.status });
 
