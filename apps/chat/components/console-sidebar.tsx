@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import {
   ActivityIcon,
   BadgeCheck,
+  BarChart3Icon,
   Bell,
   BookOpen,
   BrainIcon,
@@ -87,6 +88,14 @@ const consoleNav = [
     icon: WalletIcon,
     items: [
       { title: "Transactions", url: "/console/finance" },
+    ],
+  },
+  {
+    title: "Usage",
+    url: "/console/usage",
+    icon: BarChart3Icon,
+    items: [
+      { title: "Overview", url: "/console/usage" },
     ],
   },
   {

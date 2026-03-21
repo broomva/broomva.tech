@@ -3,6 +3,7 @@
  */
 
 import {
+  BarChart3,
   Brain,
   CircuitBoard,
   DollarSign,
@@ -19,6 +20,7 @@ export const POLL = {
   HEALTH: 10_000,
   SESSIONS: 10_000,
   FINANCE: 30_000,
+  USAGE: 30_000,
 } as const;
 
 export interface ServiceDef {
@@ -82,5 +84,11 @@ export const CONSOLE_NAV: NavItem[] = [
     label: "Finance",
     href: "/console/finance",
     icon: DollarSign,
+  },
+  {
+    key: "usage",
+    label: "Usage",
+    href: "/console/usage",
+    icon: BarChart3,
   },
 ] as const;
