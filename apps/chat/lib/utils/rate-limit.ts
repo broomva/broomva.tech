@@ -255,6 +255,100 @@ export async function checkAuthenticatedRateLimit(
 }
 
 /**
+ * Rate-limit device code generation: 10 requests/minute per IP.
+ * Uses in-memory fallback (no Redis required).
+ */
+export async function checkDeviceCodeRateLimit(
+  ip: string,
+): Promise<{
+  success: boolean;
+  error?: string;
+  headers?: Record<string, string>;
+}> {
+  const limit = 10;
+  const result = await checkRateLimit({
+    identifier: ip,
+    limit,
+    windowSize: WINDOW_SIZE_MINUTE,
+    redisClient: null,
+    keyPrefix: `${config.appPrefix}:device-code-rate-limit`,
+  });
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: `Rate limit exceeded. Maximum ${limit} device code requests per minute.`,
+      headers: {
+        "X-RateLimit-Limit": limit.toString(),
+        "X-RateLimit-Remaining": result.remaining.toString(),
+        "X-RateLimit-Reset": result.resetTime.toString(),
+        "Retry-After": Math.ceil(
+          (result.resetTime - Date.now()) / 1000,
+        ).toString(),
+      },
+    };
+  }
+
+  return {
+    success: true,
+    headers: {
+      "X-RateLimit-Limit": limit.toString(),
+      "X-RateLimit-Remaining": result.remaining.toString(),
+      "X-RateLimit-Reset": result.resetTime.toString(),
+    },
+  };
+}
+
+/**
+ * Rate-limit device token polling: 5 requests/minute per device_code + IP.
+ * Returns RFC 8628 "slow_down" error when exceeded.
+ * Uses in-memory fallback (no Redis required).
+ */
+export async function checkDeviceTokenRateLimit(
+  ip: string,
+  deviceCode: string,
+): Promise<{
+  success: boolean;
+  error?: string;
+  errorCode?: string;
+  headers?: Record<string, string>;
+}> {
+  const limit = 5;
+  const result = await checkRateLimit({
+    identifier: `${deviceCode}:${ip}`,
+    limit,
+    windowSize: WINDOW_SIZE_MINUTE,
+    redisClient: null,
+    keyPrefix: `${config.appPrefix}:device-token-rate-limit`,
+  });
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: "Polling too frequently. Please slow down.",
+      errorCode: "slow_down",
+      headers: {
+        "X-RateLimit-Limit": limit.toString(),
+        "X-RateLimit-Remaining": result.remaining.toString(),
+        "X-RateLimit-Reset": result.resetTime.toString(),
+        "Retry-After": Math.ceil(
+          (result.resetTime - Date.now()) / 1000,
+        ).toString(),
+      },
+    };
+  }
+
+  return {
+    success: true,
+    headers: {
+      "X-RateLimit-Limit": limit.toString(),
+      "X-RateLimit-Remaining": result.remaining.toString(),
+      "X-RateLimit-Reset": result.resetTime.toString(),
+    },
+  };
+}
+
+/**
  * Extract client IP from the request.
  *
  * On Vercel, `x-forwarded-for` is set by the edge and can be trusted.

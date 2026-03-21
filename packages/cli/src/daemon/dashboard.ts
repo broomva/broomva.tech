@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { HeartbeatState } from "../types/daemon.js";
+import type { DaemonLogger } from "./logger.js";
 import type { SymphonyHttpClient } from "./symphony-client.js";
-import { DaemonLogger } from "./logger.js";
 
 export class Dashboard {
 	private server: Server | null = null;
@@ -25,10 +25,7 @@ export class Dashboard {
 	start(): Promise<void> {
 		return new Promise((resolve, reject) => {
 			this.server = createServer(async (req, res) => {
-				const url = new URL(
-					req.url ?? "/",
-					`http://localhost:${this.port}`,
-				);
+				const url = new URL(req.url ?? "/", `http://localhost:${this.port}`);
 
 				try {
 					if (url.pathname === "/healthz") {
@@ -76,10 +73,7 @@ export class Dashboard {
 				} catch (err) {
 					this.logger.error("Dashboard request error", {
 						path: url.pathname,
-						error:
-							err instanceof Error
-								? err.message
-								: String(err),
+						error: err instanceof Error ? err.message : String(err),
 					});
 					res.writeHead(500, {
 						"Content-Type": "text/plain",
@@ -121,8 +115,7 @@ function renderDashboard(state: HeartbeatState): string {
 						: s.status === "down"
 							? "#ef4444"
 							: "#6b7280";
-			const latency =
-				s.latencyMs !== undefined ? `${s.latencyMs}ms` : "—";
+			const latency = s.latencyMs !== undefined ? `${s.latencyMs}ms` : "—";
 			return `<tr>
 				<td><span style="color:${color}; font-weight:bold;">${s.status.toUpperCase()}</span></td>
 				<td>${s.sensorId}</td>

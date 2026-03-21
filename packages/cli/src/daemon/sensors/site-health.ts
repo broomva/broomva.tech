@@ -1,5 +1,5 @@
-import type { Sensor, SensorContext } from "./index.js";
 import type { SensorResult } from "../../types/daemon.js";
+import type { Sensor, SensorContext } from "./index.js";
 
 export class SiteHealthSensor implements Sensor {
 	id = "site-health";

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
 import { deviceAuthCode } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import {
+  checkDeviceTokenRateLimit,
+  getClientIP,
+} from "@/lib/utils/rate-limit";
 
 /**
  * POST /api/auth/device/token
@@ -13,7 +17,7 @@ import { eq } from "drizzle-orm";
  *
  * Responses follow RFC 8628 error codes:
  *   - authorization_pending: user hasn't acted yet
- *   - slow_down: polling too fast (not enforced server-side, advisory)
+ *   - slow_down: polling too fast (enforced via rate limiting)
  *   - access_denied: user denied
  *   - expired_token: code expired
  *   - 200 + { access_token, token_type, expires_in }: approved
@@ -53,6 +57,20 @@ async function handleTokenRequest(request: Request) {
     return NextResponse.json(
       { error: "invalid_request", error_description: "Missing device_code" },
       { status: 400 }
+    );
+  }
+
+  // Rate limit: 5 requests/minute per device_code + IP (RFC 8628 slow_down)
+  const clientIP = getClientIP(request);
+  const rateLimitResult = await checkDeviceTokenRateLimit(clientIP, deviceCode);
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: rateLimitResult.errorCode,
+        error_description: rateLimitResult.error,
+      },
+      { status: 400, headers: rateLimitResult.headers || {} },
     );
   }
 

@@ -1,9 +1,4 @@
-import {
-	appendFileSync,
-	existsSync,
-	mkdirSync,
-	readFileSync,
-} from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { DAEMON_LOG_FILE } from "../lib/constants.js";
 import type { DaemonLogEntry } from "../types/daemon.js";
@@ -30,7 +25,7 @@ export class DaemonLogger {
 			message,
 			...(data ? { data } : {}),
 		};
-		appendFileSync(this.filePath, JSON.stringify(entry) + "\n");
+		appendFileSync(this.filePath, `${JSON.stringify(entry)}\n`);
 	}
 
 	debug(message: string, data?: Record<string, unknown>): void {
@@ -49,10 +44,7 @@ export class DaemonLogger {
 		this.write("error", message, data);
 	}
 
-	readLines(opts?: {
-		lines?: number;
-		level?: string;
-	}): DaemonLogEntry[] {
+	readLines(opts?: { lines?: number; level?: string }): DaemonLogEntry[] {
 		if (!existsSync(this.filePath)) return [];
 		const raw = readFileSync(this.filePath, "utf-8").trim();
 		if (!raw) return [];
