@@ -2,7 +2,8 @@
 
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, Layers, MessageCircle } from "lucide-react";
+import { Home, Sparkles, Layers, MessageCircle, Terminal } from "lucide-react";
+import authClient from "@/lib/auth-client";
 import { motion, AnimatePresence } from "motion/react";
 import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
 import { ContentToolbar } from "./content-toolbar";
@@ -12,10 +13,11 @@ import { useToolbarDock } from "./toolbar-dock-context";
 import { useAudioPlayback } from "@/providers/audio-playback-provider";
 
 const allLinks = [
-  { href: "/", label: "Home", icon: Home, chatOnly: true },
-  { href: "/prompts", label: "Prompts", icon: Sparkles, chatOnly: false },
-  { href: "/skills", label: "Skills", icon: Layers, chatOnly: false },
-  { href: "/chat", label: "Chat", icon: MessageCircle, chatOnly: false },
+  { href: "/", label: "Home", icon: Home, chatOnly: true, authOnly: false },
+  { href: "/prompts", label: "Prompts", icon: Sparkles, chatOnly: false, authOnly: false },
+  { href: "/skills", label: "Skills", icon: Layers, chatOnly: false, authOnly: false },
+  { href: "/chat", label: "Chat", icon: MessageCircle, chatOnly: false, authOnly: false },
+  { href: "/console", label: "Console", icon: Terminal, chatOnly: false, authOnly: true },
 ];
 
 const chatRoutes = ["/chat", "/project", "/settings"];
@@ -39,8 +41,14 @@ export function TopNav() {
   const { isDocked, payload } = useToolbarDock();
   const { track, state: audioState } = useAudioPlayback();
 
+  const { data: session } = authClient.useSession();
+  const isAuthenticated = !!session?.user?.id;
+
   const inChat = isInChatLayout(pathname);
-  const links = allLinks.filter((link) => !link.chatOnly || inChat);
+  const links = allLinks.filter(
+    (link) =>
+      (!link.chatOnly || inChat) && (!link.authOnly || isAuthenticated),
+  );
 
   const hasActiveAudio = !!track && audioState !== "idle";
   const showFullToolbar = isDocked && payload;
