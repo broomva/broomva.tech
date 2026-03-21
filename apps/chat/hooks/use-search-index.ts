@@ -1,6 +1,6 @@
 "use client";
 
-import Fuse from "fuse.js";
+import Fuse, { type IFuseOptions } from "fuse.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface SearchEntry {
@@ -38,7 +38,7 @@ function loadIndex(): Promise<SearchEntry[]> {
   return fetchPromise;
 }
 
-const FUSE_OPTIONS: Fuse.IFuseOptions<SearchEntry> = {
+const FUSE_OPTIONS: IFuseOptions<SearchEntry> = {
   keys: [
     { name: "title", weight: 1.0 },
     { name: "tags", weight: 0.7 },
