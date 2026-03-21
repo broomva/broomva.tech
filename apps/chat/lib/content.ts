@@ -46,6 +46,7 @@ export interface ContentSummary {
     label: string;
     url: string;
   }>;
+  readingTime?: number;
   audio?: string;
   category?: string;
   model?: string;
@@ -169,7 +170,9 @@ export async function getContentList(
       if (!raw) return null;
 
       const parsed = matter(raw);
-      return toSummary(kind, slug, parsed.data as ContentFrontmatter);
+      const summary = toSummary(kind, slug, parsed.data as ContentFrontmatter);
+      summary.readingTime = estimateReadingTime(parsed.content);
+      return summary;
     }),
   );
 
@@ -196,6 +199,7 @@ export async function getContentBySlug(
 
   return {
     ...summary,
+    readingTime: estimateReadingTime(parsed.content),
     content: parsed.content,
     html: processed.toString(),
   };

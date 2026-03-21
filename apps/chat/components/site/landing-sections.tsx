@@ -667,7 +667,11 @@ function ContentSection({
                 title={entry.title}
                 summary={entry.summary}
                 href={`/writing/${entry.slug}`}
-                meta={formatDate(entry.date)}
+                meta={
+                  entry.readingTime
+                    ? `${formatDate(entry.date)} · ${entry.readingTime} min read`
+                    : formatDate(entry.date)
+                }
               />
             </ScrollReveal>
           ))}
