@@ -32,6 +32,9 @@ const PUBLIC_API_PREFIXES = [
   "/api/context",
   "/api/llms",
   "/api/prompts",
+  "/api/discovery",
+  "/api/trust",
+  "/api/marketplace",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */

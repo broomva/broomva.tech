@@ -15,6 +15,7 @@ import {
   ChevronsUpDown,
   CircuitBoardIcon,
   CreditCard,
+  DatabaseIcon,
   DollarSignIcon,
   LogOut,
   MoreHorizontal,
@@ -88,6 +89,18 @@ const consoleNav = [
     icon: WalletIcon,
     items: [
       { title: "Transactions", url: "/console/finance" },
+    ],
+  },
+  {
+    title: "Lago",
+    url: "/console/lago",
+    icon: DatabaseIcon,
+    items: [
+      { title: "Dashboard", url: "/console/lago" },
+      { title: "Sessions", url: "/console/lago/sessions" },
+      { title: "Blobs", url: "/console/lago/blobs" },
+      { title: "Policy", url: "/console/lago/policy" },
+      { title: "Metrics", url: "/console/lago/metrics" },
     ],
   },
   {

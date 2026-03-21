@@ -14,6 +14,7 @@ import {
   getLifeInstanceStatus,
   isRailwayConfigured,
   provisionLifeInstance,
+  restartLifeInstance,
 } from "@/lib/railway";
 
 // ---------------------------------------------------------------------------
@@ -432,4 +433,112 @@ export async function DELETE(request: NextRequest) {
     message: "Life instance deprovisioned successfully",
     instanceId: instance.id,
   });
+}
+
+// ---------------------------------------------------------------------------
+// PATCH — Restart all services in a Life instance
+// ---------------------------------------------------------------------------
+
+export async function PATCH(request: NextRequest) {
+  let body: { organizationId?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
+
+  const { organizationId: orgId } = body;
+
+  if (!orgId) {
+    return NextResponse.json(
+      { error: "organizationId is required" },
+      { status: 400 },
+    );
+  }
+
+  // Auth: require admin/owner
+  const authResult = await requireOrgAdmin(orgId);
+  if (authResult instanceof NextResponse) return authResult;
+  const { userId } = authResult;
+
+  // Find the existing instance
+  const [instance] = await db
+    .select()
+    .from(organizationLifeInstance)
+    .where(eq(organizationLifeInstance.organizationId, orgId))
+    .limit(1);
+
+  if (!instance) {
+    return NextResponse.json(
+      { error: "No Life instance found for this organization" },
+      { status: 404 },
+    );
+  }
+
+  if (instance.status !== "running" && instance.status !== "degraded") {
+    return NextResponse.json(
+      {
+        error: `Cannot restart instance in "${instance.status}" state`,
+        status: instance.status,
+      },
+      { status: 409 },
+    );
+  }
+
+  if (!instance.railwayProjectId || !isRailwayConfigured()) {
+    return NextResponse.json(
+      { error: "Railway API is not configured or no project ID available" },
+      { status: 503 },
+    );
+  }
+
+  logAudit({
+    organizationId: orgId,
+    actorId: userId,
+    action: "life_instance.restart.start",
+    resourceType: "life_instance",
+    resourceId: instance.id,
+  });
+
+  try {
+    await restartLifeInstance(instance.railwayProjectId);
+
+    logAudit({
+      organizationId: orgId,
+      actorId: userId,
+      action: "life_instance.restart.complete",
+      resourceType: "life_instance",
+      resourceId: instance.id,
+      metadata: { railwayProjectId: instance.railwayProjectId },
+    });
+
+    return NextResponse.json({
+      message: "Restart initiated for all services",
+      instanceId: instance.id,
+    });
+  } catch (err) {
+    console.error("[platform/life] Restart failed:", err);
+
+    logAudit({
+      organizationId: orgId,
+      actorId: userId,
+      action: "life_instance.restart.failed",
+      resourceType: "life_instance",
+      resourceId: instance.id,
+      metadata: {
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+
+    return NextResponse.json(
+      {
+        error: "Failed to restart Life instance",
+        detail: err instanceof Error ? err.message : "Unknown error",
+      },
+      { status: 500 },
+    );
+  }
 }

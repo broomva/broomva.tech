@@ -21,6 +21,11 @@ const PAGE_TITLES: Record<string, string> = {
   "/console/memory": "Memory",
   "/console/autonomic": "Autonomic",
   "/console/finance": "Finance",
+  "/console/lago": "Lago",
+  "/console/lago/sessions": "Lago Sessions",
+  "/console/lago/blobs": "Lago Blobs",
+  "/console/lago/policy": "Lago Policy",
+  "/console/lago/metrics": "Lago Metrics",
 }
 
 const DOT_COLORS: Record<ServiceStatus, string> = {

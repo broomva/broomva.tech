@@ -11,6 +11,7 @@ import {
   Home,
   Layers,
   MessageSquare,
+  Rocket,
   Search,
   Shield,
   type LucideIcon,
@@ -91,6 +92,12 @@ export const CONSOLE_NAV: NavItem[] = [
     label: "Usage",
     href: "/console/usage",
     icon: BarChart3,
+  },
+  {
+    key: "deployments",
+    label: "Deployments",
+    href: "/console/deployments",
+    icon: Rocket,
   },
   {
     key: "organization",

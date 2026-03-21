@@ -782,4 +782,140 @@ export const auditLog = pgTable(
 
 export type AuditLog = InferSelectModel<typeof auditLog>;
 
+// ---------------------------------------------------------------------------
+// Agent Trust / Certification Tables
+// ---------------------------------------------------------------------------
+
+/** Agent registered for certification (Moody's model — submit, evaluate, certify) */
+export const agentRegistration = pgTable(
+  "AgentRegistration",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId").references(
+      () => organization.id,
+      { onDelete: "cascade" },
+    ),
+    name: varchar("name", { length: 256 }).notNull(),
+    description: text("description"),
+    version: varchar("version", { length: 64 }),
+    sourceUrl: varchar("sourceUrl", { length: 512 }), // github repo, docker image, etc.
+    capabilities: json("capabilities").$type<string[]>().default([]),
+    trustScore: integer("trustScore"), // 0-100 composite score
+    trustLevel: varchar("trustLevel", {
+      enum: ["unrated", "bronze", "silver", "gold", "platinum"],
+    })
+      .notNull()
+      .default("unrated"),
+    lastEvaluatedAt: timestamp("lastEvaluatedAt"),
+    credentialId: varchar("credentialId", { length: 256 }), // signed credential identifier
+    status: varchar("status", {
+      enum: ["pending", "evaluating", "certified", "failed", "revoked"],
+    })
+      .notNull()
+      .default("pending"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    AgentRegistration_org_id_idx: index("AgentRegistration_org_id_idx").on(
+      t.organizationId,
+    ),
+    AgentRegistration_trust_level_idx: index(
+      "AgentRegistration_trust_level_idx",
+    ).on(t.trustLevel),
+    AgentRegistration_status_idx: index("AgentRegistration_status_idx").on(
+      t.status,
+    ),
+  }),
+);
+
+export type AgentRegistration = InferSelectModel<typeof agentRegistration>;
+
+// ---------------------------------------------------------------------------
+// Marketplace / Escrow Tables
+// ---------------------------------------------------------------------------
+
+/** Marketplace task listing — an agent offering a service */
+export const marketplaceTask = pgTable(
+  "MarketplaceTask",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    agentId: uuid("agentId")
+      .notNull()
+      .references(() => agentRegistration.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 256 }).notNull(),
+    description: text("description"),
+    priceCredits: integer("priceCredits").notNull(), // cost in credits (cents)
+    currency: varchar("currency", { length: 8 }).notNull().default("USD"),
+    estimatedDurationMs: integer("estimatedDurationMs"), // expected completion time
+    status: varchar("status", {
+      enum: ["active", "paused", "completed", "cancelled"],
+    })
+      .notNull()
+      .default("active"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    MarketplaceTask_agent_id_idx: index("MarketplaceTask_agent_id_idx").on(
+      t.agentId,
+    ),
+    MarketplaceTask_status_idx: index("MarketplaceTask_status_idx").on(
+      t.status,
+    ),
+  }),
+);
+
+export type MarketplaceTask = InferSelectModel<typeof marketplaceTask>;
+
+/** Escrow transaction — funds held during task execution */
+export const escrowTransaction = pgTable(
+  "EscrowTransaction",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    taskId: uuid("taskId")
+      .notNull()
+      .references(() => marketplaceTask.id),
+    buyerOrgId: uuid("buyerOrgId")
+      .notNull()
+      .references(() => organization.id),
+    sellerOrgId: uuid("sellerOrgId")
+      .notNull()
+      .references(() => organization.id),
+    amountCredits: integer("amountCredits").notNull(),
+    commissionCredits: integer("commissionCredits").notNull().default(0), // platform fee
+    status: varchar("status", {
+      enum: ["held", "released", "refunded", "disputed"],
+    })
+      .notNull()
+      .default("held"),
+    heldAt: timestamp("heldAt").notNull().defaultNow(),
+    releasedAt: timestamp("releasedAt"),
+    disputeReason: text("disputeReason"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    EscrowTransaction_task_id_idx: index("EscrowTransaction_task_id_idx").on(
+      t.taskId,
+    ),
+    EscrowTransaction_buyer_idx: index("EscrowTransaction_buyer_idx").on(
+      t.buyerOrgId,
+    ),
+    EscrowTransaction_seller_idx: index("EscrowTransaction_seller_idx").on(
+      t.sellerOrgId,
+    ),
+    EscrowTransaction_status_idx: index("EscrowTransaction_status_idx").on(
+      t.status,
+    ),
+  }),
+);
+
+export type EscrowTransaction = InferSelectModel<typeof escrowTransaction>;
+
 export const schema = { user, session, account, verification };
