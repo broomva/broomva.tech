@@ -1,6 +1,7 @@
 "use client"
 
 import type * as React from "react"
+import type { Route } from "next"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -195,7 +196,7 @@ function NavMainSection({
                           asChild
                           isActive={pathname === subItem.url}
                         >
-                          <Link href={subItem.url}>
+                          <Link href={subItem.url as Route}>
                             <span>{subItem.title}</span>
                           </Link>
                         </SidebarMenuSubButton>
@@ -226,7 +227,7 @@ function ServicesSection({
         {items.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild isActive={pathname === item.url}>
-              <Link href={item.url}>
+              <Link href={item.url as Route}>
                 <item.icon />
                 <span>{item.name}</span>
               </Link>

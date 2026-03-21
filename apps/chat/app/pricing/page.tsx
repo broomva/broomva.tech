@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { CheckIcon } from "lucide-react";
 import { config } from "@/lib/config";
@@ -144,16 +145,29 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Link
-              href={plan.ctaHref}
-              className={`inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                plan.highlighted
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              }`}
-            >
-              {plan.cta}
-            </Link>
+            {plan.ctaHref.startsWith("mailto:") ? (
+              <a
+                href={plan.ctaHref}
+                className={`inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                  plan.highlighted
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {plan.cta}
+              </a>
+            ) : (
+              <Link
+                href={plan.ctaHref as Route}
+                className={`inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                  plan.highlighted
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {plan.cta}
+              </Link>
+            )}
           </div>
         ))}
       </div>
