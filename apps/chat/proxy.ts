@@ -2,98 +2,137 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getSafeSession } from "@/lib/auth";
 
+// ── Public route allowlists (single source of truth) ────────────────────────
+
+/** Pages accessible without authentication. */
+const PUBLIC_PAGE_PREFIXES = [
+  "/projects",
+  "/writing",
+  "/notes",
+  "/start-here",
+  "/now",
+  "/contact",
+  "/prompts",
+  "/share/",
+  "/privacy",
+  "/terms",
+  "/pricing",
+  "/skills",
+] as const;
+
+const PUBLIC_PAGE_EXACT = ["/", "/chat"] as const;
+
+/** API routes that bypass auth (auth endpoints, public data). */
+const PUBLIC_API_PREFIXES = [
+  "/api/auth",
+  "/api/trpc",
+  "/api/chat",
+  "/api/skills",
+  "/api/search",
+  "/api/context",
+  "/api/llms",
+  "/api/prompts",
+] as const;
+
+/** Metadata / SEO routes always allowed. */
+const METADATA_ROUTES = [
+  "/sitemap.xml",
+  "/robots.txt",
+  "/manifest.webmanifest",
+  "/llms.txt",
+  "/llms-full.txt",
+] as const;
+
+// ── Route classifiers ───────────────────────────────────────────────────────
+
+function isPublicPage(pathname: string): boolean {
+  if ((PUBLIC_PAGE_EXACT as readonly string[]).includes(pathname)) {
+    return true;
+  }
+  return PUBLIC_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 function isPublicApiRoute(pathname: string): boolean {
-  return (
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/trpc") ||
-    pathname === "/api/chat" ||
-    pathname.startsWith("/api/chat/")
+  return PUBLIC_API_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
 function isMetadataRoute(pathname: string): boolean {
-  return (
-    pathname === "/sitemap.xml" ||
-    pathname === "/robots.txt" ||
-    pathname === "/manifest.webmanifest" ||
-    pathname === "/llms.txt" ||
-    pathname === "/llms-full.txt"
-  );
-}
-
-function isPublicPage(pathname: string): boolean {
-  if (pathname === "/") {
-    return true;
-  }
-  return (
-    pathname === "/chat" ||
-    pathname.startsWith("/projects") ||
-    pathname.startsWith("/writing") ||
-    pathname.startsWith("/notes") ||
-    pathname.startsWith("/start-here") ||
-    pathname.startsWith("/now") ||
-    pathname.startsWith("/contact") ||
-    pathname.startsWith("/prompts") ||
-    pathname.startsWith("/share/") ||
-    pathname.startsWith("/privacy") ||
-    pathname.startsWith("/terms") ||
-    pathname.startsWith("/pricing")
-  );
+  return (METADATA_ROUTES as readonly string[]).includes(pathname);
 }
 
 function isAuthPage(pathname: string): boolean {
   return pathname.startsWith("/login") || pathname.startsWith("/register");
 }
 
+// ── Security headers ────────────────────────────────────────────────────────
+
+function withSecurityHeaders(response?: NextResponse): NextResponse {
+  const res = response ?? NextResponse.next();
+
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.headers.set("X-DNS-Prefetch-Control", "off");
+  res.headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
+  res.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(self), geolocation=()",
+  );
+
+  return res;
+}
+
+// ── Proxy function (Next.js 16 middleware) ──────────────────────────────────
+
 export async function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const { pathname } = url;
 
-  // Always allow public API routes, metadata, and public pages
+  // Always allow metadata, public pages, and public API routes
   if (
-    isPublicApiRoute(pathname) ||
     isMetadataRoute(pathname) ||
-    isPublicPage(pathname)
+    isPublicPage(pathname) ||
+    isPublicApiRoute(pathname)
   ) {
-    return;
+    return withSecurityHeaders();
   }
 
-  // Auth pages (/login, /register) need a session check so we can redirect
-  // logged-in users away — don't short-circuit them above
+  // Auth pages need a session check to redirect logged-in users away
   const { data: session } = await getSafeSession({
     fetchOptions: { headers: req.headers },
   });
   const isLoggedIn = !!session?.user;
 
   if (isAuthPage(pathname)) {
-    // Redirect authenticated users away from login/register
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL("/", url));
+      return withSecurityHeaders(
+        NextResponse.redirect(new URL("/", url)),
+      );
     }
-    // Allow unauthenticated users to reach auth pages
-    return;
+    return withSecurityHeaders();
   }
 
   // Block all other routes for unauthenticated users
   if (!isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", url));
+    return withSecurityHeaders(
+      NextResponse.redirect(new URL("/login", url)),
+    );
   }
+
+  return withSecurityHeaders();
 }
+
+// ── Matcher: only exclude static assets and build artifacts ─────────────────
+// Page-level access is handled entirely by the allowlists above,
+// so the matcher only needs to skip files the proxy should never touch.
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, opengraph-image (favicon and og image)
-     * - manifest files (.json, .webmanifest)
-     * - Images and other static assets (.svg, .png, .jpg, .jpeg, .gif, .webp, .ico)
-     * - models
-     * - compare
-     * - docs (Mintlify documentation)
-     */
-    "/((?!api|docs|_next/static|_next/image|favicon.ico|opengraph-image|manifest|models|compare|privacy|terms|pricing|llms|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|mp4|webm|ogg|pdf)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|opengraph-image|manifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|mp4|webm|ogg|pdf)$).*)",
   ],
 };

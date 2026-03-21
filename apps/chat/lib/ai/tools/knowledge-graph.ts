@@ -48,6 +48,75 @@ async function getUserLagoBackend(
   }
 }
 
+/**
+ * Search the site-content session in Lago (public, unauthenticated).
+ * This tier contains all published .mdx content from broomva.tech.
+ */
+async function searchSiteContent(
+  query: string,
+  maxResults: number
+): Promise<
+  Array<{
+    name: string;
+    path: string;
+    frontmatter: Record<string, unknown>;
+    excerpts: string[];
+    outgoingLinks: string[];
+    score: number;
+    source: string;
+  }>
+> {
+  const lagoUrl = process.env.LAGO_URL;
+  if (!lagoUrl) return [];
+
+  try {
+    // Site content uses a public session — search via the session API
+    const res = await fetch(
+      `${lagoUrl}/v1/sessions/site-content:public/manifest?branch=main`
+    );
+    if (!res.ok) return [];
+
+    const data = (await res.json()) as {
+      entries: Array<{ path: string; blob_hash: string }>;
+    };
+
+    // Simple client-side search over manifest paths
+    const queryLower = query.toLowerCase();
+    const terms = queryLower.split(/\s+/).filter(Boolean);
+
+    const matches = data.entries
+      .filter((entry) => entry.path.endsWith(".md") || entry.path.endsWith(".mdx"))
+      .map((entry) => {
+        const name = entry.path.split("/").pop()?.replace(/\.(md|mdx)$/, "") ?? "";
+        const pathLower = entry.path.toLowerCase();
+        const nameLower = name.toLowerCase();
+
+        let score = 0;
+        for (const term of terms) {
+          if (nameLower.includes(term)) score += 3;
+          else if (pathLower.includes(term)) score += 1;
+        }
+        return { entry, name, score };
+      })
+      .filter((m) => m.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, maxResults);
+
+    return matches.map((m) => ({
+      name: m.name,
+      path: m.entry.path,
+      frontmatter: {},
+      excerpts: [],
+      outgoingLinks: [],
+      score: m.score,
+      source: "site",
+    }));
+  } catch (error) {
+    log.error({ err: error, query }, "Site content search error");
+    return [];
+  }
+}
+
 /** Merge and rank results from multiple sources, deduplicating by path. */
 function mergeAndRank(
   results: Array<{
@@ -181,6 +250,14 @@ Returns matching notes with frontmatter metadata, relevant excerpts, and outgoin
         } catch (error) {
           log.error({ err: error, query }, "Lago vault search error");
         }
+      }
+
+      // 3. Site content (lagod — public session, unauthenticated)
+      try {
+        const siteResults = await searchSiteContent(query, maxResults);
+        allResults.push(...siteResults);
+      } catch (error) {
+        log.error({ err: error, query }, "Site content search error");
       }
 
       if (allResults.length === 0) {

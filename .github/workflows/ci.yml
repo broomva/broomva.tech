@@ -5,9 +5,51 @@ on:
   push:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate search index
+        run: bun run generate:search-index
+        working-directory: apps/chat
+
+      - name: Verify search index
+        run: test -f apps/chat/public/search-index.json && echo "Search index OK ($(wc -c < apps/chat/public/search-index.json) bytes)"
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run test:types
+
+      - name: Validate internal links
+        run: bun run check:links
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,15 +62,24 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Generate search index
-        run: bun run generate:search-index
-        working-directory: apps/chat
+      - name: Audit dependencies
+        run: bunx audit-ci --moderate
+        continue-on-error: true
 
-      - name: Verify search index
-        run: test -f apps/chat/public/search-index.json && echo "Search index OK ($(wc -c < apps/chat/public/search-index.json) bytes)"
+      - name: Check for leaked secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
 
-      - name: Validate Type Generation
-        run: bun run test:types
+      - name: Verify lockfile integrity
+        run: |
+          bun install --frozen-lockfile
+          git diff --exit-code bun.lock || (echo "::error::Lockfile changed after install — possible supply chain issue" && exit 1)
 
-      - name: Validate internal links
-        run: bun run check:links
+      - name: Check for sensitive files in git
+        run: |
+          SENSITIVE=$(git ls-files | grep -iE '\.env$|\.env\.local|\.env\.prod|credentials|secret|\.pem$|\.key$' || true)
+          if [ -n "$SENSITIVE" ]; then
+            echo "::error::Sensitive files tracked in git: $SENSITIVE"
+            exit 1
+          fi

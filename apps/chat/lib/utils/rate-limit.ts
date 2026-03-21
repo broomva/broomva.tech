@@ -19,12 +19,26 @@ type RateLimitOptions = {
 
 // In-memory fallback for when Redis is unavailable
 const inMemoryCounters = new Map<string, { count: number; resetAt: number }>();
+let lastCleanup = Date.now();
+const CLEANUP_INTERVAL_MS = 60_000; // Purge expired entries every 60s
+
+function cleanupStaleEntries() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL_MS) return;
+  lastCleanup = now;
+  for (const [key, entry] of inMemoryCounters) {
+    if (entry.resetAt <= now) {
+      inMemoryCounters.delete(key);
+    }
+  }
+}
 
 function inMemoryRateLimit(
   key: string,
   limit: number,
   windowSize: number,
 ): RateLimitResult {
+  cleanupStaleEntries();
   const now = Date.now();
   const resetTime =
     Math.floor(now / (windowSize * 1000)) * windowSize * 1000 +
@@ -240,25 +254,35 @@ export async function checkAuthenticatedRateLimit(
   };
 }
 
-export function getClientIP(request: Request): string {
-  // Try to get the real IP from various headers
+/**
+ * Extract client IP from the request.
+ *
+ * On Vercel, `x-forwarded-for` is set by the edge and can be trusted.
+ * We take the *last* entry (the one Vercel appended) rather than the
+ * first (which the client can spoof by sending its own header value).
+ *
+ * Accepts an optional NextRequest so callers in the proxy can pass
+ * `request.ip` directly (Vercel sets this from its edge network).
+ */
+export function getClientIP(
+  request: Request & { ip?: string },
+): string {
+  // Vercel edge provides a reliable .ip property on NextRequest
+  if ("ip" in request && request.ip) {
+    return request.ip;
+  }
+
+  // Fallback: use the rightmost x-forwarded-for entry (proxy-appended)
   const forwarded = request.headers.get("x-forwarded-for");
-  const realIp = request.headers.get("x-real-ip");
-  const cfConnectingIp = request.headers.get("cf-connecting-ip");
-
   if (forwarded) {
-    // x-forwarded-for can contain multiple IPs, take the first one
-    return forwarded.split(",")[0].trim();
+    const parts = forwarded.split(",").map((s) => s.trim());
+    // Rightmost non-empty entry is the one the trusted proxy added
+    const trustedIp = parts.filter(Boolean).pop();
+    if (trustedIp) return trustedIp;
   }
 
-  if (realIp) {
-    return realIp;
-  }
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp;
 
-  if (cfConnectingIp) {
-    return cfConnectingIp;
-  }
-
-  // Fallback to a default IP if no headers are present
   return "127.0.0.1";
 }

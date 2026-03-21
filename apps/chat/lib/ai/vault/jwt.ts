@@ -6,7 +6,7 @@
  * All Life services use the same HS256 shared secret (AUTH_SECRET).
  */
 
-import { SignJWT } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 
 const JWT_EXPIRY = "7d";
 
@@ -31,6 +31,28 @@ export async function signLifeJWT(user: {
     .sign(new TextEncoder().encode(secret));
 
   return jwt;
+}
+
+/**
+ * Verify a Life JWT and return the payload.
+ * Returns null if the token is invalid or expired.
+ */
+export async function verifyLifeJWT(
+  token: string,
+): Promise<{ sub: string; email: string } | null> {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return null;
+
+  try {
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(secret),
+    );
+    if (!payload.sub) return null;
+    return { sub: payload.sub, email: (payload.email as string) ?? "" };
+  } catch {
+    return null;
+  }
 }
 
 /** @deprecated Use signLifeJWT — kept for backward compatibility */

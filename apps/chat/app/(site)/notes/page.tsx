@@ -1,6 +1,4 @@
-import { ContentCard } from "@/components/site/content-card";
-import { PageHero } from "@/components/site/page-hero";
-import { formatDate } from "@/lib/date";
+import { NotesList } from "@/components/site/notes-list";
 import { getContentList } from "@/lib/content";
 
 export const metadata = {
@@ -35,21 +33,16 @@ export default async function NotesPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-      <PageHero
-        title="Notes"
-        description="Short-form entries I can publish quickly and cross-post. Each note captures one idea, one pattern, or one lesson."
-      />
-      <section className="mt-10 grid gap-4 md:grid-cols-2">
-        {entries.map((entry) => (
-          <ContentCard
-            key={entry.slug}
-            title={entry.title}
-            summary={entry.summary}
-            href={`/notes/${entry.slug}`}
-            meta={formatDate(entry.date)}
-          />
-        ))}
-      </section>
+      <header>
+        <h1 className="font-display text-4xl text-text-primary sm:text-5xl">
+          Notes
+        </h1>
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-text-secondary">
+          Short-form entries I can publish quickly and cross-post. Each note
+          captures one idea, one pattern, or one lesson.
+        </p>
+      </header>
+      <NotesList entries={entries} />
     </main>
   );
 }

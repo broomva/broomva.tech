@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getSafeSession } from "@/lib/auth";
-import { db } from "@/lib/db/client";
-import { session } from "@/lib/db/schema";
-import { eq, and, gt, desc } from "drizzle-orm";
-import { signLagoJWT } from "@/lib/ai/vault/jwt";
+import { signLifeJWT } from "@/lib/ai/vault/jwt";
 
 /**
  * GET /api/auth/api-token
  *
- * Returns the current user's session token for use as a Bearer token in API calls.
- * Requires an active session (user must be logged in via browser).
+ * Signs a Life JWT for the current user, usable as a Bearer token in API calls.
+ * Requires an active Neon Auth session (user must be logged in via browser).
  *
  * Usage:
  *   1. Log in at broomva.tech via OAuth
@@ -27,45 +24,20 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Get the most recent active session token for this user
-  const [activeSession] = await db
-    .select({ token: session.token, expiresAt: session.expiresAt })
-    .from(session)
-    .where(
-      and(
-        eq(session.userId, sessionData.user.id),
-        gt(session.expiresAt, new Date()),
-      ),
-    )
-    .orderBy(desc(session.expiresAt))
-    .limit(1);
+  const token = await signLifeJWT({
+    id: sessionData.user.id,
+    email: sessionData.user.email ?? "",
+  });
 
-  if (!activeSession) {
-    return NextResponse.json(
-      { error: "No active session found" },
-      { status: 404 },
-    );
-  }
-
-  // Sign a JWT for Lago auth (shared secret with lagod)
-  let lagoToken: string | undefined;
-  try {
-    lagoToken = await signLagoJWT({
-      id: sessionData.user.id,
-      email: sessionData.user.email ?? "",
-    });
-  } catch {
-    // Non-fatal — Lago JWT is optional
-  }
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   return NextResponse.json({
-    token: activeSession.token,
-    ...(lagoToken ? { lagoToken } : {}),
-    expiresAt: activeSession.expiresAt.toISOString(),
+    token,
+    expiresAt: expiresAt.toISOString(),
     usage: {
-      header: `Authorization: Bearer ${activeSession.token}`,
-      env: `export BROOMVA_API_TOKEN="${lagoToken ?? activeSession.token}"`,
-      cli: `lago memory search "query" --token "${lagoToken ?? activeSession.token}"`,
+      header: `Authorization: Bearer ${token}`,
+      env: `export BROOMVA_API_TOKEN="${token}"`,
+      cli: `lago memory search "query" --token "${token}"`,
     },
   });
 }

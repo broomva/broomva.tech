@@ -4,6 +4,11 @@ import matter from "gray-matter";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
+import {
+  rewriteAssetUrl,
+  rewriteAssetUrls,
+  rewriteMarkdownAssets,
+} from "./lago-assets";
 
 export type ContentKind = "notes" | "projects" | "writing" | "prompts";
 
@@ -195,16 +200,30 @@ export async function getContentBySlug(
   const summary = toSummary(kind, slug, parsed.data as ContentFrontmatter);
   if (!summary.published) return null;
 
+  // Rewrite asset URLs in markdown before rendering
+  const rewrittenContent = rewriteMarkdownAssets(parsed.content);
+
   const processed = await remark()
     .use(remarkGfm)
     .use(remarkHtml, { sanitize: false })
-    .process(parsed.content);
+    .process(rewrittenContent);
+
+  // Rewrite any remaining asset URLs in rendered HTML
+  const html = rewriteAssetUrls(processed.toString());
+
+  // Rewrite frontmatter image/audio URLs
+  if (summary.image) {
+    summary.image = rewriteAssetUrl(summary.image);
+  }
+  if (summary.audio) {
+    summary.audio = rewriteAssetUrl(summary.audio);
+  }
 
   return {
     ...summary,
     readingTime: estimateReadingTime(parsed.content),
-    content: parsed.content,
-    html: processed.toString(),
+    content: rewrittenContent,
+    html,
   };
 }
 

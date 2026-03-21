@@ -1,7 +1,5 @@
-import { ContentCard } from "@/components/site/content-card";
-import { PageHero } from "@/components/site/page-hero";
+import { ProjectsList } from "@/components/site/projects-list";
 import { PrinciplesGrid } from "@/components/site/principles-grid";
-import { formatDate } from "@/lib/date";
 import { getContentList } from "@/lib/content";
 
 export const metadata = {
@@ -36,25 +34,19 @@ export default async function ProjectsPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
-      <PageHero
-        title="Projects"
-        description="A running archive of what I ship: problem framing, architecture approach, current status, and links."
-      />
+      <header>
+        <h1 className="font-display text-4xl text-text-primary sm:text-5xl">
+          Projects
+        </h1>
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-text-secondary">
+          A running archive of what I ship: problem framing, architecture
+          approach, current status, and links.
+        </p>
+      </header>
       <div className="mt-14">
         <PrinciplesGrid />
       </div>
-      <section className="mt-14 grid gap-4 md:grid-cols-2">
-        {projects.map((project) => (
-          <ContentCard
-            key={project.slug}
-            title={project.title}
-            summary={project.summary}
-            href={`/projects/${project.slug}`}
-            meta={formatDate(project.date)}
-            badge={project.status}
-          />
-        ))}
-      </section>
+      <ProjectsList entries={projects} />
     </main>
   );
 }

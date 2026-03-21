@@ -9,6 +9,26 @@ import { formatDate } from "@/lib/date";
 
 const COLLAPSED_ROWS = 2;
 
+const SPANISH_TAGS = new Set([
+  "colombia",
+  "industry-4-0",
+]);
+const SPANISH_SLUG_HINTS = [
+  "inteligencia-artificial",
+  "iiot-from-edge",
+  "iiot-as-a-service",
+];
+
+function detectLanguage(entry: ContentSummary): "ES" | "EN" {
+  if (SPANISH_TAGS.size > 0 && entry.tags.some((t) => SPANISH_TAGS.has(t)))
+    return "ES";
+  if (SPANISH_SLUG_HINTS.some((h) => entry.slug.includes(h))) return "ES";
+  // Check if summary starts with Spanish characters/words
+  if (/^(Desde|Mediante|Arquitectura|Modelos)/i.test(entry.summary))
+    return "ES";
+  return "EN";
+}
+
 function isVideo(src: string) {
   return /\.(mp4|webm)$/i.test(src);
 }
@@ -107,8 +127,10 @@ export function WritingList({ entries }: WritingListProps) {
     return entries.filter((e) => e.tags.includes(activeTag));
   }, [entries, activeTag]);
 
-  const featured = filtered[0];
-  const rest = filtered.slice(1);
+  // Prefer pinned post as featured, otherwise latest
+  const pinnedIdx = filtered.findIndex((e) => e.pinned);
+  const featured = pinnedIdx >= 0 ? filtered[pinnedIdx] : filtered[0];
+  const rest = filtered.filter((e) => e !== featured);
 
   const yearGroups = useMemo(() => {
     const groups: { year: number; items: ContentSummary[] }[] = [];
@@ -238,8 +260,13 @@ export function WritingList({ entries }: WritingListProps) {
             <div className="px-5 py-6 sm:px-7 sm:py-8">
               <div className="flex items-center gap-3 text-xs text-text-muted">
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ai-blue/60">
-                  Latest
+                  {featured.pinned ? "Featured" : "Latest"}
                 </span>
+                {detectLanguage(featured) === "ES" && (
+                  <span className="rounded border border-web3-green/30 bg-web3-green/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-web3-green/80">
+                    ES
+                  </span>
+                )}
                 <span className="h-px flex-1 bg-border/30" />
                 <span className="uppercase tracking-[0.14em]">
                   {formatDate(featured.date)}
@@ -327,7 +354,24 @@ export function WritingList({ entries }: WritingListProps) {
                       <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-text-secondary">
                         {entry.summary}
                       </p>
-                      <div className="mt-4 flex items-center gap-2 text-xs text-text-muted">
+                      {entry.tags.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {entry.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full border border-border/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-text-muted/60"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {entry.tags.length > 3 && (
+                            <span className="px-1 text-[10px] text-text-muted/40">
+                              +{entry.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
                         <span className="uppercase tracking-[0.14em]">
                           {formatDate(entry.date)}
                         </span>
@@ -335,6 +379,14 @@ export function WritingList({ entries }: WritingListProps) {
                           <>
                             <span className="text-border/60">&middot;</span>
                             <span>{entry.readingTime} min</span>
+                          </>
+                        )}
+                        {detectLanguage(entry) === "ES" && (
+                          <>
+                            <span className="text-border/60">&middot;</span>
+                            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-web3-green/70">
+                              ES
+                            </span>
                           </>
                         )}
                       </div>

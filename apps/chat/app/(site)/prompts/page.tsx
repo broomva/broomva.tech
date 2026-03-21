@@ -1,5 +1,4 @@
-import { PageHero } from "@/components/site/page-hero";
-import { CategoryFilter } from "@/components/site/category-filter";
+import { PromptsList } from "@/components/site/prompts-list";
 import { PromptsEnergyBeam } from "@/components/site/prompts-energy-beam";
 import { UserPrompts } from "@/components/site/user-prompts";
 import { getContentList } from "@/lib/content";
@@ -20,12 +19,17 @@ export default async function PromptsPage() {
   return (
     <>
       <main className="mx-auto w-full max-w-6xl px-4 pb-0 pt-10 sm:px-6 sm:pt-14">
-        <PageHero
-          title="Prompts"
-          description="A versioned repository of reusable prompts for agent workflows, code review, research, architecture, and more. Browse, copy, or pull via API."
-        />
+        <header>
+          <h1 className="font-display text-4xl text-text-primary sm:text-5xl">
+            Prompts
+          </h1>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-text-secondary">
+            A versioned repository of reusable prompts for agent workflows, code
+            review, research, architecture, and more.
+          </p>
+        </header>
         {session ? <UserPrompts session={session} /> : null}
-        <CategoryFilter entries={entries} />
+        <PromptsList entries={entries} />
       </main>
       <PromptsEnergyBeam />
     </>

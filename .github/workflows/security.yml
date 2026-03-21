@@ -1,0 +1,98 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Run weekly on Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  push:
+    branches: ["main"]
+    paths:
+      - "**/package.json"
+      - "**/bun.lock"
+      - "apps/chat/proxy.ts"
+      - "apps/chat/lib/auth.ts"
+      - "apps/chat/lib/utils/rate-limit.ts"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit for known vulnerabilities
+        run: |
+          echo "## Dependency Audit" >> $GITHUB_STEP_SUMMARY
+          bunx audit-ci --moderate 2>&1 | tee audit-output.txt || true
+          cat audit-output.txt >> $GITHUB_STEP_SUMMARY
+
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+
+  proxy-security-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate proxy allowlists
+        run: |
+          echo "## Proxy Security Check" >> $GITHUB_STEP_SUMMARY
+
+          # Ensure proxy.ts exists and exports proxyConfig
+          if ! grep -q "export const proxyConfig" apps/chat/proxy.ts; then
+            echo "::error::proxy.ts missing proxyConfig export (Next.js 16 convention)"
+            exit 1
+          fi
+
+          # Ensure security headers are applied
+          if ! grep -q "X-Content-Type-Options" apps/chat/proxy.ts; then
+            echo "::error::proxy.ts missing X-Content-Type-Options security header"
+            exit 1
+          fi
+
+          if ! grep -q "Strict-Transport-Security" apps/chat/proxy.ts; then
+            echo "::error::proxy.ts missing HSTS header"
+            exit 1
+          fi
+
+          # Count public routes for visibility
+          PUBLIC_PAGES=$(grep -c 'PUBLIC_PAGE_PREFIXES\|PUBLIC_PAGE_EXACT' apps/chat/proxy.ts || true)
+          PUBLIC_APIS=$(grep -c '/api/' apps/chat/proxy.ts || true)
+          echo "Public page entries: $PUBLIC_PAGES" >> $GITHUB_STEP_SUMMARY
+          echo "Public API entries: $PUBLIC_APIS" >> $GITHUB_STEP_SUMMARY
+          echo "Proxy security checks passed" >> $GITHUB_STEP_SUMMARY

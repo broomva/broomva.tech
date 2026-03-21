@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { db } from "@/lib/db/client";
-import { deviceAuthCode, session } from "@/lib/db/schema";
-import { eq, and, gt, desc } from "drizzle-orm";
+import { deviceAuthCode } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { getSafeSession } from "@/lib/auth";
+import { signLifeJWT } from "@/lib/ai/vault/jwt";
 
 /**
  * POST /api/auth/device/authorize
@@ -89,32 +90,18 @@ async function handleAuthorize(request: Request) {
     return NextResponse.json({ status: "denied" });
   }
 
-  // Approve: get the user's most recent active session token
-  const [activeSession] = await db
-    .select({ token: session.token, expiresAt: session.expiresAt })
-    .from(session)
-    .where(
-      and(
-        eq(session.userId, sessionData.user.id),
-        gt(session.expiresAt, new Date())
-      )
-    )
-    .orderBy(desc(session.expiresAt))
-    .limit(1);
-
-  if (!activeSession) {
-    return NextResponse.json(
-      { error: "No active session found. Please sign in again." },
-      { status: 401 }
-    );
-  }
+  // Approve: sign a JWT for the CLI to use as Bearer token
+  const token = await signLifeJWT({
+    id: sessionData.user.id,
+    email: sessionData.user.email ?? "",
+  });
 
   await db
     .update(deviceAuthCode)
     .set({
       status: "approved",
       userId: sessionData.user.id,
-      sessionToken: activeSession.token,
+      sessionToken: token,
     })
     .where(eq(deviceAuthCode.id, record.id));
 
