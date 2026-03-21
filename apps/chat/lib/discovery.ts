@@ -62,11 +62,11 @@ export async function searchAgents(filters: AgentSearchFilters) {
 
   // Default: only certified agents
   if (status) {
-    conditions.push(eq(agentRegistration.status, status));
+    conditions.push(eq(agentRegistration.status, status as typeof agentRegistration.status.enumValues[number]));
   }
 
   if (trustLevel) {
-    conditions.push(eq(agentRegistration.trustLevel, trustLevel));
+    conditions.push(eq(agentRegistration.trustLevel, trustLevel as typeof agentRegistration.trustLevel.enumValues[number]));
   }
 
   if (minTrust !== undefined) {

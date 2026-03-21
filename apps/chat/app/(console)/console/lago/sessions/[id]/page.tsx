@@ -11,6 +11,7 @@ import {
   Loader2,
   Tag,
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -98,7 +99,7 @@ export default function SessionDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
-          href="/console/lago/sessions"
+          href={"/console/lago/sessions" as Route}
           className="text-text-muted hover:text-text-primary"
         >
           <ArrowLeft className="size-5" />

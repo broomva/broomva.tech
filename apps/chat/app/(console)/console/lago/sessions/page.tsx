@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock, Database, Loader2, Plus, RefreshCw } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -149,7 +150,7 @@ export default function LagoSessionsPage() {
             return (
               <Link
                 key={session.session_id}
-                href={`/console/lago/sessions/${session.session_id}`}
+                href={`/console/lago/sessions/${session.session_id}` as Route}
                 className="glass-card flex items-center justify-between hover:border-ai-blue/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
