@@ -1,5 +1,5 @@
-import type { Sensor, SensorContext } from "./index.js";
 import type { SensorResult } from "../../types/daemon.js";
+import type { Sensor, SensorContext } from "./index.js";
 
 export class RailwayHealthSensor implements Sensor {
 	id: string;
@@ -100,13 +100,10 @@ export class RailwayHealthSensor implements Sensor {
 			if (token) {
 				headers.Authorization = `Bearer ${token}`;
 			}
-			const res = await fetch(
-				`${baseUrl.replace(/\/$/, "")}/api/v1/state`,
-				{
-					headers,
-					signal: AbortSignal.timeout(10_000),
-				},
-			);
+			const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/v1/state`, {
+				headers,
+				signal: AbortSignal.timeout(10_000),
+			});
 			if (res.ok) {
 				const state = await res.json();
 				results.symphonyState = state;

@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { resolveToken } from "../lib/auth-store.js";
 import {
 	DAEMON_STATE_FILE,
 	DEFAULT_HEARTBEAT_INTERVAL_MS,
 	DEFAULT_INCIDENT_THRESHOLD,
 } from "../lib/constants.js";
-import { resolveToken } from "../lib/auth-store.js";
 import type { DaemonConfig } from "../types/config.js";
 import type { HeartbeatState, Incident } from "../types/daemon.js";
+import type { DaemonLogger } from "./logger.js";
 import type { Sensor, SensorContext } from "./sensors/index.js";
-import { DaemonLogger } from "./logger.js";
 
 export class HeartbeatLoop {
 	private sensors: Sensor[];
@@ -100,12 +100,8 @@ export class HeartbeatLoop {
 					if (prevCount >= threshold) {
 						this.resolveIncident(sensor.id);
 					}
-				} else if (
-					result.status === "down" ||
-					result.status === "degraded"
-				) {
-					const count =
-						(this.failureCounts.get(sensor.id) ?? 0) + 1;
+				} else if (result.status === "down" || result.status === "degraded") {
+					const count = (this.failureCounts.get(sensor.id) ?? 0) + 1;
 					this.failureCounts.set(sensor.id, count);
 
 					if (count >= threshold) {
@@ -118,8 +114,7 @@ export class HeartbeatLoop {
 					});
 				}
 			} catch (err) {
-				const msg =
-					err instanceof Error ? err.message : String(err);
+				const msg = err instanceof Error ? err.message : String(err);
 				this.logger.error(`Sensor ${sensor.id} threw`, {
 					error: msg,
 				});
@@ -130,8 +125,7 @@ export class HeartbeatLoop {
 					timestamp: new Date().toISOString(),
 				};
 
-				const count =
-					(this.failureCounts.get(sensor.id) ?? 0) + 1;
+				const count = (this.failureCounts.get(sensor.id) ?? 0) + 1;
 				this.failureCounts.set(sensor.id, count);
 
 				if (count >= threshold) {
@@ -201,7 +195,7 @@ export class HeartbeatLoop {
 		try {
 			writeFileSync(
 				DAEMON_STATE_FILE,
-				JSON.stringify(this.state, null, 2) + "\n",
+				`${JSON.stringify(this.state, null, 2)}\n`,
 				{ mode: 0o600 },
 			);
 		} catch (err) {

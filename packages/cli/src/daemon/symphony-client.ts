@@ -1,4 +1,4 @@
-import type { SymphonyState, SymphonyIssue } from "../types/daemon.js";
+import type { SymphonyIssue, SymphonyState } from "../types/daemon.js";
 
 export class SymphonyHttpClient {
 	private baseUrl: string;
@@ -23,10 +23,7 @@ export class SymphonyHttpClient {
 		return h;
 	}
 
-	private async request<T>(
-		method: string,
-		path: string,
-	): Promise<T | null> {
+	private async request<T>(method: string, path: string): Promise<T | null> {
 		try {
 			const res = await fetch(`${this.baseUrl}${path}`, {
 				method,
