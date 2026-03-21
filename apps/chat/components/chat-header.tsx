@@ -1,6 +1,7 @@
 "use client";
 import { Share } from "lucide-react";
 import { memo } from "react";
+import { ContextSidebarTrigger } from "@/components/context-sidebar";
 import { HeaderActions } from "@/components/header-actions";
 import { HeaderBreadcrumb } from "@/components/header-breadcrumb";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -67,7 +68,10 @@ function PureChatHeader({
         )}
       </div>
 
-      <HeaderActions />
+      <div className="flex items-center gap-1">
+        <ContextSidebarTrigger />
+        <HeaderActions />
+      </div>
     </header>
   );
 }
