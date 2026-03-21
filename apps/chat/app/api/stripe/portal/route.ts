@@ -1,81 +1,65 @@
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { getSafeSession } from "@/lib/auth";
+import { z } from "zod";
+
+import { withAuthAndValidation } from "@/lib/api/with-auth";
 import { getOrganizationById, isOrganizationMember } from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
 import { getStripe } from "@/lib/stripe";
 
+const portalSchema = z.object({
+  organizationId: z.string().min(1),
+});
 
-export async function POST(request: Request) {
-  const { data: session } = await getSafeSession({
-    fetchOptions: { headers: await headers() },
-  });
+export const POST = withAuthAndValidation(
+  portalSchema,
+  async (_request, { userId, body }) => {
+    const { organizationId } = body;
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    const org = await getOrganizationById(organizationId);
+    if (!org) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 },
+      );
+    }
 
-  let body: { organizationId: string };
+    if (!(await isOrganizationMember(userId, organizationId))) {
+      return NextResponse.json(
+        { error: "Forbidden — not a member of this organization" },
+        { status: 403 },
+      );
+    }
 
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    if (!org.stripeCustomerId) {
+      return NextResponse.json(
+        { error: "Organization has no billing account. Subscribe to a plan first." },
+        { status: 400 },
+      );
+    }
 
-  const { organizationId } = body;
+    try {
+      const appUrl = process.env.APP_URL || "http://localhost:3001";
 
-  if (!organizationId) {
-    return NextResponse.json(
-      { error: "Missing required field: organizationId" },
-      { status: 400 },
-    );
-  }
+      const portalSession = await getStripe().billingPortal.sessions.create({
+        customer: org.stripeCustomerId,
+        return_url: `${appUrl}/settings/billing`,
+      });
 
-  const org = await getOrganizationById(organizationId);
-  if (!org) {
-    return NextResponse.json(
-      { error: "Organization not found" },
-      { status: 404 },
-    );
-  }
+      logAudit({
+        organizationId,
+        actorId: userId,
+        action: "billing.portal_opened",
+        resourceType: "organization",
+        resourceId: organizationId,
+      });
 
-  if (!(await isOrganizationMember(session.user.id, organizationId))) {
-    return NextResponse.json(
-      { error: "Forbidden — not a member of this organization" },
-      { status: 403 },
-    );
-  }
-
-  if (!org.stripeCustomerId) {
-    return NextResponse.json(
-      { error: "Organization has no billing account. Subscribe to a plan first." },
-      { status: 400 },
-    );
-  }
-
-  try {
-    const appUrl = process.env.APP_URL || "http://localhost:3001";
-
-    const portalSession = await getStripe().billingPortal.sessions.create({
-      customer: org.stripeCustomerId,
-      return_url: `${appUrl}/settings/billing`,
-    });
-
-    logAudit({
-      organizationId,
-      actorId: session.user.id,
-      action: "billing.portal_opened",
-      resourceType: "organization",
-      resourceId: organizationId,
-    });
-
-    return NextResponse.json({ url: portalSession.url });
-  } catch (err) {
-    console.error("[stripe] Failed to create portal session:", err);
-    return NextResponse.json(
-      { error: "Failed to create billing portal session" },
-      { status: 500 },
-    );
-  }
-}
+      return NextResponse.json({ url: portalSession.url });
+    } catch (err) {
+      console.error("[stripe] Failed to create portal session:", err);
+      return NextResponse.json(
+        { error: "Failed to create billing portal session" },
+        { status: 500 },
+      );
+    }
+  },
+);

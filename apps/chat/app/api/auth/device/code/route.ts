@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   checkDeviceCodeRateLimit,
   getClientIP,
 } from "@/lib/utils/rate-limit";
+
+const deviceCodeSchema = z.object({
+  client_id: z.string().default("cli"),
+  scope: z.string().default(""),
+});
 
 /**
  * POST /api/auth/device/code
@@ -28,16 +34,23 @@ export async function POST(request: Request) {
       );
     }
 
-    let clientId = "cli";
-    let scope = "";
-
+    // Parse body — empty body is fine, schema provides defaults
+    let raw: unknown = {};
     try {
-      const body = await request.json();
-      if (body.client_id) clientId = String(body.client_id);
-      if (body.scope) scope = String(body.scope);
+      raw = await request.json();
     } catch {
       // empty body is fine, use defaults
     }
+
+    const result = deviceCodeSchema.safeParse(raw);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "Invalid request body" },
+        { status: 400 },
+      );
+    }
+
+    const { client_id: clientId, scope } = result.data;
 
     const deviceCode = Array.from(crypto.getRandomValues(new Uint8Array(32)))
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -78,7 +91,7 @@ export async function POST(request: Request) {
             ? "Internal server error"
             : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

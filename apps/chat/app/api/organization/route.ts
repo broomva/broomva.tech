@@ -1,7 +1,7 @@
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
-import { getSafeSession } from "@/lib/auth";
+import { withAuth, withAuthAndValidation } from "@/lib/api/with-auth";
 import {
   createOrganization,
   getOrganizationBySlug,
@@ -34,17 +34,9 @@ const RESERVED_SLUGS = [
 /**
  * GET /api/organization — list current user's organizations with member counts and plan info
  */
-export async function GET() {
-  const { data: session } = await getSafeSession({
-    fetchOptions: { headers: await headers() },
-  });
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-
+export const GET = withAuth(async (_request, { userId }) => {
   try {
-    const orgs = await getUserOrganizations(session.user.id);
+    const orgs = await getUserOrganizations(userId);
 
     // Enrich each org with member count and plan display info
     const enriched = await Promise.all(
@@ -75,89 +67,74 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+});
+
+const createOrgSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  slug: z.string().min(1, "Slug is required"),
+});
 
 /**
  * POST /api/organization — create a new organization
  * Body: { name: string, slug: string }
  */
-export async function POST(request: Request) {
-  const { data: session } = await getSafeSession({
-    fetchOptions: { headers: await headers() },
-  });
+export const POST = withAuthAndValidation(
+  createOrgSchema,
+  async (_request, { userId, body }) => {
+    const { name, slug } = body;
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+    const normalizedSlug = slug.toLowerCase().trim();
 
-  let body: { name: string; slug: string };
+    // Validate slug format: lowercase, alphanumeric + hyphens, 3-32 chars
+    if (!SLUG_RE.test(normalizedSlug)) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid slug: must be 3-32 characters, lowercase alphanumeric and hyphens only, cannot start or end with a hyphen",
+        },
+        { status: 400 },
+      );
+    }
 
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    if (RESERVED_SLUGS.includes(normalizedSlug)) {
+      return NextResponse.json(
+        { error: `Slug "${normalizedSlug}" is reserved` },
+        { status: 400 },
+      );
+    }
 
-  const { name, slug } = body;
+    // Check if slug is already taken
+    const existing = await getOrganizationBySlug(normalizedSlug);
+    if (existing) {
+      return NextResponse.json(
+        { error: "An organization with this slug already exists" },
+        { status: 409 },
+      );
+    }
 
-  if (!name || !slug) {
-    return NextResponse.json(
-      { error: "Missing required fields: name, slug" },
-      { status: 400 },
-    );
-  }
+    try {
+      const org = await createOrganization(
+        name.trim(),
+        normalizedSlug,
+        userId,
+      );
 
-  const normalizedSlug = slug.toLowerCase().trim();
+      logAudit({
+        organizationId: org.id,
+        actorId: userId,
+        action: "organization.created",
+        resourceType: "organization",
+        resourceId: org.id,
+        metadata: { name: org.name, slug: org.slug },
+      });
 
-  // Validate slug format: lowercase, alphanumeric + hyphens, 3-32 chars
-  if (!SLUG_RE.test(normalizedSlug)) {
-    return NextResponse.json(
-      {
-        error:
-          "Invalid slug: must be 3-32 characters, lowercase alphanumeric and hyphens only, cannot start or end with a hyphen",
-      },
-      { status: 400 },
-    );
-  }
-
-  if (RESERVED_SLUGS.includes(normalizedSlug)) {
-    return NextResponse.json(
-      { error: `Slug "${normalizedSlug}" is reserved` },
-      { status: 400 },
-    );
-  }
-
-  // Check if slug is already taken
-  const existing = await getOrganizationBySlug(normalizedSlug);
-  if (existing) {
-    return NextResponse.json(
-      { error: "An organization with this slug already exists" },
-      { status: 409 },
-    );
-  }
-
-  try {
-    const org = await createOrganization(
-      name.trim(),
-      normalizedSlug,
-      session.user.id,
-    );
-
-    logAudit({
-      organizationId: org.id,
-      actorId: session.user.id,
-      action: "organization.created",
-      resourceType: "organization",
-      resourceId: org.id,
-      metadata: { name: org.name, slug: org.slug },
-    });
-
-    return NextResponse.json({ organization: org }, { status: 201 });
-  } catch (err) {
-    console.error("[organization] Failed to create organization:", err);
-    return NextResponse.json(
-      { error: "Failed to create organization" },
-      { status: 500 },
-    );
-  }
-}
+      return NextResponse.json({ organization: org }, { status: 201 });
+    } catch (err) {
+      console.error("[organization] Failed to create organization:", err);
+      return NextResponse.json(
+        { error: "Failed to create organization" },
+        { status: 500 },
+      );
+    }
+  },
+);
