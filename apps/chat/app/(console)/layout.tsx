@@ -24,15 +24,19 @@ export default async function ConsoleLayout({
   return (
     <ToolbarDockProvider>
       <SidebarProvider>
-        <ConsoleSidebar />
+        <ConsoleSidebar
+          userName={session.user.name ?? "Agent"}
+          userEmail={session.user.email}
+          userAvatar={session.user.image ?? ""}
+        />
         <SidebarInset>
           <SiteHeader />
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0 pb-24">
             {children}
           </div>
         </SidebarInset>
+        <TopNav />
       </SidebarProvider>
-      <TopNav />
     </ToolbarDockProvider>
   );
 }

@@ -1,0 +1,160 @@
+---
+title: "Symphony vs Direct Autonomous Execution: Operational Value Assessment"
+summary: "Deep comparative analysis for evaluating /symphony orchestration vs direct autonomous agent execution, grounded in actual codebase behavior and measurable outcomes."
+date: 2026-03-21
+published: true
+category: strategy
+version: "1.0"
+tags:
+  - symphony
+  - orchestration
+  - workflow
+  - autonomous-execution
+  - agent-strategy
+  - decision-framework
+---
+
+You are operating inside the Broomva ecosystem.
+
+Objective:
+Determine whether we get real operational value from using /symphony, as opposed to having you directly orchestrate all required workflows yourself with proper parallelism, sequencing, dependency awareness, and autonomous follow-through to completion.
+
+Core decision to evaluate:
+Which workflow is better, and under what conditions, for the actual goal of:
+turning tickets into completed, validated, automerged PRs that solve the task and continuously improve through feedback systems?
+
+The two workflows to compare:
+1. /symphony as orchestration layer
+2. direct autonomous execution by the coding agent, including:
+   - dependency-aware planning
+   - parallel agents where useful
+   - worktrees where useful
+   - sequencing based on the chain of dependencies
+   - commit / PR / CI / automerge ownership
+   - iterative correction through feedback
+
+This is not a conceptual comparison only.
+Ground the answer in the actual codebase, workflow capabilities, and measurable behavior where possible.
+
+Execution requirements:
+1. Inspect the current implementation and usage model of /symphony.
+2. Inspect the current capabilities available for direct autonomous execution in this environment.
+3. Define the actual end goal precisely:
+   - ingest tickets
+   - understand dependency graph
+   - implement work in the correct order
+   - use parallelism where safe
+   - validate changes
+   - create PRs
+   - respond to feedback
+   - get to green CI/CD
+   - automerge cleanly
+4. Compare /symphony and direct execution against that end goal, not against abstract orchestration theory.
+5. Think deeply about the chain of dependencies between tickets and how each workflow handles:
+   - strongly coupled foundation work
+   - partially dependent feature work
+   - independent batchable work
+6. Evaluate where /symphony adds real leverage versus where it adds indirection, fragmentation, or coordination overhead.
+7. Evaluate where direct autonomous execution is stronger versus where it becomes less scalable or less efficient.
+8. Run tests, simulations, or measurements where useful to get a grounded sense of the differences.
+
+Specific dimensions to evaluate:
+- dependency awareness
+- inter-ticket reasoning quality
+- context retention/coherence
+- parallelism quality
+- branch/worktree coordination
+- ability to handle foundation work
+- ability to handle independent tickets at scale
+- PR quality
+- CI/CD success rate
+- rework rate
+- ability to incorporate feedback loops
+- operational overhead
+- observability/debuggability
+- unattended execution value
+- batching efficiency
+- failure isolation
+- recovery after partial failures
+- suitability for continuous building and iterative refinement
+
+Things to inspect concretely:
+- how /symphony dispatches work
+- whether it treats tickets independently or can model dependencies
+- whether it supports dependency-aware scheduling
+- how much context each agent run gets
+- hook and lifecycle model
+- branch/PR management model
+- what feedback systems exist in /symphony
+- how direct execution currently handles parallel agents, worktrees, sequencing, and feedback incorporation
+- how automerge criteria are enforced in each model
+
+Testing and measurement expectations:
+Where feasible, run concrete tests or structured comparisons such as:
+- simulate a set of tightly coupled tickets
+- simulate a set of moderately dependent tickets
+- simulate a set of independent tickets
+- compare orchestration overhead
+- compare execution correctness
+- compare number of conflicts or coordination failures
+- compare ability to preserve architectural coherence
+- compare PR readiness and green-check reliability
+- compare human intervention required
+If exact benchmarking is not possible, provide a reasoned operational evaluation grounded in actual code and workflow behavior.
+
+Important framing:
+Do not assume /symphony is automatically better because it is an orchestration layer.
+Do not assume direct execution is automatically better because it has richer context.
+Determine where each workflow shines, where each breaks down, and what the recommended division of labor should be.
+
+Desired output structure:
+1. Current state assessment
+   - what /symphony currently is
+   - what direct autonomous execution currently can do
+2. Goal model
+   - what "ticket to completed automerged PR with feedback loop" actually requires
+3. Comparative analysis
+   - where /symphony is stronger
+   - where direct execution is stronger
+   - where each fails
+4. Evidence
+   - tests run
+   - measurements taken
+   - operational observations
+5. Recommended workflow model
+   - when to use /symphony
+   - when to use direct execution
+   - whether a hybrid model is best
+6. Concrete next steps
+   - what to adopt now
+   - what to delay
+   - what changes would improve either workflow
+
+Quality bar:
+- do not give a superficial pros/cons list
+- do not argue from intuition alone if inspection/testing is possible
+- do not compare abstractly without reference to the actual workflow goal
+- do not overvalue daemonization if dependency handling is weak
+- do not overvalue shared context if unattended throughput matters more in some phases
+- optimize for actual delivery of correct, validated, automerged work
+
+Definition of done:
+- /symphony is inspected concretely
+- direct autonomous execution is evaluated concretely
+- meaningful differences are identified
+- tests or grounded measurements are included where useful
+- a clear recommendation is made
+- the recommendation explains where each workflow shines or does not
+- the final answer is actionable for current project execution strategy
+
+Final output:
+Provide a final summary including:
+1. what /symphony is good at
+2. what direct autonomous execution is good at
+3. where /symphony is a bad fit
+4. where direct execution is a bad fit
+5. benchmark/test findings
+6. recommended operating model
+7. whether a hybrid strategy is best
+8. what workflow should be used now for the current project stage
+9. what conditions should trigger switching to /symphony later
