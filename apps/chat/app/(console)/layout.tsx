@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { TopNav } from "@/components/site/top-nav";
+import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
 import { getSafeSession } from "@/lib/auth";
 
 export default async function ConsoleLayout({
@@ -28,14 +30,17 @@ export default async function ConsoleLayout({
     : undefined;
 
   return (
-    <SidebarProvider>
-      <AppSidebar variant="inset" user={user} />
-      <SidebarInset>
-        <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <main className="flex-1 overflow-y-auto">{children}</main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <ToolbarDockProvider>
+      <SidebarProvider>
+        <AppSidebar variant="inset" user={user} />
+        <SidebarInset>
+          <SiteHeader />
+          <div className="flex flex-1 flex-col pb-24">
+            <main className="flex-1 overflow-y-auto">{children}</main>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+      <TopNav />
+    </ToolbarDockProvider>
   );
 }
