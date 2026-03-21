@@ -7,7 +7,6 @@ import { updateOrganizationPlan } from "@/lib/db/organization";
 import { stripe, PLAN_TIERS, tierFromPriceId, type PlanTier } from "@/lib/stripe";
 import type Stripe from "stripe";
 
-export const dynamic = "force-dynamic";
 
 // ---------------------------------------------------------------------------
 // Helpers

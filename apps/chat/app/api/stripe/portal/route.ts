@@ -5,7 +5,6 @@ import { getOrganizationById } from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
 import { stripe } from "@/lib/stripe";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const { data: session } = await getSafeSession({
