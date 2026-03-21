@@ -57,7 +57,6 @@ export function CodeExecution({ tool }: { tool: CodeExecutionTool }) {
       {pngChart && (
         <div className="pt-1">
           {/* biome-ignore lint/performance/noImgElement: Next/Image not desired for base64 data URLs */}
-          {/* biome-ignore lint/correctness/useImageSize: Dynamic chart dimensions unknown */}
           <img
             alt="Chart output"
             className="max-w-full rounded-lg"

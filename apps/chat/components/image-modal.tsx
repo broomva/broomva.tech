@@ -126,9 +126,7 @@ export function ImageModal({
           type="button"
         >
           {/* biome-ignore lint/performance/noImgElement: Next/Image not desired for modal preview */}
-          {/* biome-ignore lint/correctness/useImageSize: Dynamic image dimensions unknown */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: Click handled by parent button */}
-          {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Stops propagation to parent */}
           <img
             alt={imageName ?? "Expanded image"}
             className="max-h-[90vh] max-w-[90vw] object-contain"

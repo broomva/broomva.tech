@@ -62,7 +62,6 @@ Use for:
         // Flush the Langfuse trace right after the run
         await langfuse.flushAsync();
 
-        // biome-ignore lint/style/useDefaultSwitchClause: researchResult is of type never but this might be reached other
         switch (researchResult.type) {
           case "report":
             return {

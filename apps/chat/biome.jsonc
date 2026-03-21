@@ -1,11 +1,10 @@
 {
-  "extends": ["ultracite/core", "ultracite/react", "ultracite/next"],
+  "$schema": "https://biomejs.dev/schemas/2.4.2/schema.json",
   "files": {
+    "ignoreUnknown": true,
     "includes": [
       "**/*",
       "!.next",
-      "!.next",
-      "!.devtools",
       "!.devtools",
       "!components/ui",
       "!components/ai-elements",
@@ -13,14 +12,54 @@
       "!components/stick-to-bottom",
       "!lib/utils.ts",
       "!hooks/use-mobile.ts",
-      "!content"
+      "!content",
+      "!**/*.d.ts.map",
+      "!**/dist/**/*",
+      "!**/build/**/*",
+      "!.bun-tmp/**/*",
+      "!app/globals.css",
+      "!app/(console)/**/*"
     ]
   },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
   "linter": {
+    "enabled": true,
     "rules": {
+      "recommended": true,
       "suspicious": {
-        /* Needs more work to fix */
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "warn",
+        "noImplicitAnyLet": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "useImportType": "off"
+      },
+      "complexity": {
+        "noForEach": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "warn",
+        "noUnusedVariables": "warn",
+        "noUnusedFunctionParameters": "off",
+        "useExhaustiveDependencies": "warn",
+        "useHookAtTopLevel": "warn"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "warn",
+        "noSvgWithoutTitle": "off",
+        "useSemanticElements": "warn"
+      },
+      "performance": {
+        "noImgElement": "warn"
       }
     }
   }
