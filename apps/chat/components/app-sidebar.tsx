@@ -1,8 +1,6 @@
 "use client"
 
-import * as React from "react"
-import type { Route } from "next"
-import Link from "next/link"
+import type * as React from "react"
 import {
   ActivityIcon,
   BookOpenIcon,
@@ -27,36 +25,56 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  SidebarRail,
 } from "@/components/ui/sidebar"
+import { TeamSwitcher } from "@/components/team-switcher"
 
 const navMain = [
   {
     title: "Dashboard",
     url: "/console",
     icon: LayoutDashboardIcon,
-  },
-  {
-    title: "Sessions",
-    url: "/console/sessions",
-    icon: MessageSquareIcon,
+    isActive: true,
+    items: [
+      { title: "Overview", url: "/console" },
+      { title: "Sessions", url: "/console/sessions" },
+    ],
   },
   {
     title: "Memory",
     url: "/console/memory",
     icon: BookOpenIcon,
+    items: [
+      { title: "Knowledge Graph", url: "/console/memory" },
+      { title: "Search", url: "/console/memory" },
+    ],
   },
   {
     title: "Autonomic",
     url: "/console/autonomic",
     icon: ActivityIcon,
+    items: [
+      { title: "Homeostasis", url: "/console/autonomic" },
+      { title: "Gating Profiles", url: "/console/autonomic" },
+    ],
   },
   {
     title: "Finance",
     url: "/console/finance",
     icon: WalletIcon,
+    items: [
+      { title: "Transactions", url: "/console/finance" },
+      { title: "Wallets", url: "/console/finance" },
+    ],
+  },
+  {
+    title: "Settings",
+    url: "/console/settings",
+    icon: SettingsIcon,
+    items: [
+      { title: "General", url: "/console" },
+      { title: "Services", url: "/console" },
+    ],
   },
 ]
 
@@ -85,11 +103,6 @@ const services = [
 
 const navSecondary = [
   {
-    title: "Settings",
-    url: "/console",
-    icon: SettingsIcon,
-  },
-  {
     title: "Help",
     url: "/console",
     icon: HelpCircleIcon,
@@ -98,6 +111,19 @@ const navSecondary = [
     title: "Search",
     url: "/console/memory",
     icon: SearchIcon,
+  },
+]
+
+const teams = [
+  {
+    name: "Life Console",
+    logo: BrainIcon,
+    plan: "Agent OS",
+  },
+  {
+    name: "Chat",
+    logo: MessageSquareIcon,
+    plan: "Sessions",
   },
 ]
 
@@ -117,21 +143,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <Link href={"/console" as Route}>
-                <BrainIcon className="h-5 w-5" />
-                <span className="text-base font-semibold">Life Console</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <TeamSwitcher teams={teams} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
@@ -141,6 +155,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       <SidebarFooter>
         <NavUser user={userData} />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

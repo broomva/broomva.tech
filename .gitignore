@@ -107,8 +107,36 @@ node_modules/
 .bun-tmp/
 .turbo/
 
+# IDE / agent tool configs
+.agent/
+.augment/
+.claude/
+.codebuddy/
+.commandcode/
+.continue/
+.crush/
+.factory/
+.goose/
+.kilocode/
+.kiro/
+.mcpjam/
+.mux/
+.neovate/
+.obsidian/
+.openhands/
+.pi/
+.qoder/
+.qwen/
+.trae/
+.windsurf/
+.zencoder/
+
+# bstack skills (local only)
+skills/
+skills-lock.json
+
 # rust
 **/target/
 **/*.rs.bk
 Cargo.lock
-!crates/**/Cargo.lock.obsidian/
+!crates/**/Cargo.lock

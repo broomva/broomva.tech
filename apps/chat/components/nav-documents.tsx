@@ -3,9 +3,10 @@
 import type { Route } from "next"
 import Link from "next/link"
 import {
-  FolderIcon,
-  MoreHorizontalIcon,
-  ShareIcon,
+  Folder,
+  Forward,
+  MoreHorizontal,
+  Trash2,
   type LucideIcon,
 } from "lucide-react"
 
@@ -13,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -50,31 +52,39 @@ export function NavDocuments({
             </SidebarMenuButton>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuAction
-                  showOnHover
-                  className="rounded-sm data-[state=open]:bg-accent"
-                >
-                  <MoreHorizontalIcon />
+                <SidebarMenuAction showOnHover>
+                  <MoreHorizontal />
                   <span className="sr-only">More</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-24 rounded-lg"
+                className="w-48 rounded-lg"
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
                 <DropdownMenuItem>
-                  <FolderIcon />
-                  <span>Open</span>
+                  <Folder className="text-muted-foreground" />
+                  <span>View Service</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <ShareIcon />
-                  <span>Share</span>
+                  <Forward className="text-muted-foreground" />
+                  <span>Share Service</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <Trash2 className="text-muted-foreground" />
+                  <span>Disconnect</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
+        <SidebarMenuItem>
+          <SidebarMenuButton className="text-sidebar-foreground/70">
+            <MoreHorizontal className="text-sidebar-foreground/70" />
+            <span>More</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   )
