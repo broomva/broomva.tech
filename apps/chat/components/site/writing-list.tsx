@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion } from "motion/react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
 import type { ContentSummary } from "@/lib/content";
 import { formatDate } from "@/lib/date";
+
+const COLLAPSED_ROWS = 2;
 
 interface WritingListProps {
   entries: ContentSummary[];
@@ -12,6 +14,10 @@ interface WritingListProps {
 
 export function WritingList({ entries }: WritingListProps) {
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+  const [needsCollapse, setNeedsCollapse] = useState(false);
+  const [collapsedHeight, setCollapsedHeight] = useState<number | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
 
   const allTags = useMemo(() => {
     const counts = new Map<string, number>();
@@ -22,6 +28,37 @@ export function WritingList({ entries }: WritingListProps) {
       .sort((a, b) => b[1] - a[1])
       .map(([tag, count]) => ({ tag, count }));
   }, [entries]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const buttons = Array.from(nav.querySelectorAll("button"));
+    if (buttons.length < 2) return;
+
+    const gap = 8; // gap-2
+    const firstTop = buttons[0].offsetTop;
+    let rowCount = 1;
+    let lastRowStart = 0;
+
+    for (let i = 1; i < buttons.length; i++) {
+      if (buttons[i].offsetTop > buttons[i - 1].offsetTop) {
+        rowCount++;
+        if (rowCount === COLLAPSED_ROWS + 1) {
+          lastRowStart = i;
+        }
+      }
+    }
+
+    if (rowCount > COLLAPSED_ROWS) {
+      setNeedsCollapse(true);
+      const cutoffButton = buttons[lastRowStart];
+      const height = cutoffButton.offsetTop - firstTop;
+      setCollapsedHeight(height);
+    } else {
+      setNeedsCollapse(false);
+    }
+  }, [allTags]);
 
   const filtered = useMemo(() => {
     if (!activeTag) return entries;
