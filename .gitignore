@@ -131,6 +131,13 @@ node_modules/
 .windsurf/
 .zencoder/
 
+# Private platform (tracked in broomva-platform repo)
+apps/console/
+packages/billing/
+packages/tenant/
+packages/deploy/
+packages/conformance/
+
 # bstack skills (local only)
 skills/
 skills-lock.json
