@@ -11,7 +11,12 @@ tags:
   - agentic-AI
   - EGRI
   - robust-control
+audio: /audio/writing/modern-control-stack.mp3
 ---
+
+<video src="/images/writing/modern-control-stack/modern-control-stack.mp4" autoplay muted loop playsInline style="width:100%;border-radius:8px;margin-bottom:1.5rem"></video>
+
+![The Modern Control Stack — six layered strata from classical PID at the base to AI-driven supervisory control at the top](/images/writing/modern-control-stack/hero-opt.png)
 
 A lot has moved since the PID / state-space / robust-modern / ADRC / TDC era.
 
@@ -48,6 +53,8 @@ This changes control architecture. Instead of baking everything into one monolit
 - **Learning/adaptation** — the data-driven layer
 
 That decomposition is architecturally significant. It means you can swap, tune, or learn each layer independently while maintaining hard safety guarantees at the shield level.
+
+![Safety decomposition architecture — performance controller, CBF-QP safety shield, and learning layer as independent, composable modules](/images/writing/modern-control-stack/safety-decomposition-opt.png)
 
 ### 3. Koopman-based control matured
 
@@ -201,6 +208,8 @@ The critical design choice is **where** in the loop hierarchy the LLM sits:
 
 In most physical/fast systems, the LLM should output **controller parameters and plans** that deterministic modules execute. In slower cyber "plants" (cloud ops, workflow routing), an LLM can act closer to the control law — but still requires harnesses, verifiers, and rollback.
 
+![Multi-rate control hierarchy — deterministic zone at milliseconds, LLM supervisory zone at seconds to days](/images/writing/modern-control-stack/multi-rate-hierarchy-opt.png)
+
 ### LLM roles in the control stack
 
 The LLM can play several roles. The right choice depends on what it outputs and how that output is verified:
@@ -234,6 +243,8 @@ The architecture treats the governance/harness/orchestration stack as the operat
 - Robust / DRO scenario engine
 
 **Auto-improvement layer** — Evaluator-Governed Recursive Improvement (EGRI). Problem-spec compiler, evaluator + constraints, promotion/rollback policy. Controller tuning as an explicit bounded closed-loop optimization.
+
+![Blueprint architecture — governance, harness, orchestration, control kernel, and EGRI auto-improvement as interconnected subsystems](/images/writing/modern-control-stack/blueprint-architecture-opt.png)
 
 ### Control-flow: a single tick
 
