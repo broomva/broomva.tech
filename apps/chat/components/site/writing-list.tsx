@@ -29,6 +29,8 @@ export function WritingList({ entries }: WritingListProps) {
       .map(([tag, count]) => ({ tag, count }));
   }, [entries]);
 
+  const tagCount = allTags.length;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure DOM layout when tag buttons change
   useEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
@@ -59,7 +61,7 @@ export function WritingList({ entries }: WritingListProps) {
     } else {
       setNeedsCollapse(false);
     }
-  }, [allTags.length]); // eslint-disable-line -- re-measure when tag count changes
+  }, [tagCount]);
 
   const filtered = useMemo(() => {
     if (!activeTag) return entries;
