@@ -1,0 +1,181 @@
+---
+title: "How to Create a Blog Post with the BroomVA Stack"
+summary: "A meta-tutorial: this post was created by the very skill it describes. One sentence becomes a complete publishing package across 7 surfaces — using only CLI tools, bash, and agent orchestration."
+date: 2026-03-20
+published: true
+tags:
+  - bstack
+  - content-creation
+  - agent-skills
+  - cli
+  - automation
+  - meta
+audio: /audio/writing/how-to-create-a-blog-post-with-bstack.mp3
+---
+
+This post was created by the very system it describes. One sentence in, nine phases later: a complete publishing package across broomva.tech, X, LinkedIn, and Instagram — with audio narration, video scripts, and AI-generated visuals. No SaaS. No copy-pasting. Just CLI tools and agent skills.
+
+Here's how.
+
+## The Problem: Content as Manual Labor
+
+Developers automate everything — CI/CD pipelines, infrastructure provisioning, testing, deployment. But when it comes to writing about their work, the workflow looks like 2010:
+
+1. Write a blog post in Google Docs or Notion
+2. Copy-paste it into your blog platform
+3. Manually rewrite it for X (shorter), LinkedIn (professional tone), Instagram (visual)
+4. Create images in Canva or Figma, export, upload separately
+5. Post to each platform one by one
+6. Repeat next week
+
+No version control. No media automation. No distribution strategy. No feedback loop. The irony: we build systems that deploy code to millions of servers with a single `git push`, but publishing a blog post takes 3 hours of manual labor across 5 browser tabs.
+
+## The Solution: Content as Code
+
+The `/blog-post` skill treats content like a software artifact — structured, version-controlled, multi-target compiled, and deployed via CLI.
+
+Give it a sentence:
+
+```
+/blog-post "How to build an Agent OS in Rust" — developers, educate, provocative
+```
+
+Get a complete publishing package:
+
+```
+posts/2026-03-20-agent-os-rust/
+├── README.md                    # Package manifest
+├── brief.md                     # Content brief
+├── outline.md                   # Structural blueprint
+├── broomva-tech-post.mdx        # Long-form blog post
+├── x-post.md                    # X single post (280 chars)
+├── x-thread.md                  # X thread (7 tweets)
+├── linkedin-post.md             # LinkedIn post
+├── instagram-post.md            # Carousel spec + caption
+├── instagram-reel.md            # 30s vertical video script
+├── media/                       # Image prompts, audio scripts, video scripts
+└── strategy/                    # Audience, distribution plan, CTA
+```
+
+18+ files. 7 platform surfaces. One invocation.
+
+## The 9-Phase Pipeline
+
+The skill runs a structured pipeline — each phase produces a concrete artifact:
+
+| Phase | Name | Output |
+|-------|------|--------|
+| 0 | **Brief Intake** | `brief.md` — topic, audience, intent, platforms |
+| 1 | **Research** | `research.md` — data, sources, claims to verify |
+| 2 | **Angle Selection** | Storytelling framework (ABT, PSI, 1-3-1, Pixar Spine) |
+| 3 | **Outline** | `outline.md` — structural blueprint with media inventory |
+| 4 | **Long-Form** | `broomva-tech-post.mdx` — primary blog post |
+| 5 | **Adaptation** | Platform-native content for X, LinkedIn, Instagram |
+| 6 | **Media** | Image prompts, audio scripts, video compositions |
+| 7 | **Strategy** | Audience profile, distribution plan, CTA alignment |
+| 8 | **Publish** | Automated posting via `xurl`, `curl`, and `git` |
+
+The key insight: each platform gets *native* content, not a copy-paste resize. An X thread is a beat-by-beat narrative. A LinkedIn post leads with a professional hook. An Instagram carousel is visual-first. Same message, different expression.
+
+## The Stack Behind It
+
+The `/blog-post` skill doesn't work alone — it orchestrates a constellation of compounding skills from the BroomVA Stack:
+
+| Skill | What It Contributes |
+|-------|-------------------|
+| `/content-creation` | Storytelling frameworks (ABT, PSI, Pixar Spine), social distribution patterns, AI asset generation |
+| `/deep-research` | Multi-source research with citation tracking |
+| `/pencil` | Design carousel slides, social cards, diagrams |
+| `/remotion-best-practices` | Video composition with spring animations |
+| `/arcan-glass` | BroomVA dark-first brand styling |
+| `/prompt-library` | Reusable prompts for content generation |
+| `/bstack` | 27 skills across 7 layers — the full governance and skill stack |
+
+The bstack architecture has 7 layers: Foundation, Memory, Orchestration, Research, Design, Platform, and Strategy. The `/blog-post` skill sits in the Platform layer and reaches into all the others.
+
+## Platform-Native Distribution
+
+Publishing uses only native CLI tools and REST APIs — no Ayrshare, no Buffer, no third-party services.
+
+| Platform | Tool | How |
+|----------|------|-----|
+| **X** | `xurl` CLI | `xurl post "text" --media hero.png` for posts, reply chains for threads |
+| **LinkedIn** | `curl` | Posts API v2 (`/v2/posts`) with OAuth2 bearer token |
+| **Instagram** | `curl` | Instagram Business Login API via `graph.instagram.com` |
+| **broomva.tech** | `git` + `gh` | Copy .mdx + assets, create PR |
+
+The `publish.sh` script reads a content package and posts to all configured platforms:
+
+```bash
+./scripts/publish.sh /broomva/posts/2026-03-20-my-post --platform all
+```
+
+```
+📦 Publishing content package: 2026-03-20-my-post
+
+📋 Platform Status:
+  ✅ X (xurl)
+  ✅ LinkedIn
+  ✅ Instagram
+  ✅ broomva.tech (git)
+```
+
+All credentials stored locally in `~/.config/blog-post/` — never in a repo, never in a SaaS dashboard. The conversation bridge PII scrubber catches any accidental credential exposure across 7 pattern categories.
+
+## The Meta Proof
+
+This section was generated by Phase 4 of the pipeline. The X thread you'll see on `@broomva_tech` was generated by Phase 5. The hero image was prompted by Phase 6. The distribution plan was generated by Phase 7.
+
+You're reading the output of Phase 8.
+
+The content package for this very post lives at:
+
+```
+/broomva/posts/2026-03-20-how-to-create-a-blog-post-with-bstack/
+```
+
+28 files. Created in a single Claude Code session. Validated by `quick_validate.py`. Published by `publish.sh`.
+
+The best documentation is the artifact itself.
+
+## Try It Yourself
+
+Install the skill:
+
+```bash
+npx skills add broomva/blog-post --yes
+```
+
+Create your first content package:
+
+```
+/blog-post "your topic here" — your audience, your intent, your tone
+```
+
+Set up platform connectors (one-time):
+
+```bash
+# X (Twitter)
+xurl auth apps add myapp --client-id YOUR_ID --client-secret YOUR_SECRET
+xurl auth oauth2
+
+# LinkedIn
+# Follow the OAuth2 flow in references/publishing-automation.md
+
+# Instagram
+# Follow the Business Login flow in references/publishing-automation.md
+```
+
+Publish:
+
+```bash
+./scripts/publish.sh /broomva/posts/YYYY-MM-DD-slug --platform all
+```
+
+The skill, the stack, and this post are all open source:
+- Skill: [github.com/broomva/blog-post](https://github.com/broomva/blog-post)
+- Stack: [github.com/broomva/workspace](https://github.com/broomva/workspace)
+
+---
+
+*The best documentation is the artifact itself. This post exists because a skill created it. The skill exists because a stack made it possible. The stack exists because agents deserve infrastructure, not just prompts.*
