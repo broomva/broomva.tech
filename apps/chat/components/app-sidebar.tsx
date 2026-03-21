@@ -1,134 +1,61 @@
-"use client"
-
-import type * as React from "react"
-import {
-  ActivityIcon,
-  BookOpen,
-  BrainIcon,
-  CircuitBoardIcon,
-  DollarSignIcon,
-  MessageSquareIcon,
-  Settings2,
-  ShieldIcon,
-  WalletIcon,
-} from "lucide-react"
-
-import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
+import { Cpu } from "lucide-react";
+import Link from "next/link";
+import { NewChatButton } from "@/components/new-chat-button";
+import { SearchChatsButton } from "@/components/search-chats";
+import { SidebarTopRow } from "@/components/sidebar-top-row";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
-} from "@/components/ui/sidebar"
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
+import { AppSidebarHistoryConditional } from "./app-sidebar-history-conditional";
+import { SidebarUserNav } from "./sidebar-user-nav";
 
-const data = {
-  user: {
-    name: "Agent",
-    email: "agent@life.os",
-    avatar: "",
-  },
-  teams: [
-    {
-      name: "Life Console",
-      logo: BrainIcon,
-      plan: "Agent OS",
-    },
-    {
-      name: "Chat",
-      logo: MessageSquareIcon,
-      plan: "Sessions",
-    },
-  ],
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "#",
-      icon: BrainIcon,
-      isActive: true,
-      items: [
-        { title: "Overview", url: "/console" },
-        { title: "Sessions", url: "/console/sessions" },
-      ],
-    },
-    {
-      title: "Memory",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        { title: "Knowledge Graph", url: "/console/memory" },
-        { title: "Search", url: "/console/memory" },
-      ],
-    },
-    {
-      title: "Autonomic",
-      url: "#",
-      icon: ActivityIcon,
-      items: [
-        { title: "Homeostasis", url: "/console/autonomic" },
-        { title: "Gating Profiles", url: "/console/autonomic" },
-      ],
-    },
-    {
-      title: "Finance",
-      url: "#",
-      icon: WalletIcon,
-      items: [
-        { title: "Transactions", url: "/console/finance" },
-        { title: "Wallets", url: "/console/finance" },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        { title: "General", url: "/console" },
-        { title: "Services", url: "/console" },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: "Arcan",
-      url: "/console",
-      icon: CircuitBoardIcon,
-    },
-    {
-      name: "Lago",
-      url: "/console/memory",
-      icon: BrainIcon,
-    },
-    {
-      name: "Autonomic",
-      url: "/console/autonomic",
-      icon: ShieldIcon,
-    },
-    {
-      name: "Haima",
-      url: "/console/finance",
-      icon: DollarSignIcon,
-    },
-  ],
-}
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar() {
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+    <Sidebar
+      className="grid max-h-dvh grid-rows-[auto_1fr_auto] group-data-[side=left]:border-r-0"
+      collapsible="icon"
+    >
+      <SidebarHeader className="shrink-0">
+        <SidebarMenu>
+          <div className="flex flex-row items-center justify-between">
+            <SidebarTopRow />
+          </div>
+
+          <NewChatButton />
+
+          <SidebarMenuItem>
+            <SearchChatsButton />
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Models">
+              <Link href="/settings/models">
+                <Cpu className="size-4" />
+                <span className="group-data-[collapsible=icon]:hidden">
+                  Models
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
-      </SidebarContent>
+      <SidebarSeparator />
+      <ScrollArea className="relative flex-1 overflow-y-auto">
+        <SidebarContent className="max-w-(--sidebar-width) pr-2">
+          <AppSidebarHistoryConditional />
+        </SidebarContent>
+      </ScrollArea>
+      <SidebarSeparator />
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <SidebarUserNav />
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
-  )
+  );
 }

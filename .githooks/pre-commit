@@ -1,31 +1,145 @@
 #!/bin/bash
-# Pre-commit hook: validate that staged content posts have matching audio files
-# Posts with `audio:` in frontmatter must have the referenced file in public/
+# Pre-commit hook: validate multimedia assets for staged content posts
+#
+# Checks:
+#   1. Audio (HARD FAIL): staged .mdx files with `audio:` frontmatter must have
+#      the referenced .mp3 in apps/chat/public/.
+#   2. Audio presence (HARD FAIL): every staged writing .mdx MUST have an
+#      `audio:` field in frontmatter.
+#   3. Hero image/media (WARNING): every staged writing .mdx should contain at
+#      least one image or video reference in the body (after frontmatter).
+#   4. Image directory (WARNING): for slug X, a matching directory should exist
+#      under apps/chat/public/images/writing/.
 
 set -e
 
 CONTENT_DIR="apps/chat/content"
 PUBLIC_DIR="apps/chat/public"
+IMAGES_DIR="$PUBLIC_DIR/images/writing"
+
 errors=0
+warnings=0
+posts_checked=0
+audio_ok=0
+image_warnings=0
 
-# Check staged .mdx files for audio field validation
-for file in $(git diff --cached --name-only --diff-filter=ACM | grep -E "^$CONTENT_DIR/(writing|notes|projects)/.*\.mdx$"); do
-  # Extract the audio field from frontmatter (first --- block only)
-  audio=$(awk '/^---$/{n++} n==1{print} n==2{exit}' "$file" | grep -E "^audio:" | head -1 | sed 's/audio: *//' | tr -d '"' | tr -d "'")
+# Collect staged .mdx files in content directories
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E "^$CONTENT_DIR/(writing|notes|projects)/.*\.mdx$" || true)
 
-  if [ -n "$audio" ]; then
-    # audio field is set — verify the file exists
-    audio_path="$PUBLIC_DIR${audio}"
-    if [ ! -f "$audio_path" ]; then
-      echo "ERROR: $file references audio: $audio but $audio_path does not exist"
+if [ -z "$staged_files" ]; then
+  exit 0
+fi
+
+for file in $staged_files; do
+  posts_checked=$((posts_checked + 1))
+  slug=$(basename "$file" .mdx)
+  is_writing=false
+
+  if echo "$file" | grep -qE "^$CONTENT_DIR/writing/"; then
+    is_writing=true
+  fi
+
+  # ─── 1. Audio frontmatter validation ───────────────────────────────────
+
+  # Extract frontmatter (content between first pair of --- lines)
+  frontmatter=$(awk '/^---$/{n++} n==1{print} n==2{exit}' "$file")
+
+  # Extract audio field value
+  audio=$(echo "$frontmatter" | grep -E "^audio:" | head -1 | sed 's/audio: *//' | tr -d '"' | tr -d "'")
+
+  if [ "$is_writing" = true ]; then
+    if [ -z "$audio" ]; then
+      # Writing posts MUST have an audio: field
+      echo "ERROR: $file is missing required 'audio:' field in frontmatter"
       errors=$((errors + 1))
+    else
+      # Audio field exists — verify the referenced file
+      audio_path="$PUBLIC_DIR${audio}"
+      if [ ! -f "$audio_path" ]; then
+        echo "ERROR: $file references audio: $audio but $audio_path does not exist"
+        errors=$((errors + 1))
+      else
+        audio_ok=$((audio_ok + 1))
+      fi
+    fi
+  else
+    # Non-writing posts: only check if audio field is present
+    if [ -n "$audio" ]; then
+      audio_path="$PUBLIC_DIR${audio}"
+      if [ ! -f "$audio_path" ]; then
+        echo "ERROR: $file references audio: $audio but $audio_path does not exist"
+        errors=$((errors + 1))
+      else
+        audio_ok=$((audio_ok + 1))
+      fi
+    fi
+  fi
+
+  # ─── 2. Hero image / media reference (WARNING, writing only) ──────────
+
+  if [ "$is_writing" = true ]; then
+    # Extract body (everything after the second --- line)
+    body=$(awk 'BEGIN{n=0} /^---$/{n++; next} n>=2{print}' "$file")
+
+    # Check for image or video references: ![, <img, <video, <Image
+    has_media=$(echo "$body" | grep -cE '!\[|<img|<video|<Image' || true)
+
+    if [ "$has_media" -eq 0 ]; then
+      echo "WARNING: $file has no image or video reference in the body"
+      warnings=$((warnings + 1))
+      image_warnings=$((image_warnings + 1))
+    fi
+  fi
+
+  # ─── 3. Image directory exists (WARNING, writing only) ────────────────
+
+  if [ "$is_writing" = true ] && [ -d "$IMAGES_DIR" ]; then
+    # Look for a directory under images/writing/ that starts with the slug
+    # or matches a close variant (e.g. slug with trailing segments stripped)
+    match_found=false
+
+    if [ -d "$IMAGES_DIR/$slug" ]; then
+      match_found=true
+    else
+      # Try partial match: find directories starting with the slug prefix
+      # (handles slug differences like trailing words)
+      for dir in "$IMAGES_DIR"/*/; do
+        dir_name=$(basename "$dir")
+        # Check if the slug starts with the dir name or vice versa
+        case "$slug" in
+          "$dir_name"*) match_found=true; break ;;
+        esac
+        case "$dir_name" in
+          "$slug"*) match_found=true; break ;;
+        esac
+      done
+    fi
+
+    if [ "$match_found" = false ]; then
+      echo "WARNING: $file — no image directory found matching slug '$slug' in $IMAGES_DIR/"
+      warnings=$((warnings + 1))
+      image_warnings=$((image_warnings + 1))
     fi
   fi
 done
 
+# ─── Summary ──────────────────────────────────────────────────────────────
+
+echo ""
+echo "── Multimedia validation summary ──"
+echo "  Posts checked:    $posts_checked"
+echo "  Audio OK:         $audio_ok"
+echo "  Audio errors:     $errors"
+echo "  Image warnings:   $image_warnings"
+echo "  Total warnings:   $warnings"
+echo ""
+
 if [ $errors -gt 0 ]; then
-  echo ""
-  echo "Pre-commit failed: $errors content file(s) reference missing audio files."
+  echo "Pre-commit FAILED: $errors content file(s) have audio errors."
   echo "Generate audio with: edge-tts -f <text-file> --voice en-US-AndrewNeural --write-media <output.mp3>"
   exit 1
+fi
+
+if [ $warnings -gt 0 ]; then
+  echo "Pre-commit passed with $warnings warning(s). Consider adding missing images/media."
 fi

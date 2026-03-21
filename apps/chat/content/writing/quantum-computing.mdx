@@ -9,6 +9,8 @@ tags:
   - computation
 ---
 
+![Bloch sphere qubit in superposition with quantum circuit gates and entangled particle pairs](/images/writing/quantum-computing/hero-opt.png)
+
 Classical computers encode information as bits -- discrete zeros and ones manipulated by logic gates that flip, AND, OR, and XOR those values. Every operation is deterministic: one input state maps to exactly one output state. Quantum computing breaks that contract. Instead of bits, the fundamental unit is the **qubit**, which exists in a superposition of states described by probability amplitudes -- complex numbers whose squared magnitudes give the probability of measuring a particular outcome. This distinction is not merely theoretical. It means that a register of *n* qubits encodes 2^n amplitudes simultaneously, and that operations on those amplitudes can exploit interference and entanglement to solve certain problems exponentially faster than any known classical algorithm. Understanding how this works at the gate level is the first step toward understanding why quantum computing matters.
 
 The manipulation of qubits during computation uses gates that can modify the coefficients of a superposition, not just flip the state. This vastly increases the information density of a quantum computation. A Hadamard gate, for example, takes a qubit in a definite state and spreads it into an equal superposition; a phase gate rotates the complex amplitude without changing the measurement probabilities; a CNOT gate entangles two qubits so their fates become correlated. These are unitary transformations -- reversible, norm-preserving operations on the state vector -- and they compose to form circuits of arbitrary complexity.

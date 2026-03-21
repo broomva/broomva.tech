@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { AppSidebar } from "@/components/app-sidebar";
+import { ConsoleSidebar } from "@/components/console-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TopNav } from "@/components/site/top-nav";
@@ -24,7 +24,7 @@ export default async function ConsoleLayout({
   return (
     <ToolbarDockProvider>
       <SidebarProvider>
-        <AppSidebar />
+        <ConsoleSidebar />
         <SidebarInset>
           <SiteHeader />
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0 pb-24">
