@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import Link from "next/link";
 import type { ContentSummary } from "@/lib/content";
 import { formatDate } from "@/lib/date";
@@ -33,10 +33,11 @@ export function WritingList({ entries }: WritingListProps) {
     const nav = navRef.current;
     if (!nav) return;
 
-    const buttons = Array.from(nav.querySelectorAll("button"));
+    const buttons = Array.from(
+      nav.querySelectorAll<HTMLButtonElement>("button"),
+    );
     if (buttons.length < 2) return;
 
-    const gap = 8; // gap-2
     const firstTop = buttons[0].offsetTop;
     let rowCount = 1;
     let lastRowStart = 0;
@@ -58,7 +59,7 @@ export function WritingList({ entries }: WritingListProps) {
     } else {
       setNeedsCollapse(false);
     }
-  }, [allTags]);
+  }, [entries]);
 
   const filtered = useMemo(() => {
     if (!activeTag) return entries;
@@ -85,38 +86,79 @@ export function WritingList({ entries }: WritingListProps) {
   return (
     <>
       {/* Tag filter */}
-      <nav
-        className="mt-8 flex flex-wrap gap-2"
-        aria-label="Filter by topic"
-      >
-        <button
-          type="button"
-          onClick={() => setActiveTag(null)}
-          className={`rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm transition-all duration-200 ${
-            !activeTag
-              ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
-              : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
-          }`}
+      <div className="mt-8">
+        <motion.nav
+          ref={navRef}
+          className="relative flex flex-wrap gap-2 overflow-hidden"
+          aria-label="Filter by topic"
+          animate={{
+            height:
+              needsCollapse && !tagsExpanded && collapsedHeight != null
+                ? collapsedHeight
+                : "auto",
+          }}
+          transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
         >
-          All{" "}
-          <span className="ml-1 text-[10px] opacity-60">{entries.length}</span>
-        </button>
-        {allTags.map(({ tag, count }) => (
           <button
-            key={tag}
             type="button"
-            onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+            onClick={() => setActiveTag(null)}
             className={`rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm transition-all duration-200 ${
-              activeTag === tag
+              !activeTag
                 ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
                 : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
             }`}
           >
-            {tag}
-            <span className="ml-1 text-[10px] opacity-60">{count}</span>
+            All{" "}
+            <span className="ml-1 text-[10px] opacity-60">
+              {entries.length}
+            </span>
           </button>
-        ))}
-      </nav>
+          {allTags.map(({ tag, count }) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm transition-all duration-200 ${
+                activeTag === tag
+                  ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
+                  : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
+              }`}
+            >
+              {tag}
+              <span className="ml-1 text-[10px] opacity-60">{count}</span>
+            </button>
+          ))}
+          {needsCollapse && !tagsExpanded && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-bg-deep to-transparent" />
+          )}
+        </motion.nav>
+        {needsCollapse && (
+          <button
+            type="button"
+            onClick={() => setTagsExpanded((v) => !v)}
+            className="mt-2 flex items-center gap-1.5 text-xs text-text-muted/60 transition-colors hover:text-text-secondary"
+          >
+            <motion.svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              animate={{ rotate: tagsExpanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </motion.svg>
+            {tagsExpanded
+              ? "Show fewer topics"
+              : `Show all ${allTags.length} topics`}
+          </button>
+        )}
+      </div>
 
       {/* Post count */}
       <p className="mt-6 text-xs text-text-muted/60">

@@ -1,12 +1,14 @@
 import { cookies, headers } from "next/headers";
 import { getChatModels } from "@/app/actions/get-chat-models";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ContextSidebar } from "@/components/context-sidebar";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getSafeSession } from "@/lib/auth";
 import type { AppModelId } from "@/lib/ai/app-model-id";
 import { config } from "@/lib/config";
 import { ANONYMOUS_LIMITS } from "@/lib/types/anonymous";
+import { ContextSidebarProvider } from "@/hooks/use-context-sidebar";
 import { ChatModelsProvider } from "@/providers/chat-models-provider";
 import { DefaultModelProvider } from "@/providers/default-model-provider";
 import { SessionProvider } from "@/providers/session-provider";
@@ -89,9 +91,16 @@ export default async function ChatLayout({
               >
                 <ChatModelsProvider models={chatModels}>
                   <DefaultModelProvider defaultModel={defaultModel}>
-                    <KeyboardShortcuts />
+                    <ContextSidebarProvider>
+                      <KeyboardShortcuts />
 
-                    {children}
+                      <div className="flex h-dvh w-full">
+                        <div className="flex-1 min-w-0">
+                          {children}
+                        </div>
+                        <ContextSidebar />
+                      </div>
+                    </ContextSidebarProvider>
                   </DefaultModelProvider>
                 </ChatModelsProvider>
               </SidebarInset>
