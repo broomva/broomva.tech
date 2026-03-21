@@ -539,4 +539,247 @@ export const audioPlaybackState = pgTable("AudioPlaybackState", {
 
 export type AudioPlaybackState = InferSelectModel<typeof audioPlaybackState>;
 
+// ---------------------------------------------------------------------------
+// Multi-Tenant / Platform Tables
+// ---------------------------------------------------------------------------
+
+/** Tenant/organization — the billing and isolation unit */
+export const organization = pgTable(
+  "Organization",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    name: varchar("name", { length: 256 }).notNull(),
+    slug: varchar("slug", { length: 128 }).notNull().unique(),
+    plan: varchar("plan", {
+      enum: ["free", "pro", "team", "enterprise"],
+    })
+      .notNull()
+      .default("free"),
+    stripeCustomerId: varchar("stripeCustomerId", { length: 256 }),
+    stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 256 }),
+    /** Monthly credit allocation based on plan (in cents) */
+    planCreditsMonthly: integer("planCreditsMonthly").notNull().default(50),
+    /** Remaining credits this billing period (in cents) */
+    planCreditsRemaining: integer("planCreditsRemaining").notNull().default(50),
+    /** When the current billing period resets */
+    billingPeriodStart: timestamp("billingPeriodStart"),
+    /** Neon branch ID for enterprise tenants needing full data isolation */
+    neonBranchId: varchar("neonBranchId", { length: 256 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    Organization_slug_idx: uniqueIndex("Organization_slug_idx").on(t.slug),
+    Organization_stripe_customer_idx: index(
+      "Organization_stripe_customer_idx"
+    ).on(t.stripeCustomerId),
+  })
+);
+
+export type Organization = InferSelectModel<typeof organization>;
+
+/** Organization membership — maps users to organizations with roles */
+export const organizationMember = pgTable(
+  "OrganizationMember",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: varchar("role", {
+      enum: ["owner", "admin", "member", "viewer"],
+    })
+      .notNull()
+      .default("member"),
+    invitedAt: timestamp("invitedAt"),
+    joinedAt: timestamp("joinedAt").notNull().defaultNow(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    OrganizationMember_org_id_idx: index("OrganizationMember_org_id_idx").on(
+      t.organizationId
+    ),
+    OrganizationMember_user_id_idx: index("OrganizationMember_user_id_idx").on(
+      t.userId
+    ),
+    OrganizationMember_org_user_unique: uniqueIndex(
+      "OrganizationMember_org_user_unique"
+    ).on(t.organizationId, t.userId),
+  })
+);
+
+export type OrganizationMember = InferSelectModel<typeof organizationMember>;
+
+/** API keys for programmatic access, scoped to an organization */
+export const organizationApiKey = pgTable(
+  "OrganizationApiKey",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    createdByUserId: text("createdByUserId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }).notNull(),
+    /** bcrypt hash of the API key — never store plaintext */
+    keyHash: varchar("keyHash", { length: 256 }).notNull(),
+    /** First 8 chars of the key for display (e.g., "brv_sk_a1b2...") */
+    keyPrefix: varchar("keyPrefix", { length: 16 }).notNull(),
+    /** Comma-separated permission scopes */
+    scopes: text("scopes").notNull().default("*"),
+    lastUsedAt: timestamp("lastUsedAt"),
+    expiresAt: timestamp("expiresAt"),
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    OrganizationApiKey_org_id_idx: index("OrganizationApiKey_org_id_idx").on(
+      t.organizationId
+    ),
+    OrganizationApiKey_key_prefix_idx: index(
+      "OrganizationApiKey_key_prefix_idx"
+    ).on(t.keyPrefix),
+  })
+);
+
+export type OrganizationApiKey = InferSelectModel<typeof organizationApiKey>;
+
+/** Managed Life Agent OS instances deployed on Railway */
+export const organizationLifeInstance = pgTable(
+  "OrganizationLifeInstance",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Railway project ID */
+    railwayProjectId: varchar("railwayProjectId", { length: 256 }),
+    /** Railway environment ID */
+    railwayEnvironmentId: varchar("railwayEnvironmentId", { length: 256 }),
+    status: varchar("status", {
+      enum: [
+        "provisioning",
+        "running",
+        "stopped",
+        "degraded",
+        "failed",
+        "deprovisioning",
+      ],
+    })
+      .notNull()
+      .default("provisioning"),
+    arcanUrl: varchar("arcanUrl", { length: 512 }),
+    lagoUrl: varchar("lagoUrl", { length: 512 }),
+    autonomicUrl: varchar("autonomicUrl", { length: 512 }),
+    haimaUrl: varchar("haimaUrl", { length: 512 }),
+    /** Last health check result */
+    lastHealthCheck: timestamp("lastHealthCheck"),
+    lastHealthStatus: json("lastHealthStatus"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    OrganizationLifeInstance_org_id_idx: index(
+      "OrganizationLifeInstance_org_id_idx"
+    ).on(t.organizationId),
+  })
+);
+
+export type OrganizationLifeInstance = InferSelectModel<
+  typeof organizationLifeInstance
+>;
+
+/** Usage events — granular per-request cost records for billing */
+export const usageEvent = pgTable(
+  "UsageEvent",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId").references(() => organization.id, {
+      onDelete: "set null",
+    }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Type of usage: ai_tokens, life_compute, storage, api_call */
+    type: varchar("type", { length: 64 }).notNull(),
+    /** Model ID or service name */
+    resource: varchar("resource", { length: 256 }),
+    /** Input tokens (for ai_tokens type) */
+    inputTokens: integer("inputTokens"),
+    /** Output tokens (for ai_tokens type) */
+    outputTokens: integer("outputTokens"),
+    /** Cost in cents */
+    costCents: integer("costCents").notNull(),
+    /** Conversation ID for AI usage attribution */
+    chatId: uuid("chatId"),
+    /** Stripe meter event ID after reporting */
+    stripeMeterEventId: varchar("stripeMeterEventId", { length: 256 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    UsageEvent_org_id_idx: index("UsageEvent_org_id_idx").on(
+      t.organizationId
+    ),
+    UsageEvent_user_id_idx: index("UsageEvent_user_id_idx").on(t.userId),
+    UsageEvent_created_at_idx: index("UsageEvent_created_at_idx").on(
+      t.createdAt
+    ),
+    UsageEvent_org_created_idx: index("UsageEvent_org_created_idx").on(
+      t.organizationId,
+      t.createdAt
+    ),
+  })
+);
+
+export type UsageEvent = InferSelectModel<typeof usageEvent>;
+
+/** Immutable audit log for compliance (append-only) */
+export const auditLog = pgTable(
+  "AuditLog",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId").references(() => organization.id, {
+      onDelete: "set null",
+    }),
+    actorId: text("actorId").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    /** Action performed (e.g., "org.create", "member.invite", "api_key.create") */
+    action: varchar("action", { length: 256 }).notNull(),
+    /** Resource type affected (e.g., "organization", "chat", "api_key") */
+    resourceType: varchar("resourceType", { length: 128 }),
+    /** Resource ID affected */
+    resourceId: varchar("resourceId", { length: 256 }),
+    /** Additional context as JSON */
+    metadata: json("metadata"),
+    /** IP address of the actor */
+    ipAddress: varchar("ipAddress", { length: 64 }),
+    /** User agent string */
+    userAgent: text("userAgent"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    AuditLog_org_id_idx: index("AuditLog_org_id_idx").on(t.organizationId),
+    AuditLog_actor_id_idx: index("AuditLog_actor_id_idx").on(t.actorId),
+    AuditLog_action_idx: index("AuditLog_action_idx").on(t.action),
+    AuditLog_created_at_idx: index("AuditLog_created_at_idx").on(t.createdAt),
+  })
+);
+
+export type AuditLog = InferSelectModel<typeof auditLog>;
+
 export const schema = { user, session, account, verification };
