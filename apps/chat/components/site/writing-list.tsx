@@ -2,11 +2,50 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "motion/react";
+import Image from "next/image";
 import Link from "next/link";
 import type { ContentSummary } from "@/lib/content";
 import { formatDate } from "@/lib/date";
 
 const COLLAPSED_ROWS = 2;
+
+function isVideo(src: string) {
+  return /\.(mp4|webm)$/i.test(src);
+}
+
+function PostThumbnail({
+  src,
+  alt,
+  className = "",
+  sizes,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  sizes?: string;
+}) {
+  if (isVideo(src)) {
+    return (
+      <video
+        src={src}
+        muted
+        loop
+        playsInline
+        autoPlay
+        className={className}
+      />
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes={sizes ?? "(max-width: 768px) 100vw, 50vw"}
+      className={className}
+    />
+  );
+}
 
 interface WritingListProps {
   entries: ContentSummary[];
@@ -181,6 +220,21 @@ export function WritingList({ entries }: WritingListProps) {
             className="glass-card group mt-6 block overflow-hidden p-0"
           >
             <div className="h-px bg-gradient-to-r from-transparent via-ai-blue/40 to-transparent" />
+            {featured.image && (
+              <div className="relative aspect-[2.4/1] w-full overflow-hidden bg-bg-elevated/30">
+                <PostThumbnail
+                  src={featured.image}
+                  alt={featured.title}
+                  sizes="(max-width: 768px) 100vw, 1104px"
+                  className={
+                    isVideo(featured.image)
+                      ? "h-full w-full object-cover"
+                      : "object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  }
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-bg-deep/80 via-bg-deep/20 to-transparent" />
+              </div>
+            )}
             <div className="px-5 py-6 sm:px-7 sm:py-8">
               <div className="flex items-center gap-3 text-xs text-text-muted">
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ai-blue/60">
@@ -251,24 +305,39 @@ export function WritingList({ entries }: WritingListProps) {
                 >
                   <Link
                     href={`/writing/${entry.slug}`}
-                    className="glass-card group block h-full"
+                    className="glass-card group block h-full overflow-hidden p-0"
                   >
-                    <h3 className="font-display text-lg text-text-primary transition-colors group-hover:text-ai-blue">
-                      {entry.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-text-secondary">
-                      {entry.summary}
-                    </p>
-                    <div className="mt-4 flex items-center gap-2 text-xs text-text-muted">
-                      <span className="uppercase tracking-[0.14em]">
-                        {formatDate(entry.date)}
-                      </span>
-                      {entry.readingTime != null && (
-                        <>
-                          <span className="text-border/60">&middot;</span>
-                          <span>{entry.readingTime} min</span>
-                        </>
-                      )}
+                    {entry.image && (
+                      <div className="relative aspect-[2/1] w-full overflow-hidden bg-bg-elevated/30">
+                        <PostThumbnail
+                          src={entry.image}
+                          alt={entry.title}
+                          className={
+                            isVideo(entry.image)
+                              ? "h-full w-full object-cover"
+                              : "object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                          }
+                        />
+                      </div>
+                    )}
+                    <div className="px-5 py-5">
+                      <h3 className="font-display text-lg text-text-primary transition-colors group-hover:text-ai-blue">
+                        {entry.title}
+                      </h3>
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-text-secondary">
+                        {entry.summary}
+                      </p>
+                      <div className="mt-4 flex items-center gap-2 text-xs text-text-muted">
+                        <span className="uppercase tracking-[0.14em]">
+                          {formatDate(entry.date)}
+                        </span>
+                        {entry.readingTime != null && (
+                          <>
+                            <span className="text-border/60">&middot;</span>
+                            <span>{entry.readingTime} min</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </Link>
                 </motion.div>

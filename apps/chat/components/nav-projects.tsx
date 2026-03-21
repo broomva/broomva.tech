@@ -1,7 +1,5 @@
 "use client"
 
-import type { Route } from "next"
-import Link from "next/link"
 import {
   Folder,
   Forward,
@@ -27,10 +25,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
-export function NavDocuments({
-  items,
+export function NavProjects({
+  projects,
 }: {
-  items: {
+  projects: {
     name: string
     url: string
     icon: LucideIcon
@@ -42,13 +40,13 @@ export function NavDocuments({
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Services</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
+        {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
-              <Link href={item.url as Route}>
+              <a href={item.url}>
                 <item.icon />
                 <span>{item.name}</span>
-              </Link>
+              </a>
             </SidebarMenuButton>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -64,16 +62,16 @@ export function NavDocuments({
               >
                 <DropdownMenuItem>
                   <Folder className="text-muted-foreground" />
-                  <span>View Service</span>
+                  <span>View Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Forward className="text-muted-foreground" />
-                  <span>Share Service</span>
+                  <span>Share Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <Trash2 className="text-muted-foreground" />
-                  <span>Disconnect</span>
+                  <span>Delete Project</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -13,17 +13,17 @@ import { useToolbarDock } from "./toolbar-dock-context";
 import { useAudioPlayback } from "@/providers/audio-playback-provider";
 
 const allLinks = [
-  { href: "/", label: "Home", icon: Home, chatOnly: true, authOnly: false },
-  { href: "/prompts", label: "Prompts", icon: Sparkles, chatOnly: false, authOnly: false },
-  { href: "/skills", label: "Skills", icon: Layers, chatOnly: false, authOnly: false },
-  { href: "/chat", label: "Chat", icon: MessageCircle, chatOnly: false, authOnly: false },
-  { href: "/console", label: "Console", icon: Terminal, chatOnly: false, authOnly: true },
+  { href: "/", label: "Home", icon: Home, productOnly: true, authOnly: false },
+  { href: "/prompts", label: "Prompts", icon: Sparkles, productOnly: false, authOnly: false },
+  { href: "/skills", label: "Skills", icon: Layers, productOnly: false, authOnly: false },
+  { href: "/chat", label: "Chat", icon: MessageCircle, productOnly: false, authOnly: false },
+  { href: "/console", label: "Console", icon: Terminal, productOnly: false, authOnly: true },
 ];
 
-const chatRoutes = ["/chat", "/project", "/settings"];
+const productRoutes = ["/chat", "/project", "/settings", "/console"];
 
-function isInChatLayout(pathname: string): boolean {
-  return chatRoutes.some(
+function isInProductLayout(pathname: string): boolean {
+  return productRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
 }
@@ -44,10 +44,10 @@ export function TopNav() {
   const { data: session } = authClient.useSession();
   const isAuthenticated = !!session?.user?.id;
 
-  const inChat = isInChatLayout(pathname);
+  const inChat = isInProductLayout(pathname);
   const links = allLinks.filter(
     (link) =>
-      (!link.chatOnly || inChat) && (!link.authOnly || isAuthenticated),
+      (!link.productOnly || inChat) && (!link.authOnly || isAuthenticated),
   );
 
   const hasActiveAudio = !!track && audioState !== "idle";

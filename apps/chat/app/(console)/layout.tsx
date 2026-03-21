@@ -21,22 +21,14 @@ export default async function ConsoleLayout({
     redirect("/login");
   }
 
-  const user = session.user
-    ? {
-        name: session.user.name ?? "Agent",
-        email: session.user.email ?? "agent@life.os",
-        avatar: session.user.image ?? "",
-      }
-    : undefined;
-
   return (
     <ToolbarDockProvider>
       <SidebarProvider>
-        <AppSidebar variant="inset" user={user} />
+        <AppSidebar />
         <SidebarInset>
           <SiteHeader />
-          <div className="flex flex-1 flex-col pb-24">
-            <main className="flex-1 overflow-y-auto">{children}</main>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0 pb-24">
+            {children}
           </div>
         </SidebarInset>
       </SidebarProvider>

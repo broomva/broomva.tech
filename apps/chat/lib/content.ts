@@ -25,6 +25,7 @@ interface ContentFrontmatter {
     label: string;
     url: string;
   }>;
+  image?: string;
   audio?: string;
   category?: string;
   model?: string;
@@ -47,6 +48,7 @@ export interface ContentSummary {
     url: string;
   }>;
   readingTime?: number;
+  image?: string;
   audio?: string;
   category?: string;
   model?: string;
@@ -129,6 +131,7 @@ function toSummary(
     status: frontmatter.status,
     tags,
     links,
+    image: typeof frontmatter.image === "string" ? frontmatter.image : undefined,
     audio: typeof frontmatter.audio === "string" ? frontmatter.audio : undefined,
     category: frontmatter.category,
     model: frontmatter.model,

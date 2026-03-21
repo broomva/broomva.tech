@@ -57,7 +57,7 @@ export function SiteHeader() {
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-      <div className="flex w-full items-center gap-2 px-4">
+      <div className="flex items-center gap-2 px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator
           orientation="vertical"
@@ -76,19 +76,19 @@ export function SiteHeader() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="ml-auto flex items-center gap-1.5">
-          {SERVICE_KEYS.map((key) => {
-            const status: ServiceStatus =
-              health?.[key]?.status ?? "unconfigured"
-            return (
-              <span
-                key={key}
-                className={`inline-block size-2 rounded-full ${DOT_COLORS[status]}`}
-                title={`${key}: ${status}`}
-              />
-            )
-          })}
-        </div>
+      </div>
+      <div className="ml-auto flex items-center gap-1.5 pr-4">
+        {SERVICE_KEYS.map((key) => {
+          const status: ServiceStatus =
+            health?.[key]?.status ?? "unconfigured"
+          return (
+            <span
+              key={key}
+              className={`inline-block size-2 rounded-full ${DOT_COLORS[status]}`}
+              title={`${key}: ${status}`}
+            />
+          )
+        })}
       </div>
     </header>
   )
