@@ -7,6 +7,13 @@ import { headers } from "next/headers";
 import { getSafeSession } from "@/lib/auth";
 import { signLagoJWT } from "@/lib/ai/vault/jwt";
 
+function validatePath(path: string[]): string | null {
+  if (path.some((seg) => seg === ".." || seg.includes(".."))) {
+    return null;
+  }
+  return `/${path.join("/")}`;
+}
+
 async function getAuthContext() {
   const { data: sessionData } = await getSafeSession({
     fetchOptions: { headers: await headers() },
@@ -42,7 +49,10 @@ export async function GET(
   }
 
   const { path } = await params;
-  const filePath = `/${path.join("/")}`;
+  const filePath = validatePath(path);
+  if (!filePath) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
   const encoded = encodeURIComponent(filePath);
 
   const res = await fetch(`${ctx.lagoUrl}/v1/memory/files/${encoded}`, {
@@ -69,7 +79,10 @@ export async function PUT(
   }
 
   const { path } = await params;
-  const filePath = `/${path.join("/")}`;
+  const filePath = validatePath(path);
+  if (!filePath) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
   const encoded = encodeURIComponent(filePath);
   const body = await request.text();
 
@@ -96,7 +109,10 @@ export async function DELETE(
   }
 
   const { path } = await params;
-  const filePath = `/${path.join("/")}`;
+  const filePath = validatePath(path);
+  if (!filePath) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
   const encoded = encodeURIComponent(filePath);
 
   const res = await fetch(`${ctx.lagoUrl}/v1/memory/files/${encoded}`, {

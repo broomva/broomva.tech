@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSafeSession } from "@/lib/auth";
-import { getOrganizationById } from "@/lib/db/organization";
+import { getOrganizationById, isOrganizationMember } from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
 import { getStripe } from "@/lib/stripe";
 
@@ -37,6 +37,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Organization not found" },
       { status: 404 },
+    );
+  }
+
+  if (!(await isOrganizationMember(session.user.id, organizationId))) {
+    return NextResponse.json(
+      { error: "Forbidden — not a member of this organization" },
+      { status: 403 },
     );
   }
 

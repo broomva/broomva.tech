@@ -29,7 +29,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Cleanup failed",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details:
+          process.env.NODE_ENV === "production"
+            ? "Internal server error"
+            : error instanceof Error
+              ? error.message
+              : "Unknown error",
       },
       { status: 500 }
     );

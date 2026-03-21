@@ -88,6 +88,27 @@ export async function getOrganizationById(
 }
 
 /**
+ * Check if a user is a member of an organization.
+ */
+export async function isOrganizationMember(
+  userId: string,
+  orgId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: organizationMember.id })
+    .from(organizationMember)
+    .where(
+      and(
+        eq(organizationMember.organizationId, orgId),
+        eq(organizationMember.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return !!row;
+}
+
+/**
  * List all organizations a user belongs to (most recently joined first).
  */
 export async function getUserOrganizations(

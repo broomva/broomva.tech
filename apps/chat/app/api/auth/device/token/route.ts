@@ -24,7 +24,13 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Device token request failed:", error);
     return NextResponse.json(
-      { error: "server_error", error_description: String(error) },
+      {
+        error: "server_error",
+        error_description:
+          process.env.NODE_ENV === "production"
+            ? "Internal server error"
+            : String(error),
+      },
       { status: 500 }
     );
   }
