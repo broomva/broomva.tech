@@ -521,6 +521,45 @@ export const userVault = pgTable(
 
 export type UserVault = InferSelectModel<typeof userVault>;
 
+/**
+ * Life JWT Refresh Tokens (BRO-121)
+ *
+ * Stores SHA-256 hashed refresh tokens for the Life Agent OS JWT flow.
+ * Raw tokens are never persisted — only the hash is stored.
+ *
+ * Flow:
+ *   1. User authenticates → receives access JWT (24h) + refresh token (7d)
+ *   2. Access JWT expires → client POSTs refresh token to /api/auth/refresh
+ *   3. Old refresh token is revoked, new pair (access + refresh) issued
+ */
+export const refreshToken = pgTable(
+  "RefreshToken",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** SHA-256 hash of the refresh token — never store the raw value */
+    tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+    /** When this refresh token expires (7 days from creation) */
+    expiresAt: timestamp("expiresAt").notNull(),
+    /** Set when the token is revoked (rotation or explicit revocation) */
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    RefreshToken_user_id_idx: index("RefreshToken_user_id_idx").on(t.userId),
+    RefreshToken_token_hash_idx: index("RefreshToken_token_hash_idx").on(
+      t.tokenHash
+    ),
+    RefreshToken_expires_at_idx: index("RefreshToken_expires_at_idx").on(
+      t.expiresAt
+    ),
+  })
+);
+
+export type RefreshToken = InferSelectModel<typeof refreshToken>;
+
 export const audioPlaybackState = pgTable("AudioPlaybackState", {
   userId: text("userId")
     .primaryKey()

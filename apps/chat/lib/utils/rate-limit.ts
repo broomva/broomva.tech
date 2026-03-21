@@ -349,6 +349,51 @@ export async function checkDeviceTokenRateLimit(
 }
 
 /**
+ * Rate-limit refresh token endpoint: 10 requests/minute per IP.
+ * Uses in-memory fallback (no Redis required).
+ */
+export async function checkRefreshRateLimit(
+  ip: string,
+): Promise<{
+  success: boolean;
+  error?: string;
+  headers?: Record<string, string>;
+}> {
+  const limit = 10;
+  const result = await checkRateLimit({
+    identifier: ip,
+    limit,
+    windowSize: WINDOW_SIZE_MINUTE,
+    redisClient: null,
+    keyPrefix: `${config.appPrefix}:refresh-rate-limit`,
+  });
+
+  if (!result.success) {
+    return {
+      success: false,
+      error: `Rate limit exceeded. Maximum ${limit} refresh requests per minute.`,
+      headers: {
+        "X-RateLimit-Limit": limit.toString(),
+        "X-RateLimit-Remaining": result.remaining.toString(),
+        "X-RateLimit-Reset": result.resetTime.toString(),
+        "Retry-After": Math.ceil(
+          (result.resetTime - Date.now()) / 1000,
+        ).toString(),
+      },
+    };
+  }
+
+  return {
+    success: true,
+    headers: {
+      "X-RateLimit-Limit": limit.toString(),
+      "X-RateLimit-Remaining": result.remaining.toString(),
+      "X-RateLimit-Reset": result.resetTime.toString(),
+    },
+  };
+}
+
+/**
  * Extract client IP from the request.
  *
  * On Vercel, `x-forwarded-for` is set by the edge and can be trusted.

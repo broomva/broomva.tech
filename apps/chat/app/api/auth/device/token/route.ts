@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
 import { deviceAuthCode } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { JWT_ACCESS_EXPIRY_MS } from "@/lib/ai/vault/jwt";
 import {
   checkDeviceTokenRateLimit,
   getClientIP,
@@ -20,7 +21,7 @@ import {
  *   - slow_down: polling too fast (enforced via rate limiting)
  *   - access_denied: user denied
  *   - expired_token: code expired
- *   - 200 + { access_token, token_type, expires_in }: approved
+ *   - 200 + { access_token, token_type, expires_in, refresh_token? }: approved
  */
 export async function POST(request: Request) {
   try {
@@ -124,12 +125,31 @@ async function handleTokenRequest(request: Request) {
       // Clean up used record
       await db.delete(deviceAuthCode).where(eq(deviceAuthCode.id, record.id));
 
-      return NextResponse.json({
-        access_token: record.sessionToken,
+      // sessionToken may be a JSON object with {accessToken, refreshToken}
+      // (BRO-121) or a plain JWT string (legacy flow)
+      let accessToken: string;
+      let refreshTokenValue: string | undefined;
+
+      try {
+        const parsed = JSON.parse(record.sessionToken ?? "");
+        accessToken = parsed.accessToken;
+        refreshTokenValue = parsed.refreshToken;
+      } catch {
+        // Legacy: sessionToken is just the JWT string
+        accessToken = record.sessionToken ?? "";
+      }
+
+      const response: Record<string, unknown> = {
+        access_token: accessToken,
         token_type: "Bearer",
-        // Session tokens from Better Auth typically last 7 days
-        expires_in: 604800,
-      });
+        expires_in: Math.floor(JWT_ACCESS_EXPIRY_MS / 1000),
+      };
+
+      if (refreshTokenValue) {
+        response.refresh_token = refreshTokenValue;
+      }
+
+      return NextResponse.json(response);
     }
 
     default:
