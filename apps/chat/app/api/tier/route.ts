@@ -30,9 +30,11 @@ export async function GET() {
   // Look up the user's primary organization (lightweight single-row query)
   const [membership] = await db
     .select({
+      organizationId: organizationMember.organizationId,
       plan: organization.plan,
       planCreditsRemaining: organization.planCreditsRemaining,
       planCreditsMonthly: organization.planCreditsMonthly,
+      stripeCustomerId: organization.stripeCustomerId,
     })
     .from(organizationMember)
     .innerJoin(
@@ -49,6 +51,8 @@ export async function GET() {
 
   return NextResponse.json({
     plan,
+    organizationId: membership?.organizationId ?? null,
+    hasStripeCustomer: !!membership?.stripeCustomerId,
     features: getTierFeatures(plan),
     limits: getTierLimits(plan),
     credits: {
