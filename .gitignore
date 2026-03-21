@@ -111,4 +111,4 @@ node_modules/
 **/target/
 **/*.rs.bk
 Cargo.lock
-!crates/**/Cargo.lock
+!crates/**/Cargo.lock.obsidian/
