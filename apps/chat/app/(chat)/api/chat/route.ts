@@ -52,12 +52,20 @@ import {
   updateMessageActiveStreamId,
 } from "@/lib/db/queries";
 import type { McpConnector } from "@/lib/db/schema";
+import { organization, organizationMember } from "@/lib/db/schema";
+import { db as tierDb } from "@/lib/db/client";
+import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { MAX_INPUT_TOKENS } from "@/lib/limits/tokens";
 import { createModuleLogger } from "@/lib/logger";
 import type { AnonymousSession } from "@/lib/types/anonymous";
 import { ANONYMOUS_LIMITS } from "@/lib/types/anonymous";
 import { generateUUID } from "@/lib/utils";
+import {
+  isModelAllowed,
+  canSpendCredits,
+  getUpgradeMessage,
+} from "@/lib/tier-access";
 import {
   checkAnonymousRateLimit,
   checkAuthenticatedRateLimit,
@@ -851,6 +859,51 @@ export async function POST(request: NextRequest) {
 
     const { userId, isAnonymous, anonymousSession, modelDefinition } =
       sessionSetup;
+
+    // ---- Tier-based model & credit gate (authenticated users only) ----
+    if (userId && !isAnonymous) {
+      // Lightweight single-row lookup for org plan + credits
+      const [orgRow] = await tierDb
+        .select({
+          plan: organization.plan,
+          planCreditsRemaining: organization.planCreditsRemaining,
+        })
+        .from(organizationMember)
+        .innerJoin(
+          organization,
+          eq(organizationMember.organizationId, organization.id),
+        )
+        .where(eq(organizationMember.userId, userId))
+        .limit(1);
+
+      const userPlan = orgRow?.plan ?? "free";
+
+      if (!isModelAllowed(userPlan, selectedModelId)) {
+        return Response.json(
+          {
+            error: "model_not_allowed",
+            message: getUpgradeMessage("all_models"),
+          },
+          { status: 403 },
+        );
+      }
+
+      if (orgRow) {
+        const creditCheck = canSpendCredits(orgRow.planCreditsRemaining);
+        if (!creditCheck.allowed && userPlan === "free") {
+          return Response.json(
+            {
+              error: "credits_exhausted",
+              message:
+                "You have run out of free-tier credits. Upgrade at /pricing to continue.",
+              remaining: creditCheck.remaining,
+              upgradeUrl: "/pricing",
+            },
+            { status: 403 },
+          );
+        }
+      }
+    }
 
     const selectedTool = userMessage.metadata.selectedTool ?? null;
     let isNewChat = false;
