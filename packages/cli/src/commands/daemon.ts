@@ -1,36 +1,40 @@
+import { existsSync, readFileSync } from "node:fs";
 import { Command } from "commander";
-import { readConfig } from "../lib/config-store.js";
-import { resolveToken } from "../lib/auth-store.js";
+import { Dashboard } from "../daemon/dashboard.js";
+import { HeartbeatLoop } from "../daemon/heartbeat.js";
+import { DaemonLogger } from "../daemon/logger.js";
 import {
+	isDaemonRunning,
+	removePidFile,
+	stopDaemon,
+	writePidFile,
+} from "../daemon/process.js";
+import { ApiHealthSensor } from "../daemon/sensors/api-health.js";
+import {
+	clearSensors,
+	getSensors,
+	registerSensor,
+} from "../daemon/sensors/index.js";
+import { createRailwaySensors } from "../daemon/sensors/railway-health.js";
+import { SiteHealthSensor } from "../daemon/sensors/site-health.js";
+import { SymphonyHttpClient } from "../daemon/symphony-client.js";
+import { resolveToken } from "../lib/auth-store.js";
+import { readConfig } from "../lib/config-store.js";
+import {
+	DAEMON_STATE_FILE,
 	DEFAULT_API_BASE,
 	DEFAULT_DASHBOARD_PORT,
 	DEFAULT_HEARTBEAT_INTERVAL_MS,
-	DAEMON_STATE_FILE,
 } from "../lib/constants.js";
 import {
+	fmt,
 	info,
-	success,
-	warn,
 	error as printError,
 	printJson,
-	fmt,
+	success,
+	warn,
 } from "../lib/output.js";
-import {
-	isDaemonRunning,
-	stopDaemon,
-	writePidFile,
-	removePidFile,
-} from "../daemon/process.js";
-import { DaemonLogger } from "../daemon/logger.js";
-import { HeartbeatLoop } from "../daemon/heartbeat.js";
-import { Dashboard } from "../daemon/dashboard.js";
-import { SymphonyHttpClient } from "../daemon/symphony-client.js";
-import { registerSensor, getSensors, clearSensors } from "../daemon/sensors/index.js";
-import { SiteHealthSensor } from "../daemon/sensors/site-health.js";
-import { ApiHealthSensor } from "../daemon/sensors/api-health.js";
-import { createRailwaySensors } from "../daemon/sensors/railway-health.js";
 import type { DaemonConfig } from "../types/config.js";
-import { existsSync, readFileSync } from "node:fs";
 
 // Default local ports for services
 const LOCAL_DEFAULTS: Record<string, string> = {
@@ -69,8 +73,7 @@ function resolveDaemonConfig(opts: {
 			opts.arcanUrl ??
 			(isLocal ? LOCAL_DEFAULTS.arcanUrl : savedDaemon.arcanUrl),
 		lagoUrl:
-			opts.lagoUrl ??
-			(isLocal ? LOCAL_DEFAULTS.lagoUrl : savedDaemon.lagoUrl),
+			opts.lagoUrl ?? (isLocal ? LOCAL_DEFAULTS.lagoUrl : savedDaemon.lagoUrl),
 		autonomicUrl:
 			opts.autonomicUrl ??
 			(isLocal ? LOCAL_DEFAULTS.autonomicUrl : savedDaemon.autonomicUrl),
@@ -118,9 +121,7 @@ export function daemonCommand(): Command {
 			);
 
 			if (!tokenInfo) {
-				warn(
-					"No auth token found. Authenticated sensors will be limited.",
-				);
+				warn("No auth token found. Authenticated sensors will be limited.");
 				warn("Run `broomva auth login` for full monitoring.");
 			}
 
@@ -246,9 +247,7 @@ export function daemonCommand(): Command {
 			let state = null;
 			if (existsSync(DAEMON_STATE_FILE)) {
 				try {
-					state = JSON.parse(
-						readFileSync(DAEMON_STATE_FILE, "utf-8"),
-					);
+					state = JSON.parse(readFileSync(DAEMON_STATE_FILE, "utf-8"));
 				} catch {
 					// ignore
 				}
@@ -280,7 +279,15 @@ export function daemonCommand(): Command {
 				console.log("");
 				info(fmt.bold("Sensors:"));
 				for (const s of Object.values(
-					state.sensors as Record<string, { sensorId: string; status: string; message: string; latencyMs?: number }>,
+					state.sensors as Record<
+						string,
+						{
+							sensorId: string;
+							status: string;
+							message: string;
+							latencyMs?: number;
+						}
+					>,
 				)) {
 					const icon =
 						s.status === "healthy"
@@ -292,9 +299,7 @@ export function daemonCommand(): Command {
 									: fmt.dim("●");
 					const latency =
 						s.latencyMs !== undefined ? ` (${s.latencyMs}ms)` : "";
-					console.log(
-						`  ${icon} ${s.sensorId}: ${s.message}${latency}`,
-					);
+					console.log(`  ${icon} ${s.sensorId}: ${s.message}${latency}`);
 				}
 
 				const openIncidents = (
@@ -359,11 +364,9 @@ export function daemonCommand(): Command {
 				return;
 			}
 
-			let state;
+			let state: Record<string, unknown>;
 			try {
-				state = JSON.parse(
-					readFileSync(DAEMON_STATE_FILE, "utf-8"),
-				);
+				state = JSON.parse(readFileSync(DAEMON_STATE_FILE, "utf-8"));
 			} catch {
 				printError("Failed to read daemon state.");
 				return;
@@ -389,9 +392,7 @@ export function daemonCommand(): Command {
 			for (const i of incidents) {
 				const statusIcon =
 					i.status === "open" ? fmt.red("OPEN") : fmt.green("RESOLVED");
-				console.log(
-					`${statusIcon} ${fmt.bold(i.id)} [${i.sensorId}]`,
-				);
+				console.log(`${statusIcon} ${fmt.bold(i.id)} [${i.sensorId}]`);
 				console.log(`  ${i.message}`);
 				console.log(
 					`  Opened: ${i.openedAt}${i.resolvedAt ? ` | Resolved: ${i.resolvedAt}` : ""} | Failures: ${i.consecutiveFailures}`,
