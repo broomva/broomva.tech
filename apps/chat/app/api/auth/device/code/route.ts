@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
+import {
+  checkDeviceCodeRateLimit,
+  getClientIP,
+} from "@/lib/utils/rate-limit";
 
 /**
  * POST /api/auth/device/code
@@ -13,6 +17,17 @@ import { db } from "@/lib/db/client";
  */
 export async function POST(request: Request) {
   try {
+    // Rate limit: 10 requests/minute per IP
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await checkDeviceCodeRateLimit(clientIP);
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "rate_limit_exceeded", error_description: rateLimitResult.error },
+        { status: 429, headers: rateLimitResult.headers || {} },
+      );
+    }
+
     let clientId = "cli";
     let scope = "";
 
