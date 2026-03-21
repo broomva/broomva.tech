@@ -36,7 +36,8 @@ function isPublicPage(pathname: string): boolean {
     pathname.startsWith("/prompts") ||
     pathname.startsWith("/share/") ||
     pathname.startsWith("/privacy") ||
-    pathname.startsWith("/terms")
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/pricing")
   );
 }
 
@@ -93,6 +94,6 @@ export const config = {
      * - compare
      * - docs (Mintlify documentation)
      */
-    "/((?!api|docs|_next/static|_next/image|favicon.ico|opengraph-image|manifest|models|compare|privacy|terms|llms|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|mp4|webm|ogg|pdf)$).*)",
+    "/((?!api|docs|_next/static|_next/image|favicon.ico|opengraph-image|manifest|models|compare|privacy|terms|pricing|llms|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|mp4|webm|ogg|pdf)$).*)",
   ],
 };

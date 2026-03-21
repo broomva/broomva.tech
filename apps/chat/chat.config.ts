@@ -42,7 +42,7 @@ const config = {
       "Morph",
       "ZAI",
     ],
-    paymentProcessors: [],
+    paymentProcessors: ["Stripe"],
   },
   features: {
     sandbox: true, // Vercel-native, no key needed
@@ -56,6 +56,19 @@ const config = {
     knowledgeGraph: true, // Requires VAULT_PATH
     memoryVault: true, // Requires LAGO_URL
   },
+  pricing: {
+    currency: "USD",
+    free: {
+      name: "Free",
+      summary: "500 AI credits/month, community models",
+    },
+    pro: {
+      name: "Pro",
+      monthlyPrice: 29,
+      summary:
+        "5,000 AI credits/month, all models, console access, 1 API key",
+    },
+  },
   legal: {
     minimumAge: 13,
     governingLaw: "United States",
@@ -64,11 +77,11 @@ const config = {
   policies: {
     privacy: {
       title: "Privacy Policy",
-      lastUpdated: "March 19, 2026",
+      lastUpdated: "March 21, 2026",
     },
     terms: {
       title: "Terms of Service",
-      lastUpdated: "March 19, 2026",
+      lastUpdated: "March 21, 2026",
     },
   },
   authentication: {
