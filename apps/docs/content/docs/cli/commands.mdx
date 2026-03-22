@@ -7,7 +7,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 # Command Reference
 
-The BroomVA CLI provides six command groups: `auth`, `prompts`, `skills`, `context`, `config`, and `daemon`.
+The BroomVA CLI provides six command groups: `auth`, `prompts`, `skills`, `context`, `config`, and `daemon`. All commands are implemented in `packages/cli/src/commands/` as Commander.js subcommands.
 
 ## Global options
 
@@ -29,12 +29,12 @@ Manage authentication with the BroomVA platform. See [Authentication](/docs/cli/
 
 | Subcommand | Description |
 |-----------|-------------|
-| `auth login` | Authenticate using device-code flow |
-| `auth login --manual` | Authenticate using manual token paste |
-| `auth logout` | Remove stored credentials |
-| `auth status` | Show current auth status |
+| `auth login` | Authenticate using device-code flow (RFC 8628) |
+| `auth login --manual` | Authenticate using manual token copy-paste |
+| `auth logout` | Remove stored credentials from `~/.broomva/config.json` |
+| `auth status` | Show current auth status (validates token against server) |
 | `auth status --json` | Output auth status as JSON |
-| `auth token` | Print the raw token string |
+| `auth token` | Print the raw token string (for use in scripts) |
 
 ---
 
@@ -45,66 +45,142 @@ Manage prompts stored on the platform. Prompts are versioned text templates that
 | Subcommand | Description |
 |-----------|-------------|
 | `prompts list` | List all prompts accessible to your account |
-| `prompts get <id>` | Fetch a specific prompt by ID |
-| `prompts create <file>` | Create a prompt from a local file |
-| `prompts update <id> <file>` | Update an existing prompt |
-| `prompts delete <id>` | Delete a prompt |
+| `prompts list --category <cat>` | Filter by category |
+| `prompts list --tag <tag>` | Filter by tag |
+| `prompts list --model <model>` | Filter by target model |
+| `prompts list --mine` | Show only your prompts (requires auth) |
+| `prompts list --json` | Output as JSON |
+| `prompts get <slug>` | Fetch a specific prompt by slug |
+| `prompts get <slug> --raw` | Output only the prompt content (no metadata) |
+| `prompts get <slug> --json` | Output as JSON |
+| `prompts create` | Create a prompt (see options below) |
+| `prompts update <slug>` | Update an existing prompt |
+| `prompts delete <slug>` | Delete a prompt |
+| `prompts pull <slug>` | Download a prompt to a local markdown file with frontmatter |
+| `prompts push <file>` | Upload a local markdown file with frontmatter to the platform |
 
-### Example
+### Creating a prompt
 
 ```bash
-# List available prompts
-broomva prompts list
-
-# Fetch a prompt and pipe to a file
-broomva prompts get system-default > prompt.md
+broomva prompts create \
+  --title "Code Review Assistant" \
+  --content @prompt.md \
+  --summary "Reviews code for bugs, style, and performance" \
+  --category "development" \
+  --model "claude-sonnet-4-20250514" \
+  --tags "code-review,development" \
+  --visibility public
 ```
+
+The `--content` flag accepts either a literal string or `@file` to read from a file.
+
+### Pull/push workflow
+
+The `pull` and `push` commands enable a local-first workflow for prompt management:
+
+```bash
+# Download a prompt to a local file
+broomva prompts pull system-default
+# Pulled "System Default" → system-default.md
+
+# Edit the local file...
+# The file has YAML frontmatter with title, slug, category, tags, etc.
+
+# Upload changes back to the platform
+broomva prompts push system-default.md
+# Updated prompt: system-default
+```
+
+The frontmatter format:
+
+```yaml
+---
+title: "System Default"
+slug: "system-default"
+summary: "Default system prompt"
+category: "system"
+model: "claude-sonnet-4-20250514"
+tags: ["system", "default"]
+visibility: "private"
+---
+Your prompt content here...
+```
+
+When pushing with `--create`, a new prompt is created. Without the flag, the slug from the frontmatter is used to update an existing prompt.
 
 ---
 
 ## `broomva skills`
 
-Manage skills — packaged capabilities that can be installed into agent runtimes. Skills are discovered from `SKILL.md` files in repositories.
+Browse and install skills -- packaged capabilities that can be installed into agent runtimes. Skills are discovered from `SKILL.md` files in repositories and published to the skills marketplace.
 
 | Subcommand | Description |
 |-----------|-------------|
-| `skills list` | List installed skills |
-| `skills search <query>` | Search the skills marketplace |
-| `skills install <name>` | Install a skill from the marketplace |
-| `skills remove <name>` | Remove an installed skill |
+| `skills list` | List available skills grouped by layer |
+| `skills list --layer <id>` | Filter by layer ID |
+| `skills list --json` | Output as JSON |
+| `skills get <slug>` | Get details for a skill (name, description, install command, URL) |
+| `skills get <slug> --json` | Output as JSON |
+| `skills install <slug>` | Install a skill (delegates to `npx skills add broomva/<slug>`) |
 
 ### Example
 
 ```bash
-# Search for research-related skills
-broomva skills search "deep research"
+# List available skills
+broomva skills list
+# Shows skills grouped by layer with slug, name, and description
+
+# Get details for a specific skill
+broomva skills get deep-dive-research
+# deep-dive-research
+# Deep research skill with multi-source synthesis
+# Layer: research
+# Install: npx skills add broomva/deep-dive-research
+# URL: https://broomva.tech/skills/deep-dive-research
 
 # Install a skill
-broomva skills install broomva/deep-dive-research
+broomva skills install deep-dive-research
+# Running: npx skills add broomva/deep-dive-research
+# Installed skill: deep-dive-research
 ```
+
+The install command fetches the skill's install command from the API and executes it via `execSync`. If the API is unreachable, it falls back to `npx skills add broomva/<slug>`.
 
 ---
 
 ## `broomva context`
 
-Manage the agent context — the set of documents, memories, and configuration that inform the agent's behavior.
+Show the project context -- the conventions, stack, and features that inform the platform's behavior.
 
 | Subcommand | Description |
 |-----------|-------------|
-| `context show` | Display the current context summary |
-| `context add <file>` | Add a file to the context |
-| `context remove <path>` | Remove a file from the context |
-| `context clear` | Clear the entire context |
+| `context show` | Display the full context (app info, conventions, stack, features) |
+| `context show --json` | Output as JSON |
+| `context conventions` | Show conventions only |
+| `context conventions --json` | Output as JSON |
+| `context stack` | Show tech stack only |
+| `context stack --json` | Output as JSON |
 
 ### Example
 
 ```bash
-# Show what the agent currently knows about
-broomva context show
+# Show what conventions the platform follows
+broomva context conventions
+# packageManager: bun
+# linter: biome
+# auth: better-auth
+# orm: drizzle
+# ...
 
-# Add a project README to the context
-broomva context add ./README.md
+# Show the tech stack
+broomva context stack
+# framework: Next.js 16
+# runtime: Bun
+# database: PostgreSQL
+# ...
 ```
+
+The context command queries the platform API for the project context. This is useful for AI agents that need to understand the platform's conventions before generating code.
 
 ---
 
@@ -114,9 +190,9 @@ Manage CLI configuration stored in `~/.broomva/config.json`.
 
 | Subcommand | Description |
 |-----------|-------------|
-| `config show` | Display current configuration |
 | `config set <key> <value>` | Set a configuration value |
-| `config get <key>` | Get a configuration value |
+| `config get [key]` | Get a configuration value (or show all if no key given) |
+| `config get --json` | Output as JSON |
 | `config reset` | Reset configuration to defaults |
 
 ### Configurable keys
@@ -124,13 +200,23 @@ Manage CLI configuration stored in `~/.broomva/config.json`.
 | Key | Description | Default |
 |-----|-------------|---------|
 | `apiBase` | API base URL | `https://broomva.tech` |
-| `defaultModel` | Default model for prompts | — |
+| `defaultFormat` | Default output format | -- |
+| `daemon.heartbeatIntervalMs` | Daemon heartbeat interval | 30000 |
+| `daemon.dashboardPort` | Daemon dashboard port | 4200 |
+| `daemon.symphonyUrl` | Symphony service URL | -- |
+| `daemon.arcanUrl` | Arcan service URL | -- |
+| `daemon.lagoUrl` | Lago service URL | -- |
+| `daemon.autonomicUrl` | Autonomic service URL | -- |
+| `daemon.incidentThreshold` | Consecutive failures before incident | 3 |
 
 ### Example
 
 ```bash
 # Point the CLI at a local development server
 broomva config set apiBase http://localhost:3001
+
+# Configure daemon to check services faster
+broomva config set daemon.heartbeatIntervalMs 10000
 
 # Reset to defaults
 broomva config reset
@@ -140,29 +226,88 @@ broomva config reset
 
 ## `broomva daemon`
 
-Manage a local agent daemon process. The daemon runs a lightweight agent runtime that connects to the platform for model inference while keeping context and tools local.
+Manage the `broomvad` runtime daemon -- a long-running process that monitors platform and Life service health, reports incidents, and provides a local dashboard.
 
 | Subcommand | Description |
 |-----------|-------------|
-| `daemon start` | Start the local agent daemon |
+| `daemon start` | Start the broomvad daemon |
+| `daemon start --env local` | Start in local mode (uses localhost URLs) |
+| `daemon start --env railway` | Start in railway mode (default, uses configured URLs) |
+| `daemon start --port <port>` | Override dashboard port |
+| `daemon start --interval <ms>` | Override heartbeat interval |
 | `daemon stop` | Stop the running daemon |
-| `daemon status` | Check if the daemon is running |
-| `daemon logs` | Stream daemon log output |
+| `daemon status` | Check if the daemon is running and show sensor states |
+| `daemon status --json` | Output as JSON |
+| `daemon logs` | View daemon log entries |
+| `daemon logs --lines <n>` | Show last N log entries (default: 20) |
+| `daemon logs --level <level>` | Filter by level (debug, info, warn, error) |
+| `daemon logs --json` | Output as JSON |
+| `daemon tasks` | Show active incidents |
+| `daemon tasks --all` | Include resolved incidents |
+| `daemon tasks --json` | Output as JSON |
+
+### Health sensors
+
+The daemon registers multiple health sensors that run on each heartbeat tick:
+
+| Sensor | Description |
+|--------|-------------|
+| `SiteHealthSensor` | Checks the main website (broomva.tech) availability |
+| `ApiHealthSensor` | Checks the API endpoint health |
+| Railway sensors | Checks Railway-deployed services (Symphony, Arcan, Lago, Autonomic) |
+
+Each sensor reports a status of `healthy`, `degraded`, or `down` with an optional latency measurement. When a sensor reports `down` for consecutive ticks exceeding the `incidentThreshold`, an incident is opened automatically.
+
+### Local mode
+
+In local mode (`--env local`), the daemon uses localhost URLs for all services:
+
+```bash
+broomva daemon start --env local
+# Starting broomvad (env: local, api: http://localhost:3000)
+# Dashboard at http://localhost:4200
+```
+
+| Service | Local URL |
+|---------|-----------|
+| Symphony | `http://localhost:8080` |
+| Arcan | `http://localhost:8081` |
+| Lago | `http://localhost:8082` |
+| Autonomic | `http://localhost:8083` |
+
+### Dashboard
+
+The daemon serves a local HTTP dashboard showing real-time sensor states, active incidents, and Symphony connection status.
 
 ### Example
 
 ```bash
-# Start the daemon in the background
+# Start the daemon
 broomva daemon start
+# Starting broomvad (env: railway, api: https://broomva.tech)
+# Dashboard at http://localhost:4200
+# broomvad running (PID 12345, env: railway). Press Ctrl+C to stop.
 
-# Check status
+# Check status from another terminal
 broomva daemon status
 # Daemon running (PID 12345)
+# Started: 2026-03-22T10:00:00Z
+# Last tick: 2026-03-22T10:01:30Z (#3)
+# Symphony: connected
+#
+# Sensors:
+#   ● site-health: OK (120ms)
+#   ● api-health: OK (85ms)
+#   ● railway-arcan: OK (200ms)
 
-# Stream logs
-broomva daemon logs --follow
+# View recent logs
+broomva daemon logs --lines 5
+
+# Stop the daemon
+broomva daemon stop
+# Daemon stopped (PID 12345)
 ```
 
 <Callout type="info">
-  The daemon feature connects to the Life Agent OS runtime. If you want full local inference, see the [Arcan documentation](/docs/life/arcan) for running the Rust runtime directly.
+  The daemon feature connects to the Life Agent OS runtime and the Symphony orchestration service. For full local inference without the daemon, see the [Arcan documentation](/docs/life/arcan) for running the Rust runtime directly.
 </Callout>

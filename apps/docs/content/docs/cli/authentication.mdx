@@ -3,6 +3,8 @@ title: Authentication
 description: Authenticate the CLI with your BroomVA account using device-code flow or manual tokens.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Authentication
 
 The CLI authenticates with the BroomVA platform to access your prompts, skills, and organization resources. Two authentication methods are supported.
@@ -17,26 +19,26 @@ broomva auth login
 
 The flow works as follows:
 
-1. The CLI requests a device code from `POST /api/auth/device/code` with client ID `broomva-cli`
-2. The server returns a **user code** and a **verification URL**
-3. The CLI displays both and asks you to open the URL in your browser
+1. The CLI sends `POST /api/auth/device/code` with `client_id: "broomva-cli"`
+2. The server generates a **device code** (64-hex-char random string) and a **user code** (format: `ABCD-1234`)
+3. The CLI displays both and asks you to open the verification URL in your browser
 
 ```
   Open this URL in your browser:
-  https://broomva.tech/auth/device
+  https://broomva.tech/device
 
   Then enter this code:
   ABCD-1234
 
   Or open the direct link:
-  https://broomva.tech/auth/device?code=ABCD-1234
+  https://broomva.tech/device?code=ABCD-1234
 
   Waiting for authorization...
 ```
 
-4. You open the URL, sign in (if not already), and enter the code
-5. The CLI polls `POST /api/auth/device/token` until you approve
-6. On approval, the server returns an access token
+4. You open the URL, sign in (if not already), and enter the user code
+5. The CLI polls `POST /api/auth/device/token` with `grant_type: "urn:ietf:params:oauth:grant-type:device_code"` until you approve
+6. On approval, the server signs a JWT via `signLifeJWT()` and returns it as an access token (with an optional refresh token)
 7. The CLI stores the token in `~/.broomva/config.json`
 
 ```
@@ -45,9 +47,48 @@ The flow works as follows:
 
 If the server is unreachable or the device-code endpoint is not available, the CLI automatically falls back to the manual flow.
 
+### Server-side implementation
+
+The device code flow is implemented across three API endpoints:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/auth/device/code` | POST | Issue a device code + user code pair |
+| `/api/auth/device/authorize` | POST | Approve or deny (called from the browser) |
+| `/api/auth/device/token` | POST | Poll for the access token |
+
+**Code generation:** The user code uses a character set that avoids ambiguous characters -- letters `ABCDEFGHJKMNPQRSTUVWXYZ` (no I, L, O) and digits `23456789` (no 0, 1). This prevents confusion when reading codes aloud or entering them manually.
+
+**Rate limiting:** The code endpoint is rate-limited to 10 requests/minute per IP. The token endpoint is rate-limited to 5 requests/minute per device code + IP combination. When the token endpoint detects excessive polling, it returns a `slow_down` error per RFC 8628, and the CLI backs off by an additional 5 seconds.
+
+**Expiration:** Device codes expire after 15 minutes (`expires_in: 900`). The polling interval is 5 seconds by default.
+
 ### Polling behavior
 
-The CLI polls at the interval specified by the server (default: 5 seconds). If the server responds with `slow_down`, the CLI backs off by an additional 5 seconds. The device code expires after the duration specified by the server (typically 15 minutes).
+The CLI polls at the interval specified by the server (default: 5 seconds). The server responds with one of these RFC 8628 error codes:
+
+| Response | Meaning | CLI action |
+|----------|---------|------------|
+| `authorization_pending` | User has not acted yet | Continue polling |
+| `slow_down` | Polling too fast | Back off by 5 seconds |
+| `access_denied` | User denied authorization | Exit with error |
+| `expired_token` | Device code expired | Exit with error |
+| HTTP 200 + `access_token` | User approved | Store token, exit success |
+
+### Token format
+
+On approval, the authorize endpoint calls `signLifeJWT()` to create a signed JWT containing the user's ID and email. The token response includes:
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "Bearer",
+  "expires_in": 2592000,
+  "refresh_token": "eyJ..."
+}
+```
+
+The `refresh_token` is included when the auth system issues token pairs (introduced in BRO-121).
 
 ## Manual token flow
 
@@ -59,10 +100,10 @@ broomva auth login --manual
 
 This flow:
 
-1. Instructs you to sign in at broomva.tech
+1. Instructs you to sign in at broomva.tech (email, Google, or GitHub -- accounts with the same email are automatically linked)
 2. Directs you to `/api/auth/api-token` to generate a token
 3. Prompts you to paste the token
-4. Validates the token against the server
+4. Validates the token against the server via the `ApiClient.validateToken()` method
 5. Stores the token in `~/.broomva/config.json`
 
 ## Token storage
@@ -76,7 +117,11 @@ Tokens are stored in `~/.broomva/config.json`:
 }
 ```
 
-The file is created with `0600` permissions (owner read/write only). The token is a JWT that encodes your user ID and organization memberships.
+The file is created with `0600` permissions (owner read/write only). The token is a JWT signed by the platform's auth system (Better Auth) that encodes your user ID and organization memberships.
+
+<Callout type="warn">
+  Treat your token like a password. Anyone with your token can make API requests as you. If you suspect your token has been compromised, revoke it from the web UI and run `broomva auth login` to get a new one.
+</Callout>
 
 ## Token resolution order
 
@@ -92,7 +137,7 @@ The first non-empty value wins.
 
 ```bash
 broomva auth status
-# Authenticated (token from device-flow)
+# Authenticated (token from config-file)
 # Token expires: 2026-04-21T00:00:00Z
 ```
 
@@ -102,6 +147,8 @@ With JSON output for scripting:
 broomva auth status --json
 # {"authenticated":true,"source":"config-file","expiresAt":"2026-04-21T00:00:00Z"}
 ```
+
+The status command validates the token against the server. If the token is expired or revoked, it reports the token as invalid.
 
 ## Printing the raw token
 
@@ -125,4 +172,4 @@ broomva auth logout
 # Logged out. Token removed from ~/.broomva/config.json
 ```
 
-This removes the token from the local config file. The token remains valid on the server until it expires — logging out is a local-only operation.
+This removes the token from the local config file. The token remains valid on the server until it expires -- logging out is a local-only operation.

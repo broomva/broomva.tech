@@ -3,14 +3,17 @@ title: Installation
 description: Install the @broomva/cli to manage prompts, skills, and agent context from your terminal.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Installing the CLI
 
-The BroomVA CLI (`@broomva/cli`) is a command-line interface for managing prompts, skills, authentication, and agent context. It is built with Commander.js and published as an npm package.
+The BroomVA CLI (`@broomva/cli`) is a command-line interface for managing prompts, skills, authentication, and agent context. It is built with Commander.js v14 and published as an npm package.
 
 ## Requirements
 
-- **Node.js** 18 or later
+- **Node.js** 18 or later (LTS recommended)
 - **npm**, **yarn**, **pnpm**, or **bun** package manager
+- A terminal emulator (the CLI uses colored output via ANSI escape codes; pass `--no-color` to disable)
 
 ## Installation
 
@@ -22,7 +25,7 @@ Install the CLI globally so the `broomva` command is available everywhere:
 # npm
 npm install -g @broomva/cli
 
-# bun
+# bun (recommended)
 bun install -g @broomva/cli
 
 # pnpm
@@ -52,7 +55,11 @@ bun run build
 bun link
 ```
 
-This builds the CLI with `tsup` and links it globally so `broomva` resolves to your local build.
+This builds the CLI with `tsup` and links it globally so `broomva` resolves to your local build. The binary entry point is `dist/index.js`.
+
+<Callout type="info">
+  The CLI is part of the `broomva.tech` Turborepo monorepo. Building from source requires Bun (the monorepo's package manager). The CLI itself has minimal dependencies: `commander` (v14) and `zod` (v3.24) at runtime.
+</Callout>
 
 ## Verify installation
 
@@ -75,11 +82,24 @@ broomva --help
 # Commands:
 #   auth                Manage authentication
 #   prompts             Manage prompts
-#   skills              Manage skills
-#   context             Manage context
+#   skills              Browse and install skills
+#   context             Show project context and conventions
 #   config              Manage CLI configuration
-#   daemon              Manage the local agent daemon
+#   daemon              Manage the broomvad runtime daemon
 ```
+
+## Package details
+
+| Field | Value |
+|-------|-------|
+| **Package name** | `@broomva/cli` |
+| **Version** | `0.1.0` |
+| **Binary name** | `broomva` |
+| **Module type** | ESM (`"type": "module"`) |
+| **Build tool** | tsup |
+| **Test framework** | Vitest |
+| **Linter** | Biome |
+| **License** | MIT |
 
 ## Configuration
 
@@ -89,8 +109,11 @@ The CLI stores its configuration in `~/.broomva/config.json`. You can set defaul
 # Set the API base URL (default: https://broomva.tech)
 broomva config set apiBase https://broomva.tech
 
+# Set the default output format
+broomva config set defaultFormat json
+
 # View current configuration
-broomva config show
+broomva config get
 ```
 
 Configuration values can be overridden per-command with flags:
@@ -99,16 +122,43 @@ Configuration values can be overridden per-command with flags:
 broomva --api-base http://localhost:3001 prompts list
 ```
 
+### Daemon configuration
+
+The daemon command has additional configurable keys under the `daemon.*` namespace:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `daemon.heartbeatIntervalMs` | number | 30000 | Interval between health check ticks |
+| `daemon.dashboardPort` | number | 4200 | Local dashboard HTTP port |
+| `daemon.symphonyUrl` | string | -- | Symphony orchestration service URL |
+| `daemon.arcanUrl` | string | -- | Arcan agent runtime URL |
+| `daemon.lagoUrl` | string | -- | Lago persistence URL |
+| `daemon.autonomicUrl` | string | -- | Autonomic controller URL |
+| `daemon.incidentThreshold` | number | 3 | Consecutive failures before opening an incident |
+
+```bash
+# Configure daemon heartbeat interval
+broomva config set daemon.heartbeatIntervalMs 15000
+
+# Point daemon at local services
+broomva config set daemon.arcanUrl http://localhost:8081
+```
+
 ## Environment variables
 
 The CLI also reads configuration from environment variables:
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `BROOMVA_TOKEN` | API token (skips auth login) | — |
+| `BROOMVA_TOKEN` | API token (skips auth login) | -- |
 | `BROOMVA_API_BASE` | API base URL | `https://broomva.tech` |
 
-Environment variables take precedence over the config file, and command-line flags take precedence over both.
+Environment variables take precedence over the config file, and command-line flags take precedence over both. The resolution order is:
+
+1. `--token` / `--api-base` command-line flags
+2. `BROOMVA_TOKEN` / `BROOMVA_API_BASE` environment variables
+3. Values in `~/.broomva/config.json`
+4. Built-in defaults
 
 ## Next steps
 

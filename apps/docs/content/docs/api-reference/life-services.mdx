@@ -10,10 +10,10 @@ import { Callout } from "fumadocs-ui/components/callout";
 When you deploy a managed Life instance through the platform, it exposes a set of HTTP APIs for interacting with the Agent OS subsystems. These endpoints are available at your deployment's base URL.
 
 <Callout type="info">
-  Life services APIs are available on managed deployments (Team and Enterprise plans). For local usage, run the Arcan daemon directly — see [Arcan](/docs/life/arcan).
+  Life services APIs are available on managed deployments (Team and Enterprise plans). For local usage, run the Arcan daemon directly -- see [Arcan](/docs/life/arcan).
 </Callout>
 
-## Arcan — Agent Runtime
+## Arcan -- Agent Runtime
 
 The Arcan daemon provides the agent conversation loop with streaming responses.
 
@@ -34,7 +34,23 @@ POST /v1/chat
 }
 ```
 
-The response is an SSE stream in one of four supported formats: Lago (native), OpenAI-compatible, Anthropic-compatible, or Vercel AI SDK format. Set the `Accept` header or use the `format` query parameter to select the output format.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session_id` | string | Yes | Session identifier for event persistence |
+| `messages` | array | Yes | Array of message objects with `role` and `content` |
+| `provider` | string | No | LLM provider: `anthropic`, `openai`, `mock` (default: configured provider) |
+| `model` | string | No | Model identifier (default: configured model) |
+
+The response is an SSE stream in one of four supported formats. Set the `format` query parameter or `Accept` header to select:
+
+| Format | Query / Header | Use case |
+|--------|---------------|----------|
+| **Lago** | `format=lago` | Native event format for Lago clients |
+| **OpenAI** | `format=openai` | Compatible with OpenAI client libraries |
+| **Anthropic** | `format=anthropic` | Compatible with Anthropic client libraries |
+| **Vercel** | `format=vercel` | Compatible with Vercel AI SDK `useChat` / `streamText` |
+
+The Vercel format emits `UiPart` objects compatible with AI SDK v6, including `text-delta`, `tool-call`, `tool-result`, and `finish` events.
 
 ### List sessions
 
@@ -44,15 +60,48 @@ GET /v1/sessions
 
 Returns all active sessions with their metadata and message counts.
 
+```json
+{
+  "sessions": [
+    {
+      "id": "my-session",
+      "branch": "main",
+      "event_count": 42,
+      "created_at": "2026-03-22T10:00:00Z",
+      "last_event_at": "2026-03-22T11:30:00Z"
+    }
+  ]
+}
+```
+
 ### Get session events
 
 ```
 GET /v1/sessions/{session_id}/events
 ```
 
-Returns the raw event stream for a session — every event that occurred during the agent's execution, in chronological order.
+Returns the raw event stream for a session -- every event that occurred during the agent's execution, in chronological order. Each event is an `EventEnvelope` with a ULID, stream ID, event kind, payload, checksum, and metadata.
 
-## Lago — Persistence Substrate
+| Query parameter | Type | Description |
+|----------------|------|-------------|
+| `after` | string | Cursor (ULID) to start after |
+| `limit` | number | Maximum events to return |
+
+```json
+{
+  "events": [
+    {
+      "id": "01J...",
+      "stream_id": "my-session",
+      "kind": "UserMessage",
+      "timestamp": 1711234567000,
+      "payload": { "content": "Hello" }
+    }
+  ]
+}
+```
+
+## Lago -- Persistence Substrate
 
 Lago provides the event journal, blob storage, and knowledge index.
 
@@ -62,7 +111,19 @@ Lago provides the event journal, blob storage, and knowledge index.
 POST /v1/journal/append
 ```
 
-Append one or more events to the journal. Events are immutable and content-addressed.
+Append one or more events to the journal. Events are immutable and content-addressed (SHA-256 checksum of payload).
+
+```json
+{
+  "stream_id": "my-session",
+  "events": [
+    {
+      "kind": "UserMessage",
+      "payload": { "content": "Hello from the API" }
+    }
+  ]
+}
+```
 
 ### Query events
 
@@ -70,7 +131,13 @@ Append one or more events to the journal. Events are immutable and content-addre
 GET /v1/journal/events?stream_id={id}&after={cursor}
 ```
 
-Read events from a stream, optionally starting after a cursor position.
+Read events from a stream, optionally starting after a cursor position. Events are returned in append order (ULID-sorted).
+
+| Query parameter | Type | Description |
+|----------------|------|-------------|
+| `stream_id` | string | Logical stream identifier |
+| `after` | string | ULID cursor -- return events after this ID |
+| `limit` | number | Maximum events to return |
 
 ### Blob storage
 
@@ -78,13 +145,21 @@ Read events from a stream, optionally starting after a cursor position.
 POST /v1/blobs
 ```
 
-Upload a blob (file, image, document). The blob is content-addressed (SHA-256) and compressed with zstd.
+Upload a blob (file, image, document). The blob is content-addressed (SHA-256) and compressed with zstd. Returns the hash for future retrieval.
+
+```json
+{
+  "hash": "sha256:a1b2c3d4...",
+  "size": 12345,
+  "compressed_size": 8901
+}
+```
 
 ```
 GET /v1/blobs/{hash}
 ```
 
-Retrieve a blob by its content hash.
+Retrieve a blob by its content hash. The blob is decompressed before delivery.
 
 ### Knowledge search
 
@@ -92,7 +167,20 @@ Retrieve a blob by its content hash.
 GET /v1/knowledge/search?q={query}&limit={n}
 ```
 
-Search the knowledge index using scored text matching. The knowledge index is built from document frontmatter, wikilinks, and extracted facts.
+Search the knowledge index using scored text matching. The knowledge index is built from document frontmatter, wikilinks, and extracted facts. Results are ranked by a TF-IDF-inspired scoring function.
+
+```json
+{
+  "results": [
+    {
+      "id": "doc_abc",
+      "title": "Event Sourcing Patterns",
+      "score": 0.87,
+      "excerpt": "...event sourcing stores state changes as an immutable sequence..."
+    }
+  ]
+}
+```
 
 ### Knowledge graph traversal
 
@@ -102,7 +190,42 @@ GET /v1/knowledge/graph?node={id}&depth={n}
 
 Traverse the knowledge graph from a starting node, following wikilink edges to a specified depth.
 
-## Autonomic — Homeostasis Controller
+```json
+{
+  "root": "doc_abc",
+  "depth": 2,
+  "nodes": [
+    { "id": "doc_abc", "title": "Event Sourcing", "depth": 0 },
+    { "id": "doc_def", "title": "CQRS Pattern", "depth": 1, "edge": "related_to" },
+    { "id": "doc_ghi", "title": "Domain Events", "depth": 2, "edge": "references" }
+  ]
+}
+```
+
+### Memory API
+
+```
+GET /v1/memory?session_id={id}
+```
+
+Retrieve the memory projection for a session -- a computed view of all memory events (facts, preferences, decisions) stored during the session.
+
+```
+POST /v1/memory
+```
+
+Store a new memory event (typically called by Arcan's governed memory tools).
+
+```json
+{
+  "session_id": "my-session",
+  "fact": "User prefers Rust for systems programming",
+  "source": "conversation",
+  "relevance": 0.92
+}
+```
+
+## Autonomic -- Homeostasis Controller
 
 Autonomic provides advisory regulation across three pillars: operational, cognitive, and economic.
 
@@ -112,23 +235,26 @@ Autonomic provides advisory regulation across three pillars: operational, cognit
 GET /v1/autonomic/state
 ```
 
-Returns the current homeostatic state projection — a deterministic fold over all events in the system:
+Returns the current homeostatic state projection -- a deterministic fold over all events in the system:
 
 ```json
 {
   "operational": {
     "health": 0.92,
     "uptime_seconds": 86400,
-    "error_rate": 0.003
+    "error_rate": 0.003,
+    "latency_p95_ms": 450
   },
   "cognitive": {
     "context_utilization": 0.67,
-    "memory_pressure": "normal"
+    "memory_pressure": "normal",
+    "task_completion_rate": 0.94
   },
   "economic": {
     "mode": "sovereign",
     "budget_remaining": 4200,
-    "burn_rate_per_hour": 12
+    "burn_rate_per_hour": 12,
+    "runway_hours": 350
   }
 }
 ```
@@ -139,23 +265,47 @@ Returns the current homeostatic state projection — a deterministic fold over a
 GET /v1/autonomic/gating
 ```
 
-Returns the current gating profile — a set of rules that determine which operations are allowed, warned, or blocked based on the homeostatic state:
+Returns the current gating profile -- a set of rules that determine which operations are allowed, warned, or blocked based on the homeostatic state:
 
 ```json
 {
-  "profile": "normal",
+  "profile": "conserving",
   "gates": {
-    "expensive_model": "allow",
+    "expensive_model": "warn",
+    "cheap_model": "allow",
     "tool_execution": "allow",
     "web_search": "allow",
-    "file_write": "warn"
+    "file_write": "allow",
+    "speculative_research": "block",
+    "long_context": "warn"
   }
 }
 ```
 
-The economic modes (Sovereign, Conserving, Hustle, Hibernate) use hysteresis gates to prevent flapping between states.
+Gate decisions:
 
-## Haima — Finance Engine
+| Decision | Meaning |
+|----------|---------|
+| `allow` | Operation proceeds normally |
+| `warn` | Operation proceeds but is logged as potentially wasteful |
+| `block` | Operation is denied with an explanation |
+
+The economic modes (Sovereign, Conserving, Hustle, Hibernate) use hysteresis gates to prevent flapping between states. See [Autonomic](/docs/life/autonomic) for threshold details.
+
+### Health check
+
+```
+GET /v1/autonomic/health
+```
+
+```json
+{
+  "status": "healthy",
+  "uptime_seconds": 86400
+}
+```
+
+## Haima -- Finance Engine
 
 Haima provides the x402 payment layer for machine-to-machine transactions.
 
@@ -187,7 +337,7 @@ Returns the agent's wallet balance and recent financial events:
 POST /v1/haima/pay
 ```
 
-Submit an x402 payment for a task or service. The payment is verified on-chain and recorded as an immutable Lago event.
+Submit an x402 payment for a task or service. The payment is verified on-chain and recorded as an immutable Lago event (`finance.payment_sent`).
 
 ```json
 {
@@ -195,6 +345,50 @@ Submit an x402 payment for a task or service. The payment is verified on-chain a
   "amount_usdc": "0.05",
   "task_id": "task_abc123",
   "memo": "Deep research query"
+}
+```
+
+### Transaction history
+
+```
+GET /v1/haima/history
+```
+
+Returns the transaction history with cost and revenue events:
+
+```json
+{
+  "events": [
+    {
+      "type": "finance.task_billed",
+      "task_id": "task_abc123",
+      "cost": 15,
+      "category": "inference",
+      "provider": "anthropic",
+      "timestamp": "2026-03-22T10:30:00Z"
+    },
+    {
+      "type": "finance.revenue_received",
+      "task_id": "task_abc123",
+      "amount": 50,
+      "source": "marketplace",
+      "timestamp": "2026-03-22T10:31:00Z"
+    }
+  ]
+}
+```
+
+### Health check
+
+```
+GET /v1/haima/health
+```
+
+```json
+{
+  "status": "healthy",
+  "wallet_connected": true,
+  "chain": "eip155:8453"
 }
 ```
 

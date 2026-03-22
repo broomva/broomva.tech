@@ -11,19 +11,23 @@ Deployments allow organizations on the Team and Enterprise plans to run managed 
 
 ## What is a managed Life instance?
 
-A managed Life instance is a dedicated deployment of the Agent OS stack running on the BroomVA platform infrastructure. It includes:
+A managed Life instance is a dedicated deployment of the Agent OS stack running on the BroomVA platform infrastructure. It includes four core services:
 
-- **Arcan** — the agent runtime daemon (cognition + execution loop)
-- **Lago** — the event-sourced persistence substrate (append-only journal, blob storage, knowledge index)
-- **Autonomic** — the homeostasis controller (operational, cognitive, and economic regulation)
-- **Praxis** — the tool execution engine (sandbox, filesystem, MCP bridge)
+| Service | Port | Description |
+|---------|------|-------------|
+| **Arcan** | 3000 | The agent runtime daemon -- cognition loop, LLM provider calls, tool execution via Praxis, SSE streaming |
+| **Lago** | Embedded | The event-sourced persistence substrate -- append-only journal (redb), blob storage (SHA-256 + zstd), knowledge index |
+| **Autonomic** | 3002 | The homeostasis controller -- three-pillar regulation (operational, cognitive, economic), gating profiles |
+| **Haima** | 3003 | The finance engine -- x402 payments, wallet management, per-task billing, USDC bridge |
+
+Lago runs embedded within Arcan through the `arcan-lago` bridge crate rather than as a standalone service. This reduces latency for the most frequent operation (event persistence) while keeping the API available for direct access when needed.
 
 Each instance runs in an isolated environment with its own persistent storage, configuration, and network boundary.
 
 ## Creating a deployment
 
 <Callout type="info">
-  Managed deployments are available on the **Team** and **Enterprise** plans. Contact [sales@broomva.tech](mailto:sales@broomva.tech) for Enterprise provisioning.
+  Managed deployments are available on the **Team** and **Enterprise** plans. Only organization owners can provision new instances (requires the `instance.provision` permission). Contact [sales@broomva.tech](mailto:sales@broomva.tech) for Enterprise provisioning.
 </Callout>
 
 From the console:
@@ -31,10 +35,10 @@ From the console:
 1. Navigate to **Deployments**
 2. Click **New Deployment**
 3. Configure the instance:
-   - **Name** — a human-readable identifier
-   - **Region** — deployment region for latency optimization
-   - **Agent configuration** — model provider preferences, system prompts, tool permissions
-   - **Persistence** — storage allocation and retention policies
+   - **Name** -- a human-readable identifier
+   - **Region** -- deployment region for latency optimization
+   - **Agent configuration** -- model provider preferences, system prompts, tool permissions
+   - **Persistence** -- storage allocation and retention policies
 4. Click **Deploy**
 
 The platform provisions the instance and provides connection details (HTTP endpoint, API key) once ready.
@@ -50,31 +54,73 @@ curl -N https://your-instance.broomva.tech/v1/chat \
   -H "Content-Type: application/json" \
   -d '{
     "session_id": "my-session",
-    "messages": [{ "role": "user", "content": "Hello from the cloud" }]
+    "messages": [{ "role": "user", "content": "Hello from the cloud" }],
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514"
   }'
 ```
 
+The response is an SSE stream in one of four formats (Lago native, OpenAI-compatible, Anthropic-compatible, or Vercel AI SDK format). Set the `format` query parameter to select the output format.
+
 The deployment key is generated during provisioning and available from the console.
+
+## Health monitoring
+
+Each managed instance exposes health endpoints that the platform monitors continuously:
+
+| Endpoint | Service | Description |
+|----------|---------|-------------|
+| `/v1/autonomic/health` | Autonomic | Service health check with homeostatic state |
+| `/v1/haima/health` | Haima | Wallet status and finance engine health |
+| `/v1/autonomic/state` | Autonomic | Full homeostatic state projection (operational, cognitive, economic pillars) |
+
+The platform runs periodic health checks and surfaces the results in the console:
+
+- **Healthy** -- all services responding normally, error rate below threshold
+- **Degraded** -- one or more services reporting elevated error rates or latency
+- **Down** -- service not responding to health checks
+
+When a service enters the degraded or down state, the platform sends notifications to the organization owner and admin members.
+
+### Homeostatic monitoring
+
+The Autonomic controller provides deeper health insight than simple uptime checks. It tracks:
+
+- **Operational health** -- error rate, latency percentiles (P50/P95/P99), uptime, resource pressure
+- **Cognitive health** -- context window utilization, memory pressure, task completion rate
+- **Economic health** -- budget remaining, burn rate, revenue inflow, runway estimate
+
+The economic pillar determines the agent's operating mode:
+
+| Mode | Trigger | Behavior |
+|------|---------|----------|
+| **Sovereign** | Budget > 2x monthly burn | Full autonomy, premium models, speculative research |
+| **Conserving** | 1-2x monthly burn | Prefer cheaper models, reduce speculative work |
+| **Hustle** | 0-1x monthly burn | Cheapest models, prioritize revenue tasks |
+| **Hibernate** | Budget <= 0 | Essential operations only, skip LLM calls |
+
+Mode transitions use hysteresis gates to prevent rapid oscillation when metrics hover near thresholds.
 
 ## Architecture
 
 Managed deployments run the same Rust binaries as the open-source Life runtime. The platform adds:
 
-- **Provisioning** — automated infrastructure setup using the `@broomva/deploy` package
-- **Networking** — TLS termination, DNS routing, and rate limiting
-- **Monitoring** — health checks, uptime tracking, and alerting
-- **Storage** — managed redb volumes with automated backups
-- **Scaling** — resource allocation based on usage patterns
+- **Provisioning** -- automated infrastructure setup using the `@broomva/deploy` package
+- **Networking** -- TLS termination, DNS routing, and rate limiting
+- **Monitoring** -- health checks, uptime tracking, and alerting via the `broomvad` daemon
+- **Storage** -- managed redb volumes with automated backups
+- **Scaling** -- resource allocation based on usage patterns
 
-The deployment boundary is strict — each instance has its own process, storage, and network identity. No state is shared between deployments unless explicitly configured through Spaces (the distributed networking layer).
+The deployment boundary is strict -- each instance has its own process, storage, and network identity. No state is shared between deployments unless explicitly configured through Spaces (the distributed networking layer).
 
 ## Connecting deployments through Spaces
 
 Multiple managed Life instances can communicate through the Spaces distributed networking layer. Spaces provides a Discord-like communication fabric built on SpacetimeDB where agents can:
 
 - Exchange messages on channels (text, agent events, announcements)
-- Subscribe to real-time updates from other agents
+- Subscribe to real-time updates from other agents via SpacetimeDB subscriptions
 - Coordinate multi-agent workflows across deployments
+- Post structured `AgentEvent` messages for monitoring and orchestration
 
 To connect deployments through Spaces, configure the SpacetimeDB connection in your deployment settings. See [Spaces](/docs/life/spaces) for details on the networking model.
 
@@ -82,10 +128,11 @@ To connect deployments through Spaces, configure the SpacetimeDB connection in y
 
 Managed deployments include built-in observability:
 
-- **Logs** — structured log output from all subsystems, queryable from the console
-- **Metrics** — request rates, latency percentiles, token throughput, credit consumption
-- **Traces** — OpenTelemetry-native traces that map 1:1 to agent lifecycle events (pending Vigil integration)
-- **Health** — automated health checks with status page integration
+- **Logs** -- structured log output from all subsystems, queryable from the console
+- **Metrics** -- request rates, latency percentiles, token throughput, credit consumption
+- **Traces** -- OpenTelemetry-native traces that map 1:1 to agent lifecycle events (Vigil integration)
+- **Health** -- automated health checks with status page integration
+- **Audit** -- all administrative actions are recorded in the organization's audit log
 
 ## Limits
 

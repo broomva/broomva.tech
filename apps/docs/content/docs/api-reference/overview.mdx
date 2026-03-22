@@ -3,6 +3,8 @@ title: API Overview
 description: Base URL, authentication, rate limits, error format, and versioning for the BroomVA API.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # API Overview
 
 The BroomVA API provides programmatic access to the platform's chat, organization management, billing, and agent services. All endpoints are served from the primary application at `broomva.tech`.
@@ -33,27 +35,42 @@ curl -H "Authorization: Bearer $TOKEN" https://broomva.tech/api/...
 
 There are three ways to get an API token:
 
-1. **Device-code flow** — use `broomva auth login` from the CLI. The token is stored in `~/.broomva/config.json` and can be printed with `broomva auth token`.
+1. **Device-code flow (RFC 8628)** -- use `broomva auth login` from the CLI. The flow issues `POST /api/auth/device/code` to get a user code, then polls `POST /api/auth/device/token` until the user approves. The token is stored in `~/.broomva/config.json` and can be printed with `broomva auth token`. See [CLI Authentication](/docs/cli/authentication) for the full protocol.
 
-2. **API token endpoint** — sign in to broomva.tech and visit `/api/auth/api-token` to generate a long-lived token.
+2. **API token endpoint** -- sign in to broomva.tech and visit `/api/auth/api-token` to generate a long-lived token. This is the simplest method for scripts.
 
-3. **API keys** — create organization-scoped API keys from the console. These do not expire unless explicitly revoked.
+3. **Organization API keys** -- create organization-scoped API keys from the console. These do not expire unless explicitly revoked. They provide admin-level access scoped to the creating organization.
 
 ### Token format
 
-Tokens are JWTs signed by the platform's auth system (Better Auth). They encode:
+Tokens are JWTs signed by the platform's auth system (Better Auth) using `signLifeJWT()`. They encode:
 
-- User ID
-- Organization memberships
-- Token expiration
-- Scopes (for API keys)
+- **User ID** -- the authenticated user
+- **Email** -- for identity resolution
+- **Organization memberships** -- resolved at auth time
+- **Token expiration** -- configurable, default matches `JWT_ACCESS_EXPIRY_MS`
+- **Scopes** -- for API keys, the permitted operations
+
+### Refresh tokens
+
+When using the device-code flow, the server may return a `refresh_token` alongside the `access_token`. Use the refresh token to obtain a new access token without re-authenticating:
+
+```bash
+curl -X POST https://broomva.tech/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "eyJ..."}'
+```
 
 ### Authentication errors
 
 | Status | Error | Description |
 |--------|-------|-------------|
 | `401` | `unauthorized` | Missing or invalid token |
-| `403` | `forbidden` | Valid token but insufficient permissions |
+| `403` | `forbidden` | Valid token but insufficient permissions (RBAC check failed) |
+
+<Callout type="info">
+  The RBAC system uses a 4-tier role hierarchy (owner > admin > member > viewer). When a 403 is returned, it means the user's role in the target organization does not meet the minimum required role for the operation. See [Organizations](/docs/platform/organizations) for the full permission matrix.
+</Callout>
 
 ## Rate limits
 
@@ -74,6 +91,8 @@ X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 0
 X-RateLimit-Reset: 1711234567
 ```
+
+The device-code endpoints have separate rate limits: 10 requests/minute per IP for code generation, and 5 requests/minute per device code + IP for token polling.
 
 ## Error format
 
@@ -99,12 +118,13 @@ All errors follow a consistent JSON structure:
 | `unauthorized` | 401 | Authentication required |
 | `forbidden` | 403 | Insufficient permissions |
 | `not_found` | 404 | Resource does not exist |
+| `conflict` | 409 | Resource already exists (e.g., duplicate slug) |
 | `validation_error` | 422 | Request body validation failed |
 | `rate_limited` | 429 | Too many requests |
 | `credits_exhausted` | 402 | Credit limit reached |
 | `internal_error` | 500 | Unexpected server error |
 
-The `credits_exhausted` error (HTTP 402) is returned when the organization's credit balance is insufficient for the requested operation and the plan's overage policy blocks the request.
+The `credits_exhausted` error (HTTP 402) is returned when the organization's credit balance is insufficient for the requested operation and the plan's overage policy blocks the request. See [Billing](/docs/platform/billing) for overage policy details per plan.
 
 ## Content type
 
@@ -124,6 +144,18 @@ curl -N -H "Authorization: Bearer $TOKEN" \
 
 The SSE stream uses the Vercel AI SDK v6 data stream format, compatible with the `ai` package's `useChat` and `streamText` functions.
 
+### Stream event types
+
+The stream emits `UiPart` objects:
+
+| Event type | Description |
+|-----------|-------------|
+| `text-delta` | Incremental text token from the model |
+| `tool-call` | Tool invocation request (name, arguments) |
+| `tool-result` | Tool execution result |
+| `finish` | Completion signal with usage data and finish reason |
+| `error` | Error during generation |
+
 ## Versioning
 
-The API is currently unversioned — all endpoints are served at `/api/`. When breaking changes are introduced, the API will adopt path-based versioning (`/api/v2/`) with a deprecation period for the previous version.
+The API is currently unversioned -- all endpoints are served at `/api/`. When breaking changes are introduced, the API will adopt path-based versioning (`/api/v2/`) with a deprecation period for the previous version.

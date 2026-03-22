@@ -3,26 +3,32 @@ title: Agent OS Architecture
 description: The Life Agent Operating System — eight subsystems modeled after biological primitives, written in Rust.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Life Agent OS
 
 Life is an Agent Operating System written in Rust. It provides the runtime, persistence, regulation, finance, and networking infrastructure for autonomous AI agents. The name reflects the ambition: creating artificial life from computational primitives.
 
-The system is organized as a Rust workspace with 37 crates across 8 subsystems, totaling approximately 43,000 lines of code. All crates use Rust 2024 Edition with MSRV 1.85.
+The system is organized as a Rust workspace with 61 crates across 8 subsystems, totaling over 130,000 lines of Rust. All crates use Rust 2024 Edition with MSRV 1.85 (the Spaces WASM module uses Rust 2021 Edition as required by SpacetimeDB).
+
+<Callout type="info">
+  **Current metrics:** v0.2.0 (Stabilization Phase) with over 4,800 test functions across 210 test files. All tests pass.
+</Callout>
 
 ## Biological analogy
 
-Each subsystem maps to a biological system. This is not a metaphor for marketing — the architecture genuinely follows biological design principles where specialized systems communicate through well-defined interfaces and maintain homeostasis through feedback loops.
+Each subsystem maps to a biological system. This is not a metaphor for marketing -- the architecture genuinely follows biological design principles where specialized systems communicate through well-defined interfaces and maintain homeostasis through feedback loops.
 
 | Subsystem | Biological Analog | Role |
 |-----------|-------------------|------|
-| **aiOS** | DNA | Kernel contract — canonical types, event taxonomy, trait interfaces |
-| **Arcan** | Brain + nervous system | Agent runtime — cognition, execution, LLM provider calls |
-| **Lago** | Bone marrow + blood cells | Persistence — event journal, blob storage, knowledge index |
-| **Praxis** | Hands + motor system | Tool execution — sandboxed commands, filesystem, MCP bridge |
-| **Autonomic** | Autonomic nervous system | Homeostasis — three-pillar regulation (operational, cognitive, economic) |
-| **Haima** | Circulatory system | Finance — x402 payments, wallet management, per-task billing |
-| **Spaces** | Social/hive behavior | Networking — distributed agent communication via SpacetimeDB |
-| **Vigil** | Senses + perception | Observability — OpenTelemetry traces, GenAI metrics (planned) |
+| **aiOS** | DNA | Kernel contract -- canonical types, event taxonomy, trait interfaces |
+| **Arcan** | Brain + nervous system | Agent runtime -- cognition, execution, LLM provider calls |
+| **Lago** | Bone marrow + blood cells | Persistence -- event journal, blob storage, knowledge index |
+| **Praxis** | Hands + motor system | Tool execution -- sandboxed commands, filesystem, MCP bridge |
+| **Autonomic** | Autonomic nervous system | Homeostasis -- three-pillar regulation (operational, cognitive, economic) |
+| **Haima** | Circulatory system | Finance -- x402 payments, wallet management, per-task billing |
+| **Spaces** | Social/hive behavior | Networking -- distributed agent communication via SpacetimeDB |
+| **Vigil** | Senses + perception | Observability -- OpenTelemetry traces, GenAI metrics |
 
 ## Architecture diagram
 
@@ -42,7 +48,7 @@ aiOS (kernel contract — types, traits, event taxonomy)
   ├── Haima (finance — x402 payments + per-task revenue)
   │     └── haima-lago bridge → Lago
   │
-  └── Vigil (observability — OTel tracing + GenAI metrics) [planned]
+  └── Vigil (observability — OTel tracing + GenAI metrics)
 ```
 
 All subsystems communicate through the `aios-protocol` contract defined in aiOS. Events flow through Lago's append-only journal. Bridge crates (`arcan-lago`, `autonomic-lago`, `haima-lago`) connect subsystems to the shared persistence layer.
@@ -51,43 +57,69 @@ All subsystems communicate through the `aios-protocol` contract defined in aiOS.
 
 aiOS defines the canonical types and traits that all other subsystems depend on:
 
-- **AgentStateVector** — the complete homeostatic state of an agent at a point in time
-- **OperatingMode** — six modes: Explore, Execute, Verify, Recover, AskHuman, Sleep
-- **BudgetState** — resource budgets (tokens, time, cost) with consumption tracking
-- **EventKind** — the taxonomy of events that flow through the system (message, tool call, tool result, memory, approval, custom)
-- **Capability** — the permission model for what an agent can do
-- **SoulProfile** — the agent's personality, goals, and constraints
-- **Observation** — sensory input with provenance metadata
+- **AgentStateVector** -- the complete homeostatic state of an agent at a point in time
+- **OperatingMode** -- six modes that govern agent behavior:
+
+```rust
+pub enum OperatingMode {
+    Explore,   // High uncertainty — gathering information, read-only tools preferred
+    Execute,   // Default productive mode — executing tools, making progress
+    Verify,    // High side-effect pressure — validating before committing
+    Recover,   // Error streak >= threshold — rollback, change strategy
+    AskHuman,  // Pending approvals or human input needed
+    Sleep,     // Progress >= 98% or awaiting next signal
+}
+```
+
+- **BudgetState** -- resource budgets (tokens, time, cost) with consumption tracking
+- **EventKind** -- the taxonomy of events that flow through the system:
+
+| Category | Event types |
+|----------|------------|
+| Input/sensing | `UserMessage`, `ExternalSignal` |
+| Session lifecycle | `SessionCreated`, `SessionResumed`, `SessionClosed` |
+| Cognition | `AssistantMessage`, `ToolCall`, `ToolResult` |
+| Memory | `MemoryStored`, `MemoryRetrieved` |
+| Approval | `ApprovalRequested`, `ApprovalGranted`, `ApprovalDenied` |
+| Custom | Any subsystem-specific event (Autonomic, Haima, etc.) |
+
+- **Capability** -- the permission model for what an agent can do
+- **SoulProfile** -- the agent's personality, goals, and constraints
+- **Observation** -- sensory input with provenance metadata
 
 The kernel defines an **8-phase tick lifecycle** that every agent execution follows:
 
-1. **Perceive** — gather observations from the environment
-2. **Orient** — update the world model and context
-3. **Decide** — select an operating mode and plan
-4. **Act** — execute the plan (LLM call, tool use, etc.)
-5. **Observe** — collect results and feedback
-6. **Learn** — update memory and knowledge
-7. **Regulate** — check homeostatic constraints
-8. **Report** — emit events and metrics
+1. **Perceive** -- gather observations from the environment
+2. **Orient** -- update the world model and context
+3. **Decide** -- select an operating mode and plan
+4. **Act** -- execute the plan (LLM call, tool use, etc.)
+5. **Observe** -- collect results and feedback
+6. **Learn** -- update memory and knowledge
+7. **Regulate** -- check homeostatic constraints (Autonomic)
+8. **Report** -- emit events and metrics (Vigil)
 
 ## Current state
 
-Life is in **v0.2.0 (Stabilization Phase)** with 1,077 tests passing across all crates.
+Life is in **v0.2.0 (Stabilization Phase)**.
 
 ### What works end-to-end
 
-The core agent loop is fully functional. A user sends a chat message, Arcan loads the session from the Lago journal, reconstructs the state, calls an LLM provider (Anthropic, OpenAI-compatible, or mock), executes tools through the Praxis sandbox, persists all events to redb, and streams the response via multi-format SSE. Sessions are fully replayable from the event journal.
+The core agent loop is fully functional. A user sends a chat message, Arcan loads the session from the Lago journal, reconstructs the state, calls an LLM provider (Anthropic, OpenAI-compatible, or Mock), executes tools through the Praxis sandbox, persists all events to redb, and streams the response via multi-format SSE. Sessions are fully replayable from the event journal.
 
 ### Completed features
 
-- Memory system (5 event types, operating-mode observer, memory projection, governed tools)
+- Memory system (5 event types, operating-mode observer, MemoryProjection, governed tools)
 - Context compiler (typed blocks, per-block budgets, deterministic assembly)
-- Approval workflow (approval gates, async pause/resume, auto-timeout)
+- Approval workflow (ApprovalGate, async pause/resume, auto-timeout)
 - Multi-provider support (Anthropic, Mock, OpenAI-compatible with retry)
 - Blob storage (SHA-256 + zstd, wired to file endpoints)
 - Default policy rules (5 rules, 3 roles, 2 hooks)
 - CLI commands (session, log, cat, branch, init)
 - AI SDK v6 streaming (UiPart enum, boundary signals, Vercel format)
+- Praxis tool engine (90 tests -- sandbox, filesystem, hashline editing, SKILL.md, MCP bridge)
+- Autonomic homeostasis (economic modes, hysteresis gates, RuleSet evaluation)
+- Haima finance (x402 protocol, secp256k1 wallet, per-task billing, Lago bridge)
+- Spaces networking (11 tables, 24 reducers, 5-tier RBAC, SpacetimeDB 2.0)
 
 ### Known gaps
 
@@ -95,7 +127,7 @@ The core agent loop is fully functional. A user sends a chat message, Arcan load
 - No OS-level sandbox isolation (soft sandbox only)
 - Network isolation declared but not enforced
 - No conformance test suite across aiOS/Arcan/Lago
-- Vigil scaffolded but not implemented
+- Vigil scaffolded, Chronos/Aegis/Nous/Mnemo not yet started
 
 ## Running locally
 
@@ -106,6 +138,8 @@ Each subsystem runs as an independent daemon:
 
 # Start the Arcan agent runtime (port 3000)
 cd arcan && cargo run -p arcan
+# With a real LLM provider:
+ANTHROPIC_API_KEY=... cargo run -p arcan
 
 # Start the Autonomic homeostasis controller (port 3002)
 cd autonomic && cargo run -p autonomicd
@@ -114,10 +148,18 @@ cd autonomic && cargo run -p autonomicd
 cd haima && cargo run -p haimad
 
 # Lago runs embedded within Arcan via arcan-lago bridge
-# Spaces requires a SpacetimeDB instance
+# Spaces requires a SpacetimeDB instance:
+cd spaces/spacetimedb && spacetime publish my-space
 ```
 
-For a complete local development setup, see the individual subsystem pages.
+### Cross-project validation
+
+```bash
+(cd arcan && cargo fmt && cargo clippy --workspace && cargo test --workspace) && \
+(cd lago && cargo fmt && cargo clippy --workspace && cargo test --workspace) && \
+(cd autonomic && cargo fmt && cargo clippy --workspace -- -D warnings && cargo test --workspace) && \
+(cd spaces && cargo fmt && cargo clippy --workspace -- -D warnings && cargo check)
+```
 
 ## Running as a managed deployment
 

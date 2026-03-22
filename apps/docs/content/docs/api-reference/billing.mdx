@@ -3,13 +3,17 @@ title: Billing API
 description: Query usage, credit balance, and manage subscriptions programmatically.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Billing API
 
-The Billing API provides access to credit balances, usage analytics, and subscription management. Billing data is scoped to organizations.
+The Billing API provides access to credit balances, usage analytics, and subscription management. Billing data is scoped to organizations. The implementation is in the `@broomva/billing` package.
 
 ## Get credit balance
 
-**`GET /api/usage?orgId={orgId}`** — Get the current credit balance and usage summary for an organization.
+**`GET /api/usage?orgId={orgId}`** -- Get the current credit balance and usage summary for an organization.
+
+Requires: `usage.read` permission (any role).
 
 ### Response
 
@@ -33,15 +37,15 @@ The Billing API provides access to credit balances, usage analytics, and subscri
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `credits.allocated` | number | Monthly credit budget in cents |
-| `credits.consumed` | number | Credits used this period |
+| `credits.allocated` | number | Monthly credit budget (1 credit = 1 cent USD) |
+| `credits.consumed` | number | Credits used this billing period |
 | `credits.remaining` | number | Credits available |
 | `credits.usagePercent` | number | Percentage of allocation consumed |
 | `credits.projectedDaysRemaining` | number | Estimated days until exhaustion (based on daily burn rate) |
 
 ## Get usage breakdown
 
-**`GET /api/usage?orgId={orgId}&breakdown=model`** — Get usage breakdown by model, member, or time period.
+**`GET /api/usage?orgId={orgId}&breakdown=model`** -- Get usage breakdown by model, member, or time period.
 
 ### Query parameters
 
@@ -77,9 +81,51 @@ The Billing API provides access to credit balances, usage analytics, and subscri
 }
 ```
 
+### Response (breakdown=member)
+
+```json
+{
+  "breakdown": [
+    {
+      "userId": "user_abc",
+      "name": "Jane Doe",
+      "requests": 95,
+      "creditsConsumed": 612
+    },
+    {
+      "userId": "user_def",
+      "name": "John Smith",
+      "requests": 136,
+      "creditsConsumed": 465
+    }
+  ]
+}
+```
+
+### Response (breakdown=daily)
+
+```json
+{
+  "breakdown": [
+    {
+      "date": "2026-03-20",
+      "requests": 47,
+      "creditsConsumed": 312
+    },
+    {
+      "date": "2026-03-21",
+      "requests": 52,
+      "creditsConsumed": 287
+    }
+  ]
+}
+```
+
 ## Get current plan
 
-**`GET /api/tier?orgId={orgId}`** — Get the current plan tier and its definition for an organization.
+**`GET /api/tier?orgId={orgId}`** -- Get the current plan tier and its definition for an organization.
+
+Requires: `billing.read` permission (admin or owner).
 
 ### Response
 
@@ -93,9 +139,17 @@ The Billing API provides access to credit balances, usage analytics, and subscri
 }
 ```
 
+The `priceMonthly` field is in cents (2900 = $29.00). The `overagePolicy` is one of:
+
+| Policy | Description |
+|--------|-------------|
+| `hard_limit` | Requests blocked when credits reach 0 |
+| `soft_limit` | Requests allowed up to 120% with warnings, then blocked |
+| `warn` | Warnings shown but requests rarely blocked |
+
 ## Check overage status
 
-**`POST /api/tier`** — Check whether a requested operation would trigger an overage.
+**`POST /api/tier`** -- Check whether a requested operation would trigger an overage.
 
 ### Request body
 
@@ -118,27 +172,80 @@ The Billing API provides access to credit balances, usage analytics, and subscri
 }
 ```
 
-When `blocked` is `true`, the operation should not proceed. The `message` field contains a user-facing explanation.
+When `blocked` is `true`, the operation should not proceed. The `message` field contains a user-facing explanation suitable for display in the UI.
+
+<Callout type="info">
+  The chat endpoint calls the overage check internally before each model invocation. You only need to call this endpoint directly if you are building a custom client that needs to pre-check credit availability.
+</Callout>
+
+## Create Stripe checkout session
+
+**`POST /api/stripe/checkout`** -- Create a Stripe Checkout session for upgrading to a paid plan.
+
+Requires: `billing.update` permission (owner only).
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123",
+  "plan": "pro"
+}
+```
+
+### Response
+
+```json
+{
+  "url": "https://checkout.stripe.com/c/pay/cs_..."
+}
+```
+
+Redirect the user to the returned URL to complete payment. After successful payment, Stripe sends a webhook to `POST /api/stripe` which activates the plan.
+
+## Access Stripe billing portal
+
+**`POST /api/stripe/portal`** -- Create a Stripe billing portal session for managing payment methods and viewing invoices.
+
+Requires: `billing.update` permission (owner only).
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123"
+}
+```
+
+### Response
+
+```json
+{
+  "url": "https://billing.stripe.com/p/session/..."
+}
+```
+
+The billing portal allows the user to update payment methods, download invoices, and cancel subscriptions directly through Stripe's hosted UI.
 
 ## Stripe webhook
 
-**`POST /api/stripe`** — Stripe webhook endpoint for subscription lifecycle events.
+**`POST /api/stripe`** -- Stripe webhook endpoint for subscription lifecycle events.
 
-This endpoint is called by Stripe, not by your application. It handles:
+This endpoint is called by Stripe, not by your application. It validates the Stripe signature and processes events idempotently:
 
-- `customer.subscription.created` — activate a paid plan
-- `customer.subscription.updated` — reflect plan changes
-- `customer.subscription.deleted` — downgrade to free
-- `invoice.payment_succeeded` — confirm payment
-- `invoice.payment_failed` — send notification
-
-The webhook validates the Stripe signature and processes events idempotently.
+| Webhook event | Platform action |
+|---------------|-----------------|
+| `customer.subscription.created` | Activate paid plan, set credit allocation |
+| `customer.subscription.updated` | Reflect plan changes (tier, credits) |
+| `customer.subscription.deleted` | Downgrade to free tier |
+| `invoice.payment_succeeded` | Confirm payment |
+| `invoice.payment_failed` | Send notification to organization owner |
 
 ## Error responses
 
 | Status | Code | Description |
 |--------|------|-------------|
 | 401 | `unauthorized` | Missing or invalid token |
-| 403 | `forbidden` | User is not a member of the organization |
+| 403 | `forbidden` | User lacks `billing.read` or `billing.update` permission |
 | 404 | `not_found` | Organization not found |
 | 402 | `credits_exhausted` | Operation blocked by overage policy |

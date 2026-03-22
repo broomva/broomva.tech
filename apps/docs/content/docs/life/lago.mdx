@@ -9,7 +9,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Lago is the persistence substrate of the Agent OS. It provides an append-only event journal, content-addressed blob storage, a knowledge index with graph traversal, and filesystem manifests with branching. Every state change in the system is an immutable event stored in Lago.
 
-The name comes from "lake" — a deep, still body that preserves everything deposited into it.
+The name comes from "lake" -- a deep, still body that preserves everything deposited into it.
 
 ## Architecture
 
@@ -32,17 +32,17 @@ Lago is structured as a Rust workspace with these crates:
 
 ## Event journal
 
-The journal is the heart of Lago. It stores events as immutable, ordered records in a redb embedded database.
+The journal is the heart of Lago. It stores events as immutable, ordered records in a redb v2 embedded database.
 
 ### Event envelope
 
-Every event is wrapped in an `EventEnvelope` that provides:
+Every event is wrapped in an `EventEnvelope` that provides identity, ordering, integrity, and provenance:
 
 ```rust
 struct EventEnvelope {
     id: Ulid,           // Globally unique, time-ordered identifier
     stream_id: String,  // Logical stream (e.g., session ID)
-    kind: EventKind,    // Type of event (message, tool_call, memory, etc.)
+    kind: EventKind,    // Type of event (from aiOS taxonomy)
     payload: Vec<u8>,   // Serialized event data
     checksum: [u8; 32], // SHA-256 of the payload
     timestamp: u64,     // Unix timestamp in milliseconds
@@ -50,28 +50,50 @@ struct EventEnvelope {
 }
 ```
 
+The `id` is a [ULID](https://github.com/ulid/spec) -- lexicographically sortable and time-ordered, so events naturally sort in append order. The `checksum` is a SHA-256 hash of the payload, providing integrity verification without additional storage.
+
+### Event kinds
+
+Events follow the aiOS `EventKind` taxonomy:
+
+| Category | Events | Description |
+|----------|--------|-------------|
+| **Input** | `UserMessage`, `ExternalSignal` | User input and external triggers |
+| **Session** | `SessionCreated`, `SessionResumed`, `SessionClosed` | Session lifecycle |
+| **Cognition** | `AssistantMessage`, `ToolCall`, `ToolResult` | LLM responses and tool execution |
+| **Memory** | `MemoryStored`, `MemoryRetrieved` | Knowledge persistence |
+| **Approval** | `ApprovalRequested`, `ApprovalGranted`, `ApprovalDenied` | Human-in-the-loop gates |
+| **Custom** | Any string prefix | Subsystem events (`autonomic.*`, `finance.*`) |
+
+The `Custom` kind enables forward-compatible persistence -- new event types (from Autonomic, Haima, or future subsystems) can be stored without schema migrations.
+
 ### Append-only guarantee
 
 Events are never modified or deleted. The journal is strictly append-only. This means:
 
 - **State at any point in time** can be reconstructed by replaying events up to that timestamp
-- **Auditing** is inherent — the complete history of every agent action is preserved
-- **Branching** is cheap — create a branch by remembering a cursor position and appending new events from there
+- **Auditing** is inherent -- the complete history of every agent action is preserved
+- **Branching** is cheap -- create a branch by remembering a cursor position and appending new events from there
 
 ### Stream isolation
 
-Events are organized into streams identified by a string ID (typically a session ID). Streams are independent — appending to one stream does not affect others. Cross-stream queries are supported through the knowledge index.
+Events are organized into streams identified by a string ID (typically a session ID). Streams are independent -- appending to one stream does not affect others. Cross-stream queries are supported through the knowledge index.
 
 ## Blob storage
 
 Large binary content (files, images, documents) is stored separately from events in content-addressed blob storage:
 
-- **Content addressing** — blobs are identified by their SHA-256 hash
-- **Deduplication** — identical content is stored only once
-- **Compression** — all blobs are compressed with zstd before storage
-- **Integrity** — the hash serves as a checksum; any corruption is immediately detectable
+- **Content addressing** -- blobs are identified by their SHA-256 hash
+- **Deduplication** -- identical content is stored only once, regardless of how many events reference it
+- **Compression** -- all blobs are compressed with zstd before storage, reducing disk usage
+- **Integrity** -- the hash serves as a checksum; any corruption is immediately detectable
 
-Blobs are referenced from events by their hash. The blob store is backed by the local filesystem with a flat hash-based directory structure.
+Blobs are referenced from events by their hash. The blob store is backed by the local filesystem with a flat hash-based directory structure:
+
+```
+data/blobs/
+  a1/b2c3d4...  (SHA-256 hash prefix for directory sharding)
+```
 
 ## Knowledge index
 
@@ -79,40 +101,55 @@ The knowledge index provides searchable, graph-structured access to the informat
 
 ### Frontmatter extraction
 
-Documents ingested into Lago have their frontmatter parsed and indexed. Title, tags, dates, and custom fields become searchable metadata.
+Documents ingested into Lago have their frontmatter parsed and indexed. Title, tags, dates, and custom fields become searchable metadata. The parser handles YAML frontmatter delimited by `---`.
 
 ### Wikilink graph
 
-Documents can reference each other using `[[wikilink]]` syntax. These links form a directed graph that can be traversed to discover related content.
+Documents can reference each other using `[[wikilink]]` syntax. These links form a directed graph that can be traversed to discover related content. The graph is maintained incrementally as documents are ingested.
 
 ### Scored search
 
-Full-text search with relevance scoring. Queries are matched against document titles, frontmatter fields, and body content. Results are ranked by a TF-IDF-inspired scoring function.
+Full-text search with relevance scoring. Queries are matched against document titles, frontmatter fields, and body content. Results are ranked by a TF-IDF-inspired scoring function that considers:
+
+- Term frequency in the document
+- Inverse document frequency across the corpus
+- Title match bonus (matches in titles score higher)
+- Frontmatter tag match bonus
 
 ### Graph traversal
 
-Starting from any document, you can traverse the wikilink graph to find related documents at a specified depth. This powers the "related content" and "see also" features in the platform.
+Starting from any document, you can traverse the wikilink graph to find related documents at a specified depth. This powers the "related content" and "see also" features in the platform, as well as the memory retrieval system that provides cross-session context.
 
 ## Filesystem manifests
 
 Lago provides a virtual filesystem built on content-addressed nodes:
 
-- **Trees** — directory nodes containing references to child nodes
-- **Blobs** — file nodes referencing content in blob storage
-- **Branches** — named pointers to tree roots, enabling Git-like branching
-- **Snapshots** — immutable captures of a tree state at a point in time
+- **Trees** -- directory nodes containing references to child nodes
+- **Blobs** -- file nodes referencing content in blob storage
+- **Branches** -- named pointers to tree roots, enabling Git-like branching
+- **Snapshots** -- immutable captures of a tree state at a point in time
 
 This allows agents to maintain a workspace that is fully versioned and branchable without a traditional filesystem.
 
 ## RBAC policy
 
-Lago includes a built-in policy engine for access control:
+Lago includes a built-in policy engine for access control defined in `lago-policy`:
 
-- **3 default roles** — admin, user, reader
-- **5 default rules** — scoping journal access, blob access, and knowledge queries per role
-- **2 hooks** — pre-append and post-append hooks for custom validation and side effects
+- **3 default roles** -- `admin`, `user`, `reader`
+- **5 default rules** -- scoping journal access, blob access, and knowledge queries per role
+- **2 hooks** -- `pre-append` and `post-append` hooks for custom validation and side effects
 
 Policies are evaluated synchronously before each operation. Denied operations return an error without modifying state.
+
+```rust
+// Policy evaluation example
+let policy = Policy::default(); // 3 roles, 5 rules, 2 hooks
+let result = policy.evaluate(actor_role, operation);
+match result {
+    PolicyResult::Allow => { /* proceed */ }
+    PolicyResult::Deny(reason) => { /* return error */ }
+}
+```
 
 ## Running Lago
 
@@ -146,3 +183,7 @@ cargo run -p lago-cli -- search "event sourcing"
 </Callout>
 
 The Journal trait uses `BoxFuture` for dyn-compatibility, allowing different journal implementations to be swapped at runtime (redb for production, in-memory for tests).
+
+### JWT authentication
+
+`lago-auth` provides JWT validation for the HTTP API. Tokens are verified using the same signing key as the platform auth system. Per-user vault sessions allow each authenticated user to have isolated access to their own streams and blobs.

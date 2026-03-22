@@ -3,6 +3,8 @@ title: Organizations
 description: Multi-tenant organizations for teams and businesses.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Organizations
 
 Organizations are the primary unit of multi-tenancy on the BroomVA platform. They provide isolated workspaces where teams can share conversations, pool credits, manage API keys, and collaborate on agent deployments.
@@ -27,38 +29,85 @@ Organization admins and owners can invite new members:
 1. Go to **Members** in the console sidebar
 2. Click **Invite Member**
 3. Enter the invitee's email address
-4. Select a role: **Admin** or **Member**
+4. Select a role: **Admin**, **Member**, or **Viewer**
 
 The invitee receives an email with a link to accept. If they do not have a BroomVA account, they will be prompted to create one. Once they sign in, they are automatically added to the organization.
 
-### Roles and permissions
+### Roles and permissions (4-tier RBAC)
 
-| Permission | Owner | Admin | Member |
-|-----------|-------|-------|--------|
-| Send chat messages | Yes | Yes | Yes |
-| View usage analytics | Yes | Yes | Yes |
-| Use API keys | Yes | Yes | Yes |
-| Create API keys | Yes | Yes | No |
-| Invite members | Yes | Yes | No |
-| Remove members | Yes | Yes | No |
-| Change member roles | Yes | Yes | No |
-| Manage billing | Yes | No | No |
-| Delete organization | Yes | No | No |
+The platform implements a 4-tier role hierarchy defined in `@broomva/conformance` (`rbac.ts`). Each role has a numeric level used for hierarchy comparison:
+
+```typescript
+const ROLE_HIERARCHY: Record<OrgRole, number> = {
+  owner: 100,
+  admin: 75,
+  member: 50,
+  viewer: 25,
+};
+```
+
+Higher roles include all permissions of lower roles. The `hasMinimumRole()` function checks whether a user's actual role meets or exceeds the required level.
+
+#### Permission matrix
+
+| Permission | Owner | Admin | Member | Viewer |
+|-----------|-------|-------|--------|--------|
+| Read organization data (`org.read`) | Yes | Yes | Yes | Yes |
+| List members (`member.list`) | Yes | Yes | Yes | Yes |
+| Read conversations (`chat.read`) | Yes | Yes | Yes | Yes |
+| View usage analytics (`usage.read`) | Yes | Yes | Yes | Yes |
+| Read audit log (`audit.read`) | Yes | Yes | Yes | Yes |
+| Create conversations (`chat.create`) | Yes | Yes | Yes | No |
+| Create/update prompts (`prompt.create/update`) | Yes | Yes | Yes | No |
+| Create/update documents (`document.create/update`) | Yes | Yes | Yes | No |
+| Update organization settings (`org.update`) | Yes | Yes | No | No |
+| Invite members (`member.invite`) | Yes | Yes | No | No |
+| Remove members (`member.remove`) | Yes | Yes | No | No |
+| Change member roles (`member.update_role`) | Yes | Yes | No | No |
+| Create/revoke API keys (`api_key.create/revoke`) | Yes | Yes | No | No |
+| Export audit logs (`audit.export`) | Yes | Yes | No | No |
+| Restart Life instances (`instance.restart`) | Yes | Yes | No | No |
+| Read billing data (`billing.read`) | Yes | Yes | No | No |
+| Update billing (`billing.update`) | Yes | No | No | No |
+| Change plan (`plan.change`) | Yes | No | No | No |
+| Delete organization (`org.delete`) | Yes | No | No | No |
+| Transfer ownership (`org.transfer`) | Yes | No | No | No |
+| Provision/deprovision instances (`instance.*`) | Yes | No | No | No |
+| Remove admin members (`member.remove_admin`) | Yes | No | No | No |
+| Configure retention (`retention.configure`) | Yes | No | No | No |
+
+<Callout type="info">
+  The `verifyRbac()` function is called on every API endpoint that requires authorization. It fetches the user's role via the `RbacDbAdapter` and compares it against the minimum required role. If the check fails, an `InsufficientRoleError` is thrown, returning HTTP 403.
+</Callout>
 
 ### Removing members
 
 Admins and owners can remove members from the **Members** page. Removed members immediately lose access to the organization's conversations, API keys, and usage data. Their personal workspace and other organization memberships are unaffected.
 
+Owners cannot be removed unless ownership is transferred first. Admins can only be removed by owners (via the `member.remove_admin` permission).
+
 ## Resource isolation
 
 Each organization has its own isolated set of:
 
-- **Conversations** — chat history is scoped to the organization
-- **API keys** — keys are valid only for the organization that created them
-- **Credit balance** — usage is tracked and billed per-organization
-- **Memory vault** — organization-level memories are shared across members but isolated from other organizations
-- **MCP connections** — tool integrations configured at the organization level
-- **Deployments** — managed Life instances are scoped to the organization
+- **Conversations** -- chat history is scoped to the organization
+- **API keys** -- keys are valid only for the organization that created them
+- **Credit balance** -- usage is tracked and billed per-organization
+- **Memory vault** -- organization-level memories are shared across members but isolated from other organizations
+- **MCP connections** -- tool integrations configured at the organization level
+- **Deployments** -- managed Life instances are scoped to the organization
+- **Audit log** -- administrative action history is per-organization
+
+## API key scoping
+
+API keys created in the console are scoped to the organization:
+
+- The key encodes the organization ID
+- API requests using the key are billed to the organization's credit balance
+- The key inherits the permissions of the role it was created with (typically admin-level)
+- Usage by API keys appears in the organization's usage analytics, attributed to the key rather than a specific user
+
+This scoping ensures that API keys cannot access resources in other organizations, even if the creating user is a member of multiple organizations.
 
 ## Switching organizations
 
@@ -68,20 +117,21 @@ Users who belong to multiple organizations can switch between them using the org
 
 Configurable from the console **Settings** page:
 
-- **Name and slug** — display name and URL identifier
-- **Avatar** — organization logo (displayed in the sidebar and member lists)
-- **Default model** — the model used for new conversations when no preference is set
-- **Shared memory** — whether the memory vault is shared across all members or kept per-user
-- **Webhooks** — HTTP endpoints for event notifications (usage alerts, member changes, plan changes)
+- **Name and slug** -- display name and URL identifier
+- **Avatar** -- organization logo (displayed in the sidebar and member lists)
+- **Default model** -- the model used for new conversations when no preference is set
+- **Shared memory** -- whether the memory vault is shared across all members or kept per-user
+- **Webhooks** -- HTTP endpoints for event notifications (usage alerts, member changes, plan changes)
 
 ## Deleting an organization
 
-Only the organization owner can delete an organization. Deletion is permanent and removes:
+Only the organization owner can delete an organization (requires the `org.delete` permission). Deletion is permanent and removes:
 
 - All conversations and message history
 - All API keys (immediately invalidated)
 - All stored memories
-- The Stripe subscription (canceled)
+- The Stripe subscription (canceled via the `StripeAdapter`)
 - All deployment configurations
+- All audit log entries
 
 Members are notified by email when an organization is deleted.

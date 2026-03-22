@@ -3,6 +3,8 @@ title: Console
 description: Multi-tenant administration console for organizations, usage, and deployments.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Console
 
 The BroomVA Console at [broomva.tech/console](https://broomva.tech/console) is the administration dashboard for managing your organizations, monitoring usage, and configuring platform services. It is available on the Pro tier and above.
@@ -11,64 +13,136 @@ The BroomVA Console at [broomva.tech/console](https://broomva.tech/console) is t
 
 The console provides a centralized view of your organization's activity:
 
-- **Usage dashboard** — real-time credit consumption, model usage breakdown, and projected burn rate
-- **Member management** — invite and manage team members with role-based access
-- **API keys** — create and rotate API keys for programmatic access
-- **Billing** — view invoices, update payment methods, and manage your subscription
+- **Usage dashboard** -- real-time credit consumption, model usage breakdown, and projected burn rate
+- **Member management** -- invite and manage team members with role-based access
+- **API keys** -- create and rotate API keys for programmatic access
+- **Billing** -- view invoices, update payment methods, and manage your subscription
 
 ## Navigation
 
-The console uses a sidebar navigation pattern (shadcn sidebar-07) separate from the chat interface:
+The console uses a sidebar navigation pattern (shadcn sidebar-07) separate from the chat interface. The sidebar sections are:
 
-- **Dashboard** — overview metrics and recent activity
-- **Conversations** — browse and manage team conversations
-- **Members** — invite, remove, and manage member roles
-- **API Keys** — create and revoke API keys
-- **Usage** — detailed usage analytics with filtering
-- **Billing** — subscription management and invoices
-- **Settings** — organization profile and preferences
-- **Deployments** — managed Life instance configuration
+| Section | Description |
+|---------|-------------|
+| **Dashboard** | Overview metrics, recent activity, and health indicators |
+| **Conversations** | Browse and manage team conversations, search and filter by date/model/member |
+| **Members** | Invite, remove, and manage member roles (4-tier RBAC) |
+| **API Keys** | Create and revoke API keys with scoping and expiration |
+| **Usage** | Detailed usage analytics with breakdown by model, member, and time period |
+| **Billing** | Subscription management, plan changes, invoices, and payment methods |
+| **Settings** | Organization profile, default model, memory scope, webhooks, MCP servers |
+| **Deployments** | Managed Life instance configuration, provisioning, and monitoring |
+| **Audit Log** | Chronological record of all administrative actions (exportable as CSV or JSONL) |
+| **Prompts** | Manage prompt library -- create, version, and share prompt templates |
+
+<Callout type="info">
+  The console is a separate Next.js application from the chat interface. It uses the same authentication system (Better Auth) and session tokens, so you are automatically signed in if you are already signed in to the chat.
+</Callout>
 
 ## Usage analytics
 
 The usage dashboard shows credit consumption across multiple dimensions:
 
-- **By model** — which models are consuming the most credits
-- **By member** — per-user consumption within the organization
-- **By time** — daily, weekly, and monthly consumption trends
-- **Projected runway** — based on current burn rate, how many days until credits are exhausted
+- **By model** -- which models are consuming the most credits, with cost-per-request averages
+- **By member** -- per-user consumption within the organization
+- **By time** -- daily, weekly, and monthly consumption trends with interactive charts
+- **Projected runway** -- based on current burn rate, how many days until credits are exhausted
 
-Usage data is computed from the `@broomva/billing` package's aggregation engine, which tracks every API call with its associated token count and cost.
+Usage data is computed from the `@broomva/billing` package's aggregation engine. Every API call records a `UsageEventRecord` with:
+
+```typescript
+interface UsageEventRecord {
+  id: string;
+  organizationId: string | null;
+  userId: string;
+  type: string;              // e.g., "chat", "api", "agent"
+  resource: string | null;   // e.g., model ID
+  inputTokens: number | null;
+  outputTokens: number | null;
+  costCents: number;
+  chatId: string | null;
+  createdAt: Date;
+}
+```
+
+These events are aggregated into `UsageSummary` objects with per-type and per-resource breakdowns. The dashboard queries these aggregations to render charts and tables.
+
+### Revenue metrics (Enterprise)
+
+Enterprise organizations have access to revenue analytics powered by the `RevenueMetrics` interface:
+
+- **MRR** -- Monthly Recurring Revenue in cents
+- **ARR** -- Annualized Recurring Revenue
+- **ARPU** -- Average Revenue Per User
+- **Churn rate** -- as a decimal (e.g., 0.05 = 5%)
+- **Net new MRR** -- expansion minus contraction for the period
 
 ## Member roles
 
-Organizations support role-based access control:
+Organizations support a 4-tier role-based access control system. The hierarchy is: **owner > admin > member > viewer**. Higher roles inherit all permissions of lower roles.
 
-| Role | Permissions |
-|------|-------------|
-| **Owner** | Full access, billing management, can delete the organization |
-| **Admin** | Member management, API key creation, settings |
-| **Member** | Chat access, view usage, use API keys |
+| Permission | Owner | Admin | Member | Viewer |
+|-----------|-------|-------|--------|--------|
+| Read organization data | Yes | Yes | Yes | Yes |
+| List members | Yes | Yes | Yes | Yes |
+| Read conversations | Yes | Yes | Yes | Yes |
+| View usage analytics | Yes | Yes | Yes | Yes |
+| Read audit log | Yes | Yes | Yes | Yes |
+| Create conversations | Yes | Yes | Yes | No |
+| Create/update prompts | Yes | Yes | Yes | No |
+| Create/update documents | Yes | Yes | Yes | No |
+| Invite members | Yes | Yes | No | No |
+| Remove members | Yes | Yes | No | No |
+| Change member roles | Yes | Yes | No | No |
+| Create/revoke API keys | Yes | Yes | No | No |
+| Export audit logs | Yes | Yes | No | No |
+| Update organization settings | Yes | Yes | No | No |
+| Restart Life instances | Yes | Yes | No | No |
+| Read billing information | Yes | Yes | No | No |
+| Update billing / change plan | Yes | No | No | No |
+| Delete organization | Yes | No | No | No |
+| Transfer ownership | Yes | No | No | No |
+| Provision/deprovision instances | Yes | No | No | No |
 
-Invitations are sent by email. When the invited user signs up or signs in, they are automatically added to the organization.
+The RBAC system is implemented in the `@broomva/conformance` package. Every API endpoint that requires authorization calls `verifyRbac()` with the user's ID, organization ID, and the minimum required role. If the user's actual role is at least as high as the required role in the hierarchy, the check passes.
+
+Invitations are sent by email. When the invited user signs up or signs in, they are automatically added to the organization with the assigned role.
 
 ## API keys
 
 API keys provide programmatic access to the platform API without requiring a user session. Each key:
 
 - Is scoped to a single organization
-- Has a configurable expiration date
-- Can be revoked at any time
+- Has a configurable expiration date (or no expiration)
+- Can be revoked at any time from the console
 - Shows its last-used timestamp for auditing
+- Is recorded in the audit log when created or revoked
 
-API keys use the same authentication format as user tokens — include them as a `Bearer` token in the `Authorization` header.
+API keys use the same authentication format as user tokens -- include them as a `Bearer` token in the `Authorization` header. The key encodes the organization ID so the API can resolve the correct billing and permission context.
+
+## Audit log
+
+The console maintains a chronological audit log of all administrative actions. Each entry records:
+
+| Field | Description |
+|-------|-------------|
+| `actorId` | The user who performed the action |
+| `action` | The action type (e.g., `member.invite`, `plan.upgrade`, `api_key.create`) |
+| `resourceType` | The type of resource affected (e.g., `organization`, `member`, `api_key`) |
+| `resourceId` | The specific resource ID |
+| `metadata` | Additional context (varies by action type) |
+| `ipAddress` | The IP address of the request |
+| `userAgent` | The User-Agent header |
+| `createdAt` | Timestamp |
+
+Audit logs are queryable by actor, action, resource, and date range. Admins and owners can export logs as CSV or JSONL for compliance purposes.
 
 ## Settings
 
 Organization settings include:
 
-- **Profile** — name, slug, description, and avatar
-- **Default model** — the model used when no specific model is requested
-- **Memory scope** — whether organization-level memories are shared across members
-- **Webhook URLs** — endpoints for event notifications (usage alerts, member changes)
-- **MCP servers** — organization-wide MCP tool connections
+- **Profile** -- name, slug, description, and avatar
+- **Default model** -- the model used when no specific model is requested
+- **Memory scope** -- whether organization-level memories are shared across members or kept per-user
+- **Webhook URLs** -- endpoints for event notifications (usage alerts, member changes)
+- **MCP servers** -- organization-wide MCP tool connections

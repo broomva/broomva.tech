@@ -3,13 +3,33 @@ title: Trust API
 description: Trust scoring, verification, and certification for agents and users.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Trust API
 
 The Trust API provides trust scoring, identity verification, and certification services. Trust scores are used by the platform to make decisions about rate limits, model access, and marketplace participation.
 
 ## Get trust score
 
-**`GET /api/trust/score?userId={userId}`** — Get the trust score for a user or agent.
+**`GET /api/trust/score?userId={userId}`** -- Get the trust score for a user or agent.
+
+To get the score for the authenticated user, omit `userId`:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  https://broomva.tech/api/trust/score
+```
+
+To get the score for a specific user or agent:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://broomva.tech/api/trust/score?userId=user_abc123"
+```
+
+<Callout type="info">
+  Users can only view their own trust score unless they have admin access to an organization that includes the target user.
+</Callout>
 
 ### Response
 
@@ -39,14 +59,45 @@ The Trust API provides trust scoring, identity verification, and certification s
 
 ### Score factors
 
-- **Identity** — based on verification status (email, OAuth, government ID)
-- **History** — based on account age and consistent platform usage
-- **Reputation** — based on community interactions and peer endorsements
-- **Economic** — based on payment history and credit usage patterns
+The trust score is a weighted average of four factors:
+
+- **Identity** (weight: 0.25) -- based on verification status. Email verification alone gives ~0.5. OAuth verification (Google, GitHub) pushes toward 0.7. Domain ownership verification reaches 0.9+.
+- **History** (weight: 0.25) -- based on account age and consistent platform usage. Grows logarithmically with time; accounts older than 6 months with regular activity reach 0.8+.
+- **Reputation** (weight: 0.25) -- based on community interactions, peer endorsements, and published skills or prompts. Contributing to the marketplace increases this factor.
+- **Economic** (weight: 0.25) -- based on payment history and credit usage patterns. Consistent paid plan usage and on-time payments increase this factor. Active Haima wallet participation provides additional signal.
+
+## Get agent trust score
+
+**`GET /api/trust/score?agentId={agent_id}`** -- Get the trust score for an agent (Life instance).
+
+Agent trust scores use the same factor model but with different weights:
+
+- **Identity** -- based on the deploying organization's trust level
+- **History** -- based on uptime, session count, and error rate
+- **Reputation** -- based on task completion rate and peer agent evaluations
+- **Economic** -- based on payment history through Haima
+
+### Response
+
+```json
+{
+  "agentId": "agent_abc123",
+  "score": 0.72,
+  "level": "verified",
+  "factors": {
+    "identity": 0.85,
+    "history": 0.65,
+    "reputation": 0.70,
+    "economic": 0.68
+  },
+  "deployedBy": "org_xyz789",
+  "updatedAt": "2026-03-21T14:00:00Z"
+}
+```
 
 ## Verify identity
 
-**`POST /api/trust/verify`** — Submit identity verification documents. Increases the identity factor of the trust score.
+**`POST /api/trust/verify`** -- Submit identity verification. Increases the identity factor of the trust score.
 
 ### Request body
 
@@ -59,11 +110,11 @@ The Trust API provides trust scoring, identity verification, and certification s
 
 Supported verification types:
 
-| Type | Description |
-|------|-------------|
-| `email` | Email address verification (sent automatically on signup) |
-| `oauth` | OAuth provider verification (Google, GitHub) |
-| `domain` | Domain ownership verification via DNS TXT record |
+| Type | Description | Identity factor boost |
+|------|-------------|----------------------|
+| `email` | Email address verification (sent automatically on signup) | +0.3 |
+| `oauth` | OAuth provider verification (Google, GitHub) | +0.5 |
+| `domain` | Domain ownership verification via DNS TXT record | +0.7 |
 
 ### Response
 
@@ -75,9 +126,19 @@ Supported verification types:
 }
 ```
 
+### Domain verification flow
+
+To verify domain ownership:
+
+1. Call `POST /api/trust/verify` with `type: "domain"` and your domain name
+2. The API returns a DNS TXT record value to add to your domain
+3. Add the TXT record to your DNS configuration
+4. Call the endpoint again with `type: "domain_confirm"` to trigger verification
+5. The system checks the DNS record and, if present, marks the domain as verified
+
 ## Request certification
 
-**`POST /api/trust/certify`** — Request a trust certification for an agent or organization. Certifications are reviewed and grant higher trust levels.
+**`POST /api/trust/certify`** -- Request a trust certification for an agent or organization. Certifications are reviewed and grant higher trust levels.
 
 ### Request body
 
@@ -109,11 +170,13 @@ Certification statuses: `pending`, `approved`, `rejected`, `revoked`.
 
 Trust scores influence several platform behaviors:
 
-- **Rate limits** — higher trust scores receive more generous rate limits
-- **Model access** — certain expensive models may require a minimum trust level
-- **Marketplace** — agents and skills listed in the marketplace require verified trust
-- **Payments** — Haima payment limits are tied to economic trust factors
-- **Deployments** — managed Life instance provisioning may require organizational certification
+| Area | Effect |
+|------|--------|
+| **Rate limits** | Higher trust scores receive more generous rate limits |
+| **Model access** | Certain expensive models may require a minimum trust level |
+| **Marketplace** | Agents and skills listed in the marketplace require `verified` trust |
+| **Payments** | Haima payment auto-approve thresholds scale with economic trust |
+| **Deployments** | Managed Life instance provisioning may require organizational certification |
 
 ## Error responses
 

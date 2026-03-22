@@ -3,6 +3,8 @@ title: AI Chat
 description: Multi-model AI conversations with memory, tools, and deep research.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # AI Chat
 
 The BroomVA chat at [broomva.tech/chat](https://broomva.tech/chat) is a production-grade AI conversation interface built on Next.js 16 with the Vercel AI SDK v6. It supports multiple model providers, persistent memory, tool integration, and rich content rendering.
@@ -13,46 +15,83 @@ The chat supports models from multiple providers through a unified interface:
 
 | Provider | Models | Notes |
 |----------|--------|-------|
-| **Anthropic** | Claude Opus, Sonnet, Haiku | Primary provider, full tool use support |
-| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3 | Function calling, vision |
-| **Google** | Gemini 2.5 Pro, Flash | Multimodal, long context |
-| **OpenRouter** | 100+ models | Access to Llama, Mistral, and community models |
-| **Ollama** | Any local model | Self-hosted, no API key needed |
+| **Anthropic** | Claude Opus 4, Sonnet 4, Haiku | Primary provider, full tool use support, extended thinking |
+| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3 | Function calling, vision, reasoning models |
+| **Google** | Gemini 2.5 Pro, Flash | Multimodal, long context (1M+ tokens) |
+| **OpenRouter** | 100+ models | Access to Llama, Mistral, DeepSeek, and community models |
+| **Ollama** | Any local model | Self-hosted, no API key needed, zero credit cost |
 
-Model selection is available from the dropdown at the top of the chat interface. Different models have different capabilities and costs — see [Billing](/docs/platform/billing) for credit consumption rates.
+Model selection is available from the dropdown at the top of the chat interface. Different models have different capabilities and costs -- see [Billing](/docs/platform/billing) for credit consumption rates.
+
+<Callout type="info">
+  Free-tier users have access to community models through OpenRouter and self-hosted models through Ollama. Pro and Team plans unlock access to Claude, GPT-4o, Gemini, and all premium models.
+</Callout>
+
+### Model routing
+
+The platform uses the AI SDK v6 `customProvider` abstraction to route model requests. Each provider is configured with its own API keys and rate limits. The chat application calls `streamText()` with the selected model and automatically handles provider-specific differences (tool call formats, system prompt placement, streaming protocols).
+
+When a model is unavailable or returns an error, the UI surfaces the error inline in the conversation rather than failing silently. Users can retry with a different model without losing their message.
 
 ## Conversations
 
-Every conversation is automatically persisted to your account. The sidebar shows your conversation history with:
+Every conversation is automatically persisted to your account via Drizzle ORM and a PostgreSQL database. The sidebar shows your conversation history with:
 
-- **Search** — full-text search across all conversations
-- **Projects** — organize conversations into project folders
-- **Sharing** — generate public links for individual conversations
+- **Search** -- full-text search across all conversations
+- **Projects** -- organize conversations into project folders
+- **Sharing** -- generate public links for individual conversations
+- **Branching** -- edit a previous message and explore an alternative path without losing the original thread
 
-Conversations support branching — you can edit a previous message and explore an alternative path without losing the original thread.
+### Conversation lifecycle
+
+When you send a message, the following sequence occurs:
+
+1. The message is persisted to the database with a `chatId` (generated if new)
+2. The full message history for that `chatId` is loaded
+3. If memory vault is enabled, relevant memories are injected as system context
+4. The message array is sent to the selected model provider via `streamText()`
+5. The streaming response is relayed to the client via Server-Sent Events
+6. On completion, the assistant message and usage metadata are persisted
+
+Each message records token counts (input and output), the model used, and a timestamp. This data feeds into the usage analytics visible in the console.
 
 ## Rich content rendering
 
 The chat renders AI responses with full formatting support:
 
-- **Markdown** — headings, lists, bold, italic, links
-- **Code blocks** — syntax highlighting for 50+ languages via Shiki, with copy-to-clipboard
-- **Mathematics** — LaTeX rendering for inline and display math
-- **Diagrams** — Mermaid diagram rendering for flowcharts, sequence diagrams, and more
-- **Tables** — GFM-style tables with proper alignment
-- **Images** — inline image rendering and generation
+- **Markdown** -- headings, lists, bold, italic, links
+- **Code blocks** -- syntax highlighting for 50+ languages via Shiki, with copy-to-clipboard
+- **Mathematics** -- LaTeX rendering for inline (`$...$`) and display (`$$...$$`) math
+- **Diagrams** -- Mermaid diagram rendering for flowcharts, sequence diagrams, and more
+- **Tables** -- GFM-style tables with proper alignment
+- **Images** -- inline image rendering and generation
 
-All rendering is handled by the Streamdown library, which processes streaming markdown tokens in real time as the model generates its response.
+All rendering is handled by the Streamdown library, which processes streaming markdown tokens in real time as the model generates its response. This means code blocks are syntax-highlighted as they stream in, not after the response completes.
 
 ## Memory vault
 
 The memory vault gives the AI persistent context across conversations. When enabled, the platform maintains a knowledge graph backed by the Lago persistence substrate:
 
-- **Automatic extraction** — key facts, preferences, and decisions are extracted from conversations
-- **Cross-session recall** — the AI can reference information from previous conversations
-- **User control** — you can view, edit, and delete stored memories from the settings panel
+- **Automatic extraction** -- key facts, preferences, and decisions are extracted from conversations
+- **Cross-session recall** -- the AI can reference information from previous conversations
+- **User control** -- you can view, edit, and delete stored memories from the settings panel
 
 Memory is scoped to your user account and, optionally, to your organization. Organization-level memories are shared across all members.
+
+### How memory works
+
+Lago stores memories as events in its append-only journal. Each memory event contains:
+
+- The extracted fact or preference
+- A relevance score
+- The source conversation ID
+- A timestamp
+
+When a new conversation starts, the system queries the knowledge index for memories relevant to the current context. These are injected as system context before the first model call, giving the AI awareness of prior interactions.
+
+<Callout type="info">
+  Memory is opt-in. You can enable or disable it at any time from the settings panel. Disabling memory does not delete existing memories -- it only stops the system from reading or writing them.
+</Callout>
 
 ## Deep research mode
 
@@ -63,7 +102,22 @@ Deep research mode enables the AI to perform multi-step investigation using web 
 3. Read and analyze the retrieved documents
 4. Synthesize findings into a comprehensive answer with citations
 
-This is useful for questions that require current information or cross-referencing multiple sources.
+This is useful for questions that require current information or cross-referencing multiple sources. Deep research consumes more credits than standard chat because it involves multiple model calls and tool invocations per query.
+
+### Research flow
+
+The deep research pipeline uses the AI SDK's tool-calling interface to orchestrate a multi-step process:
+
+```
+User question
+  → Query decomposition (1 model call)
+  → Web search per sub-query (Tavily API)
+  → Document retrieval and analysis (1 model call per source)
+  → Synthesis with citations (1 model call)
+  → Rendered response with source links
+```
+
+Each step is visible in the UI as a tool-call event, so you can see exactly what the AI is searching for and reading.
 
 ## MCP tool integration
 
@@ -76,13 +130,23 @@ The chat supports the [Model Context Protocol (MCP)](https://modelcontextprotoco
 
 MCP servers can be configured per-user or per-organization from the settings panel. The platform uses the `@ai-sdk/mcp` adapter to bridge MCP tools into the AI SDK's tool-calling interface.
 
+### Tool execution in the UI
+
+When the AI invokes a tool, the chat UI renders:
+
+1. A **tool-call** card showing the tool name, arguments, and a loading state
+2. A **tool-result** card showing the returned data
+3. The AI's follow-up response that incorporates the tool result
+
+Tool calls are streamed in real time using the AI SDK's `UiPart` event format. The stream emits `tool-call` and `tool-result` events alongside `text-delta` events, allowing the UI to render tools and text interleaved.
+
 ## Attachments
 
 You can upload files directly into the conversation:
 
-- **Images** — PNG, JPG, WebP, GIF (analyzed by vision-capable models)
-- **Documents** — PDF, TXT, CSV, MD (content extracted and included in context)
-- **Code files** — any text-based file (syntax-highlighted in the message)
+- **Images** -- PNG, JPG, WebP, GIF (analyzed by vision-capable models)
+- **Documents** -- PDF, TXT, CSV, MD (content extracted and included in context)
+- **Code files** -- any text-based file (syntax-highlighted in the message)
 
 Files are stored in Vercel Blob storage and referenced by the AI during the conversation. Image attachments are automatically compressed on the client side before upload.
 
@@ -90,7 +154,7 @@ Files are stored in Vercel Blob storage and referenced by the AI during the conv
 
 Chat settings are available from the gear icon in the sidebar:
 
-- **Default model** — set your preferred model for new conversations
-- **System prompt** — customize the default system instructions
-- **Memory** — enable/disable the memory vault
-- **Theme** — the interface uses the Arcan Glass design system with dark mode as the default
+- **Default model** -- set your preferred model for new conversations
+- **System prompt** -- customize the default system instructions
+- **Memory** -- enable/disable the memory vault
+- **Theme** -- the interface uses the Arcan Glass design system with dark mode as the default

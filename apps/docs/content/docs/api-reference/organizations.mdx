@@ -3,13 +3,15 @@ title: Organizations API
 description: Create and manage multi-tenant organizations programmatically.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Organizations API
 
-The Organizations API provides programmatic access to create, manage, and query organizations and their members.
+The Organizations API provides programmatic access to create, manage, and query organizations and their members. All organization endpoints enforce RBAC -- the authenticated user must have a sufficient role in the target organization.
 
 ## List organizations
 
-**`GET /api/organization`** — List all organizations the authenticated user belongs to.
+**`GET /api/organization`** -- List all organizations the authenticated user belongs to.
 
 ### Response
 
@@ -29,9 +31,11 @@ The Organizations API provides programmatic access to create, manage, and query 
 }
 ```
 
+The `role` field indicates the authenticated user's role in each organization.
+
 ## Create an organization
 
-**`POST /api/organization`** — Create a new organization. The authenticated user becomes the owner.
+**`POST /api/organization`** -- Create a new organization. The authenticated user becomes the owner.
 
 ### Request body
 
@@ -45,7 +49,7 @@ The Organizations API provides programmatic access to create, manage, and query 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | Yes | Display name |
-| `slug` | string | Yes | URL-safe identifier (lowercase, alphanumeric, hyphens) |
+| `slug` | string | Yes | URL-safe identifier (lowercase, alphanumeric, hyphens only) |
 
 ### Response
 
@@ -59,9 +63,76 @@ The Organizations API provides programmatic access to create, manage, and query 
 }
 ```
 
+New organizations start on the Free plan. Upgrade from the console or via the billing API.
+
+## Get organization details
+
+**`GET /api/organization?orgId={orgId}`** -- Get details for a specific organization.
+
+Requires: `org.read` permission (any role).
+
+### Response
+
+```json
+{
+  "id": "org_abc123",
+  "name": "Acme Corp",
+  "slug": "acme-corp",
+  "plan": "team",
+  "memberCount": 5,
+  "createdAt": "2026-01-15T10:00:00Z",
+  "settings": {
+    "defaultModel": "claude-sonnet-4-20250514",
+    "sharedMemory": true,
+    "webhookUrl": null
+  }
+}
+```
+
+## Update organization
+
+**`PATCH /api/organization`** -- Update organization settings.
+
+Requires: `org.update` permission (admin or owner).
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123",
+  "name": "Acme Corp (Updated)",
+  "settings": {
+    "defaultModel": "gpt-4o",
+    "sharedMemory": false
+  }
+}
+```
+
+Only included fields are updated. Omitted fields are left unchanged.
+
+## Delete organization
+
+**`DELETE /api/organization`** -- Delete an organization and all its data.
+
+Requires: `org.delete` permission (owner only).
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123"
+}
+```
+
+<Callout type="warn">
+  Deletion is permanent. All conversations, API keys, memories, deployments, and the Stripe subscription are removed. Members are notified by email.
+</Callout>
+
 ## List members
 
-**`GET /api/organization/members?orgId={orgId}`** — List all members of an organization.
+**`GET /api/organization/members?orgId={orgId}`** -- List all members of an organization.
+
+Requires: `member.list` permission (any role).
 
 ### Response
 
@@ -88,7 +159,9 @@ The Organizations API provides programmatic access to create, manage, and query 
 
 ## Invite a member
 
-**`POST /api/organization/members`** — Invite a new member to an organization. Requires admin or owner role.
+**`POST /api/organization/members`** -- Invite a new member to an organization.
+
+Requires: `member.invite` permission (admin or owner).
 
 ### Request body
 
@@ -104,7 +177,7 @@ The Organizations API provides programmatic access to create, manage, and query 
 |-------|------|----------|-------------|
 | `orgId` | string | Yes | Organization ID |
 | `email` | string | Yes | Invitee's email address |
-| `role` | string | No | Role to assign: `admin` or `member` (default: `member`) |
+| `role` | string | No | Role to assign: `admin`, `member`, or `viewer` (default: `member`) |
 
 ### Response
 
@@ -120,9 +193,29 @@ The Organizations API provides programmatic access to create, manage, and query 
 }
 ```
 
+The invitee receives an email with a link to accept. If they do not have a BroomVA account, they will be prompted to create one.
+
+## Update member role
+
+**`PATCH /api/organization/members`** -- Change a member's role.
+
+Requires: `member.update_role` permission (admin or owner). Removing admin status requires `member.remove_admin` (owner only).
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123",
+  "userId": "user_def",
+  "role": "admin"
+}
+```
+
 ## Remove a member
 
-**`DELETE /api/organization/members`** — Remove a member from an organization. Requires admin or owner role.
+**`DELETE /api/organization/members`** -- Remove a member from an organization.
+
+Requires: `member.remove` permission (admin or owner).
 
 ### Request body
 
@@ -133,12 +226,14 @@ The Organizations API provides programmatic access to create, manage, and query 
 }
 ```
 
+The removed member immediately loses access to all organization resources. Their personal workspace is unaffected.
+
 ## Error responses
 
 | Status | Code | Description |
 |--------|------|-------------|
 | 400 | `validation_error` | Missing fields or invalid slug format |
 | 401 | `unauthorized` | Missing or invalid token |
-| 403 | `forbidden` | Insufficient role for this operation |
+| 403 | `forbidden` | Insufficient role for this operation (`InsufficientRoleError`) |
 | 404 | `not_found` | Organization or member not found |
 | 409 | `conflict` | Slug already taken |

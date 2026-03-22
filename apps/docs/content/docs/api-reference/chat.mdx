@@ -3,13 +3,15 @@ title: Chat API
 description: Send messages and receive AI responses through the chat API.
 ---
 
+import { Callout } from "fumadocs-ui/components/callout";
+
 # Chat API
 
 The chat API is the primary interface for sending messages to AI models and receiving responses. It supports both streaming and non-streaming modes, multi-model selection, and tool use.
 
 ## Send a message
 
-**`POST /api/chat`** — Send a chat message and receive an AI response.
+**`POST /api/chat`** -- Send a chat message and receive an AI response.
 
 ### Request body
 
@@ -33,7 +35,7 @@ The chat API is the primary interface for sending messages to AI models and rece
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `model` | string | Yes | Model identifier (e.g., `claude-sonnet-4-20250514`, `gpt-4o`, `gemini-2.5-pro`) |
+| `model` | string | Yes | Model identifier (see model list below) |
 | `messages` | array | Yes | Array of message objects with `role` and `content` |
 | `stream` | boolean | No | Enable SSE streaming (default: `true`) |
 | `chatId` | string | No | Conversation ID for persistence. Generated if omitted. |
@@ -43,8 +45,31 @@ The chat API is the primary interface for sending messages to AI models and rece
 | Role | Description |
 |------|-------------|
 | `system` | System instructions (optional, one per request) |
-| `user` | User message |
+| `user` | User message (text, or multipart with attachments) |
 | `assistant` | Previous assistant response (for multi-turn context) |
+| `tool` | Tool result (follows a `tool_use` assistant message) |
+
+### Available models
+
+Model availability depends on the user's plan tier. The models are routed through the AI SDK v6 `customProvider` abstraction.
+
+| Provider | Model ID | Plan |
+|----------|----------|------|
+| **Anthropic** | `claude-opus-4-20250514` | Pro+ |
+| **Anthropic** | `claude-sonnet-4-20250514` | Pro+ |
+| **Anthropic** | `claude-haiku-3-5-20241022` | Pro+ |
+| **OpenAI** | `gpt-4o` | Pro+ |
+| **OpenAI** | `gpt-4o-mini` | Pro+ |
+| **OpenAI** | `o1` | Pro+ |
+| **OpenAI** | `o3` | Pro+ |
+| **Google** | `gemini-2.5-pro` | Pro+ |
+| **Google** | `gemini-2.5-flash` | Pro+ |
+| **OpenRouter** | Various (100+) | Free+ |
+| **Ollama** | Any local model | Free+ |
+
+<Callout type="info">
+  Use `GET /api/chat-model` to retrieve the exact list of models available for your plan. Model IDs may change as providers release new versions.
+</Callout>
 
 ### Streaming response
 
@@ -54,16 +79,35 @@ When `stream: true` (the default), the response is an SSE stream using the Verce
 data: {"type":"text-delta","textDelta":"Event"}
 data: {"type":"text-delta","textDelta":" sourcing"}
 data: {"type":"text-delta","textDelta":" is a pattern..."}
+data: {"type":"tool-call","toolCallId":"call_1","toolName":"search","args":{"query":"..."}}
+data: {"type":"tool-result","toolCallId":"call_1","result":{"...":"..."}}
 data: {"type":"finish","finishReason":"stop","usage":{"promptTokens":42,"completionTokens":87}}
 ```
 
 The stream emits `UiPart` objects that include:
 
-- `text-delta` — incremental text tokens
-- `tool-call` — tool invocation requests
-- `tool-result` — tool execution results
-- `finish` — completion signal with usage data
-- `error` — error during generation
+| Event type | Fields | Description |
+|-----------|--------|-------------|
+| `text-delta` | `textDelta` | Incremental text token |
+| `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation request |
+| `tool-result` | `toolCallId`, `result` | Tool execution result |
+| `finish` | `finishReason`, `usage` | Completion signal |
+| `error` | `error` | Error during generation |
+
+The `finish` event includes token usage in the `usage` field:
+
+```json
+{
+  "type": "finish",
+  "finishReason": "stop",
+  "usage": {
+    "promptTokens": 42,
+    "completionTokens": 87
+  }
+}
+```
+
+Token usage is used by the billing system to calculate credit consumption for the request.
 
 ### Non-streaming response
 
@@ -84,7 +128,7 @@ When `stream: false`, the response is a complete JSON object:
 
 ## List available models
 
-**`GET /api/chat-model`** — List all available models for the authenticated user's plan.
+**`GET /api/chat-model`** -- List all available models for the authenticated user's plan.
 
 ### Response
 
@@ -102,12 +146,18 @@ When `stream: false`, the response is a complete JSON object:
       "name": "GPT-4o",
       "provider": "openai",
       "available": true
+    },
+    {
+      "id": "gemini-2.5-pro",
+      "name": "Gemini 2.5 Pro",
+      "provider": "google",
+      "available": true
     }
   ]
 }
 ```
 
-Model availability depends on the user's plan tier. Free-tier users have access to community models through OpenRouter and self-hosted models through Ollama.
+Model availability depends on the user's plan tier. Free-tier users have access to community models through OpenRouter and self-hosted models through Ollama. Pro and above unlock all premium providers.
 
 ## Conversation persistence
 
@@ -120,6 +170,16 @@ X-Chat-Id: chat_abc123
 ```
 
 Use this ID in subsequent requests to continue the conversation.
+
+### Memory integration
+
+If the user has the memory vault enabled, the chat endpoint automatically:
+
+1. Queries the Lago knowledge index for memories relevant to the current conversation
+2. Injects retrieved memories as system context before the model call
+3. After the response, extracts new facts/preferences and stores them as memory events
+
+This is transparent to the API caller -- memory augmentation happens server-side.
 
 ## Tool use
 
@@ -136,7 +196,7 @@ The chat API supports tool calling for models that implement function calling (C
       "parameters": {
         "type": "object",
         "properties": {
-          "location": {"type": "string"}
+          "location": {"type": "string", "description": "City name"}
         },
         "required": ["location"]
       }
@@ -145,7 +205,11 @@ The chat API supports tool calling for models that implement function calling (C
 }
 ```
 
-When the model invokes a tool, the stream emits a `tool-call` event followed by a `tool-result` event after execution.
+When the model invokes a tool, the stream emits a `tool-call` event followed by a `tool-result` event after execution. The model then continues generating text that incorporates the tool result.
+
+### MCP server tools
+
+In addition to user-defined tools, the chat endpoint can bridge tools from configured MCP servers. Organization-level MCP connections are resolved at request time and their tools are merged into the available tool set. The `@ai-sdk/mcp` adapter handles protocol translation between MCP and the AI SDK's tool interface.
 
 ## Error responses
 
