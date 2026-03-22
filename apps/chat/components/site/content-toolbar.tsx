@@ -394,6 +394,11 @@ interface ShareButtonProps {
 
 function ShareButton({ title, summary, slug }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const [hasNativeShare, setHasNativeShare] = useState(false);
+
+  useEffect(() => {
+    setHasNativeShare(typeof navigator !== "undefined" && "share" in navigator);
+  }, []);
 
   const url = typeof window !== "undefined" ? window.location.href : slug;
 
@@ -412,7 +417,7 @@ function ShareButton({ title, summary, slug }: ShareButtonProps) {
   const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
   const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
 
-  if (typeof navigator !== "undefined" && "share" in navigator) {
+  if (hasNativeShare) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>

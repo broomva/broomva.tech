@@ -238,5 +238,16 @@ async function main() {
 
 main().catch((err) => {
   console.error("Fatal error:", err);
+  // In CI, a Lago connectivity failure shouldn't block the pipeline
+  // since public/ fallback exists. Exit 0 if it's a network error.
+  if (
+    err instanceof TypeError &&
+    (err.message.includes("fetch") || err.message.includes("ECONNREFUSED"))
+  ) {
+    console.log(
+      "\n⚠️  Lago unreachable — assets will be served from public/ fallback.",
+    );
+    process.exit(0);
+  }
   process.exit(1);
 });

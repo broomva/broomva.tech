@@ -14,7 +14,8 @@
     "test": "turbo run test",
     "test:types": "turbo run test:types",
     "typecheck": "turbo run typecheck",
-    "check:links": "turbo run check:links"
+    "check:links": "turbo run check:links",
+    "sync:assets": "bun scripts/sync-assets-to-lago.ts"
   },
   "devDependencies": {
     "turbo": "^2.5.8"

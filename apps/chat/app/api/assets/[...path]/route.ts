@@ -1,4 +1,40 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+const MIME_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".mp3": "audio/mpeg",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".ogg": "audio/ogg",
+};
+
+/**
+ * Serve an asset from the public/ directory as a fallback.
+ */
+async function serveFromPublic(assetPath: string): Promise<NextResponse | null> {
+  const publicPath = join(process.cwd(), "public", assetPath);
+  if (!existsSync(publicPath)) return null;
+
+  const body = await readFile(publicPath);
+  const ext = assetPath.slice(assetPath.lastIndexOf(".")).toLowerCase();
+  const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
+
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+}
 
 /**
  * GET /api/assets/[...path]
@@ -7,7 +43,8 @@ import { type NextRequest, NextResponse } from "next/server";
  * Resolves asset paths via the site-assets manifest, then serves
  * the content-addressed blob with edge caching headers.
  *
- * Fallback: if LAGO_URL is not configured, returns 404.
+ * Fallback: serves from public/ directory if Lago is unavailable or
+ * the asset isn't in the Lago manifest.
  */
 export async function GET(
   request: NextRequest,
@@ -18,6 +55,9 @@ export async function GET(
 
   const lagoUrl = process.env.LAGO_URL;
   if (!lagoUrl) {
+    // Lago not configured — try public/ fallback
+    const publicRes = await serveFromPublic(assetPath);
+    if (publicRes) return publicRes;
     return NextResponse.json(
       { error: "Asset service not configured" },
       { status: 503 }
@@ -28,6 +68,9 @@ export async function GET(
     // Look up the asset hash from the site-assets manifest
     const hash = await resolveAssetHash(lagoUrl, assetPath);
     if (!hash) {
+      // Asset not in Lago — try public/ fallback
+      const publicRes = await serveFromPublic(assetPath);
+      if (publicRes) return publicRes;
       return NextResponse.json(
         { error: `Asset not found: ${assetPath}` },
         { status: 404 }

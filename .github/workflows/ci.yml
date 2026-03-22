@@ -47,6 +47,56 @@ jobs:
       - name: Validate internal links
         run: bun run check:links
 
+  sync-assets:
+    name: Sync assets to Lago
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for asset changes
+        id: changes
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'apps/chat/public/images/' 'apps/chat/public/audio/' 'apps/chat/content/' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "assets_changed=true" >> "$GITHUB_OUTPUT"
+            echo "Changed asset files:"
+            echo "$CHANGED"
+          else
+            echo "assets_changed=false" >> "$GITHUB_OUTPUT"
+            echo "No asset changes detected — skipping sync"
+          fi
+
+      - name: Setup Bun
+        if: steps.changes.outputs.assets_changed == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        if: steps.changes.outputs.assets_changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.changes.outputs.assets_changed == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Sync assets to Lago
+        if: steps.changes.outputs.assets_changed == 'true'
+        run: bun scripts/sync-assets-to-lago.ts
+        env:
+          LAGO_URL: ${{ secrets.LAGO_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
