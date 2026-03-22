@@ -394,12 +394,32 @@ GET /v1/haima/health
 
 ## Authentication
 
-All Life service endpoints use the same Bearer token authentication as the platform API. For managed deployments, use the deployment API key provided during provisioning.
+### Agent identity (Anima)
+
+Agent identity in the Life Agent OS is provided by [Anima](/docs/life/anima). Each agent has an `AgentSelf` composed of an immutable soul, a dual keypair (Ed25519 for auth + secp256k1 for economics), and mutable beliefs. The Ed25519 key is the canonical signing key for the Agent Auth Protocol.
+
+### Service-to-service auth (current)
+
+Life service APIs currently use **HS256 JWT tokens** with a shared `AUTH_SECRET` for service-to-service authentication. For managed deployments, use the deployment API key provided during provisioning:
 
 ```bash
 curl -H "Authorization: Bearer $DEPLOYMENT_KEY" \
   https://your-instance.broomva.tech/v1/autonomic/state
 ```
+
+<Callout type="info">
+  **Migration planned (BRO-58):** The current HS256 shared secret auth is temporary. The target architecture uses per-agent Ed25519 JWTs signed by the agent's Anima keypair. This will unify agent identity with API authentication.
+</Callout>
+
+### Public endpoints
+
+Not all endpoints require authentication. Autonomic's trust score endpoint is public:
+
+```
+GET /v1/autonomic/trust-score/{agent_id}   # No auth required
+```
+
+This is an observability endpoint, not an auth endpoint -- do not confuse Autonomic's trust scores with agent authentication.
 
 ## Error format
 

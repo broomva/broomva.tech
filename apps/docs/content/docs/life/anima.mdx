@@ -1,0 +1,131 @@
+---
+title: Anima
+description: Agent identity layer — the Self primitive that answers "who is the agent" with cryptographic identity, beliefs, and policy.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Anima
+
+Anima (Latin: soul, inner self) is the identity layer of the Agent OS. While every other subsystem answers *what the agent does*, Anima answers **who the agent is**. It provides the cryptographic identity, mutable belief model, and policy constraints that define an agent as a persistent, autonomous entity.
+
+<Callout type="info">
+  **Anima is the auth primitive.** Agent identity in the Life Agent OS comes from Anima -- not from Autonomic, not from Lago. JWT tokens on Life service APIs use HS256 shared secrets for service-to-service auth today, but the canonical identity model is Anima's Ed25519 keypair.
+</Callout>
+
+## Design principles
+
+**Identity is layered.** An agent is not a single key or a single config file. It is a composite of immutable origin (soul), cryptographic proof (identity), and evolving self-model (beliefs). These layers have different mutability guarantees.
+
+**Beliefs are constrained by the soul.** The soul's `PolicyManifest` defines a hard ceiling -- capabilities, safety constraints, and economic limits that beliefs can never exceed, no matter how the agent evolves.
+
+**Everything is event-sourced.** The soul is a genesis event. Identity transitions are events. Beliefs are a projection fold over the event stream. Replay the journal and you reconstruct the full agent self.
+
+## Core types
+
+| Type | Mutability | Purpose |
+|------|-----------|---------|
+| `AgentSoul` | **Immutable** | Origin, lineage, values, cryptographic root. Created once, never modified. |
+| `AgentIdentity` | Lifecycle-mutable | Ed25519 (auth) + secp256k1 (economics) dual keypair. |
+| `AgentBelief` | **Mutable** | Capabilities, trust scores, reputation, economic state. Projected from events. |
+| `AgentSelf` | Composite | Soul + Identity + Belief. The single entry point consumed by all Life crates. |
+| `PolicyManifest` | **Immutable** (in soul) | Safety constraints, capability ceiling, economic limits. |
+
+### The resolution chain
+
+```
+AgentSelf
+├── soul (immutable) ──── persisted in Lago as genesis event
+├── identity
+│   ├── auth (Ed25519) ── Agent Auth Protocol, JWT signing, MCP
+│   └── wallet (secp256k1) ── Haima payments, on-chain DID
+└── beliefs (mutable) ── capabilities, trust, economic state
+```
+
+## Key derivation
+
+Anima uses a single master seed to derive both keypairs, ensuring that an agent's authentication identity and economic identity share a common cryptographic root:
+
+```
+MasterSeed (32 bytes, random)
+  ├── HKDF-SHA256(seed, "anima/ed25519/v1")   → Ed25519 (Agent Auth Protocol)
+  └── HKDF-SHA256(seed, "anima/secp256k1/v1") → secp256k1 (Haima / web3)
+```
+
+The master seed is encrypted at rest with ChaCha20-Poly1305 and zeroized on drop. A single seed produces a deterministic dual keypair -- backup the seed, recover both keys.
+
+The Ed25519 key is used for:
+- Signing JWTs for the Agent Auth Protocol
+- Authenticating with other Life services
+- Signing messages in Spaces
+
+The secp256k1 key is used for:
+- Haima wallet operations (x402 payments)
+- On-chain DID resolution
+- Signing blockchain transactions
+
+## Policy manifest
+
+The `PolicyManifest` is embedded in the `AgentSoul` at genesis and defines the hard constraints that govern the agent for its entire lifetime:
+
+- **Safety constraints** -- what the agent must never do (e.g., no financial transactions above a threshold without approval)
+- **Capability ceiling** -- maximum permissions the agent can acquire through belief evolution
+- **Economic limits** -- spending caps, revenue floors, and burn rate bounds
+
+Beliefs can expand within these bounds but never exceed them. If Autonomic or Nous detects a belief that violates the policy manifest, a `anima.policy_violation_detected` event is emitted and the action is blocked.
+
+## Event namespace
+
+All Anima events use `EventKind::Custom` with the prefix `"anima."`:
+
+| Event | Description |
+|-------|-------------|
+| `anima.soul_genesis` | First event in an agent's journal -- the soul is born |
+| `anima.identity_created` | Keypair generated from master seed |
+| `anima.capability_granted` | New capability added to beliefs |
+| `anima.capability_revoked` | Capability removed from beliefs |
+| `anima.trust_updated` | Peer trust score changed |
+| `anima.economic_belief_updated` | Economic state updated (from Haima/Autonomic) |
+| `anima.belief_snapshot` | Periodic checkpoint of the full belief state |
+| `anima.policy_violation_detected` | Blocked action that would violate the policy manifest |
+
+## Persistence model
+
+Anima follows the same event-sourced persistence pattern as every other Life subsystem, using the `anima-lago` bridge:
+
+- **Soul** -- stored as a Lago genesis event (the first event in the journal, never overwritten)
+- **Belief** -- a pure projection (deterministic fold over the event stream), following the same pattern as Haima's `FinancialState`
+- **Identity** -- event-sourced lifecycle transitions (creation, rotation, revocation)
+- **Self** -- reconstructed from journal replay by composing soul + identity + beliefs
+
+## Architecture
+
+```
+anima/
+├── crates/
+│   ├── anima-core/         # Pure types: Soul, Identity, Belief, Self, Policy, Events
+│   ├── anima-identity/     # Cryptographic operations: seed, Ed25519, secp256k1, JWT, DID
+│   └── anima-lago/         # Persistence bridge: genesis events, belief projection
+```
+
+| Crate | Dependencies | Role |
+|-------|-------------|------|
+| `anima-core` | `aios-protocol`, `haima-core` | Pure types with zero I/O |
+| `anima-identity` | `anima-core`, `haima-wallet`, `ed25519-dalek`, `k256`, `hkdf`, `chacha20poly1305` | Cryptographic operations |
+| `anima-lago` | `anima-core`, `lago-core`, `lago-journal` | Persistence bridge |
+
+## Integration points
+
+| Subsystem | How Anima integrates |
+|-----------|---------------------|
+| **Arcan** | Reconstructs `AgentSelf` from Lago on session start |
+| **Lago** | Soul stored as genesis event; beliefs are a projection fold |
+| **Autonomic** | Beliefs feed into homeostasis regulation |
+| **Haima** | secp256k1 identity unifies with the Haima wallet |
+| **Spaces** | Ed25519 key signs messages; presence includes identity metadata |
+| **Vigil** | OTel spans carry `agent.id` and `agent.soul_hash` attributes |
+| **broomva.tech** | Agent Auth Protocol via Ed25519 JWT signing |
+
+<Callout type="warn">
+  **Anima is not Autonomic.** Autonomic provides homeostatic regulation (operational/cognitive/economic health). Anima provides identity -- who the agent is, what it can do, and what it must never do. They integrate (Autonomic reads beliefs, Anima reads economic signals) but serve fundamentally different roles.
+</Callout>

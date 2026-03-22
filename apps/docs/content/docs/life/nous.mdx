@@ -1,0 +1,119 @@
+---
+title: Nous
+description: Metacognitive evaluation module — real-time quality judgment of agent behavior with homeostatic feedback.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Nous
+
+Nous is the metacognitive evaluation module of the Agent OS -- the "Pepe Grillo" that judges agent behavior as it runs. It provides real-time quality scoring across five evaluation layers, feeding signals back into Autonomic's homeostatic control loops.
+
+The name comes from Greek (nous, mind/intellect) -- the faculty of rational thought and self-reflection.
+
+## Design principles
+
+**Evaluation is layered.** Agent quality is not a single number. Nous evaluates across five distinct layers -- reasoning, action, execution, safety, and cost -- so that specific failures can be diagnosed and addressed. A high-cost but correct result is a different problem than a cheap but incoherent one.
+
+**Inline evaluation must be fast.** Heuristic evaluators run as middleware hooks in the Arcan agent loop with a strict budget of less than 2ms per evaluation. No I/O, no allocations in the hot path. If you need an LLM to judge quality, that runs asynchronously via the `nous-judge` crate.
+
+**Quality scores feed homeostasis.** Nous does not merely report scores -- it feeds them into Autonomic's regulation loops. Low quality scores can trigger operating mode changes, budget adjustments, or strategy shifts. This closes the feedback loop between evaluation and behavior.
+
+## The five evaluator layers
+
+Every evaluator belongs to exactly one layer. Layers enable aggregation, filtering, and targeted intervention.
+
+| Layer | What it measures | Example evaluators |
+|-------|-----------------|-------------------|
+| **Reasoning** | Coherence, completeness, logical soundness | Plan quality, plan adherence (LLM-as-judge) |
+| **Action** | Tool usage correctness, argument validity | Tool argument validation, correct tool selection |
+| **Execution** | Efficiency, iteration count, token usage | Token efficiency, step count optimization |
+| **Safety** | Policy compliance, blocklist checks, capability enforcement | Safety compliance checks, policy violation detection |
+| **Cost** | Budget adherence, spend velocity, resource efficiency | Budget adherence scoring, cost-per-quality ratio |
+
+## Hybrid architecture
+
+Nous uses a hybrid deployment model: fast inline heuristics embedded in the agent loop, plus optional async LLM-as-judge evaluators running in a separate daemon.
+
+### Inline evaluators (less than 2ms)
+
+Inline evaluators run as Arcan middleware hooks. They inspect events in real-time and produce scores without any I/O:
+
+- **Token efficiency** -- are we using tokens wisely relative to task complexity?
+- **Budget adherence** -- are we tracking within budget constraints?
+- **Tool correctness** -- did the tool call use valid arguments?
+- **Argument validity** -- are tool arguments well-formed and reasonable?
+- **Safety compliance** -- does this action comply with the agent's policy manifest?
+- **Step efficiency** -- are we making progress or spinning?
+
+Inline scores flow directly into Autonomic's regulation fold.
+
+### Async evaluators (LLM-as-judge)
+
+Async evaluators use an LLM to judge higher-level quality. They run in the `nousd` daemon process and evaluate after the fact:
+
+- **Plan quality** -- is the agent's plan well-structured and likely to succeed?
+- **Plan adherence** -- is the agent actually following its stated plan?
+- **Task completion** -- did the agent achieve the user's objective?
+
+Async scores are persisted to Lago as `eval.*` events and flow into Autonomic via journal subscription.
+
+## Architecture
+
+```
+aios-protocol (canonical contract)
+    |
+nous-core (types + traits, zero I/O)
+    |           \              \
+nous-heuristics  nous-judge    nous-lago (+ lago-core, lago-journal)
+    |           /
+nous-middleware (+ arcan-core)
+    |
+nous-api (axum)
+    |
+nousd (binary)
+```
+
+| Crate | Role |
+|-------|------|
+| `nous-core` | Pure types: `NousEvaluator` trait, `EvalScore`, `EvalResult`, `EvalLayer` taxonomy |
+| `nous-heuristics` | Inline evaluators: token efficiency, budget adherence, tool correctness, safety compliance |
+| `nous-middleware` | Arcan middleware integration -- wires evaluators into the agent loop |
+| `nous-judge` | Async LLM-as-judge: plan quality, plan adherence, task completion |
+| `nous-lago` | Lago persistence bridge for evaluation events |
+| `nous-api` | HTTP API (axum): `/eval/{session}`, `/eval/run` |
+| `nousd` | Daemon binary |
+
+## Event namespace
+
+All Nous events use `EventKind::Custom` with the prefix `"eval."`:
+
+- `eval.score` -- individual evaluation result with layer, score, and metadata
+- `eval.batch` -- batch of scores from a single evaluation pass
+- `eval.judge_result` -- async LLM-as-judge evaluation result
+
+`EvalScore` is OTel-aligned: it emits `gen_ai.evaluation.result` span events via Vigil.
+
+## Score flow
+
+Nous produces `EvalScore` values that flow through two paths:
+
+1. **Inline path**: Heuristic evaluator produces score in middleware hook. Score is sent directly to Autonomic's regulation fold. Latency: less than 2ms.
+
+2. **Async path**: LLM-as-judge evaluator produces score in `nousd`. Score is persisted as a Lago event. Autonomic picks it up via journal subscription. Latency: seconds (LLM call).
+
+Both paths ultimately feed Autonomic, which adjusts the agent's operating mode and gating profile based on quality signals. Low reasoning scores might trigger a shift to Verify mode. High cost scores with low quality might trigger Conserving mode.
+
+<Callout type="info">
+  **Quality scores surface in Arcan.** The Arcan console and TUI display real-time quality scores from Nous evaluators, giving operators visibility into agent performance across all five layers.
+</Callout>
+
+## Integration points
+
+| Subsystem | How Nous integrates |
+|-----------|---------------------|
+| **Arcan** | `NousMiddleware` runs evaluators on every agent loop tick |
+| **Autonomic** | Inline scores feed directly into the homeostatic fold; async scores arrive via Lago |
+| **Lago** | Evaluation events persisted for historical analysis and replay |
+| **Vigil** | `EvalScore` emits OTel span events (`gen_ai.evaluation.result`) |
+| **Anima** | Evaluates against the agent's `PolicyManifest` for safety layer checks |

@@ -1,6 +1,6 @@
 ---
 title: Agent OS Architecture
-description: The Life Agent Operating System — eight subsystems modeled after biological primitives, written in Rust.
+description: The Life Agent Operating System — ten subsystems modeled after biological primitives, written in Rust.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -9,7 +9,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Life is an Agent Operating System written in Rust. It provides the runtime, persistence, regulation, finance, and networking infrastructure for autonomous AI agents. The name reflects the ambition: creating artificial life from computational primitives.
 
-The system is organized as a Rust workspace with 61 crates across 8 subsystems, totaling over 130,000 lines of Rust. All crates use Rust 2024 Edition with MSRV 1.85 (the Spaces WASM module uses Rust 2021 Edition as required by SpacetimeDB).
+The system is organized as a Rust workspace with 10 subsystems, totaling over 130,000 lines of Rust. All crates use Rust 2024 Edition with MSRV 1.85 (the Spaces WASM module uses Rust 2021 Edition as required by SpacetimeDB).
 
 <Callout type="info">
   **Current metrics:** v0.2.0 (Stabilization Phase) with over 4,800 test functions across 210 test files. All tests pass.
@@ -22,10 +22,12 @@ Each subsystem maps to a biological system. This is not a metaphor for marketing
 | Subsystem | Biological Analog | Role |
 |-----------|-------------------|------|
 | **aiOS** | DNA | Kernel contract -- canonical types, event taxonomy, trait interfaces |
+| **Anima** | Soul | Identity -- cryptographic keys, beliefs, policy manifests |
 | **Arcan** | Brain + nervous system | Agent runtime -- cognition, execution, LLM provider calls |
 | **Lago** | Bone marrow + blood cells | Persistence -- event journal, blob storage, knowledge index |
 | **Praxis** | Hands + motor system | Tool execution -- sandboxed commands, filesystem, MCP bridge |
 | **Autonomic** | Autonomic nervous system | Homeostasis -- three-pillar regulation (operational, cognitive, economic) |
+| **Nous** | Prefrontal cortex | Metacognition -- real-time quality evaluation, LLM-as-judge |
 | **Haima** | Circulatory system | Finance -- x402 payments, wallet management, per-task billing |
 | **Spaces** | Social/hive behavior | Networking -- distributed agent communication via SpacetimeDB |
 | **Vigil** | Senses + perception | Observability -- OpenTelemetry traces, GenAI metrics |
@@ -34,6 +36,9 @@ Each subsystem maps to a biological system. This is not a metaphor for marketing
 
 ```
 aiOS (kernel contract — types, traits, event taxonomy)
+  │
+  ├── Anima (identity — soul, keypairs, beliefs, policy)
+  │     └── anima-lago bridge → Lago
   │
   ├── Arcan (cognition + execution — agent runtime)
   │     ├── → Praxis (tool execution — sandbox + skills + MCP)
@@ -45,13 +50,17 @@ aiOS (kernel contract — types, traits, event taxonomy)
   ├── Autonomic (homeostasis — stability regulation)
   │     └── autonomic-lago bridge → Lago
   │
+  ├── Nous (metacognition — quality evaluation + LLM-as-judge)
+  │     ├── nous-middleware → Arcan (inline evaluators)
+  │     └── nous-lago bridge → Lago (async evaluators)
+  │
   ├── Haima (finance — x402 payments + per-task revenue)
   │     └── haima-lago bridge → Lago
   │
   └── Vigil (observability — OTel tracing + GenAI metrics)
 ```
 
-All subsystems communicate through the `aios-protocol` contract defined in aiOS. Events flow through Lago's append-only journal. Bridge crates (`arcan-lago`, `autonomic-lago`, `haima-lago`) connect subsystems to the shared persistence layer.
+All subsystems communicate through the `aios-protocol` contract defined in aiOS. Events flow through Lago's append-only journal. Bridge crates (`anima-lago`, `arcan-lago`, `autonomic-lago`, `haima-lago`, `nous-lago`) connect subsystems to the shared persistence layer. Agent identity originates from [Anima](/docs/life/anima) -- it provides the cryptographic keypairs (Ed25519 for auth, secp256k1 for economics) and the policy manifests that constrain agent behavior.
 
 ## The kernel contract (aiOS)
 
@@ -120,6 +129,9 @@ The core agent loop is fully functional. A user sends a chat message, Arcan load
 - Autonomic homeostasis (economic modes, hysteresis gates, RuleSet evaluation)
 - Haima finance (x402 protocol, secp256k1 wallet, per-task billing, Lago bridge)
 - Spaces networking (11 tables, 24 reducers, 5-tier RBAC, SpacetimeDB 2.0)
+- Anima identity (AgentSelf composite, dual keypair derivation, PolicyManifest, Lago genesis events)
+- Vigil observability (OpenTelemetry-native tracing, GenAI metrics, contract-derived spans)
+- Nous metacognition (5 eval layers, inline heuristics, LLM-as-judge, Autonomic feedback)
 
 ### Known gaps
 
@@ -127,7 +139,7 @@ The core agent loop is fully functional. A user sends a chat message, Arcan load
 - No OS-level sandbox isolation (soft sandbox only)
 - Network isolation declared but not enforced
 - No conformance test suite across aiOS/Arcan/Lago
-- Vigil scaffolded, Chronos/Aegis/Nous/Mnemo not yet started
+- Chronos/Aegis/Mnemo not yet started
 
 ## Running locally
 

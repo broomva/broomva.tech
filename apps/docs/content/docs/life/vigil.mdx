@@ -1,0 +1,139 @@
+---
+title: Vigil
+description: Observability layer — OpenTelemetry-native tracing, GenAI semantic conventions, and contract-derived instrumentation.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Vigil
+
+Vigil is the observability layer of the Agent OS -- the senses through which the system perceives its own operation. It provides OpenTelemetry-native tracing, GenAI semantic conventions, and contract-derived instrumentation that maps 1:1 to the aiOS kernel lifecycle.
+
+## Design principles
+
+**Observability should be invisible when not needed, and comprehensive when enabled.** Without an OTLP endpoint configured, Vigil only sets up structured logging via `tracing-subscriber`. No OpenTelemetry SDK overhead, no network calls, no performance impact.
+
+**Span hierarchy derives from the kernel contract.** Vigil does not invent its own span structure -- it mirrors the aiOS 8-phase tick lifecycle. Agent sessions produce `invoke_agent` root spans, loop phases produce child spans, and LLM calls produce `chat` spans with GenAI semantic attributes. This ensures observability and runtime behavior are always in sync.
+
+**Dual-write architecture.** OTel trace and span IDs are written into `EventEnvelope` objects via `write_trace_context`, linking persisted Lago events to their live traces. You can follow a trace from Langfuse or Jaeger back to the exact events in the journal.
+
+## Architecture
+
+Vigil is a single crate with four modules:
+
+### config
+
+`VigConfig` configures the telemetry pipeline with environment variable overrides:
+
+- `VigConfig::for_service("arcan")` -- create config for a named service
+- `VigConfig::from_env()` -- build config purely from environment variables
+- `config.with_env_overrides()` -- apply env overrides on top of programmatic values
+
+### semconv
+
+Semantic convention constants organized into four namespaces:
+
+| Namespace | Attributes | Purpose |
+|-----------|-----------|---------|
+| `gen_ai.*` | operation name, system, model, tokens, tool name, agent | GenAI semantic conventions (OTel spec) |
+| `life.*` | session/run/branch IDs, loop phase, operating mode, budget, state vector, tool status | Life Agent OS attributes |
+| `autonomic.*` | economic mode, health pillars | Autonomic controller attributes |
+| `lago.*` | stream ID, blob hash, fs branch | Lago persistence attributes |
+
+### spans
+
+Contract-derived span builders that create properly-attributed `tracing` spans:
+
+| Builder | OTel operation | Purpose |
+|---------|---------------|---------|
+| `agent_span(session_id, agent_name)` | `invoke_agent` | Root span for agent sessions |
+| `phase_span(LoopPhase)` | per-phase | Child span for loop phases (perceive, deliberate, gate, execute, commit, reflect, sleep) |
+| `chat_span(model, provider, max_tokens, temperature)` | `chat` | GenAI client span for LLM calls |
+| `tool_span(tool_name, tool_call_id)` | `execute_tool` | GenAI span for tool calls |
+| `record_token_usage(span, usage)` | -- | Record token counts on a chat span |
+| `record_finish_reason(span, reason)` | -- | Record stop reason |
+| `write_trace_context(envelope)` | -- | Write OTel trace/span IDs into an EventEnvelope (dual-write) |
+| `extract_trace_context(envelope)` | -- | Extract trace context from persisted events |
+
+### metrics
+
+`GenAiMetrics` provides pre-created OTel metric instruments:
+
+| Instrument | Type | Description |
+|-----------|------|-------------|
+| `gen_ai.client.token.usage` | Histogram | Token counts per request (input/output breakdown) |
+| `gen_ai.client.operation.duration` | Histogram | LLM call duration in seconds |
+| `life.tool.executions` | Counter | Tool executions by name and status |
+| `life.budget.tokens_remaining` | Gauge | Remaining token budget |
+| `life.budget.cost_remaining_usd` | Gauge | Remaining cost budget |
+| `life.mode.transitions` | Counter | Operating mode transitions |
+
+## Platform integration
+
+Vigil works with any OpenTelemetry-compatible backend. Configure the OTLP endpoint and Vigil handles the rest.
+
+### Langfuse
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="https://cloud.langfuse.com/api/public/otel"
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <base64(public_key:secret_key)>"
+export OTEL_SERVICE_NAME="arcan"
+```
+
+### LangSmith
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="https://api.smith.langchain.com/otel"
+export OTEL_EXPORTER_OTLP_HEADERS="x-api-key=<langsmith_api_key>"
+export OTEL_SERVICE_NAME="arcan"
+```
+
+### Jaeger
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
+export OTEL_SERVICE_NAME="arcan"
+```
+
+### Grafana Tempo
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
+export OTEL_SERVICE_NAME="arcan"
+```
+
+## Environment variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint (e.g. `http://localhost:4317`) | None (logging only) |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Comma-separated `key=value` pairs for OTLP headers | None |
+| `OTEL_SERVICE_NAME` | Service identity for OTel resource | `"vigil"` |
+| `VIGIL_LOG_FORMAT` | Log output format: `pretty` or `json` | `pretty` |
+| `VIGIL_CAPTURE_CONTENT` | Capture prompt/completion content in spans: `true`/`1`/`yes` | `false` |
+| `VIGIL_SAMPLING_RATIO` | Trace sampling ratio (0.0 to 1.0) | `1.0` |
+
+<Callout type="info">
+  **Graceful degradation:** Without `OTEL_EXPORTER_OTLP_ENDPOINT`, Vigil only configures `tracing-subscriber` for structured logging. No OTel SDK is initialized, and there is no performance overhead from telemetry.
+</Callout>
+
+## Dependencies
+
+Vigil depends **only** on `aios-protocol` from the kernel contract. It has no dependency on Arcan, Lago, Autonomic, Praxis, or Spaces. This makes it safe to use from any subsystem without introducing circular dependencies.
+
+```
+aios-protocol (canonical contract — EventEnvelope, LoopPhase, TokenUsage)
+  └── vigil (observability — tracing + metrics + GenAI conventions)
+```
+
+## Troubleshooting
+
+### No spans appearing in Langfuse or LangSmith
+
+1. Check that `OTEL_EXPORTER_OTLP_ENDPOINT` is set correctly (include the full URL path)
+2. Verify `OTEL_EXPORTER_OTLP_HEADERS` has valid auth credentials
+3. Ensure the `VigGuard` is kept alive for the application lifetime (it flushes on drop)
+
+### "failed to initialize tracing subscriber" error
+
+This happens when `tracing_subscriber::registry().try_init()` is called more than once in the same process. The global subscriber can only be set once. In tests, Vigil uses `try_init()` to tolerate this.

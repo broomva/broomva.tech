@@ -1,0 +1,164 @@
+---
+title: Praxis
+description: Canonical tool execution engine — sandboxed filesystem, shell, hashline editing, skills, and MCP bridge.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Praxis
+
+Praxis is the canonical tool execution engine of the Agent OS -- the hands through which the agent interacts with the world. It provides filesystem operations, shell command execution, content-addressed editing, skill discovery, and an MCP bridge, all within enforced sandbox boundaries.
+
+The name comes from Greek (praxis, practice/action) -- the practical application of knowledge.
+
+## Design principles
+
+**Pure tool engine, no runtime coupling.** Praxis depends only on `aios-protocol`. It has no dependency on Arcan, Lago, Autonomic, or any other subsystem. It is consumed by Arcan as the tool backend, but can be used independently.
+
+**Workspace boundary enforcement.** All filesystem operations canonicalize paths and verify they start with the workspace root. Symlink traversal attacks are blocked. No tool can read or write outside the designated workspace directory.
+
+**Content-addressed editing.** Files are read with Blake3 content hashes per line. Edit operations must reference the correct hash tag, preventing "blind" edits on stale content. This makes edits robust against concurrent modifications and ensures the agent always knows exactly what it is changing.
+
+## Tools
+
+Praxis provides nine built-in tools:
+
+### Filesystem tools
+
+| Tool | Description |
+|------|-------------|
+| `ReadFile` | Reads file contents with hashline tags for content-addressed editing |
+| `WriteFile` | Writes files within the workspace boundary |
+| `ListDir` | Lists directory contents with metadata (size, modification time) |
+| `Glob` | Pattern-based file search using glob patterns |
+| `Grep` | Regex search with glob filtering and match limits |
+| `EditFile` | Hashline (Blake3) content-addressed line editing |
+
+### Shell execution
+
+| Tool | Description |
+|------|-------------|
+| `BashTool` | Shell command execution within sandbox constraints |
+
+Shell execution is governed by `SandboxPolicy`:
+
+- **cwd validation** -- commands run within the workspace directory
+- **env filtering** -- environment variables are filtered to prevent leaks
+- **timeout enforcement** -- commands are killed after a configurable timeout
+- **output truncation** -- stdout/stderr are truncated to prevent memory exhaustion
+
+### Memory tools
+
+| Tool | Description |
+|------|-------------|
+| `ReadMemory` | Read agent memory entries (file-based markdown) |
+| `WriteMemory` | Write agent memory entries |
+
+Memory keys must be alphanumeric, hyphens, or underscores only. No path traversal (`..`) and no hidden files (`.` prefix).
+
+## Hashline editing
+
+Hashline editing is Praxis's signature feature. When a file is read, each line is annotated with a Blake3 content hash:
+
+```
+[a1b2c3] fn main() {
+[d4e5f6]     println!("Hello, world!");
+[g7h8i9] }
+```
+
+To edit a line, the agent references the hash tag, not the line number:
+
+```json
+{
+  "edits": [
+    { "hash": "d4e5f6", "new_content": "    println!(\"Hello, Life!\");" }
+  ]
+}
+```
+
+If the file has changed since it was read (lines moved, content modified), the hash will no longer match and the edit will fail with a clear error. This prevents blind edits on stale content -- the agent must re-read the file and try again.
+
+## Skill discovery
+
+Praxis discovers and manages skills defined by `SKILL.md` files in the workspace:
+
+- **`SkillMetadata`** -- parsed from YAML frontmatter in `SKILL.md`
+- **`parse_skill_md`** -- frontmatter extractor and validator
+- **`SkillRegistry`** -- directory discovery, activation, and system prompt catalog generation
+
+Skills are self-describing packages. A `SKILL.md` file contains metadata (name, description, version, capabilities) and instructions that are injected into the agent's system prompt when the skill is activated.
+
+## MCP bridge
+
+Praxis implements both sides of the Model Context Protocol (MCP) using `rmcp` 0.15:
+
+### MCP server
+
+`PraxisMcpServer` exposes any `ToolRegistry` as an MCP server, making Praxis tools available to external clients (e.g., Claude Desktop):
+
+- **stdio transport** -- `serve_stdio()` for CLI integration
+- **Streamable HTTP** -- `serve_http()` or `mcp_axum_router()` for network access
+
+### MCP client
+
+The client bridge connects to external MCP servers via subprocess:
+
+- **`McpServerConfig`** -- server configuration with environment and arguments
+- **`connect_mcp_stdio`** -- spawns MCP server subprocess via rmcp transport
+- **`McpTool`** -- bridges external MCP server tools to the canonical `Tool` trait
+
+This means Praxis can both expose its tools *to* MCP clients and consume tools *from* external MCP servers, making it a bidirectional bridge between the Life Agent OS and the broader MCP ecosystem.
+
+## Architecture
+
+```
+aios-protocol (Tool trait, ToolDefinition, ToolCall, ToolResult, ToolError)
+  │
+  └── praxis-core (sandbox policy, workspace enforcement, command runner)
+        │
+        ├── praxis-tools (ReadFile, WriteFile, ListDir, Glob, Grep, EditFile, Bash, Memory)
+        ├── praxis-skills (SKILL.md parser, SkillRegistry)
+        └── praxis-mcp (MCP server + client via rmcp 0.15)
+```
+
+| Crate | Tests | Role |
+|-------|-------|------|
+| `praxis-core` | 12 | Sandbox policy, workspace boundary enforcement, command runner |
+| `praxis-tools` | 24 | Filesystem tools, hashline editing, shell execution, memory tools |
+| `praxis-skills` | 11 | SKILL.md parsing, skill registry, catalog generation |
+| `praxis-mcp` | 34 | MCP server (stdio + HTTP), client bridge, type conversions |
+
+## Policy enforcement
+
+Two policies govern all Praxis operations:
+
+### FsPolicy
+
+Workspace boundary enforcement. Every filesystem operation:
+
+1. Canonicalizes the path (resolves symlinks, `..`, etc.)
+2. Verifies the canonical path starts with the workspace root
+3. Rejects the operation if the path escapes the workspace
+
+### SandboxPolicy
+
+Shell execution constraints:
+
+- **Allowed commands** -- configurable allowlist
+- **Timeout** -- commands are killed after a configurable duration
+- **Output limits** -- stdout/stderr are truncated
+- **Environment filtering** -- only approved environment variables are passed through
+- **cwd restriction** -- commands execute within the workspace
+
+<Callout type="warn">
+  **Soft sandbox only.** Praxis enforces workspace boundaries and command policies at the application level. There is no OS-level sandbox isolation (containers, seccomp, etc.) yet. This is a known gap -- see the Life Agent OS [overview](/docs/life/overview) for the full list of known limitations.
+</Callout>
+
+## Integration points
+
+| Subsystem | How Praxis integrates |
+|-----------|----------------------|
+| **Arcan** | Consumes Praxis as the canonical tool backend via `ToolRegistry` |
+| **Vigil** | Tool executions emit `execute_tool` spans with `life.tool.*` attributes |
+| **Nous** | Tool correctness and argument validity evaluators check Praxis tool calls |
+| **aiOS** | Implements the `Tool` trait defined in `aios-protocol` |
