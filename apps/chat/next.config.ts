@@ -3,6 +3,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   typedRoutes: true,
   cacheComponents: true,
+  transpilePackages: [
+    "@broomva/billing",
+    "@broomva/conformance",
+    "@broomva/database",
+    "@broomva/deploy",
+    "@broomva/tenant",
+  ],
 
   async rewrites() {
     return [

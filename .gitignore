@@ -137,6 +137,7 @@ packages/billing/
 packages/tenant/
 packages/deploy/
 packages/conformance/
+packages/database/
 
 # bstack skills (local only)
 skills/

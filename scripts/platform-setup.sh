@@ -18,7 +18,7 @@ cd "$REPO_ROOT"
 
 # Private paths that get overlayed (relative to platform source root)
 PRIVATE_APPS=(console)
-PRIVATE_PACKAGES=(billing tenant deploy conformance)
+PRIVATE_PACKAGES=(billing tenant deploy conformance database)
 
 # --- Colors ---
 RED='\033[0;31m'
