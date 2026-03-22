@@ -13,7 +13,7 @@ import {
   mkdirSync,
   unlinkSync,
 } from "node:fs";
-import { basename, extname, join, relative } from "node:path";
+import { extname, join, relative } from "node:path";
 import type { VaultBackend } from "./backend";
 
 /** Recursively collect all .md files, following symlinks. */

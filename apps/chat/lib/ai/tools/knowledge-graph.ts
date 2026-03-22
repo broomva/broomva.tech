@@ -277,7 +277,7 @@ Returns matching notes with frontmatter metadata, relevant excerpts, and outgoin
       const merged = mergeAndRank(allResults, maxResults);
 
       // Optionally follow wikilinks (server vault only — Lago handles this server-side)
-      let linkedNotes: {
+      const linkedNotes: {
         name: string;
         relativePath: string;
         frontmatter: Record<string, unknown>;
@@ -357,7 +357,7 @@ Returns the full note content with frontmatter and outgoing wikilinks.`,
           const note = resolveWikilink(name, vaultPath);
           if (note) {
             const links = extractWikilinks(note.body);
-            let linkedSummaries: {
+            const linkedSummaries: {
               name: string;
               path: string;
               excerpt: string;

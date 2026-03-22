@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
     // Determine user identity — prefer the refresh token's userId,
     // but cross-check with Bearer token if present
-    let userId = record.userId;
+    const userId = record.userId;
     let email = "";
 
     const authHeader = request.headers.get("Authorization");
