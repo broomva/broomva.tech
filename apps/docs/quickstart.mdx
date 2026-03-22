@@ -1,0 +1,147 @@
+---
+title: "Quickstart"
+description: "Go from zero to your first API call in under five minutes."
+---
+
+# Quickstart
+
+This guide walks you through signing up, trying the AI chat, creating an organization, and connecting from the CLI.
+
+## 1. Sign up
+
+Create an account at [broomva.tech](https://broomva.tech). You can sign in with:
+
+- **Email + password** — standard email/password registration
+- **Google** — OAuth sign-in
+- **GitHub** — OAuth sign-in
+
+Accounts with the same email address are automatically linked, so you can sign in with any method and access the same workspace.
+
+<Info>
+  The free tier gives you 50 credits ($0.50 worth of inference) per month with access to community models. No credit card required.
+</Info>
+
+## 2. Try the chat
+
+Navigate to [broomva.tech/chat](https://broomva.tech/chat) to start a conversation. The chat supports:
+
+- **Multiple AI models** — Claude (Anthropic), GPT (OpenAI), Gemini (Google), and local models through Ollama and OpenRouter
+- **Rich message rendering** — code blocks with syntax highlighting, LaTeX math, Mermaid diagrams, tables
+- **Attachments** — upload images and documents directly into the conversation
+- **Memory vault** — the platform remembers context across conversations using a Lago-backed knowledge graph
+- **MCP tools** — connect external tools and services through the Model Context Protocol
+
+Select a model from the dropdown, type a message, and send. Conversations are automatically saved to your account.
+
+## 3. Create an organization
+
+Organizations are the unit of billing, access control, and resource isolation on the platform. Every user gets a personal workspace by default, but for team use you should create a dedicated organization.
+
+1. Open the [Console](https://broomva.tech/console)
+2. Click **New Organization**
+3. Choose a name and slug (the slug becomes part of your API namespace)
+4. Invite team members by email
+
+Organization members share a credit pool and can access shared conversations, API keys, and deployment configurations.
+
+## 4. Install the CLI
+
+The BroomVA CLI (`@broomva/cli`) lets you manage prompts, skills, and agent context from your terminal.
+
+```bash
+# Install globally with npm
+npm install -g @broomva/cli
+
+# Or run directly with npx
+npx @broomva/cli --help
+```
+
+Verify the installation:
+
+```bash
+broomva --version
+# 0.1.0
+```
+
+## 5. Authenticate
+
+The CLI uses the OAuth 2.0 Device Authorization Grant (RFC 8628) for secure, browser-based authentication:
+
+```bash
+broomva auth login
+```
+
+This will:
+
+1. Request a device code from the server
+2. Display a URL and a short code
+3. Open the URL in your browser where you approve the device
+4. Poll until authorization completes and store the token locally
+
+The token is saved to `~/.broomva/config.json`. You can also authenticate manually with a token from the web UI:
+
+```bash
+broomva auth login --manual
+```
+
+Verify your auth status:
+
+```bash
+broomva auth status
+# Authenticated (token from device-flow)
+```
+
+## 6. Make your first API call
+
+With your token stored, you can call the platform API directly:
+
+```bash
+# Using curl with the stored token
+TOKEN=$(broomva auth token)
+
+curl -X POST https://broomva.tech/api/chat \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "messages": [
+      { "role": "user", "content": "Hello from the API!" }
+    ]
+  }'
+```
+
+Or use the CLI's built-in commands:
+
+```bash
+# List available prompts from the platform
+broomva prompts list
+
+# List installed skills
+broomva skills list
+
+# Show current context
+broomva context show
+```
+
+## 7. Explore the platform
+
+<CardGroup cols={2}>
+  <Card title="Platform Chat" icon="message" href="/platform/chat">
+    Deep dive into chat features, model selection, and memory vault.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Full API documentation with authentication, endpoints, and error handling.
+  </Card>
+  <Card title="CLI Commands" icon="terminal" href="/cli/commands">
+    Complete reference for all CLI commands and options.
+  </Card>
+  <Card title="Agent OS" icon="microchip" href="/life/overview">
+    Understand the Life architecture and run the agent runtime locally.
+  </Card>
+</CardGroup>
+
+## What's next
+
+- **Upgrade your plan** — the [Pro tier](/platform/billing) gives you 5,000 credits/month and access to all models
+- **Deploy a managed instance** — run your own [Life agent runtime](/platform/deployments) in the cloud
+- **Build with the SDK** — use the [TypeScript SDK](/sdk/typescript) to integrate BroomVA into your applications

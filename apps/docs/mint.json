@@ -1,0 +1,87 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "BroomVA Documentation",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5",
+    "background": {
+      "dark": "#0D0D14"
+    }
+  },
+  "topbarLinks": [
+    { "name": "Platform", "url": "https://broomva.tech" },
+    { "name": "Chat", "url": "https://broomva.tech/chat" }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://broomva.tech/chat"
+  },
+  "tabs": [
+    { "name": "Platform", "url": "platform" },
+    { "name": "CLI", "url": "cli" },
+    { "name": "API Reference", "url": "api-reference" },
+    { "name": "Life Agent OS", "url": "life" },
+    { "name": "SDK", "url": "sdk" }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "Platform",
+      "pages": [
+        "platform/chat",
+        "platform/console",
+        "platform/billing",
+        "platform/organizations",
+        "platform/deployments"
+      ]
+    },
+    {
+      "group": "CLI",
+      "pages": [
+        "cli/installation",
+        "cli/authentication",
+        "cli/commands"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/overview",
+        "api-reference/chat",
+        "api-reference/organizations",
+        "api-reference/billing",
+        "api-reference/life-services",
+        "api-reference/trust"
+      ]
+    },
+    {
+      "group": "Life Agent OS",
+      "pages": [
+        "life/overview",
+        "life/arcan",
+        "life/lago",
+        "life/autonomic",
+        "life/haima",
+        "life/spaces"
+      ]
+    },
+    {
+      "group": "SDK",
+      "pages": ["sdk/typescript"]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://x.com/broomva_tech",
+    "github": "https://github.com/broomva",
+    "linkedin": "https://linkedin.com/company/broomva"
+  }
+}

@@ -1,0 +1,138 @@
+---
+title: "Arcan"
+description: "The agent runtime daemon — cognition, LLM provider calls, tool execution, and streaming."
+---
+
+# Arcan
+
+Arcan is the agent runtime daemon and the primary implementation of the aiOS kernel contract. It handles the core agent loop: receiving user input, managing conversation state, calling LLM providers, executing tools through Praxis, and streaming responses.
+
+The name comes from "arcane" — the hidden, fundamental mechanism behind visible intelligence.
+
+## Architecture
+
+Arcan is structured as a Rust workspace with these crates:
+
+| Crate | Role |
+|-------|------|
+| `arcan-core` | Core agent loop, session management, message history |
+| `arcan-harness` | Test harness and benchmarking infrastructure |
+| `arcan-aios-adapters` | Adapters between Arcan internals and aiOS kernel types |
+| `arcan-store` | Session storage abstraction |
+| `arcan-provider` | LLM provider abstraction (Anthropic, OpenAI-compatible, Mock) |
+| `arcan-tui` | Terminal UI for interactive sessions |
+| `arcan-lago` | Bridge to Lago persistence (event journal, blob store) |
+| `arcan-spaces` | Bridge to Spaces distributed networking |
+| `arcand` | HTTP daemon (axum server, SSE streaming) |
+| `arcan` | CLI binary (session management, log inspection) |
+
+## The agent loop
+
+The core design principle: **the agent's message history IS the application state.** Every action produces an immutable event. The agent loop follows this cycle:
+
+1. **Reconstruct** — load the session from the Lago journal and rebuild the conversation state from events
+2. **Provider call** — send the conversation to the configured LLM provider with tools and context
+3. **Execute** — if the model requests tool use, execute tools through Praxis and collect results
+4. **Stream** — emit response events to the client via SSE, persisting each event to the journal
+
+The loop continues (provider call, execute, stream) until the model produces a final text response without tool calls, or a budget limit is reached.
+
+### Event-sourced state
+
+All state is derived from events. There is no mutable database — the event journal is the single source of truth. To recover state, replay the events from the beginning of the session. This gives you:
+
+- **Full auditability** — every decision and action is recorded
+- **Replayability** — sessions can be replayed from the journal for debugging or evaluation
+- **Branching** — fork a session at any point by replaying events up to that point and continuing differently
+
+## LLM providers
+
+Arcan abstracts LLM providers behind a trait interface, allowing the same agent loop to work with any model:
+
+| Provider | Implementation | Notes |
+|----------|---------------|-------|
+| **Anthropic** | Native Claude API | Full tool use, system prompts, caching |
+| **OpenAI-compatible** | Any OpenAI-format endpoint | GPT, Gemini, Ollama, vLLM, etc. |
+| **Mock** | Deterministic test provider | Scripted responses for testing |
+
+Provider selection is per-session. The provider handles token counting, retry logic, and format translation.
+
+## Streaming formats
+
+Arcan supports four SSE output formats, selectable per-request:
+
+| Format | Header/Query | Use case |
+|--------|-------------|----------|
+| **Lago** | `format=lago` | Native event format for Lago clients |
+| **OpenAI** | `format=openai` | Compatible with OpenAI client libraries |
+| **Anthropic** | `format=anthropic` | Compatible with Anthropic client libraries |
+| **Vercel** | `format=vercel` | Compatible with Vercel AI SDK `useChat` |
+
+The Vercel format is used by the broomva.tech chat application and emits `UiPart` objects compatible with AI SDK v6.
+
+## Tool execution
+
+Arcan delegates tool execution to Praxis, the canonical tool engine. Praxis provides:
+
+- **Filesystem tools** — read, write, list files within a sandboxed workspace
+- **Hashline editing** — content-hash-addressed line edits (Blake3) for precise file modifications
+- **Command execution** — run shell commands within a sandbox policy
+- **Skill discovery** — find and invoke skills defined by `SKILL.md` files
+- **MCP bridge** — connect to external MCP servers for additional tool capabilities
+
+Tool permissions are governed by `FsPolicy` (workspace boundary enforcement) and `SandboxPolicy` (allowed commands and resource limits).
+
+## Running Arcan
+
+### As a daemon
+
+```bash
+cd arcan
+cargo run -p arcan
+# Listening on http://localhost:3000
+```
+
+### CLI usage
+
+```bash
+# Create a new session
+cargo run -p arcan -- session new
+
+# List sessions
+cargo run -p arcan -- session list
+
+# View session events
+cargo run -p arcan -- log <session-id>
+
+# Interactive TUI
+cargo run -p arcan-tui
+```
+
+### With Lago persistence
+
+By default, Arcan uses the `arcan-lago` bridge to persist events to a local redb database. The data directory defaults to `~/.arcan/data/`:
+
+```bash
+# Specify a custom data directory
+cargo run -p arcan -- --data-dir /path/to/data
+```
+
+### With Spaces networking
+
+To connect Arcan to a Spaces instance for multi-agent communication:
+
+```bash
+cargo run -p arcan -- --spaces-url http://localhost:3000 --spaces-db my-space
+```
+
+## Configuration
+
+Arcan is configured through command-line flags and environment variables:
+
+| Flag | Env var | Default | Description |
+|------|---------|---------|-------------|
+| `--port` | `ARCAN_PORT` | `3000` | HTTP server port |
+| `--data-dir` | `ARCAN_DATA_DIR` | `~/.arcan/data` | Persistent storage directory |
+| `--provider` | `ARCAN_PROVIDER` | `anthropic` | Default LLM provider |
+| `--model` | `ARCAN_MODEL` | `claude-sonnet-4-20250514` | Default model |
+| `--lago-data-dir` | — | embedded | Lago journal data directory |

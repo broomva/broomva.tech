@@ -1,0 +1,162 @@
+---
+title: "Chat API"
+description: "Send messages and receive AI responses through the chat API."
+---
+
+# Chat API
+
+The chat API is the primary interface for sending messages to AI models and receiving responses. It supports both streaming and non-streaming modes, multi-model selection, and tool use.
+
+## Send a message
+
+<ParamField path="POST" query="/api/chat">
+  Send a chat message and receive an AI response.
+</ParamField>
+
+### Request body
+
+```json
+{
+  "model": "claude-sonnet-4-20250514",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "Explain event sourcing in 3 sentences."
+    }
+  ],
+  "stream": true,
+  "chatId": "optional-conversation-id"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `model` | string | Yes | Model identifier (e.g., `claude-sonnet-4-20250514`, `gpt-4o`, `gemini-2.5-pro`) |
+| `messages` | array | Yes | Array of message objects with `role` and `content` |
+| `stream` | boolean | No | Enable SSE streaming (default: `true`) |
+| `chatId` | string | No | Conversation ID for persistence. Generated if omitted. |
+
+### Message roles
+
+| Role | Description |
+|------|-------------|
+| `system` | System instructions (optional, one per request) |
+| `user` | User message |
+| `assistant` | Previous assistant response (for multi-turn context) |
+
+### Streaming response
+
+When `stream: true` (the default), the response is an SSE stream using the Vercel AI SDK v6 data stream format:
+
+```
+data: {"type":"text-delta","textDelta":"Event"}
+data: {"type":"text-delta","textDelta":" sourcing"}
+data: {"type":"text-delta","textDelta":" is a pattern..."}
+data: {"type":"finish","finishReason":"stop","usage":{"promptTokens":42,"completionTokens":87}}
+```
+
+The stream emits `UiPart` objects that include:
+
+- `text-delta` — incremental text tokens
+- `tool-call` — tool invocation requests
+- `tool-result` — tool execution results
+- `finish` — completion signal with usage data
+- `error` — error during generation
+
+### Non-streaming response
+
+When `stream: false`, the response is a complete JSON object:
+
+```json
+{
+  "id": "msg_abc123",
+  "model": "claude-sonnet-4-20250514",
+  "content": "Event sourcing is a pattern where...",
+  "usage": {
+    "promptTokens": 42,
+    "completionTokens": 87
+  },
+  "finishReason": "stop"
+}
+```
+
+## List available models
+
+<ParamField path="GET" query="/api/chat-model">
+  List all available models for the authenticated user's plan.
+</ParamField>
+
+### Response
+
+```json
+{
+  "models": [
+    {
+      "id": "claude-sonnet-4-20250514",
+      "name": "Claude Sonnet 4",
+      "provider": "anthropic",
+      "available": true
+    },
+    {
+      "id": "gpt-4o",
+      "name": "GPT-4o",
+      "provider": "openai",
+      "available": true
+    }
+  ]
+}
+```
+
+Model availability depends on the user's plan tier. Free-tier users have access to community models through OpenRouter and self-hosted models through Ollama.
+
+## Conversation persistence
+
+When a `chatId` is provided, messages are persisted to the platform database. Subsequent requests with the same `chatId` automatically include the conversation history, so you do not need to resend previous messages.
+
+If `chatId` is omitted, the platform generates one and returns it in the response headers:
+
+```http
+X-Chat-Id: chat_abc123
+```
+
+Use this ID in subsequent requests to continue the conversation.
+
+## Tool use
+
+The chat API supports tool calling for models that implement function calling (Claude, GPT-4o, Gemini). Tools are defined in the request and executed server-side through the MCP bridge:
+
+```json
+{
+  "model": "claude-sonnet-4-20250514",
+  "messages": [{"role": "user", "content": "What's the weather in SF?"}],
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get current weather for a location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string"}
+        },
+        "required": ["location"]
+      }
+    }
+  ]
+}
+```
+
+When the model invokes a tool, the stream emits a `tool-call` event followed by a `tool-result` event after execution.
+
+## Error responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `validation_error` | Missing required fields or invalid model |
+| 401 | `unauthorized` | Missing or invalid token |
+| 402 | `credits_exhausted` | Credit limit reached for this billing period |
+| 429 | `rate_limited` | Too many requests |
+| 500 | `internal_error` | Model provider error or internal failure |

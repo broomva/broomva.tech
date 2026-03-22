@@ -1,0 +1,154 @@
+---
+title: "Organizations API"
+description: "Create and manage multi-tenant organizations programmatically."
+---
+
+# Organizations API
+
+The Organizations API provides programmatic access to create, manage, and query organizations and their members.
+
+## List organizations
+
+<ParamField path="GET" query="/api/organization">
+  List all organizations the authenticated user belongs to.
+</ParamField>
+
+### Response
+
+```json
+{
+  "organizations": [
+    {
+      "id": "org_abc123",
+      "name": "Acme Corp",
+      "slug": "acme-corp",
+      "plan": "team",
+      "role": "owner",
+      "memberCount": 5,
+      "createdAt": "2026-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+## Create an organization
+
+<ParamField path="POST" query="/api/organization">
+  Create a new organization. The authenticated user becomes the owner.
+</ParamField>
+
+### Request body
+
+```json
+{
+  "name": "Acme Corp",
+  "slug": "acme-corp"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name |
+| `slug` | string | Yes | URL-safe identifier (lowercase, alphanumeric, hyphens) |
+
+### Response
+
+```json
+{
+  "id": "org_abc123",
+  "name": "Acme Corp",
+  "slug": "acme-corp",
+  "plan": "free",
+  "createdAt": "2026-03-22T10:00:00Z"
+}
+```
+
+## List members
+
+<ParamField path="GET" query="/api/organization/members?orgId={orgId}">
+  List all members of an organization.
+</ParamField>
+
+### Response
+
+```json
+{
+  "members": [
+    {
+      "userId": "user_abc",
+      "name": "Jane Doe",
+      "email": "jane@acme.com",
+      "role": "owner",
+      "joinedAt": "2026-01-15T10:00:00Z"
+    },
+    {
+      "userId": "user_def",
+      "name": "John Smith",
+      "email": "john@acme.com",
+      "role": "member",
+      "joinedAt": "2026-02-01T14:30:00Z"
+    }
+  ]
+}
+```
+
+## Invite a member
+
+<ParamField path="POST" query="/api/organization/members">
+  Invite a new member to an organization. Requires admin or owner role.
+</ParamField>
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123",
+  "email": "new-member@example.com",
+  "role": "member"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `orgId` | string | Yes | Organization ID |
+| `email` | string | Yes | Invitee's email address |
+| `role` | string | No | Role to assign: `admin` or `member` (default: `member`) |
+
+### Response
+
+```json
+{
+  "invitation": {
+    "id": "inv_abc123",
+    "email": "new-member@example.com",
+    "role": "member",
+    "status": "pending",
+    "expiresAt": "2026-04-05T10:00:00Z"
+  }
+}
+```
+
+## Remove a member
+
+<ParamField path="DELETE" query="/api/organization/members">
+  Remove a member from an organization. Requires admin or owner role.
+</ParamField>
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123",
+  "userId": "user_def"
+}
+```
+
+## Error responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `validation_error` | Missing fields or invalid slug format |
+| 401 | `unauthorized` | Missing or invalid token |
+| 403 | `forbidden` | Insufficient role for this operation |
+| 404 | `not_found` | Organization or member not found |
+| 409 | `conflict` | Slug already taken |

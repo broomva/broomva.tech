@@ -1,0 +1,128 @@
+---
+title: "Authentication"
+description: "Authenticate the CLI with your BroomVA account using device-code flow or manual tokens."
+---
+
+# Authentication
+
+The CLI authenticates with the BroomVA platform to access your prompts, skills, and organization resources. Two authentication methods are supported.
+
+## Device authorization flow (recommended)
+
+The primary authentication method uses the [OAuth 2.0 Device Authorization Grant (RFC 8628)](https://datatracker.ietf.org/doc/html/rfc8628). This is the same flow used by GitHub CLI, Azure CLI, and other developer tools.
+
+```bash
+broomva auth login
+```
+
+The flow works as follows:
+
+1. The CLI requests a device code from `POST /api/auth/device/code` with client ID `broomva-cli`
+2. The server returns a **user code** and a **verification URL**
+3. The CLI displays both and asks you to open the URL in your browser
+
+```
+  Open this URL in your browser:
+  https://broomva.tech/auth/device
+
+  Then enter this code:
+  ABCD-1234
+
+  Or open the direct link:
+  https://broomva.tech/auth/device?code=ABCD-1234
+
+  Waiting for authorization...
+```
+
+4. You open the URL, sign in (if not already), and enter the code
+5. The CLI polls `POST /api/auth/device/token` until you approve
+6. On approval, the server returns an access token
+7. The CLI stores the token in `~/.broomva/config.json`
+
+```
+  Authenticated successfully! Token stored in ~/.broomva/config.json
+```
+
+If the server is unreachable or the device-code endpoint is not available, the CLI automatically falls back to the manual flow.
+
+### Polling behavior
+
+The CLI polls at the interval specified by the server (default: 5 seconds). If the server responds with `slow_down`, the CLI backs off by an additional 5 seconds. The device code expires after the duration specified by the server (typically 15 minutes).
+
+## Manual token flow
+
+If you prefer to copy a token directly from the web UI:
+
+```bash
+broomva auth login --manual
+```
+
+This flow:
+
+1. Instructs you to sign in at broomva.tech
+2. Directs you to `/api/auth/api-token` to generate a token
+3. Prompts you to paste the token
+4. Validates the token against the server
+5. Stores the token in `~/.broomva/config.json`
+
+## Token storage
+
+Tokens are stored in `~/.broomva/config.json`:
+
+```json
+{
+  "token": "brv_...",
+  "apiBase": "https://broomva.tech"
+}
+```
+
+The file is created with `0600` permissions (owner read/write only). The token is a JWT that encodes your user ID and organization memberships.
+
+## Token resolution order
+
+When the CLI needs a token, it checks these sources in order:
+
+1. `--token` command-line flag
+2. `BROOMVA_TOKEN` environment variable
+3. `~/.broomva/config.json` file
+
+The first non-empty value wins.
+
+## Checking auth status
+
+```bash
+broomva auth status
+# Authenticated (token from device-flow)
+# Token expires: 2026-04-21T00:00:00Z
+```
+
+With JSON output for scripting:
+
+```bash
+broomva auth status --json
+# {"authenticated":true,"source":"config-file","expiresAt":"2026-04-21T00:00:00Z"}
+```
+
+## Printing the raw token
+
+For use in scripts and `curl` commands:
+
+```bash
+broomva auth token
+# brv_eyJ...
+```
+
+This outputs only the token string with no formatting, suitable for command substitution:
+
+```bash
+curl -H "Authorization: Bearer $(broomva auth token)" https://broomva.tech/api/...
+```
+
+## Logging out
+
+```bash
+broomva auth logout
+# Logged out. Token removed from ~/.broomva/config.json
+```
+
+This removes the token from the local config file. The token remains valid on the server until it expires — logging out is a local-only operation.

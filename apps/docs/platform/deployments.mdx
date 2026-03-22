@@ -1,0 +1,95 @@
+---
+title: "Deployments"
+description: "Managed Life agent runtime instances in the cloud."
+---
+
+# Deployments
+
+Deployments allow organizations on the Team and Enterprise plans to run managed instances of the Life Agent OS in the cloud. Instead of operating the Rust runtime yourself, the platform handles provisioning, scaling, persistence, and observability.
+
+## What is a managed Life instance?
+
+A managed Life instance is a dedicated deployment of the Agent OS stack running on the BroomVA platform infrastructure. It includes:
+
+- **Arcan** — the agent runtime daemon (cognition + execution loop)
+- **Lago** — the event-sourced persistence substrate (append-only journal, blob storage, knowledge index)
+- **Autonomic** — the homeostasis controller (operational, cognitive, and economic regulation)
+- **Praxis** — the tool execution engine (sandbox, filesystem, MCP bridge)
+
+Each instance runs in an isolated environment with its own persistent storage, configuration, and network boundary.
+
+## Creating a deployment
+
+<Info>
+  Managed deployments are available on the **Team** and **Enterprise** plans. Contact [sales@broomva.tech](mailto:sales@broomva.tech) for Enterprise provisioning.
+</Info>
+
+From the console:
+
+1. Navigate to **Deployments**
+2. Click **New Deployment**
+3. Configure the instance:
+   - **Name** — a human-readable identifier
+   - **Region** — deployment region for latency optimization
+   - **Agent configuration** — model provider preferences, system prompts, tool permissions
+   - **Persistence** — storage allocation and retention policies
+4. Click **Deploy**
+
+The platform provisions the instance and provides connection details (HTTP endpoint, API key) once ready.
+
+## Connecting to a deployment
+
+Once deployed, your Life instance exposes an HTTP API that follows the same conventions as the local Arcan daemon:
+
+```bash
+# Stream a chat completion from your managed instance
+curl -N https://your-instance.broomva.tech/v1/chat \
+  -H "Authorization: Bearer $DEPLOYMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "my-session",
+    "messages": [{ "role": "user", "content": "Hello from the cloud" }]
+  }'
+```
+
+The deployment key is generated during provisioning and available from the console.
+
+## Architecture
+
+Managed deployments run the same Rust binaries as the open-source Life runtime. The platform adds:
+
+- **Provisioning** — automated infrastructure setup using the `@broomva/deploy` package
+- **Networking** — TLS termination, DNS routing, and rate limiting
+- **Monitoring** — health checks, uptime tracking, and alerting
+- **Storage** — managed redb volumes with automated backups
+- **Scaling** — resource allocation based on usage patterns
+
+The deployment boundary is strict — each instance has its own process, storage, and network identity. No state is shared between deployments unless explicitly configured through Spaces (the distributed networking layer).
+
+## Connecting deployments through Spaces
+
+Multiple managed Life instances can communicate through the Spaces distributed networking layer. Spaces provides a Discord-like communication fabric built on SpacetimeDB where agents can:
+
+- Exchange messages on channels (text, agent events, announcements)
+- Subscribe to real-time updates from other agents
+- Coordinate multi-agent workflows across deployments
+
+To connect deployments through Spaces, configure the SpacetimeDB connection in your deployment settings. See [Spaces](/life/spaces) for details on the networking model.
+
+## Observability
+
+Managed deployments include built-in observability:
+
+- **Logs** — structured log output from all subsystems, queryable from the console
+- **Metrics** — request rates, latency percentiles, token throughput, credit consumption
+- **Traces** — OpenTelemetry-native traces that map 1:1 to agent lifecycle events (pending Vigil integration)
+- **Health** — automated health checks with status page integration
+
+## Limits
+
+| Resource | Team | Enterprise |
+|----------|------|------------|
+| Deployments per org | 3 | Custom |
+| Storage per instance | 10 GB | Custom |
+| Concurrent sessions | 50 | Custom |
+| Retention period | 90 days | Custom |

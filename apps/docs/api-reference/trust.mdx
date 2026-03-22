@@ -1,0 +1,131 @@
+---
+title: "Trust API"
+description: "Trust scoring, verification, and certification for agents and users."
+---
+
+# Trust API
+
+The Trust API provides trust scoring, identity verification, and certification services. Trust scores are used by the platform to make decisions about rate limits, model access, and marketplace participation.
+
+## Get trust score
+
+<ParamField path="GET" query="/api/trust/score?userId={userId}">
+  Get the trust score for a user or agent.
+</ParamField>
+
+### Response
+
+```json
+{
+  "userId": "user_abc123",
+  "score": 0.85,
+  "level": "verified",
+  "factors": {
+    "identity": 0.9,
+    "history": 0.8,
+    "reputation": 0.85,
+    "economic": 0.82
+  },
+  "updatedAt": "2026-03-21T14:00:00Z"
+}
+```
+
+### Score levels
+
+| Level | Score range | Description |
+|-------|------------|-------------|
+| `unverified` | 0.0 - 0.3 | New account, no verification |
+| `basic` | 0.3 - 0.6 | Email verified, some usage history |
+| `verified` | 0.6 - 0.8 | Identity confirmed, consistent usage |
+| `trusted` | 0.8 - 1.0 | Long history, strong reputation, economic activity |
+
+### Score factors
+
+- **Identity** — based on verification status (email, OAuth, government ID)
+- **History** — based on account age and consistent platform usage
+- **Reputation** — based on community interactions and peer endorsements
+- **Economic** — based on payment history and credit usage patterns
+
+## Verify identity
+
+<ParamField path="POST" query="/api/trust/verify">
+  Submit identity verification documents. Increases the identity factor of the trust score.
+</ParamField>
+
+### Request body
+
+```json
+{
+  "type": "email",
+  "token": "verification-token-from-email"
+}
+```
+
+Supported verification types:
+
+| Type | Description |
+|------|-------------|
+| `email` | Email address verification (sent automatically on signup) |
+| `oauth` | OAuth provider verification (Google, GitHub) |
+| `domain` | Domain ownership verification via DNS TXT record |
+
+### Response
+
+```json
+{
+  "verified": true,
+  "type": "email",
+  "newScore": 0.72
+}
+```
+
+## Request certification
+
+<ParamField path="POST" query="/api/trust/certify">
+  Request a trust certification for an agent or organization. Certifications are reviewed and grant higher trust levels.
+</ParamField>
+
+### Request body
+
+```json
+{
+  "entityType": "organization",
+  "entityId": "org_abc123",
+  "certType": "platform-partner",
+  "evidence": {
+    "website": "https://acme.com",
+    "description": "AI consulting firm building on BroomVA"
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "certificationId": "cert_abc123",
+  "status": "pending",
+  "estimatedReview": "2026-03-29T00:00:00Z"
+}
+```
+
+Certification statuses: `pending`, `approved`, `rejected`, `revoked`.
+
+## Trust in the platform
+
+Trust scores influence several platform behaviors:
+
+- **Rate limits** — higher trust scores receive more generous rate limits
+- **Model access** — certain expensive models may require a minimum trust level
+- **Marketplace** — agents and skills listed in the marketplace require verified trust
+- **Payments** — Haima payment limits are tied to economic trust factors
+- **Deployments** — managed Life instance provisioning may require organizational certification
+
+## Error responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `unauthorized` | Missing or invalid token |
+| 403 | `forbidden` | Cannot access another user's trust data |
+| 404 | `not_found` | User or entity not found |
+| 422 | `validation_error` | Invalid verification type or missing fields |
