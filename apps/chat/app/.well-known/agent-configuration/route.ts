@@ -17,7 +17,7 @@ export async function GET() {
       version: "1.0",
 
       // Platform identity
-      name: "BroomVA Platform",
+      name: "Broomva Platform",
       description:
         "Open AI platform for agents and humans — Agent OS, managed deployments, trust & credit infrastructure",
       homepage: baseUrl,

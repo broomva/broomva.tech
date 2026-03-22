@@ -5,8 +5,8 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | BroomVA Docs",
-    default: "BroomVA Documentation",
+    template: "%s | Broomva Docs",
+    default: "Broomva Documentation",
   },
   description:
     "An open AI platform where agents and humans collaborate — built on an open-source Agent Operating System.",

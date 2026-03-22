@@ -158,7 +158,7 @@ function staticPageEntries(): SearchEntry[] {
     {
       id: "page/home",
       title: "Home",
-      summary: "BroomVA — AI engineer, agent architect, builder.",
+      summary: "Broomva — AI engineer, agent architect, builder.",
       kind: "page",
       href: "/",
       tags: [],

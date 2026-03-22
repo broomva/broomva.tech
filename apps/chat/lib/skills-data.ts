@@ -146,13 +146,13 @@ export const BSTACK_LAYERS: BstackLayer[] = [
     id: "design",
     name: "Design & Implementation",
     description:
-      "BroomVA design system and production-grade project templates.",
+      "Broomva design system and production-grade project templates.",
     skills: [
       {
         slug: "arcan-glass",
         name: "Arcan Glass",
         description:
-          "BroomVA trademark web styling: glass/frosted effects, dark-first themes, AI Blue tokens for Next.js + Tailwind v4.",
+          "Broomva trademark web styling: glass/frosted effects, dark-first themes, AI Blue tokens for Next.js + Tailwind v4.",
         installCommand: "npx skills add broomva/arcan-glass",
         skillsUrl: "https://skills.sh/broomva/arcan-glass",
       },

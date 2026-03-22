@@ -1,11 +1,11 @@
 ---
 title: "TypeScript SDK"
-description: "Integrate BroomVA into your TypeScript and JavaScript applications."
+description: "Integrate Broomva into your TypeScript and JavaScript applications."
 ---
 
 # TypeScript SDK
 
-The BroomVA TypeScript SDK provides a typed client for interacting with the platform API from Node.js, Deno, Bun, and browser environments. It handles authentication, streaming, and error handling.
+The Broomva TypeScript SDK provides a typed client for interacting with the platform API from Node.js, Deno, Bun, and browser environments. It handles authentication, streaming, and error handling.
 
 <Info>
   The SDK is under active development. In the meantime, you can use the REST API directly or the Vercel AI SDK for chat integration.
@@ -13,7 +13,7 @@ The BroomVA TypeScript SDK provides a typed client for interacting with the plat
 
 ## Using the AI SDK (recommended for chat)
 
-The broomva.tech chat application is built on the [Vercel AI SDK v6](https://sdk.vercel.ai), which provides the best integration path for building AI chat interfaces. You can use the same SDK to connect to BroomVA's API.
+The broomva.tech chat application is built on the [Vercel AI SDK v6](https://sdk.vercel.ai), which provides the best integration path for building AI chat interfaces. You can use the same SDK to connect to Broomva's API.
 
 ### Installation
 
@@ -149,7 +149,7 @@ const mcpClient = await experimental_createMCPClient({
 const tools = await mcpClient.tools();
 ```
 
-MCP tools can be passed directly to the `streamText` or `generateText` functions alongside BroomVA's API.
+MCP tools can be passed directly to the `streamText` or `generateText` functions alongside Broomva's API.
 
 ## Error handling
 

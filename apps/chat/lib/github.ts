@@ -99,7 +99,7 @@ const LAYER_META: Record<string, { id: string; name: string; description: string
   "bstack-design": {
     id: "design",
     name: "Design & Implementation",
-    description: "BroomVA design system and production-grade project templates.",
+    description: "Broomva design system and production-grade project templates.",
     order: 5,
   },
   "bstack-platform": {
