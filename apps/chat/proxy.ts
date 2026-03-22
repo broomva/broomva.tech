@@ -18,6 +18,7 @@ const PUBLIC_PAGE_PREFIXES = [
   "/terms",
   "/pricing",
   "/skills",
+  "/.well-known",
 ] as const;
 
 const PUBLIC_PAGE_EXACT = ["/", "/chat"] as const;
