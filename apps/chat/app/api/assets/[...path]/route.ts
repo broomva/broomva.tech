@@ -81,7 +81,7 @@ export async function GET(
   }
 }
 
-// --- Manifest cache (in-memory, refreshed periodically)
+// --- Session ID + Manifest cache (in-memory, refreshed periodically)
 
 type ManifestCache = {
   entries: Map<string, string>; // path → blob hash
@@ -89,7 +89,41 @@ type ManifestCache = {
 };
 
 let manifestCache: ManifestCache | null = null;
+let sessionIdCache: { id: string; fetchedAt: number } | null = null;
 const MANIFEST_TTL_MS = 60_000; // 1 minute
+const SESSION_TTL_MS = 300_000; // 5 minutes
+
+/**
+ * Resolve the site-assets:public session name to a session ID.
+ * Lago requires session IDs in API paths, not names.
+ */
+async function resolveSessionId(lagoUrl: string): Promise<string | null> {
+  const now = Date.now();
+
+  if (sessionIdCache && now - sessionIdCache.fetchedAt < SESSION_TTL_MS) {
+    return sessionIdCache.id;
+  }
+
+  try {
+    const res = await fetch(`${lagoUrl}/v1/sessions`);
+    if (!res.ok) return sessionIdCache?.id ?? null;
+
+    const sessions = (await res.json()) as Array<{
+      session_id: string;
+      name: string;
+    }>;
+
+    const target = sessions.find((s) => s.name === "site-assets:public");
+    if (target) {
+      sessionIdCache = { id: target.session_id, fetchedAt: now };
+      return target.session_id;
+    }
+  } catch {
+    // Keep stale cache on failure
+  }
+
+  return sessionIdCache?.id ?? null;
+}
 
 async function resolveAssetHash(
   lagoUrl: string,
@@ -100,8 +134,11 @@ async function resolveAssetHash(
   // Refresh cache if stale or missing
   if (!manifestCache || now - manifestCache.fetchedAt > MANIFEST_TTL_MS) {
     try {
+      const sessionId = await resolveSessionId(lagoUrl);
+      if (!sessionId) return null;
+
       const res = await fetch(
-        `${lagoUrl}/v1/sessions/site-assets:public/manifest?branch=main`
+        `${lagoUrl}/v1/sessions/${sessionId}/manifest?branch=main`
       );
       if (res.ok) {
         const data = (await res.json()) as {
