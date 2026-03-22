@@ -15,6 +15,7 @@ export async function recordUsageEvent(params: {
   outputTokens?: number;
   costCents: number;
   chatId?: string;
+  agentId?: string;
 }): Promise<void> {
   await db.insert(usageEvent).values({
     organizationId: params.organizationId ?? null,
@@ -25,6 +26,7 @@ export async function recordUsageEvent(params: {
     outputTokens: params.outputTokens ?? null,
     costCents: params.costCents,
     chatId: params.chatId ?? null,
+    agentId: params.agentId ?? null,
   });
 }
 
@@ -65,6 +67,55 @@ export async function getUsageSummary(
     .groupBy(usageEvent.type, usageEvent.resource);
 
   return rows;
+}
+
+/**
+ * Aggregate usage for a specific agent, grouped by resource (model).
+ */
+export async function getAgentUsageSummary(agentId: string): Promise<{
+  totalCostCents: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  eventCount: number;
+  byModel: Array<{
+    resource: string | null;
+    totalCostCents: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    eventCount: number;
+  }>;
+}> {
+  const rows = await db
+    .select({
+      resource: usageEvent.resource,
+      totalCostCents: sql<number>`coalesce(sum(${usageEvent.costCents}), 0)::int`,
+      totalInputTokens: sql<number>`coalesce(sum(${usageEvent.inputTokens}), 0)::int`,
+      totalOutputTokens: sql<number>`coalesce(sum(${usageEvent.outputTokens}), 0)::int`,
+      eventCount: sql<number>`count(*)::int`,
+    })
+    .from(usageEvent)
+    .where(eq(usageEvent.agentId, agentId))
+    .groupBy(usageEvent.resource);
+
+  const totals = rows.reduce(
+    (acc, r) => ({
+      totalCostCents: acc.totalCostCents + r.totalCostCents,
+      totalInputTokens: acc.totalInputTokens + r.totalInputTokens,
+      totalOutputTokens: acc.totalOutputTokens + r.totalOutputTokens,
+      eventCount: acc.eventCount + r.eventCount,
+    }),
+    {
+      totalCostCents: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      eventCount: 0,
+    },
+  );
+
+  return {
+    ...totals,
+    byModel: rows,
+  };
 }
 
 /**

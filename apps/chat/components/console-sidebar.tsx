@@ -1,15 +1,12 @@
-"use client"
+"use client";
 
-import type * as React from "react"
-import type { Route } from "next"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import {
   ActivityIcon,
   BadgeCheck,
   BarChart3Icon,
   Bell,
   BookOpen,
+  BotIcon,
   BrainIcon,
   ChevronRight,
   ChevronsUpDown,
@@ -23,14 +20,18 @@ import {
   ShieldIcon,
   Sparkles,
   WalletIcon,
-} from "lucide-react"
+} from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type * as React from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +40,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -55,7 +56,7 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 const consoleNav = [
   {
@@ -71,25 +72,19 @@ const consoleNav = [
     title: "Memory",
     url: "/console/memory",
     icon: BookOpen,
-    items: [
-      { title: "Knowledge Graph", url: "/console/memory" },
-    ],
+    items: [{ title: "Knowledge Graph", url: "/console/memory" }],
   },
   {
     title: "Autonomic",
     url: "/console/autonomic",
     icon: ActivityIcon,
-    items: [
-      { title: "Homeostasis", url: "/console/autonomic" },
-    ],
+    items: [{ title: "Homeostasis", url: "/console/autonomic" }],
   },
   {
     title: "Finance",
     url: "/console/finance",
     icon: WalletIcon,
-    items: [
-      { title: "Transactions", url: "/console/finance" },
-    ],
+    items: [{ title: "Transactions", url: "/console/finance" }],
   },
   {
     title: "Lago",
@@ -104,12 +99,16 @@ const consoleNav = [
     ],
   },
   {
+    title: "Agents",
+    url: "/console/agents",
+    icon: BotIcon,
+    items: [{ title: "Overview", url: "/console/agents" }],
+  },
+  {
     title: "Usage",
     url: "/console/usage",
     icon: BarChart3Icon,
-    items: [
-      { title: "Overview", url: "/console/usage" },
-    ],
+    items: [{ title: "Overview", url: "/console/usage" }],
   },
   {
     title: "Settings",
@@ -120,14 +119,14 @@ const consoleNav = [
       { title: "Models", url: "/settings/models" },
     ],
   },
-]
+];
 
 const services = [
   { name: "Arcan", url: "/console", icon: CircuitBoardIcon },
   { name: "Lago", url: "/console/memory", icon: BrainIcon },
   { name: "Autonomic", url: "/console/autonomic", icon: ShieldIcon },
   { name: "Haima", url: "/console/finance", icon: DollarSignIcon },
-]
+];
 
 export function ConsoleSidebar({
   userName = "Agent",
@@ -135,11 +134,11 @@ export function ConsoleSidebar({
   userAvatar = "",
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
-  userName?: string
-  userEmail?: string
-  userAvatar?: string
+  userName?: string;
+  userEmail?: string;
+  userAvatar?: string;
 }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -167,24 +166,20 @@ export function ConsoleSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        <UserNav
-          name={userName}
-          email={userEmail}
-          avatar={userAvatar}
-        />
+        <UserNav name={userName} email={userEmail} avatar={userAvatar} />
       </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }
 
 function NavMainSection({
   items,
   pathname,
 }: {
-  items: typeof consoleNav
-  pathname: string
+  items: typeof consoleNav;
+  pathname: string;
 }) {
   return (
     <SidebarGroup>
@@ -193,7 +188,7 @@ function NavMainSection({
         {items.map((item) => {
           const isActive =
             pathname === item.url ||
-            item.items?.some((sub) => pathname === sub.url)
+            item.items?.some((sub) => pathname === sub.url);
 
           return (
             <Collapsible
@@ -228,19 +223,19 @@ function NavMainSection({
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>
-          )
+          );
         })}
       </SidebarMenu>
     </SidebarGroup>
-  )
+  );
 }
 
 function ServicesSection({
   items,
   pathname,
 }: {
-  items: typeof services
-  pathname: string
+  items: typeof services;
+  pathname: string;
 }) {
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -264,7 +259,7 @@ function ServicesSection({
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
-  )
+  );
 }
 
 function getInitials(name: string) {
@@ -273,7 +268,7 @@ function getInitials(name: string) {
     .map((part) => part[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2)
+    .slice(0, 2);
 }
 
 function UserNav({
@@ -281,11 +276,11 @@ function UserNav({
   email,
   avatar,
 }: {
-  name: string
-  email: string
-  avatar: string
+  name: string;
+  email: string;
+  avatar: string;
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile } = useSidebar();
 
   return (
     <SidebarMenu>
@@ -360,5 +355,5 @@ function UserNav({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

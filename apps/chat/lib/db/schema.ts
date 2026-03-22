@@ -47,9 +47,9 @@ export const userModelPreference = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.modelId] }),
     UserModelPreference_user_id_idx: index(
-      "UserModelPreference_user_id_idx"
+      "UserModelPreference_user_id_idx",
     ).on(t.userId),
-  })
+  }),
 );
 
 export type UserModelPreference = InferSelectModel<typeof userModelPreference>;
@@ -73,7 +73,7 @@ export const project = pgTable(
   },
   (t) => ({
     Project_user_id_idx: index("Project_user_id_idx").on(t.userId),
-  })
+  }),
 );
 
 export type Project = InferSelectModel<typeof project>;
@@ -190,37 +190,37 @@ export const part = pgTable(
     Part_message_id_idx: index("Part_message_id_idx").on(t.messageId),
     Part_message_id_order_idx: index("Part_message_id_order_idx").on(
       t.messageId,
-      t.order
+      t.order,
     ),
     text_chk: check(
       "Part_text_required_if_type_text",
-      sql`CASE WHEN ${t.type} = 'text' THEN ${t.text_text} IS NOT NULL ELSE TRUE END`
+      sql`CASE WHEN ${t.type} = 'text' THEN ${t.text_text} IS NOT NULL ELSE TRUE END`,
     ),
     reasoning_chk: check(
       "Part_reasoning_required_if_type_reasoning",
-      sql`CASE WHEN ${t.type} = 'reasoning' THEN ${t.reasoning_text} IS NOT NULL ELSE TRUE END`
+      sql`CASE WHEN ${t.type} = 'reasoning' THEN ${t.reasoning_text} IS NOT NULL ELSE TRUE END`,
     ),
     file_chk: check(
       "Part_file_required_if_type_file",
-      sql`CASE WHEN ${t.type} = 'file' THEN ${t.file_mediaType} IS NOT NULL AND ${t.file_url} IS NOT NULL ELSE TRUE END`
+      sql`CASE WHEN ${t.type} = 'file' THEN ${t.file_mediaType} IS NOT NULL AND ${t.file_url} IS NOT NULL ELSE TRUE END`,
     ),
     source_url_chk: check(
       "Part_source_url_required_if_type_source_url",
-      sql`CASE WHEN ${t.type} = 'source-url' THEN ${t.source_url_sourceId} IS NOT NULL AND ${t.source_url_url} IS NOT NULL ELSE TRUE END`
+      sql`CASE WHEN ${t.type} = 'source-url' THEN ${t.source_url_sourceId} IS NOT NULL AND ${t.source_url_url} IS NOT NULL ELSE TRUE END`,
     ),
     source_document_chk: check(
       "Part_source_document_required_if_type_source_document",
-      sql`CASE WHEN ${t.type} = 'source-document' THEN ${t.source_document_sourceId} IS NOT NULL AND ${t.source_document_mediaType} IS NOT NULL AND ${t.source_document_title} IS NOT NULL ELSE TRUE END`
+      sql`CASE WHEN ${t.type} = 'source-document' THEN ${t.source_document_sourceId} IS NOT NULL AND ${t.source_document_mediaType} IS NOT NULL AND ${t.source_document_title} IS NOT NULL ELSE TRUE END`,
     ),
     tool_chk: check(
       "Part_tool_required_if_type_tool",
-      sql`CASE WHEN ${t.type} LIKE 'tool-%' THEN ${t.tool_toolCallId} IS NOT NULL AND ${t.tool_state} IS NOT NULL ELSE TRUE END`
+      sql`CASE WHEN ${t.type} LIKE 'tool-%' THEN ${t.tool_toolCallId} IS NOT NULL AND ${t.tool_state} IS NOT NULL ELSE TRUE END`,
     ),
     data_chk: check(
       "Part_data_required_if_type_data",
-      sql`CASE WHEN ${t.type} LIKE 'data-%' THEN ${t.data_type} IS NOT NULL ELSE TRUE END`
+      sql`CASE WHEN ${t.type} LIKE 'data-%' THEN ${t.data_type} IS NOT NULL ELSE TRUE END`,
     ),
-  })
+  }),
 );
 
 export type Part = InferSelectModel<typeof part>;
@@ -242,7 +242,7 @@ export const vote = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.chatId, table.messageId] }),
-  })
+  }),
 );
 
 export type Vote = InferSelectModel<typeof vote>;
@@ -269,9 +269,9 @@ export const document = pgTable(
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.createdAt] }),
     document_message_id_idx: index("Document_message_id_idx").on(
-      table.messageId
+      table.messageId,
     ),
-  })
+  }),
 );
 
 export type Document = InferSelectModel<typeof document>;
@@ -297,7 +297,7 @@ export const suggestion = pgTable(
       columns: [table.documentId, table.documentCreatedAt],
       foreignColumns: [document.id, document.createdAt],
     }),
-  })
+  }),
 );
 
 export type Suggestion = InferSelectModel<typeof suggestion>;
@@ -385,12 +385,12 @@ export const mcpConnector = pgTable(
     McpConnector_user_id_idx: index("McpConnector_user_id_idx").on(t.userId),
     McpConnector_user_name_id_idx: index("McpConnector_user_name_id_idx").on(
       t.userId,
-      t.nameId
+      t.nameId,
     ),
     McpConnector_user_name_id_unique: uniqueIndex(
-      "McpConnector_user_name_id_unique"
+      "McpConnector_user_name_id_unique",
     ).on(t.userId, t.nameId),
-  })
+  }),
 );
 
 export type McpConnector = InferSelectModel<typeof mcpConnector>;
@@ -415,10 +415,10 @@ export const mcpOAuthSession = pgTable(
   },
   (t) => ({
     McpOAuthSession_connector_idx: index("McpOAuthSession_connector_idx").on(
-      t.mcpConnectorId
+      t.mcpConnectorId,
     ),
     McpOAuthSession_state_idx: index("McpOAuthSession_state_idx").on(t.state),
-  })
+  }),
 );
 
 export type McpOAuthSession = InferSelectModel<typeof mcpOAuthSession>;
@@ -438,9 +438,10 @@ export const userPrompt = pgTable(
     model: varchar("model", { length: 128 }),
     version: varchar("version", { length: 32 }),
     tags: json("tags").$type<string[]>().default([]),
-    variables: json("variables").$type<
-      Array<{ name: string; description: string; default?: string }>
-    >(),
+    variables:
+      json("variables").$type<
+        Array<{ name: string; description: string; default?: string }>
+      >(),
     links: json("links").$type<Array<{ label: string; url: string }>>(),
     visibility: varchar("visibility", { enum: ["public", "private"] })
       .notNull()
@@ -455,10 +456,10 @@ export const userPrompt = pgTable(
   (t) => ({
     UserPrompt_user_id_idx: index("UserPrompt_user_id_idx").on(t.userId),
     UserPrompt_visibility_idx: index("UserPrompt_visibility_idx").on(
-      t.visibility
+      t.visibility,
     ),
     UserPrompt_slug_idx: uniqueIndex("UserPrompt_slug_unique").on(t.slug),
-  })
+  }),
 );
 
 export type UserPrompt = InferSelectModel<typeof userPrompt>;
@@ -485,12 +486,12 @@ export const deviceAuthCode = pgTable(
   },
   (t) => ({
     DeviceAuthCode_device_code_idx: index("DeviceAuthCode_device_code_idx").on(
-      t.deviceCode
+      t.deviceCode,
     ),
     DeviceAuthCode_user_code_idx: index("DeviceAuthCode_user_code_idx").on(
-      t.userCode
+      t.userCode,
     ),
-  })
+  }),
 );
 
 export type DeviceAuthCode = InferSelectModel<typeof deviceAuthCode>;
@@ -514,9 +515,9 @@ export const userVault = pgTable(
   (t) => ({
     UserVault_user_id_idx: index("UserVault_user_id_idx").on(t.userId),
     UserVault_lago_session_unique: uniqueIndex(
-      "UserVault_lago_session_unique"
+      "UserVault_lago_session_unique",
     ).on(t.lagoSessionId),
-  })
+  }),
 );
 
 export type UserVault = InferSelectModel<typeof userVault>;
@@ -550,12 +551,12 @@ export const refreshToken = pgTable(
   (t) => ({
     RefreshToken_user_id_idx: index("RefreshToken_user_id_idx").on(t.userId),
     RefreshToken_token_hash_idx: index("RefreshToken_token_hash_idx").on(
-      t.tokenHash
+      t.tokenHash,
     ),
     RefreshToken_expires_at_idx: index("RefreshToken_expires_at_idx").on(
-      t.expiresAt
+      t.expiresAt,
     ),
-  })
+  }),
 );
 
 export type RefreshToken = InferSelectModel<typeof refreshToken>;
@@ -613,9 +614,9 @@ export const organization = pgTable(
   (t) => ({
     Organization_slug_idx: uniqueIndex("Organization_slug_idx").on(t.slug),
     Organization_stripe_customer_idx: index(
-      "Organization_stripe_customer_idx"
+      "Organization_stripe_customer_idx",
     ).on(t.stripeCustomerId),
-  })
+  }),
 );
 
 export type Organization = InferSelectModel<typeof organization>;
@@ -646,15 +647,15 @@ export const organizationMember = pgTable(
   },
   (t) => ({
     OrganizationMember_org_id_idx: index("OrganizationMember_org_id_idx").on(
-      t.organizationId
+      t.organizationId,
     ),
     OrganizationMember_user_id_idx: index("OrganizationMember_user_id_idx").on(
-      t.userId
+      t.userId,
     ),
     OrganizationMember_org_user_unique: uniqueIndex(
-      "OrganizationMember_org_user_unique"
+      "OrganizationMember_org_user_unique",
     ).on(t.organizationId, t.userId),
-  })
+  }),
 );
 
 export type OrganizationMember = InferSelectModel<typeof organizationMember>;
@@ -684,12 +685,12 @@ export const organizationApiKey = pgTable(
   },
   (t) => ({
     OrganizationApiKey_org_id_idx: index("OrganizationApiKey_org_id_idx").on(
-      t.organizationId
+      t.organizationId,
     ),
     OrganizationApiKey_key_prefix_idx: index(
-      "OrganizationApiKey_key_prefix_idx"
+      "OrganizationApiKey_key_prefix_idx",
     ).on(t.keyPrefix),
-  })
+  }),
 );
 
 export type OrganizationApiKey = InferSelectModel<typeof organizationApiKey>;
@@ -733,9 +734,9 @@ export const organizationLifeInstance = pgTable(
   },
   (t) => ({
     OrganizationLifeInstance_org_id_idx: index(
-      "OrganizationLifeInstance_org_id_idx"
+      "OrganizationLifeInstance_org_id_idx",
     ).on(t.organizationId),
-  })
+  }),
 );
 
 export type OrganizationLifeInstance = InferSelectModel<
@@ -767,21 +768,22 @@ export const usageEvent = pgTable(
     chatId: uuid("chatId"),
     /** Stripe meter event ID after reporting */
     stripeMeterEventId: varchar("stripeMeterEventId", { length: 256 }),
+    /** Agent that generated this usage (null = direct user action) */
+    agentId: text("agentId"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (t) => ({
-    UsageEvent_org_id_idx: index("UsageEvent_org_id_idx").on(
-      t.organizationId
-    ),
+    UsageEvent_org_id_idx: index("UsageEvent_org_id_idx").on(t.organizationId),
     UsageEvent_user_id_idx: index("UsageEvent_user_id_idx").on(t.userId),
     UsageEvent_created_at_idx: index("UsageEvent_created_at_idx").on(
-      t.createdAt
+      t.createdAt,
     ),
     UsageEvent_org_created_idx: index("UsageEvent_org_created_idx").on(
       t.organizationId,
-      t.createdAt
+      t.createdAt,
     ),
-  })
+    UsageEvent_agent_id_idx: index("UsageEvent_agent_id_idx").on(t.agentId),
+  }),
 );
 
 export type UsageEvent = InferSelectModel<typeof usageEvent>;
@@ -809,6 +811,8 @@ export const auditLog = pgTable(
     ipAddress: varchar("ipAddress", { length: 64 }),
     /** User agent string */
     userAgent: text("userAgent"),
+    /** Agent that performed this action (null = direct user action) */
+    agentId: text("agentId"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (t) => ({
@@ -816,10 +820,63 @@ export const auditLog = pgTable(
     AuditLog_actor_id_idx: index("AuditLog_actor_id_idx").on(t.actorId),
     AuditLog_action_idx: index("AuditLog_action_idx").on(t.action),
     AuditLog_created_at_idx: index("AuditLog_created_at_idx").on(t.createdAt),
-  })
+    AuditLog_agent_id_idx: index("AuditLog_agent_id_idx").on(t.agentId),
+  }),
 );
 
 export type AuditLog = InferSelectModel<typeof auditLog>;
+
+// ---------------------------------------------------------------------------
+// User-Owned Agent Table (BRO-60 + BRO-56)
+// ---------------------------------------------------------------------------
+
+/**
+ * Agents registered by a user for programmatic access and usage attribution.
+ *
+ * BRO-56: Each CLI session generates an Ed25519 keypair. The agentKeyId is the
+ * first 16 hex chars of SHA-256(publicKey), providing a deterministic identity.
+ */
+export const agent = pgTable(
+  "Agent",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }).notNull(),
+    /** Ed25519 public key (hex-encoded DER) for agent authentication */
+    publicKey: text("publicKey"),
+    /** Deterministic agent key ID -- first 16 hex chars of SHA-256(publicKey) (BRO-56) */
+    agentKeyId: varchar("agentKeyId", { length: 64 }),
+    /** Capabilities this agent is allowed to use */
+    capabilities: json("capabilities").$type<string[]>().default([]),
+    /** active | revoked | expired */
+    status: varchar("status", {
+      enum: ["active", "revoked", "expired"],
+    })
+      .notNull()
+      .default("active"),
+    lastActiveAt: timestamp("lastActiveAt"),
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    Agent_user_id_idx: index("Agent_user_id_idx").on(t.userId),
+    Agent_status_idx: index("Agent_status_idx").on(t.status),
+    Agent_agent_key_id_unique: uniqueIndex("Agent_agent_key_id_unique").on(
+      t.agentKeyId,
+    ),
+    Agent_public_key_unique: uniqueIndex("Agent_public_key_unique").on(
+      t.publicKey,
+    ),
+  }),
+);
+
+export type Agent = InferSelectModel<typeof agent>;
 
 // ---------------------------------------------------------------------------
 // Agent Trust / Certification Tables
@@ -830,10 +887,9 @@ export const agentRegistration = pgTable(
   "AgentRegistration",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
-    organizationId: uuid("organizationId").references(
-      () => organization.id,
-      { onDelete: "cascade" },
-    ),
+    organizationId: uuid("organizationId").references(() => organization.id, {
+      onDelete: "cascade",
+    }),
     name: varchar("name", { length: 256 }).notNull(),
     description: text("description"),
     version: varchar("version", { length: 64 }),

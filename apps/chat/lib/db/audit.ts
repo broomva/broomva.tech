@@ -15,6 +15,7 @@ export function logAudit(params: {
   metadata?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
+  agentId?: string;
 }): void {
   db.insert(auditLog)
     .values({
@@ -26,6 +27,7 @@ export function logAudit(params: {
       metadata: params.metadata ?? null,
       ipAddress: params.ipAddress ?? null,
       userAgent: params.userAgent ?? null,
+      agentId: params.agentId ?? null,
     })
     .then(() => {})
     .catch((err) => {

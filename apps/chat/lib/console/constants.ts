@@ -4,17 +4,18 @@
 
 import {
   BarChart3,
+  Bot,
   Brain,
   Building2,
   CircuitBoard,
   DollarSign,
   Home,
   Layers,
+  type LucideIcon,
   MessageSquare,
   Rocket,
   Search,
   Shield,
-  type LucideIcon,
 } from "lucide-react";
 
 /** Polling intervals in milliseconds */
@@ -86,6 +87,12 @@ export const CONSOLE_NAV: NavItem[] = [
     label: "Finance",
     href: "/console/finance",
     icon: DollarSign,
+  },
+  {
+    key: "agents",
+    label: "Agents",
+    href: "/console/agents",
+    icon: Bot,
   },
   {
     key: "usage",
