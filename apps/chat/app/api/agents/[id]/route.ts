@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+
 import { NextResponse } from "next/server";
 
 import { withAuth } from "@/lib/api/with-auth";
@@ -9,7 +9,7 @@ import { getAgentUsageSummary } from "@/lib/db/usage";
 /**
  * GET /api/agents/:id — get single agent details with usage summary
  */
-export const GET = withAuth(async (request: NextRequest, { userId }) => {
+export const GET = withAuth(async (request: Request, { userId }) => {
   const id = request.url.split("/api/agents/")[1]?.split("/")[0]?.split("?")[0];
   if (!id) {
     return NextResponse.json({ error: "Missing agent ID" }, { status: 400 });
@@ -57,7 +57,7 @@ export const GET = withAuth(async (request: NextRequest, { userId }) => {
 /**
  * DELETE /api/agents/:id — revoke an agent
  */
-export const DELETE = withAuth(async (request: NextRequest, { userId }) => {
+export const DELETE = withAuth(async (request: Request, { userId }) => {
   const id = request.url.split("/api/agents/")[1]?.split("/")[0]?.split("?")[0];
   if (!id) {
     return NextResponse.json({ error: "Missing agent ID" }, { status: 400 });

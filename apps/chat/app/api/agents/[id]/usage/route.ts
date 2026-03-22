@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+
 import { NextResponse } from "next/server";
 
 import { withAuth } from "@/lib/api/with-auth";
@@ -8,7 +8,7 @@ import { getAgentUsageSummary } from "@/lib/db/usage";
 /**
  * GET /api/agents/:id/usage — usage breakdown for a specific agent
  */
-export const GET = withAuth(async (request: NextRequest, { userId }) => {
+export const GET = withAuth(async (request: Request, { userId }) => {
   // Extract agent ID from URL path
   const segments = request.url.split("/api/agents/")[1]?.split("/");
   const id = segments?.[0];

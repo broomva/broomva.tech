@@ -73,7 +73,7 @@ export async function GET() {
       // Life services (for agents that want to connect to the Agent OS)
       services: {
         lago: {
-          url: process.env.LAGO_URL || "https://lago.broomva.tech",
+          url: (process.env.LAGO_URL || "https://lago.broomva.tech").trim(),
           description: "Event-sourced persistence substrate",
         },
         autonomic: {
