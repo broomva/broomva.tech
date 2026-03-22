@@ -1,0 +1,18 @@
+{
+  "title": "BroomVA Documentation",
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "quickstart",
+    "---Platform---",
+    "...platform",
+    "---CLI---",
+    "...cli",
+    "---API Reference---",
+    "...api-reference",
+    "---Life Agent OS---",
+    "...life",
+    "---SDK---",
+    "...sdk"
+  ]
+}

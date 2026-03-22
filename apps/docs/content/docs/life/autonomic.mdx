@@ -1,0 +1,141 @@
+---
+title: Autonomic
+description: Homeostasis controller — three-pillar regulation for operational, cognitive, and economic stability.
+---
+
+# Autonomic
+
+Autonomic is the homeostasis controller for the Agent OS. It regulates agent behavior across three pillars — operational, cognitive, and economic — ensuring agents remain stable and resource-efficient without constant human oversight.
+
+The biological analog is the autonomic nervous system: always running in the background, maintaining equilibrium, and intervening only when something drifts out of range.
+
+## Design principles
+
+**Advisory, not authoritarian.** Arcan consults Autonomic before taking actions, but failures are non-fatal. If Autonomic is unreachable, the agent continues with an allow-all default. Regulation never blocks the core agent loop.
+
+**Pure controller.** The controller logic contains no I/O and no side effects. The homeostatic state is a deterministic fold over the event history — given the same events, you always get the same state projection.
+
+**Hysteresis gates.** Mode transitions require a metric to exceed a threshold AND remain there for a minimum duration. This prevents rapid oscillation ("flapping") when metrics hover near boundaries.
+
+## Architecture
+
+| Crate | Role |
+|-------|------|
+| `autonomic-core` | Homeostatic state types, economic modes, hysteresis gate logic |
+| `autonomic-controller` | Pure evaluation engine — RuleSet evaluation and state projection |
+| `autonomic-lago` | Bridge to Lago journal for event-driven state updates |
+| `autonomic-api` | HTTP API server (axum) on port 3002 |
+| `autonomicd` | Daemon binary |
+
+## Three pillars of regulation
+
+### Operational pillar
+
+Monitors the runtime health of the agent system:
+
+- **Error rate** — ratio of failed operations to total operations
+- **Latency** — P50/P95/P99 response time for LLM provider calls
+- **Uptime** — continuous running time since last restart
+- **Resource pressure** — memory and storage consumption
+
+When operational health degrades, Autonomic recommends more conservative behavior: simpler prompts, fewer tool calls, or switching to faster models.
+
+### Cognitive pillar
+
+Monitors the quality of the agent's reasoning process:
+
+- **Context utilization** — percentage of the context window currently in use
+- **Memory pressure** — rate of context growth relative to available space
+- **Decision confidence** — self-assessed confidence scores from recent decisions
+- **Task completion rate** — ratio of tasks started to tasks completed successfully
+
+High cognitive pressure triggers recommendations to reduce context consumption, summarize earlier conversation segments, or defer to the human for guidance.
+
+### Economic pillar
+
+Monitors the agent's financial resources:
+
+- **Budget remaining** — credits or funds available for operations
+- **Burn rate** — current spending rate extrapolated to hourly/daily rates
+- **Revenue inflow** — income from completed tasks (if Haima is active)
+- **Runway** — projected time until budget exhaustion at current burn rate
+
+The economic pillar drives the economic mode, which is the most visible output of Autonomic's regulation.
+
+## Economic modes
+
+| Mode | Trigger | Behavior |
+|------|---------|----------|
+| **Sovereign** | Budget above 60% | All operations allowed, premium models available, speculative research permitted |
+| **Conserving** | Budget 20-60%, declining | Prefer cheaper models, reduce speculative work, warn on expensive operations |
+| **Hustle** | Budget 5-20%, revenue possible | Prioritize revenue-generating tasks, minimize costs, use cheapest viable models |
+| **Hibernate** | Budget below 5% | Only essential operations, cheapest models only, no tool use except critical paths |
+
+### Hysteresis example
+
+The transition from Sovereign to Conserving requires the budget to drop below 40% AND stay there for 5 minutes. The reverse transition (Conserving to Sovereign) requires rising above 60% for 5 minutes. The gap between entry and exit thresholds prevents flapping.
+
+## Gating profiles
+
+The primary output of Autonomic is a `GatingProfile` — a map of operation types to allow/warn/block decisions:
+
+```json
+{
+  "profile": "conserving",
+  "gates": {
+    "expensive_model": "warn",
+    "cheap_model": "allow",
+    "tool_execution": "allow",
+    "web_search": "allow",
+    "file_write": "allow",
+    "speculative_research": "block",
+    "long_context": "warn"
+  }
+}
+```
+
+Arcan reads this profile during its regulation phase and adjusts its behavior:
+
+- **allow** — operation proceeds normally
+- **warn** — operation proceeds but is logged as potentially wasteful
+- **block** — operation is denied with an explanation
+
+## Running Autonomic
+
+```bash
+cd autonomic
+cargo run -p autonomicd
+# Listening on http://localhost:3002
+```
+
+With Lago persistence for durable state:
+
+```bash
+cargo run -p autonomicd -- --lago-data-dir ./autonomic-data
+```
+
+### API endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/autonomic/state` | GET | Full homeostatic state projection |
+| `/v1/autonomic/gating` | GET | Current gating profile |
+| `/v1/autonomic/health` | GET | Service health check |
+
+## Integration with Arcan
+
+During the regulation phase of the agent loop (after reconstructing state, before the LLM call), Arcan sends:
+
+```
+GET http://localhost:3002/v1/autonomic/gating
+```
+
+If the request succeeds, the gating profile governs what operations are available for that tick. If it fails, Arcan logs a warning and uses an allow-all default.
+
+## Event persistence
+
+Autonomic events use `EventKind::Custom` with an `"autonomic."` prefix in the Lago journal. This allows forward-compatible persistence — new event types can be added without schema migrations:
+
+- `autonomic.mode_changed` — economic mode transition
+- `autonomic.gate_triggered` — a gating decision was made
+- `autonomic.state_snapshot` — periodic state checkpoint

@@ -1,0 +1,124 @@
+---
+title: Agent OS Architecture
+description: The Life Agent Operating System — eight subsystems modeled after biological primitives, written in Rust.
+---
+
+# Life Agent OS
+
+Life is an Agent Operating System written in Rust. It provides the runtime, persistence, regulation, finance, and networking infrastructure for autonomous AI agents. The name reflects the ambition: creating artificial life from computational primitives.
+
+The system is organized as a Rust workspace with 37 crates across 8 subsystems, totaling approximately 43,000 lines of code. All crates use Rust 2024 Edition with MSRV 1.85.
+
+## Biological analogy
+
+Each subsystem maps to a biological system. This is not a metaphor for marketing — the architecture genuinely follows biological design principles where specialized systems communicate through well-defined interfaces and maintain homeostasis through feedback loops.
+
+| Subsystem | Biological Analog | Role |
+|-----------|-------------------|------|
+| **aiOS** | DNA | Kernel contract — canonical types, event taxonomy, trait interfaces |
+| **Arcan** | Brain + nervous system | Agent runtime — cognition, execution, LLM provider calls |
+| **Lago** | Bone marrow + blood cells | Persistence — event journal, blob storage, knowledge index |
+| **Praxis** | Hands + motor system | Tool execution — sandboxed commands, filesystem, MCP bridge |
+| **Autonomic** | Autonomic nervous system | Homeostasis — three-pillar regulation (operational, cognitive, economic) |
+| **Haima** | Circulatory system | Finance — x402 payments, wallet management, per-task billing |
+| **Spaces** | Social/hive behavior | Networking — distributed agent communication via SpacetimeDB |
+| **Vigil** | Senses + perception | Observability — OpenTelemetry traces, GenAI metrics (planned) |
+
+## Architecture diagram
+
+```
+aiOS (kernel contract — types, traits, event taxonomy)
+  │
+  ├── Arcan (cognition + execution — agent runtime)
+  │     ├── → Praxis (tool execution — sandbox + skills + MCP)
+  │     ├── arcan-lago bridge
+  │     │     └── Lago (persistence — event journal + blob store)
+  │     └── arcan-spaces bridge
+  │           └── Spaces (networking — distributed agent communication)
+  │
+  ├── Autonomic (homeostasis — stability regulation)
+  │     └── autonomic-lago bridge → Lago
+  │
+  ├── Haima (finance — x402 payments + per-task revenue)
+  │     └── haima-lago bridge → Lago
+  │
+  └── Vigil (observability — OTel tracing + GenAI metrics) [planned]
+```
+
+All subsystems communicate through the `aios-protocol` contract defined in aiOS. Events flow through Lago's append-only journal. Bridge crates (`arcan-lago`, `autonomic-lago`, `haima-lago`) connect subsystems to the shared persistence layer.
+
+## The kernel contract (aiOS)
+
+aiOS defines the canonical types and traits that all other subsystems depend on:
+
+- **AgentStateVector** — the complete homeostatic state of an agent at a point in time
+- **OperatingMode** — six modes: Explore, Execute, Verify, Recover, AskHuman, Sleep
+- **BudgetState** — resource budgets (tokens, time, cost) with consumption tracking
+- **EventKind** — the taxonomy of events that flow through the system (message, tool call, tool result, memory, approval, custom)
+- **Capability** — the permission model for what an agent can do
+- **SoulProfile** — the agent's personality, goals, and constraints
+- **Observation** — sensory input with provenance metadata
+
+The kernel defines an **8-phase tick lifecycle** that every agent execution follows:
+
+1. **Perceive** — gather observations from the environment
+2. **Orient** — update the world model and context
+3. **Decide** — select an operating mode and plan
+4. **Act** — execute the plan (LLM call, tool use, etc.)
+5. **Observe** — collect results and feedback
+6. **Learn** — update memory and knowledge
+7. **Regulate** — check homeostatic constraints
+8. **Report** — emit events and metrics
+
+## Current state
+
+Life is in **v0.2.0 (Stabilization Phase)** with 1,077 tests passing across all crates.
+
+### What works end-to-end
+
+The core agent loop is fully functional. A user sends a chat message, Arcan loads the session from the Lago journal, reconstructs the state, calls an LLM provider (Anthropic, OpenAI-compatible, or mock), executes tools through the Praxis sandbox, persists all events to redb, and streams the response via multi-format SSE. Sessions are fully replayable from the event journal.
+
+### Completed features
+
+- Memory system (5 event types, operating-mode observer, memory projection, governed tools)
+- Context compiler (typed blocks, per-block budgets, deterministic assembly)
+- Approval workflow (approval gates, async pause/resume, auto-timeout)
+- Multi-provider support (Anthropic, Mock, OpenAI-compatible with retry)
+- Blob storage (SHA-256 + zstd, wired to file endpoints)
+- Default policy rules (5 rules, 3 roles, 2 hooks)
+- CLI commands (session, log, cat, branch, init)
+- AI SDK v6 streaming (UiPart enum, boundary signals, Vercel format)
+
+### Known gaps
+
+- Branching not yet exposed (Lago supports it, Arcan defaults to "main")
+- No OS-level sandbox isolation (soft sandbox only)
+- Network isolation declared but not enforced
+- No conformance test suite across aiOS/Arcan/Lago
+- Vigil scaffolded but not implemented
+
+## Running locally
+
+Each subsystem runs as an independent daemon:
+
+```bash
+# From the life/ repository root
+
+# Start the Arcan agent runtime (port 3000)
+cd arcan && cargo run -p arcan
+
+# Start the Autonomic homeostasis controller (port 3002)
+cd autonomic && cargo run -p autonomicd
+
+# Start the Haima finance engine (port 3003)
+cd haima && cargo run -p haimad
+
+# Lago runs embedded within Arcan via arcan-lago bridge
+# Spaces requires a SpacetimeDB instance
+```
+
+For a complete local development setup, see the individual subsystem pages.
+
+## Running as a managed deployment
+
+Instead of operating the infrastructure yourself, you can deploy a managed Life instance through the [BroomVA platform](/docs/platform/deployments). The platform handles provisioning, persistence, monitoring, and scaling.

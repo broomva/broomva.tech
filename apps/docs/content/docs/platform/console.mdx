@@ -1,0 +1,74 @@
+---
+title: Console
+description: Multi-tenant administration console for organizations, usage, and deployments.
+---
+
+# Console
+
+The BroomVA Console at [broomva.tech/console](https://broomva.tech/console) is the administration dashboard for managing your organizations, monitoring usage, and configuring platform services. It is available on the Pro tier and above.
+
+## Overview
+
+The console provides a centralized view of your organization's activity:
+
+- **Usage dashboard** — real-time credit consumption, model usage breakdown, and projected burn rate
+- **Member management** — invite and manage team members with role-based access
+- **API keys** — create and rotate API keys for programmatic access
+- **Billing** — view invoices, update payment methods, and manage your subscription
+
+## Navigation
+
+The console uses a sidebar navigation pattern (shadcn sidebar-07) separate from the chat interface:
+
+- **Dashboard** — overview metrics and recent activity
+- **Conversations** — browse and manage team conversations
+- **Members** — invite, remove, and manage member roles
+- **API Keys** — create and revoke API keys
+- **Usage** — detailed usage analytics with filtering
+- **Billing** — subscription management and invoices
+- **Settings** — organization profile and preferences
+- **Deployments** — managed Life instance configuration
+
+## Usage analytics
+
+The usage dashboard shows credit consumption across multiple dimensions:
+
+- **By model** — which models are consuming the most credits
+- **By member** — per-user consumption within the organization
+- **By time** — daily, weekly, and monthly consumption trends
+- **Projected runway** — based on current burn rate, how many days until credits are exhausted
+
+Usage data is computed from the `@broomva/billing` package's aggregation engine, which tracks every API call with its associated token count and cost.
+
+## Member roles
+
+Organizations support role-based access control:
+
+| Role | Permissions |
+|------|-------------|
+| **Owner** | Full access, billing management, can delete the organization |
+| **Admin** | Member management, API key creation, settings |
+| **Member** | Chat access, view usage, use API keys |
+
+Invitations are sent by email. When the invited user signs up or signs in, they are automatically added to the organization.
+
+## API keys
+
+API keys provide programmatic access to the platform API without requiring a user session. Each key:
+
+- Is scoped to a single organization
+- Has a configurable expiration date
+- Can be revoked at any time
+- Shows its last-used timestamp for auditing
+
+API keys use the same authentication format as user tokens — include them as a `Bearer` token in the `Authorization` header.
+
+## Settings
+
+Organization settings include:
+
+- **Profile** — name, slug, description, and avatar
+- **Default model** — the model used when no specific model is requested
+- **Memory scope** — whether organization-level memories are shared across members
+- **Webhook URLs** — endpoints for event notifications (usage alerts, member changes)
+- **MCP servers** — organization-wide MCP tool connections

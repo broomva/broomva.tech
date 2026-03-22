@@ -1,0 +1,192 @@
+---
+title: TypeScript SDK
+description: Integrate BroomVA into your TypeScript and JavaScript applications.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# TypeScript SDK
+
+The BroomVA TypeScript SDK provides a typed client for interacting with the platform API from Node.js, Deno, Bun, and browser environments. It handles authentication, streaming, and error handling.
+
+<Callout type="info">
+  The SDK is under active development. In the meantime, you can use the REST API directly or the Vercel AI SDK for chat integration.
+</Callout>
+
+## Using the AI SDK (recommended for chat)
+
+The broomva.tech chat application is built on the [Vercel AI SDK v6](https://sdk.vercel.ai), which provides the best integration path for building AI chat interfaces. You can use the same SDK to connect to BroomVA's API.
+
+### Installation
+
+```bash
+npm install ai @ai-sdk/openai-compatible
+```
+
+### Streaming chat
+
+```typescript
+import { streamText } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+
+const broomva = createOpenAICompatible({
+  name: "broomva",
+  baseURL: "https://broomva.tech/api",
+  headers: {
+    Authorization: `Bearer ${process.env.BROOMVA_TOKEN}`,
+  },
+});
+
+const result = streamText({
+  model: broomva("claude-sonnet-4-20250514"),
+  messages: [
+    { role: "user", content: "Explain event sourcing in 3 sentences." },
+  ],
+});
+
+for await (const chunk of result.textStream) {
+  process.stdout.write(chunk);
+}
+```
+
+### React integration
+
+In a Next.js or React application, use the `useChat` hook:
+
+```typescript
+"use client";
+
+import { useChat } from "@ai-sdk/react";
+
+export function ChatComponent() {
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    api: "https://broomva.tech/api/chat",
+    headers: {
+      Authorization: `Bearer ${process.env.NEXT_PUBLIC_BROOMVA_TOKEN}`,
+    },
+  });
+
+  return (
+    <div>
+      {messages.map((m) => (
+        <div key={m.id}>
+          <strong>{m.role}:</strong> {m.content}
+        </div>
+      ))}
+      <form onSubmit={handleSubmit}>
+        <input value={input} onChange={handleInputChange} />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  );
+}
+```
+
+## Direct API usage
+
+For non-chat use cases (organizations, billing, trust), use `fetch` directly:
+
+### Authentication
+
+```typescript
+const API_BASE = "https://broomva.tech/api";
+const TOKEN = process.env.BROOMVA_TOKEN;
+
+async function broomvaFetch(path: string, options: RequestInit = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message ?? `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+### List organizations
+
+```typescript
+const { organizations } = await broomvaFetch("/organization");
+console.log(organizations);
+```
+
+### Check credit balance
+
+```typescript
+const usage = await broomvaFetch(`/usage?orgId=${orgId}`);
+console.log(`Credits remaining: ${usage.credits.remaining}`);
+console.log(`Usage: ${usage.credits.usagePercent}%`);
+```
+
+### Get trust score
+
+```typescript
+const trust = await broomvaFetch(`/trust/score?userId=${userId}`);
+console.log(`Trust level: ${trust.level} (${trust.score})`);
+```
+
+## MCP integration
+
+The platform supports [Model Context Protocol (MCP)](https://modelcontextprotocol.io) for connecting external tools. Use the `@ai-sdk/mcp` adapter:
+
+```typescript
+import { experimental_createMCPClient } from "@ai-sdk/mcp";
+
+const mcpClient = await experimental_createMCPClient({
+  transport: {
+    type: "stdio",
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"],
+  },
+});
+
+const tools = await mcpClient.tools();
+```
+
+MCP tools can be passed directly to the `streamText` or `generateText` functions alongside BroomVA's API.
+
+## Error handling
+
+API errors follow a consistent structure:
+
+```typescript
+interface BroomvaError {
+  error: {
+    code: string;    // Machine-readable code
+    message: string; // Human-readable description
+    details?: Record<string, unknown>;
+  };
+}
+```
+
+Handle specific error codes:
+
+```typescript
+try {
+  const result = await broomvaFetch("/chat", {
+    method: "POST",
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", messages }),
+  });
+} catch (err) {
+  if (err.code === "credits_exhausted") {
+    console.log("Out of credits. Upgrade your plan.");
+  } else if (err.code === "rate_limited") {
+    console.log("Rate limited. Retry after cooldown.");
+  }
+}
+```
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `BROOMVA_TOKEN` | API token for authentication |
+| `BROOMVA_API_BASE` | API base URL (default: `https://broomva.tech/api`) |

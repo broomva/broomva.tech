@@ -1,0 +1,129 @@
+---
+title: API Overview
+description: Base URL, authentication, rate limits, error format, and versioning for the BroomVA API.
+---
+
+# API Overview
+
+The BroomVA API provides programmatic access to the platform's chat, organization management, billing, and agent services. All endpoints are served from the primary application at `broomva.tech`.
+
+## Base URL
+
+```
+https://broomva.tech/api
+```
+
+All API paths in this documentation are relative to this base URL. For example, the chat endpoint is `POST /api/chat`.
+
+For local development, the chat application runs on port 3001:
+
+```
+http://localhost:3001/api
+```
+
+## Authentication
+
+The API uses Bearer token authentication. Include your token in the `Authorization` header of every request:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" https://broomva.tech/api/...
+```
+
+### Obtaining a token
+
+There are three ways to get an API token:
+
+1. **Device-code flow** — use `broomva auth login` from the CLI. The token is stored in `~/.broomva/config.json` and can be printed with `broomva auth token`.
+
+2. **API token endpoint** — sign in to broomva.tech and visit `/api/auth/api-token` to generate a long-lived token.
+
+3. **API keys** — create organization-scoped API keys from the console. These do not expire unless explicitly revoked.
+
+### Token format
+
+Tokens are JWTs signed by the platform's auth system (Better Auth). They encode:
+
+- User ID
+- Organization memberships
+- Token expiration
+- Scopes (for API keys)
+
+### Authentication errors
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| `401` | `unauthorized` | Missing or invalid token |
+| `403` | `forbidden` | Valid token but insufficient permissions |
+
+## Rate limits
+
+Rate limits are applied per-organization (or per-user for personal workspaces):
+
+| Plan | Requests/minute | Requests/day |
+|------|-----------------|--------------|
+| Free | 10 | 100 |
+| Pro | 60 | 5,000 |
+| Team | 120 | 20,000 |
+| Enterprise | Custom | Custom |
+
+When rate-limited, the API returns a `429 Too Many Requests` response with the following headers:
+
+```http
+Retry-After: 30
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1711234567
+```
+
+## Error format
+
+All errors follow a consistent JSON structure:
+
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "The 'model' field is required.",
+    "details": {
+      "field": "model",
+      "constraint": "required"
+    }
+  }
+}
+```
+
+### Standard error codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `unauthorized` | 401 | Authentication required |
+| `forbidden` | 403 | Insufficient permissions |
+| `not_found` | 404 | Resource does not exist |
+| `validation_error` | 422 | Request body validation failed |
+| `rate_limited` | 429 | Too many requests |
+| `credits_exhausted` | 402 | Credit limit reached |
+| `internal_error` | 500 | Unexpected server error |
+
+The `credits_exhausted` error (HTTP 402) is returned when the organization's credit balance is insufficient for the requested operation and the plan's overage policy blocks the request.
+
+## Content type
+
+All request bodies must be JSON with `Content-Type: application/json`. Responses are JSON unless the endpoint specifies streaming (in which case `text/event-stream` is used).
+
+## Streaming
+
+Chat endpoints support Server-Sent Events (SSE) for streaming responses. Set the `Accept` header to `text/event-stream` or include `"stream": true` in the request body:
+
+```bash
+curl -N -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  https://broomva.tech/api/chat \
+  -d '{"model": "claude-sonnet-4-20250514", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+The SSE stream uses the Vercel AI SDK v6 data stream format, compatible with the `ai` package's `useChat` and `streamText` functions.
+
+## Versioning
+
+The API is currently unversioned — all endpoints are served at `/api/`. When breaking changes are introduced, the API will adopt path-based versioning (`/api/v2/`) with a deprecation period for the previous version.

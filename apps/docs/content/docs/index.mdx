@@ -1,0 +1,71 @@
+---
+title: What is BroomVA
+description: An open AI platform where agents and humans collaborate — built on an open-source Agent Operating System, monetized through platform services.
+---
+
+import { Cards, Card } from "fumadocs-ui/components/card";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+# Welcome to BroomVA
+
+BroomVA is an open AI platform that brings together a multi-model AI chat experience, a full Agent Operating System written in Rust, and a managed cloud layer for deploying autonomous agents at scale.
+
+The project follows the Supabase model: the core runtime is **open-source** — you can run everything locally, inspect every line of code, and contribute upstream. The management plane (multi-tenant console, billing, deployment orchestration) is a commercial layer that funds continued development.
+
+## The vision
+
+Software is becoming biological. Agents are not static programs — they are organisms that perceive, decide, act, and learn. BroomVA builds the infrastructure for this future:
+
+- **Life** — an Agent Operating System with eight subsystems modeled after biological primitives (cognition, persistence, homeostasis, finance, networking, observability, tool execution, and security)
+- **broomva.tech** — a platform that exposes Life's capabilities as managed services, so developers can deploy agents without operating the infrastructure themselves
+- **An open economy** — agents that earn revenue, pay for resources, and trade capabilities through machine-to-machine payment protocols
+
+## What you can do today
+
+<Cards>
+  <Card title="AI Chat" href="/docs/platform/chat" description="Multi-model conversations with Claude, GPT, Gemini, and local models via Ollama. Memory vault, deep research, MCP tool integration." />
+  <Card title="Agent OS" href="/docs/life/overview" description="Run the full Life runtime locally — Arcan agent loop, Lago persistence, Autonomic regulation, Haima finance, Spaces networking." />
+  <Card title="CLI Tooling" href="/docs/cli/installation" description="Manage prompts, skills, and agent context from your terminal. Device-code authentication, daemon mode for local agent runtimes." />
+  <Card title="Platform Console" href="/docs/platform/console" description="Multi-tenant organization management, usage analytics, API key provisioning, and deployment configuration." />
+</Cards>
+
+## Architecture at a glance
+
+The platform is a Turborepo monorepo (`broomva.tech`) with two primary applications and several shared packages:
+
+```
+broomva.tech/
+  apps/
+    chat/       — Next.js 16 AI chat (AI SDK v6, Better Auth, Drizzle)
+    console/    — Multi-tenant admin console
+    docs/       — This documentation site
+  packages/
+    cli/        — @broomva/cli (Commander, device-code auth)
+    billing/    — Stripe integration, credits, plan orchestration
+    tenant/     — Tenant provisioning and isolation
+    deploy/     — Edge deployment orchestration
+    conformance/ — Policy enforcement and audit logging
+```
+
+The Agent OS lives in a separate Rust monorepo (`core/life`) with 37 crates across 8 subsystems, totaling approximately 43,000 lines of Rust. The two codebases connect through API boundaries — the platform calls Life services over HTTP/gRPC, and Life persists events through its own append-only journal.
+
+## Open source commitment
+
+The AI chat application, the CLI, and the entire Agent OS are open source under the Apache 2.0 license. The management plane (console, billing, tenant isolation, deployment) is proprietary. This split ensures the core technology remains free while the business model sustains long-term development.
+
+## Next steps
+
+<Steps>
+  <Step>
+    ### Try the chat
+    Head to [broomva.tech/chat](https://broomva.tech/chat) and start a conversation. No account required for the free tier.
+  </Step>
+  <Step>
+    ### Read the quickstart
+    Follow the [Quickstart Guide](/docs/quickstart) to set up an organization, install the CLI, and make your first API call.
+  </Step>
+  <Step>
+    ### Explore Life
+    Dive into the [Agent OS architecture](/docs/life/overview) to understand how Arcan, Lago, Autonomic, Haima, and Spaces work together.
+  </Step>
+</Steps>

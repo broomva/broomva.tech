@@ -1,0 +1,96 @@
+---
+title: AI Chat
+description: Multi-model AI conversations with memory, tools, and deep research.
+---
+
+# AI Chat
+
+The BroomVA chat at [broomva.tech/chat](https://broomva.tech/chat) is a production-grade AI conversation interface built on Next.js 16 with the Vercel AI SDK v6. It supports multiple model providers, persistent memory, tool integration, and rich content rendering.
+
+## Model support
+
+The chat supports models from multiple providers through a unified interface:
+
+| Provider | Models | Notes |
+|----------|--------|-------|
+| **Anthropic** | Claude Opus, Sonnet, Haiku | Primary provider, full tool use support |
+| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3 | Function calling, vision |
+| **Google** | Gemini 2.5 Pro, Flash | Multimodal, long context |
+| **OpenRouter** | 100+ models | Access to Llama, Mistral, and community models |
+| **Ollama** | Any local model | Self-hosted, no API key needed |
+
+Model selection is available from the dropdown at the top of the chat interface. Different models have different capabilities and costs — see [Billing](/docs/platform/billing) for credit consumption rates.
+
+## Conversations
+
+Every conversation is automatically persisted to your account. The sidebar shows your conversation history with:
+
+- **Search** — full-text search across all conversations
+- **Projects** — organize conversations into project folders
+- **Sharing** — generate public links for individual conversations
+
+Conversations support branching — you can edit a previous message and explore an alternative path without losing the original thread.
+
+## Rich content rendering
+
+The chat renders AI responses with full formatting support:
+
+- **Markdown** — headings, lists, bold, italic, links
+- **Code blocks** — syntax highlighting for 50+ languages via Shiki, with copy-to-clipboard
+- **Mathematics** — LaTeX rendering for inline and display math
+- **Diagrams** — Mermaid diagram rendering for flowcharts, sequence diagrams, and more
+- **Tables** — GFM-style tables with proper alignment
+- **Images** — inline image rendering and generation
+
+All rendering is handled by the Streamdown library, which processes streaming markdown tokens in real time as the model generates its response.
+
+## Memory vault
+
+The memory vault gives the AI persistent context across conversations. When enabled, the platform maintains a knowledge graph backed by the Lago persistence substrate:
+
+- **Automatic extraction** — key facts, preferences, and decisions are extracted from conversations
+- **Cross-session recall** — the AI can reference information from previous conversations
+- **User control** — you can view, edit, and delete stored memories from the settings panel
+
+Memory is scoped to your user account and, optionally, to your organization. Organization-level memories are shared across all members.
+
+## Deep research mode
+
+Deep research mode enables the AI to perform multi-step investigation using web search and document analysis. When activated, the AI will:
+
+1. Break your question into sub-queries
+2. Search the web using Tavily for relevant sources
+3. Read and analyze the retrieved documents
+4. Synthesize findings into a comprehensive answer with citations
+
+This is useful for questions that require current information or cross-referencing multiple sources.
+
+## MCP tool integration
+
+The chat supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) for connecting external tools and services. MCP allows the AI to:
+
+- Read and write files in connected repositories
+- Query databases and APIs
+- Execute code in sandboxed environments
+- Interact with external services (Slack, GitHub, Linear, etc.)
+
+MCP servers can be configured per-user or per-organization from the settings panel. The platform uses the `@ai-sdk/mcp` adapter to bridge MCP tools into the AI SDK's tool-calling interface.
+
+## Attachments
+
+You can upload files directly into the conversation:
+
+- **Images** — PNG, JPG, WebP, GIF (analyzed by vision-capable models)
+- **Documents** — PDF, TXT, CSV, MD (content extracted and included in context)
+- **Code files** — any text-based file (syntax-highlighted in the message)
+
+Files are stored in Vercel Blob storage and referenced by the AI during the conversation. Image attachments are automatically compressed on the client side before upload.
+
+## Settings
+
+Chat settings are available from the gear icon in the sidebar:
+
+- **Default model** — set your preferred model for new conversations
+- **System prompt** — customize the default system instructions
+- **Memory** — enable/disable the memory vault
+- **Theme** — the interface uses the Arcan Glass design system with dark mode as the default

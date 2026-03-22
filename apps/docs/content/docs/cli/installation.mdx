@@ -1,0 +1,116 @@
+---
+title: Installation
+description: Install the @broomva/cli to manage prompts, skills, and agent context from your terminal.
+---
+
+# Installing the CLI
+
+The BroomVA CLI (`@broomva/cli`) is a command-line interface for managing prompts, skills, authentication, and agent context. It is built with Commander.js and published as an npm package.
+
+## Requirements
+
+- **Node.js** 18 or later
+- **npm**, **yarn**, **pnpm**, or **bun** package manager
+
+## Installation
+
+### Global install (recommended)
+
+Install the CLI globally so the `broomva` command is available everywhere:
+
+```bash
+# npm
+npm install -g @broomva/cli
+
+# bun
+bun install -g @broomva/cli
+
+# pnpm
+pnpm install -g @broomva/cli
+
+# yarn
+yarn global add @broomva/cli
+```
+
+### npx (no install)
+
+Run the CLI directly without installing:
+
+```bash
+npx @broomva/cli --help
+```
+
+### From source
+
+If you are contributing to the CLI or want the latest development version:
+
+```bash
+git clone https://github.com/broomva/broomva.tech.git
+cd broomva.tech/packages/cli
+bun install
+bun run build
+bun link
+```
+
+This builds the CLI with `tsup` and links it globally so `broomva` resolves to your local build.
+
+## Verify installation
+
+```bash
+broomva --version
+# 0.1.0
+
+broomva --help
+# Usage: broomva [options] [command]
+#
+# CLI for broomva.tech — prompts, skills, and context
+#
+# Options:
+#   -V, --version       output the version number
+#   --api-base <url>    API base URL
+#   --token <token>     API token
+#   --no-color          Disable color output
+#   -h, --help          display help for command
+#
+# Commands:
+#   auth                Manage authentication
+#   prompts             Manage prompts
+#   skills              Manage skills
+#   context             Manage context
+#   config              Manage CLI configuration
+#   daemon              Manage the local agent daemon
+```
+
+## Configuration
+
+The CLI stores its configuration in `~/.broomva/config.json`. You can set defaults with the `config` command:
+
+```bash
+# Set the API base URL (default: https://broomva.tech)
+broomva config set apiBase https://broomva.tech
+
+# View current configuration
+broomva config show
+```
+
+Configuration values can be overridden per-command with flags:
+
+```bash
+broomva --api-base http://localhost:3001 prompts list
+```
+
+## Environment variables
+
+The CLI also reads configuration from environment variables:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `BROOMVA_TOKEN` | API token (skips auth login) | — |
+| `BROOMVA_API_BASE` | API base URL | `https://broomva.tech` |
+
+Environment variables take precedence over the config file, and command-line flags take precedence over both.
+
+## Next steps
+
+- [Authenticate](/docs/cli/authentication) with the platform
+- Browse the full [command reference](/docs/cli/commands)

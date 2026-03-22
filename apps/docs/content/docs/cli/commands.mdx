@@ -1,0 +1,168 @@
+---
+title: Command Reference
+description: Complete reference for all @broomva/cli commands.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Command Reference
+
+The BroomVA CLI provides six command groups: `auth`, `prompts`, `skills`, `context`, `config`, and `daemon`.
+
+## Global options
+
+These options are available on all commands:
+
+| Flag | Description |
+|------|-------------|
+| `--api-base <url>` | Override the API base URL |
+| `--token <token>` | Override the auth token |
+| `--no-color` | Disable colored output |
+| `-V, --version` | Print the CLI version |
+| `-h, --help` | Print help information |
+
+---
+
+## `broomva auth`
+
+Manage authentication with the BroomVA platform. See [Authentication](/docs/cli/authentication) for detailed usage.
+
+| Subcommand | Description |
+|-----------|-------------|
+| `auth login` | Authenticate using device-code flow |
+| `auth login --manual` | Authenticate using manual token paste |
+| `auth logout` | Remove stored credentials |
+| `auth status` | Show current auth status |
+| `auth status --json` | Output auth status as JSON |
+| `auth token` | Print the raw token string |
+
+---
+
+## `broomva prompts`
+
+Manage prompts stored on the platform. Prompts are versioned text templates that can be used in chat conversations, API calls, and agent configurations.
+
+| Subcommand | Description |
+|-----------|-------------|
+| `prompts list` | List all prompts accessible to your account |
+| `prompts get <id>` | Fetch a specific prompt by ID |
+| `prompts create <file>` | Create a prompt from a local file |
+| `prompts update <id> <file>` | Update an existing prompt |
+| `prompts delete <id>` | Delete a prompt |
+
+### Example
+
+```bash
+# List available prompts
+broomva prompts list
+
+# Fetch a prompt and pipe to a file
+broomva prompts get system-default > prompt.md
+```
+
+---
+
+## `broomva skills`
+
+Manage skills — packaged capabilities that can be installed into agent runtimes. Skills are discovered from `SKILL.md` files in repositories.
+
+| Subcommand | Description |
+|-----------|-------------|
+| `skills list` | List installed skills |
+| `skills search <query>` | Search the skills marketplace |
+| `skills install <name>` | Install a skill from the marketplace |
+| `skills remove <name>` | Remove an installed skill |
+
+### Example
+
+```bash
+# Search for research-related skills
+broomva skills search "deep research"
+
+# Install a skill
+broomva skills install broomva/deep-dive-research
+```
+
+---
+
+## `broomva context`
+
+Manage the agent context — the set of documents, memories, and configuration that inform the agent's behavior.
+
+| Subcommand | Description |
+|-----------|-------------|
+| `context show` | Display the current context summary |
+| `context add <file>` | Add a file to the context |
+| `context remove <path>` | Remove a file from the context |
+| `context clear` | Clear the entire context |
+
+### Example
+
+```bash
+# Show what the agent currently knows about
+broomva context show
+
+# Add a project README to the context
+broomva context add ./README.md
+```
+
+---
+
+## `broomva config`
+
+Manage CLI configuration stored in `~/.broomva/config.json`.
+
+| Subcommand | Description |
+|-----------|-------------|
+| `config show` | Display current configuration |
+| `config set <key> <value>` | Set a configuration value |
+| `config get <key>` | Get a configuration value |
+| `config reset` | Reset configuration to defaults |
+
+### Configurable keys
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `apiBase` | API base URL | `https://broomva.tech` |
+| `defaultModel` | Default model for prompts | — |
+
+### Example
+
+```bash
+# Point the CLI at a local development server
+broomva config set apiBase http://localhost:3001
+
+# Reset to defaults
+broomva config reset
+```
+
+---
+
+## `broomva daemon`
+
+Manage a local agent daemon process. The daemon runs a lightweight agent runtime that connects to the platform for model inference while keeping context and tools local.
+
+| Subcommand | Description |
+|-----------|-------------|
+| `daemon start` | Start the local agent daemon |
+| `daemon stop` | Stop the running daemon |
+| `daemon status` | Check if the daemon is running |
+| `daemon logs` | Stream daemon log output |
+
+### Example
+
+```bash
+# Start the daemon in the background
+broomva daemon start
+
+# Check status
+broomva daemon status
+# Daemon running (PID 12345)
+
+# Stream logs
+broomva daemon logs --follow
+```
+
+<Callout type="info">
+  The daemon feature connects to the Life Agent OS runtime. If you want full local inference, see the [Arcan documentation](/docs/life/arcan) for running the Rust runtime directly.
+</Callout>

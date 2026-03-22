@@ -1,0 +1,221 @@
+---
+title: Life Services API
+description: Endpoints for interacting with managed Life Agent OS instances — Lago, Arcan, Autonomic, and Haima.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Life Services API
+
+When you deploy a managed Life instance through the platform, it exposes a set of HTTP APIs for interacting with the Agent OS subsystems. These endpoints are available at your deployment's base URL.
+
+<Callout type="info">
+  Life services APIs are available on managed deployments (Team and Enterprise plans). For local usage, run the Arcan daemon directly — see [Arcan](/docs/life/arcan).
+</Callout>
+
+## Arcan — Agent Runtime
+
+The Arcan daemon provides the agent conversation loop with streaming responses.
+
+### Chat completion
+
+```
+POST /v1/chat
+```
+
+```json
+{
+  "session_id": "my-session",
+  "messages": [
+    { "role": "user", "content": "Explain event sourcing." }
+  ],
+  "provider": "anthropic",
+  "model": "claude-sonnet-4-20250514"
+}
+```
+
+The response is an SSE stream in one of four supported formats: Lago (native), OpenAI-compatible, Anthropic-compatible, or Vercel AI SDK format. Set the `Accept` header or use the `format` query parameter to select the output format.
+
+### List sessions
+
+```
+GET /v1/sessions
+```
+
+Returns all active sessions with their metadata and message counts.
+
+### Get session events
+
+```
+GET /v1/sessions/{session_id}/events
+```
+
+Returns the raw event stream for a session — every event that occurred during the agent's execution, in chronological order.
+
+## Lago — Persistence Substrate
+
+Lago provides the event journal, blob storage, and knowledge index.
+
+### Append events
+
+```
+POST /v1/journal/append
+```
+
+Append one or more events to the journal. Events are immutable and content-addressed.
+
+### Query events
+
+```
+GET /v1/journal/events?stream_id={id}&after={cursor}
+```
+
+Read events from a stream, optionally starting after a cursor position.
+
+### Blob storage
+
+```
+POST /v1/blobs
+```
+
+Upload a blob (file, image, document). The blob is content-addressed (SHA-256) and compressed with zstd.
+
+```
+GET /v1/blobs/{hash}
+```
+
+Retrieve a blob by its content hash.
+
+### Knowledge search
+
+```
+GET /v1/knowledge/search?q={query}&limit={n}
+```
+
+Search the knowledge index using scored text matching. The knowledge index is built from document frontmatter, wikilinks, and extracted facts.
+
+### Knowledge graph traversal
+
+```
+GET /v1/knowledge/graph?node={id}&depth={n}
+```
+
+Traverse the knowledge graph from a starting node, following wikilink edges to a specified depth.
+
+## Autonomic — Homeostasis Controller
+
+Autonomic provides advisory regulation across three pillars: operational, cognitive, and economic.
+
+### Get homeostatic state
+
+```
+GET /v1/autonomic/state
+```
+
+Returns the current homeostatic state projection — a deterministic fold over all events in the system:
+
+```json
+{
+  "operational": {
+    "health": 0.92,
+    "uptime_seconds": 86400,
+    "error_rate": 0.003
+  },
+  "cognitive": {
+    "context_utilization": 0.67,
+    "memory_pressure": "normal"
+  },
+  "economic": {
+    "mode": "sovereign",
+    "budget_remaining": 4200,
+    "burn_rate_per_hour": 12
+  }
+}
+```
+
+### Get gating profile
+
+```
+GET /v1/autonomic/gating
+```
+
+Returns the current gating profile — a set of rules that determine which operations are allowed, warned, or blocked based on the homeostatic state:
+
+```json
+{
+  "profile": "normal",
+  "gates": {
+    "expensive_model": "allow",
+    "tool_execution": "allow",
+    "web_search": "allow",
+    "file_write": "warn"
+  }
+}
+```
+
+The economic modes (Sovereign, Conserving, Hustle, Hibernate) use hysteresis gates to prevent flapping between states.
+
+## Haima — Finance Engine
+
+Haima provides the x402 payment layer for machine-to-machine transactions.
+
+### Get wallet balance
+
+```
+GET /v1/haima/balance
+```
+
+Returns the agent's wallet balance and recent financial events:
+
+```json
+{
+  "wallet": {
+    "address": "0x...",
+    "chain": "eip155:8453",
+    "balance_usdc": "42.50"
+  },
+  "credits": {
+    "available": 4250,
+    "pending": 0
+  }
+}
+```
+
+### Submit payment
+
+```
+POST /v1/haima/pay
+```
+
+Submit an x402 payment for a task or service. The payment is verified on-chain and recorded as an immutable Lago event.
+
+```json
+{
+  "recipient": "0x...",
+  "amount_usdc": "0.05",
+  "task_id": "task_abc123",
+  "memo": "Deep research query"
+}
+```
+
+## Authentication
+
+All Life service endpoints use the same Bearer token authentication as the platform API. For managed deployments, use the deployment API key provided during provisioning.
+
+```bash
+curl -H "Authorization: Bearer $DEPLOYMENT_KEY" \
+  https://your-instance.broomva.tech/v1/autonomic/state
+```
+
+## Error format
+
+Life services return errors in the same format as the platform API:
+
+```json
+{
+  "error": {
+    "code": "session_not_found",
+    "message": "No session with ID 'xyz' exists."
+  }
+}
+```

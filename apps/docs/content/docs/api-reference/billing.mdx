@@ -1,0 +1,144 @@
+---
+title: Billing API
+description: Query usage, credit balance, and manage subscriptions programmatically.
+---
+
+# Billing API
+
+The Billing API provides access to credit balances, usage analytics, and subscription management. Billing data is scoped to organizations.
+
+## Get credit balance
+
+**`GET /api/usage?orgId={orgId}`** — Get the current credit balance and usage summary for an organization.
+
+### Response
+
+```json
+{
+  "orgId": "org_abc123",
+  "plan": "pro",
+  "credits": {
+    "allocated": 5000,
+    "consumed": 1247,
+    "remaining": 3753,
+    "usagePercent": 25,
+    "projectedDaysRemaining": 22
+  },
+  "period": {
+    "start": "2026-03-01T00:00:00Z",
+    "end": "2026-03-31T00:00:00Z"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `credits.allocated` | number | Monthly credit budget in cents |
+| `credits.consumed` | number | Credits used this period |
+| `credits.remaining` | number | Credits available |
+| `credits.usagePercent` | number | Percentage of allocation consumed |
+| `credits.projectedDaysRemaining` | number | Estimated days until exhaustion (based on daily burn rate) |
+
+## Get usage breakdown
+
+**`GET /api/usage?orgId={orgId}&breakdown=model`** — Get usage breakdown by model, member, or time period.
+
+### Query parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `orgId` | string | Organization ID |
+| `breakdown` | string | Dimension: `model`, `member`, or `daily` |
+| `from` | string | Start date (ISO 8601) |
+| `to` | string | End date (ISO 8601) |
+
+### Response (breakdown=model)
+
+```json
+{
+  "breakdown": [
+    {
+      "model": "claude-sonnet-4-20250514",
+      "provider": "anthropic",
+      "requests": 142,
+      "inputTokens": 284000,
+      "outputTokens": 98000,
+      "creditsConsumed": 876
+    },
+    {
+      "model": "gpt-4o-mini",
+      "provider": "openai",
+      "requests": 89,
+      "inputTokens": 156000,
+      "outputTokens": 45000,
+      "creditsConsumed": 201
+    }
+  ]
+}
+```
+
+## Get current plan
+
+**`GET /api/tier?orgId={orgId}`** — Get the current plan tier and its definition for an organization.
+
+### Response
+
+```json
+{
+  "tier": "pro",
+  "name": "Pro",
+  "creditsMonthly": 5000,
+  "priceMonthly": 2900,
+  "overagePolicy": "soft_limit"
+}
+```
+
+## Check overage status
+
+**`POST /api/tier`** — Check whether a requested operation would trigger an overage.
+
+### Request body
+
+```json
+{
+  "orgId": "org_abc123",
+  "requestedCost": 15
+}
+```
+
+### Response
+
+```json
+{
+  "inOverage": false,
+  "overageAmount": 0,
+  "policy": "soft_limit",
+  "blocked": false,
+  "message": "Within budget."
+}
+```
+
+When `blocked` is `true`, the operation should not proceed. The `message` field contains a user-facing explanation.
+
+## Stripe webhook
+
+**`POST /api/stripe`** — Stripe webhook endpoint for subscription lifecycle events.
+
+This endpoint is called by Stripe, not by your application. It handles:
+
+- `customer.subscription.created` — activate a paid plan
+- `customer.subscription.updated` — reflect plan changes
+- `customer.subscription.deleted` — downgrade to free
+- `invoice.payment_succeeded` — confirm payment
+- `invoice.payment_failed` — send notification
+
+The webhook validates the Stripe signature and processes events idempotently.
+
+## Error responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `unauthorized` | Missing or invalid token |
+| 403 | `forbidden` | User is not a member of the organization |
+| 404 | `not_found` | Organization not found |
+| 402 | `credits_exhausted` | Operation blocked by overage policy |

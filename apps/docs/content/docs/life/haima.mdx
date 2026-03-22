@@ -1,0 +1,147 @@
+---
+title: Haima
+description: Agentic finance engine — x402 machine-to-machine payments, on-chain settlement, and per-task revenue.
+---
+
+# Haima
+
+Haima is the finance engine of the Agent OS — the circulatory system that distributes economic resources throughout the organism. It implements the x402 protocol for machine-to-machine payments, manages cryptographic wallets, and tracks per-task costs and revenue.
+
+## Design principles
+
+**Every financial action is an immutable event.** All transactions, payments, and economic state changes are recorded in the Lago journal. The financial state is a deterministic projection — replay the events and you get the exact same balances.
+
+**Security is non-negotiable.** Private keys are zeroized on drop (never lingering in memory) and encrypted at rest with ChaCha20-Poly1305. The wallet layer is isolated from the rest of the system.
+
+## Architecture
+
+| Crate | Role |
+|-------|------|
+| `haima-core` | Payment policy types, financial state, task billing records |
+| `haima-wallet` | Wallet backend — secp256k1 key generation, signing, encryption |
+| `haima-x402` | x402 protocol implementation (HTTP 402 Payment Required flow) |
+| `haima-lago` | Bridge to Lago for persisting finance events |
+| `haima-api` | HTTP API server (axum) on port 3003 |
+| `haimad` | Daemon binary |
+
+## x402 protocol
+
+The x402 protocol adds a payment layer to HTTP. When an agent requests a resource that requires payment:
+
+1. The server responds with `402 Payment Required` and payment instructions (amount, currency, chain, recipient)
+2. Haima evaluates the payment against the active `PaymentPolicy`
+3. If approved, Haima signs the transaction and submits it
+4. The agent retries the original request with proof of payment
+
+This enables agents to autonomously pay for services — API calls, data access, compute — without human intervention for each transaction.
+
+### Payment policies
+
+| Policy | When used |
+|--------|-----------|
+| **Auto-approve** | Payments under a threshold (e.g., $0.10) are signed immediately. Threshold varies by economic mode. |
+| **Approval** | Payments require explicit approval from the human operator or a governance check. |
+| **Deny** | All payments are rejected. Active in Hibernate economic mode. |
+
+## Wallet management
+
+Haima manages agent wallets through a `WalletBackend` trait:
+
+### Local secp256k1 (current)
+
+- Keys generated using a cryptographically secure random number generator
+- Private keys encrypted with ChaCha20-Poly1305 before storage
+- Keys zeroized in memory on drop (via the `zeroize` crate)
+- Address derivation follows standard Ethereum key derivation
+
+### Planned backends
+
+- **MPC** — multi-party computation for shared key management
+- **Hardware** — HSM integration for high-security deployments
+
+### Chain support
+
+- **Primary:** Base (EVM, `eip155:8453`) — an Ethereum L2 with low gas fees
+- **Planned:** Solana — for agents operating in the Solana ecosystem
+
+## Per-task billing
+
+Every operation the agent performs has a cost tracked at the task level:
+
+```
+TaskBilled {
+  task_id: "task_abc123",
+  cost: 15,            // micro-credits (1 = $0.01)
+  category: "inference",
+  provider: "anthropic",
+  model: "claude-sonnet-4-20250514",
+  tokens_in: 1200,
+  tokens_out: 450,
+}
+```
+
+When the agent earns revenue (completing work for a third party), a corresponding event is recorded:
+
+```
+RevenueReceived {
+  task_id: "task_abc123",
+  amount: 50,          // micro-credits
+  source: "marketplace",
+  description: "Research report completed",
+}
+```
+
+The difference between costs and revenue feeds into Autonomic's economic pillar to determine the agent's economic mode.
+
+## Micro-credit system
+
+Haima uses micro-credits as the internal unit of account: **1 micro-credit = 1 cent USD**. This aligns with the platform billing system, where plans allocate credits in cents.
+
+Credits bridge to USDC for on-chain settlement:
+
+- **Deposit:** send USDC to the agent's wallet address to fund credits
+- **Withdraw:** convert credits to USDC and send to an external address
+
+The bridge is managed by a facilitator service.
+
+## Facilitator
+
+The facilitator handles the complexity of on-chain transactions:
+
+| Facilitator | Description |
+|-------------|-------------|
+| **Coinbase CDP** | Default — uses Coinbase Commerce Developer Platform for gas abstraction and settlement |
+| **Self-hosted** | Planned — run your own facilitator node for full control |
+| **Stripe** | Planned — fiat-only path without on-chain settlement |
+
+The facilitator abstracts gas fees, nonce management, and transaction confirmation. Agents never need to hold ETH for gas.
+
+## Running Haima
+
+```bash
+cd haima
+cargo run -p haimad
+# Listening on http://localhost:3003
+```
+
+### API endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/haima/balance` | GET | Wallet balance and credit state |
+| `/v1/haima/pay` | POST | Submit an x402 payment |
+| `/v1/haima/history` | GET | Transaction history |
+| `/v1/haima/health` | GET | Service health check |
+
+## Event persistence
+
+Finance events use `EventKind::Custom` with a `"finance."` prefix in the Lago journal:
+
+- `finance.task_billed` — operation cost recorded
+- `finance.revenue_received` — payment received for work
+- `finance.payment_sent` — x402 payment submitted
+- `finance.payment_confirmed` — on-chain confirmation received
+- `finance.credits_deposited` — credits added to wallet
+- `finance.credits_withdrawn` — credits removed from wallet
+
+This naming convention enables forward-compatible persistence: new event types can be added without Lago schema changes.

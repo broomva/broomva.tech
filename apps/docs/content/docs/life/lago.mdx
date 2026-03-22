@@ -1,0 +1,148 @@
+---
+title: Lago
+description: Event-sourced persistence substrate — append-only journal, content-addressed blobs, and knowledge index.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+# Lago
+
+Lago is the persistence substrate of the Agent OS. It provides an append-only event journal, content-addressed blob storage, a knowledge index with graph traversal, and filesystem manifests with branching. Every state change in the system is an immutable event stored in Lago.
+
+The name comes from "lake" — a deep, still body that preserves everything deposited into it.
+
+## Architecture
+
+Lago is structured as a Rust workspace with these crates:
+
+| Crate | Role |
+|-------|------|
+| `lago-core` | Core types, event envelope, stream identifiers |
+| `lago-journal` | Append-only event journal trait and redb implementation |
+| `lago-store` | Content-addressed blob storage (SHA-256 + zstd compression) |
+| `lago-fs` | Filesystem manifests with branching (tree of content-addressed nodes) |
+| `lago-ingest` | SSE stream ingestion (OpenAI, Anthropic, Vercel, Lago formats) |
+| `lago-api` | HTTP API server (axum, SSE endpoints) |
+| `lago-policy` | RBAC policy engine (roles, permissions, hooks) |
+| `lago-knowledge` | Knowledge index (frontmatter extraction, wikilinks, scored search, graph traversal) |
+| `lago-auth` | JWT authentication with per-user vault sessions |
+| `lago-aios-eventstore-adapter` | Adapter implementing aiOS EventStore trait |
+| `lago-cli` | CLI for journal inspection and management |
+| `lagod` | Standalone daemon binary |
+
+## Event journal
+
+The journal is the heart of Lago. It stores events as immutable, ordered records in a redb embedded database.
+
+### Event envelope
+
+Every event is wrapped in an `EventEnvelope` that provides:
+
+```rust
+struct EventEnvelope {
+    id: Ulid,           // Globally unique, time-ordered identifier
+    stream_id: String,  // Logical stream (e.g., session ID)
+    kind: EventKind,    // Type of event (message, tool_call, memory, etc.)
+    payload: Vec<u8>,   // Serialized event data
+    checksum: [u8; 32], // SHA-256 of the payload
+    timestamp: u64,     // Unix timestamp in milliseconds
+    metadata: Metadata, // Trace context, actor, provenance
+}
+```
+
+### Append-only guarantee
+
+Events are never modified or deleted. The journal is strictly append-only. This means:
+
+- **State at any point in time** can be reconstructed by replaying events up to that timestamp
+- **Auditing** is inherent — the complete history of every agent action is preserved
+- **Branching** is cheap — create a branch by remembering a cursor position and appending new events from there
+
+### Stream isolation
+
+Events are organized into streams identified by a string ID (typically a session ID). Streams are independent — appending to one stream does not affect others. Cross-stream queries are supported through the knowledge index.
+
+## Blob storage
+
+Large binary content (files, images, documents) is stored separately from events in content-addressed blob storage:
+
+- **Content addressing** — blobs are identified by their SHA-256 hash
+- **Deduplication** — identical content is stored only once
+- **Compression** — all blobs are compressed with zstd before storage
+- **Integrity** — the hash serves as a checksum; any corruption is immediately detectable
+
+Blobs are referenced from events by their hash. The blob store is backed by the local filesystem with a flat hash-based directory structure.
+
+## Knowledge index
+
+The knowledge index provides searchable, graph-structured access to the information stored in Lago:
+
+### Frontmatter extraction
+
+Documents ingested into Lago have their frontmatter parsed and indexed. Title, tags, dates, and custom fields become searchable metadata.
+
+### Wikilink graph
+
+Documents can reference each other using `[[wikilink]]` syntax. These links form a directed graph that can be traversed to discover related content.
+
+### Scored search
+
+Full-text search with relevance scoring. Queries are matched against document titles, frontmatter fields, and body content. Results are ranked by a TF-IDF-inspired scoring function.
+
+### Graph traversal
+
+Starting from any document, you can traverse the wikilink graph to find related documents at a specified depth. This powers the "related content" and "see also" features in the platform.
+
+## Filesystem manifests
+
+Lago provides a virtual filesystem built on content-addressed nodes:
+
+- **Trees** — directory nodes containing references to child nodes
+- **Blobs** — file nodes referencing content in blob storage
+- **Branches** — named pointers to tree roots, enabling Git-like branching
+- **Snapshots** — immutable captures of a tree state at a point in time
+
+This allows agents to maintain a workspace that is fully versioned and branchable without a traditional filesystem.
+
+## RBAC policy
+
+Lago includes a built-in policy engine for access control:
+
+- **3 default roles** — admin, user, reader
+- **5 default rules** — scoping journal access, blob access, and knowledge queries per role
+- **2 hooks** — pre-append and post-append hooks for custom validation and side effects
+
+Policies are evaluated synchronously before each operation. Denied operations return an error without modifying state.
+
+## Running Lago
+
+Lago typically runs embedded within Arcan through the `arcan-lago` bridge. For standalone use:
+
+```bash
+cd lago
+cargo run -p lagod -- --data-dir /path/to/data --port 3001
+```
+
+### CLI
+
+```bash
+# List streams in the journal
+cargo run -p lago-cli -- streams
+
+# Count events in a stream
+cargo run -p lago-cli -- count --stream my-session
+
+# Cat events as JSON
+cargo run -p lago-cli -- cat --stream my-session --format json
+
+# Search the knowledge index
+cargo run -p lago-cli -- search "event sourcing"
+```
+
+## Critical patterns
+
+<Callout type="warn">
+  **redb is synchronous.** The redb embedded database does not support async I/O. All redb operations in Lago use `tokio::task::spawn_blocking` to avoid blocking the async runtime. Never call redb directly from an async context.
+</Callout>
+
+The Journal trait uses `BoxFuture` for dyn-compatibility, allowing different journal implementations to be swapped at runtime (redb for production, in-memory for tests).
