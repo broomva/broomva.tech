@@ -1,8 +1,15 @@
+import { hostname } from "node:os";
 import { createInterface } from "node:readline/promises";
 import { Command } from "commander";
+import {
+	ensureAgentKeys,
+	hasAgentKeys,
+	loadAgentKeys,
+	publicKeyFingerprint,
+} from "../agent-keys.js";
 import { ApiClient } from "../lib/api-client.js";
 import { clearToken, resolveToken, storeToken } from "../lib/auth-store.js";
-import { readConfig } from "../lib/config-store.js";
+import { readConfig, updateConfig } from "../lib/config-store.js";
 import { DEFAULT_API_BASE } from "../lib/constants.js";
 import {
 	fmt,
@@ -12,6 +19,14 @@ import {
 	success,
 	warn,
 } from "../lib/output.js";
+
+/** Default capabilities granted to CLI agents. */
+const DEFAULT_CAPABILITIES = [
+	"chat:send",
+	"chat:read",
+	"usage:read",
+	"memory:read",
+];
 
 export function authCommand(): Command {
 	const cmd = new Command("auth").description("Manage authentication");
@@ -36,7 +51,10 @@ export function authCommand(): Command {
 		.description("Remove stored credentials")
 		.action(() => {
 			clearToken();
-			success("Logged out. Token removed from ~/.broomva/config.json");
+			updateConfig({ agent: undefined });
+			success(
+				"Logged out. Token and agent config removed from ~/.broomva/config.json",
+			);
 		});
 
 	cmd
@@ -58,11 +76,28 @@ export function authCommand(): Command {
 			const client = new ApiClient({ apiBase: config.apiBase });
 			const result = await client.validateToken();
 
-			const status = {
+			// Gather agent info
+			const agentConfig = config.agent;
+			const keys = loadAgentKeys();
+
+			const status: Record<string, unknown> = {
 				authenticated: result.valid,
 				source: tokenInfo.source,
 				expiresAt: tokenInfo.expiresAt ?? null,
 			};
+
+			if (agentConfig?.agentId) {
+				status.agent = {
+					agentId: agentConfig.agentId,
+					name: agentConfig.name ?? null,
+					publicKeyFingerprint: keys
+						? publicKeyFingerprint(keys.publicKey)
+						: null,
+					capabilities: agentConfig.capabilities ?? [],
+					registeredAt: agentConfig.registeredAt ?? null,
+					status: agentConfig.status ?? "unknown",
+				};
+			}
 
 			if (opts.json) {
 				printJson(status);
@@ -70,6 +105,30 @@ export function authCommand(): Command {
 				success(`Authenticated (token from ${tokenInfo.source})`);
 				if (tokenInfo.expiresAt) {
 					info(`Token expires: ${tokenInfo.expiresAt}`);
+				}
+				if (agentConfig?.agentId) {
+					console.log("");
+					console.log(fmt.bold("  Agent Identity"));
+					console.log(`  ID:             ${agentConfig.agentId}`);
+					if (agentConfig.name) {
+						console.log(`  Name:           ${agentConfig.name}`);
+					}
+					if (keys) {
+						console.log(
+							`  Key Fingerprint: ${publicKeyFingerprint(keys.publicKey)}`,
+						);
+					}
+					console.log(
+						`  Capabilities:   ${(agentConfig.capabilities ?? []).join(", ")}`,
+					);
+					console.log(`  Status:         ${agentConfig.status ?? "unknown"}`);
+					if (agentConfig.registeredAt) {
+						console.log(`  Registered:     ${agentConfig.registeredAt}`);
+					}
+				} else if (hasAgentKeys()) {
+					warn(
+						"Agent keys exist but agent is not registered. Run `broomva auth login` to register.",
+					);
 				}
 			} else {
 				printError("Token is invalid or expired.");
@@ -96,6 +155,7 @@ export function authCommand(): Command {
  * 1. Request a device code from the server.
  * 2. Show the user a URL + code to open in the browser.
  * 3. Poll until the user approves, denies, or the code expires.
+ * 4. On success, generate/load agent keys and register with the platform.
  */
 async function deviceLogin(base: string): Promise<void> {
 	info("Requesting device authorization...\n");
@@ -170,6 +230,9 @@ async function deviceLogin(base: string): Promise<void> {
 				success(
 					"Authenticated successfully! Token stored in ~/.broomva/config.json",
 				);
+
+				// Register agent identity
+				await registerAgent(base, data.access_token);
 				return;
 			}
 
@@ -239,6 +302,71 @@ async function manualLogin(base: string): Promise<void> {
 
 	storeToken(token);
 	success("Authenticated successfully. Token stored in ~/.broomva/config.json");
+
+	// Register agent identity
+	await registerAgent(base, token);
+}
+
+/**
+ * Generate/load agent keys and register this CLI as an agent with the platform.
+ * Non-fatal: if registration fails, auth still works — agent features are just unavailable.
+ */
+async function registerAgent(base: string, token: string): Promise<void> {
+	try {
+		info("Setting up agent identity...");
+
+		const keys = ensureAgentKeys();
+		const agentName = `cli-${hostname()
+			.toLowerCase()
+			.replace(/[^a-z0-9-]/g, "-")}`;
+
+		info(`Agent ID: ${keys.agentId}`);
+		info(`Key fingerprint: ${publicKeyFingerprint(keys.publicKey)}`);
+
+		const res = await fetch(`${base}/api/auth/agent/register`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`,
+			},
+			body: JSON.stringify({
+				publicKey: keys.publicKey,
+				agentId: keys.agentId,
+				name: agentName,
+				capabilities: DEFAULT_CAPABILITIES,
+			}),
+		});
+
+		if (!res.ok) {
+			const text = await res.text();
+			warn(`Agent registration failed (${res.status}): ${text}`);
+			warn(
+				"Auth works, but agent identity is not registered with the platform.",
+			);
+			return;
+		}
+
+		const result = await res.json();
+
+		// Store agent config locally
+		updateConfig({
+			agent: {
+				agentId: result.agentId ?? keys.agentId,
+				publicKey: keys.publicKey,
+				name: agentName,
+				capabilities: result.capabilities ?? DEFAULT_CAPABILITIES,
+				registeredAt: result.registeredAt ?? new Date().toISOString(),
+				status: result.status ?? "active",
+			},
+		});
+
+		success(`Agent registered: ${result.agentId ?? keys.agentId}`);
+	} catch (err) {
+		warn(
+			`Agent registration skipped: ${err instanceof Error ? err.message : err}`,
+		);
+		warn("Auth works, but agent identity is not registered with the platform.");
+	}
 }
 
 function sleep(ms: number): Promise<void> {
