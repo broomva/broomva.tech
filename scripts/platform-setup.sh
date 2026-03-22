@@ -18,7 +18,7 @@ cd "$REPO_ROOT"
 
 # Private paths that get overlayed (relative to platform source root)
 PRIVATE_APPS=(console)
-PRIVATE_PACKAGES=(billing tenant deploy conformance database)
+PRIVATE_PACKAGES=(billing tenant deploy conformance database lago-client)
 
 # --- Colors ---
 RED='\033[0;31m'

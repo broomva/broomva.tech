@@ -148,3 +148,4 @@ skills-lock.json
 **/*.rs.bk
 Cargo.lock
 !crates/**/Cargo.lock
+packages/lago-client/
