@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Script from "next/script";
 import { LandingClient } from "@/components/site/landing-sections";
 import { getSafeSession } from "@/lib/auth";
@@ -29,7 +30,7 @@ export default async function Home() {
     getLatest("writing", 3),
     getLatest("notes", 3),
     getRecentRepos("broomva", 6),
-    getSafeSession(),
+    getSafeSession({ fetchOptions: { headers: await headers() } }),
   ]);
 
   return (

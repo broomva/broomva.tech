@@ -37,7 +37,13 @@ export async function getSafeSession(
     return await auth.getSession(options);
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn("Neon Auth session lookup failed, continuing anonymously.", error);
+      const msg = error instanceof Error ? error.message : "";
+      const isExpected =
+        error instanceof Error && error.name === "AbortError" ||
+        msg.includes("Cookies can only be modified");
+      if (!isExpected) {
+        console.warn("Neon Auth session lookup failed, continuing anonymously.", error);
+      }
     }
 
     return {

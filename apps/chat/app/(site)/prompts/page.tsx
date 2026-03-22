@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { PromptsList } from "@/components/site/prompts-list";
 import { PromptsEnergyBeam } from "@/components/site/prompts-energy-beam";
 import { UserPrompts } from "@/components/site/user-prompts";
@@ -13,7 +14,7 @@ export const metadata = {
 export default async function PromptsPage() {
   const [entries, { data: session }] = await Promise.all([
     getContentList("prompts"),
-    getSafeSession(),
+    getSafeSession({ fetchOptions: { headers: await headers() } }),
   ]);
 
   return (
