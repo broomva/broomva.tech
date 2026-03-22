@@ -43,11 +43,6 @@
     "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
-    "@broomva/billing": "../../packages/billing",
-    "@broomva/conformance": "../../packages/conformance",
-    "@broomva/database": "../../packages/database",
-    "@broomva/deploy": "../../packages/deploy",
-    "@broomva/tenant": "../../packages/tenant",
     "@ai-sdk-tools/store": "1.2.0",
     "@ai-sdk/anthropic": "3.0.0",
     "@ai-sdk/devtools": "0.0.1",
