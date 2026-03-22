@@ -2,7 +2,7 @@
 
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, Layers, MessageCircle, Terminal } from "lucide-react";
+import { Home, Sparkles, Layers, MessageCircle, Terminal, BookOpen } from "lucide-react";
 import authClient from "@/lib/auth-client";
 import { motion, AnimatePresence } from "motion/react";
 import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
@@ -18,6 +18,7 @@ const allLinks = [
   { href: "/skills", label: "Skills", icon: Layers, productOnly: false, authOnly: false },
   { href: "/chat", label: "Chat", icon: MessageCircle, productOnly: false, authOnly: false },
   { href: "/console", label: "Console", icon: Terminal, productOnly: false, authOnly: true },
+  { href: "https://docs.broomva.tech/docs", label: "Docs", icon: BookOpen, productOnly: false, authOnly: false },
 ];
 
 const productRoutes = ["/chat", "/project", "/settings", "/console"];
@@ -96,7 +97,7 @@ export function TopNav() {
             return (
               <DockItem
                 key={link.href}
-                onClick={() => router.push(link.href as Route)}
+                onClick={() => link.href.startsWith("http") ? window.open(link.href, "_blank") : router.push(link.href as Route)}
                 className="cursor-pointer"
               >
                 <DockLabel>{link.label}</DockLabel>

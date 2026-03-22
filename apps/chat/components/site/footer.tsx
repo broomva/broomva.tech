@@ -7,6 +7,7 @@ const navLinks = [
   { href: "/writing", label: "Writing" },
   { href: "/notes", label: "Notes" },
   { href: "/chat", label: "Chat" },
+  { href: "https://docs.broomva.tech/docs", label: "Docs" },
 ];
 
 const socialLinks = [
