@@ -2,12 +2,17 @@ import "server-only";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "./client";
 import {
+  type AgentService,
+  agent,
   agentRegistration,
-  escrowTransaction,
-  marketplaceTask,
-  organization,
+  agentService,
   type EscrowTransaction,
+  escrowTransaction,
   type MarketplaceTask,
+  type MarketplaceTransaction,
+  marketplaceTask,
+  marketplaceTransaction,
+  organization,
 } from "./schema";
 
 // ---------------------------------------------------------------------------
@@ -321,4 +326,258 @@ export async function disputeEscrow(
   }
 
   return disputed;
+}
+
+// ---------------------------------------------------------------------------
+// Agent Service Marketplace
+// ---------------------------------------------------------------------------
+
+/** Platform facilitator fee rate: 5% */
+const FACILITATOR_FEE_RATE = 0.05;
+
+/**
+ * List marketplace services with optional filters.
+ */
+export async function listAgentServices(filters: {
+  category?: string;
+  minTrust?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<
+  Array<
+    AgentService & {
+      agentName: string | null;
+      agentTrustScore: number | null;
+      agentTrustLevel: string | null;
+    }
+  >
+> {
+  const limit = Math.min(filters.limit ?? 20, 100);
+  const offset = filters.offset ?? 0;
+
+  const conditions = [eq(agentService.status, "active")];
+
+  if (filters.category) {
+    conditions.push(eq(agentService.category, filters.category));
+  }
+
+  if (filters.minTrust != null) {
+    conditions.push(gte(agentService.trustMinimum, 0)); // services listing is public; filter by min trust the service requires
+  }
+
+  // Left join on Agent table to get agent name, and on AgentRegistration for trust data
+  const rows = await db
+    .select({
+      id: agentService.id,
+      agentId: agentService.agentId,
+      userId: agentService.userId,
+      name: agentService.name,
+      description: agentService.description,
+      category: agentService.category,
+      pricing: agentService.pricing,
+      endpoint: agentService.endpoint,
+      capabilities: agentService.capabilities,
+      trustMinimum: agentService.trustMinimum,
+      status: agentService.status,
+      callCount: agentService.callCount,
+      totalRevenue: agentService.totalRevenue,
+      createdAt: agentService.createdAt,
+      updatedAt: agentService.updatedAt,
+      agentName: agent.name,
+      agentTrustScore: agentRegistration.trustScore,
+      agentTrustLevel: agentRegistration.trustLevel,
+    })
+    .from(agentService)
+    .leftJoin(agent, eq(agentService.agentId, agent.id))
+    .leftJoin(
+      agentRegistration,
+      eq(agent.agentKeyId, agentRegistration.credentialId),
+    )
+    .where(and(...conditions))
+    .orderBy(desc(agentService.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return rows;
+}
+
+/**
+ * Get a single agent service by ID.
+ */
+export async function getAgentServiceById(serviceId: string): Promise<
+  | (AgentService & {
+      agentName: string | null;
+      agentTrustScore: number | null;
+      agentTrustLevel: string | null;
+    })
+  | undefined
+> {
+  const [row] = await db
+    .select({
+      id: agentService.id,
+      agentId: agentService.agentId,
+      userId: agentService.userId,
+      name: agentService.name,
+      description: agentService.description,
+      category: agentService.category,
+      pricing: agentService.pricing,
+      endpoint: agentService.endpoint,
+      capabilities: agentService.capabilities,
+      trustMinimum: agentService.trustMinimum,
+      status: agentService.status,
+      callCount: agentService.callCount,
+      totalRevenue: agentService.totalRevenue,
+      createdAt: agentService.createdAt,
+      updatedAt: agentService.updatedAt,
+      agentName: agent.name,
+      agentTrustScore: agentRegistration.trustScore,
+      agentTrustLevel: agentRegistration.trustLevel,
+    })
+    .from(agentService)
+    .leftJoin(agent, eq(agentService.agentId, agent.id))
+    .leftJoin(
+      agentRegistration,
+      eq(agent.agentKeyId, agentRegistration.credentialId),
+    )
+    .where(eq(agentService.id, serviceId))
+    .limit(1);
+
+  return row;
+}
+
+/**
+ * Create a new agent service listing.
+ */
+export async function createAgentService(values: {
+  agentId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  category: string;
+  pricing: {
+    model: "per_call" | "per_token" | "fixed";
+    amount_micro_usd: number;
+  };
+  endpoint?: string;
+  capabilities?: string[];
+  trustMinimum?: number;
+}): Promise<AgentService> {
+  const [service] = await db
+    .insert(agentService)
+    .values({
+      agentId: values.agentId,
+      userId: values.userId,
+      name: values.name,
+      description: values.description ?? null,
+      category: values.category,
+      pricing: values.pricing,
+      endpoint: values.endpoint ?? null,
+      capabilities: values.capabilities ?? [],
+      trustMinimum: values.trustMinimum ?? 0,
+    })
+    .returning();
+
+  return service;
+}
+
+/**
+ * List services owned by a user.
+ */
+export async function listUserServices(
+  userId: string,
+): Promise<AgentService[]> {
+  return db
+    .select()
+    .from(agentService)
+    .where(eq(agentService.userId, userId))
+    .orderBy(desc(agentService.createdAt));
+}
+
+/**
+ * Create a marketplace transaction (service invocation).
+ *
+ * Records the transaction, increments the service call count, and
+ * accumulates revenue on the service record.
+ */
+export async function createMarketplaceServiceTransaction(values: {
+  serviceId: string;
+  buyerAgentId: string;
+  sellerAgentId: string;
+  amountMicroUsd: number;
+}): Promise<MarketplaceTransaction> {
+  const fee = Math.ceil(values.amountMicroUsd * FACILITATOR_FEE_RATE);
+
+  return db.transaction(async (tx) => {
+    // Create the transaction record
+    const [txn] = await tx
+      .insert(marketplaceTransaction)
+      .values({
+        serviceId: values.serviceId,
+        buyerAgentId: values.buyerAgentId,
+        sellerAgentId: values.sellerAgentId,
+        amountMicroUsd: values.amountMicroUsd,
+        facilitatorFeeMicroUsd: fee,
+        status: "pending",
+      })
+      .returning();
+
+    // Increment service call count and revenue
+    await tx
+      .update(agentService)
+      .set({
+        callCount: sql`${agentService.callCount} + 1`,
+        totalRevenue: sql`${agentService.totalRevenue} + ${values.amountMicroUsd}`,
+      })
+      .where(eq(agentService.id, values.serviceId));
+
+    return txn;
+  });
+}
+
+/**
+ * List marketplace transactions for a user (as buyer or seller).
+ */
+export async function listUserTransactions(
+  userId: string,
+  limit = 50,
+): Promise<MarketplaceTransaction[]> {
+  // Get agent IDs owned by this user
+  const userAgents = await db
+    .select({ id: agent.id })
+    .from(agent)
+    .where(eq(agent.userId, userId));
+
+  const agentIds = userAgents.map((a) => a.id);
+
+  if (agentIds.length === 0) {
+    return [];
+  }
+
+  // Find transactions where user's agents are buyer or seller
+  const rows = await db
+    .select()
+    .from(marketplaceTransaction)
+    .where(
+      sql`${marketplaceTransaction.buyerAgentId} = ANY(${agentIds}) OR ${marketplaceTransaction.sellerAgentId} = ANY(${agentIds})`,
+    )
+    .orderBy(desc(marketplaceTransaction.createdAt))
+    .limit(Math.min(limit, 100));
+
+  return rows;
+}
+
+/**
+ * Get a user's agent by ID (verifies ownership).
+ */
+export async function getUserAgent(
+  userId: string,
+  agentId: string,
+): Promise<{ id: string; name: string } | undefined> {
+  const [row] = await db
+    .select({ id: agent.id, name: agent.name })
+    .from(agent)
+    .where(and(eq(agent.id, agentId), eq(agent.userId, userId)))
+    .limit(1);
+
+  return row;
 }

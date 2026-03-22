@@ -16,6 +16,7 @@ import {
   Rocket,
   Search,
   Shield,
+  Store,
 } from "lucide-react";
 
 /** Polling intervals in milliseconds */
@@ -93,6 +94,12 @@ export const CONSOLE_NAV: NavItem[] = [
     label: "Agents",
     href: "/console/agents",
     icon: Bot,
+  },
+  {
+    key: "marketplace",
+    label: "Marketplace",
+    href: "/console/marketplace",
+    icon: Store,
   },
   {
     key: "usage",

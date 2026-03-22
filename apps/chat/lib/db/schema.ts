@@ -1013,4 +1013,111 @@ export const escrowTransaction = pgTable(
 
 export type EscrowTransaction = InferSelectModel<typeof escrowTransaction>;
 
+// ---------------------------------------------------------------------------
+// Agent Service Marketplace Tables (services + transactions)
+// ---------------------------------------------------------------------------
+
+/**
+ * Agent services listed on the marketplace.
+ *
+ * Agents register capabilities as discoverable services that other agents
+ * can invoke. Pricing is stored as micro-USD (1 USD = 1_000_000 micro-USD)
+ * for sub-cent granularity.
+ */
+export const agentService = pgTable(
+  "AgentService",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    /** Registered agent ID (Agent table) */
+    agentId: text("agentId").notNull(),
+    /** Owner user ID */
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** Service category: research, code, data, creative, finance */
+    category: text("category").notNull(),
+    /** Pricing model: { model: "per_call" | "per_token" | "fixed", amount_micro_usd: number } */
+    pricing: json("pricing")
+      .$type<{
+        model: "per_call" | "per_token" | "fixed";
+        amount_micro_usd: number;
+      }>()
+      .notNull(),
+    /** External service URL (if applicable) */
+    endpoint: text("endpoint"),
+    /** List of capability tags */
+    capabilities: json("capabilities").$type<string[]>().default([]),
+    /** Minimum trust score (0-100) required to use this service */
+    trustMinimum: integer("trustMinimum").notNull().default(0),
+    /** Service status: active, paused, retired */
+    status: text("status").notNull().default("active"),
+    /** Total number of calls served */
+    callCount: integer("callCount").notNull().default(0),
+    /** Total revenue earned in micro-USD */
+    totalRevenue: integer("totalRevenue").notNull().default(0),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    AgentService_agent_id_idx: index("AgentService_agent_id_idx").on(t.agentId),
+    AgentService_user_id_idx: index("AgentService_user_id_idx").on(t.userId),
+    AgentService_category_idx: index("AgentService_category_idx").on(
+      t.category,
+    ),
+    AgentService_status_idx: index("AgentService_status_idx").on(t.status),
+  }),
+);
+
+export type AgentService = InferSelectModel<typeof agentService>;
+
+/**
+ * Marketplace transactions — records of service invocations between agents.
+ */
+export const marketplaceTransaction = pgTable(
+  "MarketplaceTransaction",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    serviceId: text("serviceId").notNull(),
+    buyerAgentId: text("buyerAgentId").notNull(),
+    sellerAgentId: text("sellerAgentId").notNull(),
+    /** Amount charged in micro-USD */
+    amountMicroUsd: integer("amountMicroUsd").notNull(),
+    /** Platform facilitator fee in micro-USD */
+    facilitatorFeeMicroUsd: integer("facilitatorFeeMicroUsd")
+      .notNull()
+      .default(0),
+    /** Transaction status: pending, completed, failed, disputed */
+    status: text("status").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    completedAt: timestamp("completedAt"),
+  },
+  (t) => ({
+    MarketplaceTransaction_service_id_idx: index(
+      "MarketplaceTransaction_service_id_idx",
+    ).on(t.serviceId),
+    MarketplaceTransaction_buyer_idx: index(
+      "MarketplaceTransaction_buyer_idx",
+    ).on(t.buyerAgentId),
+    MarketplaceTransaction_seller_idx: index(
+      "MarketplaceTransaction_seller_idx",
+    ).on(t.sellerAgentId),
+    MarketplaceTransaction_status_idx: index(
+      "MarketplaceTransaction_status_idx",
+    ).on(t.status),
+  }),
+);
+
+export type MarketplaceTransaction = InferSelectModel<
+  typeof marketplaceTransaction
+>;
+
 export const schema = { user, session, account, verification };
