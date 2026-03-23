@@ -3,9 +3,10 @@
  * Validate writing content quality at build time.
  *
  * Checks:
- * 1. Frontmatter audio/image references point to existing files
- * 2. No frontmatter keys leaked into body content (e.g., "audio: /audio/..." outside ---)
- * 3. Required frontmatter fields are present (title, summary, date, tags)
+ * 1. Required frontmatter fields (title, summary, date, tags)
+ * 2. Writing posts MUST have audio (frontmatter ref + file on disk)
+ * 3. Frontmatter audio/image references point to existing files
+ * 4. No frontmatter keys leaked into body content
  */
 import { readdir, readFile, access } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -14,6 +15,9 @@ const ROOT = resolve(import.meta.dirname, "..");
 const CONTENT = join(ROOT, "content");
 const PUBLIC = join(ROOT, "public");
 const KINDS = ["writing", "notes", "projects"];
+
+// Writing posts require these fields. Other kinds are more relaxed.
+const REQUIRED_WRITING_FIELDS = ["title", "summary", "date"];
 
 let errors = 0;
 let warnings = 0;
@@ -31,6 +35,7 @@ for (const kind of KINDS) {
 
   for (const file of mdx) {
     const filePath = join(dir, file);
+    const slug = file.replace(/\.(mdx?|md)$/, "");
     const raw = await readFile(filePath, "utf8");
 
     // Parse frontmatter boundaries
@@ -67,8 +72,20 @@ for (const kind of KINDS) {
       }
     }
 
-    // Check required fields
-    if (!fm.title) {
+    // Skip unpublished drafts
+    if (fm.published === "false") continue;
+
+    // Check required fields for writing posts
+    if (kind === "writing") {
+      for (const field of REQUIRED_WRITING_FIELDS) {
+        if (!fm[field]) {
+          console.error(
+            `✗  ${kind}/${file} — missing required field: ${field}`
+          );
+          errors++;
+        }
+      }
+    } else if (!fm.title) {
       console.error(`✗  ${kind}/${file} — missing required field: title`);
       errors++;
     }
@@ -97,8 +114,26 @@ for (const kind of KINDS) {
       }
     }
 
-    // Check audio file exists
-    if (fm.audio) {
+    // ── Writing posts MUST have audio ─────────────────────────────
+    if (kind === "writing") {
+      if (!fm.audio) {
+        console.error(
+          `✗  ${kind}/${file} — missing audio field in frontmatter (every writing post must have audio narration)`
+        );
+        errors++;
+      } else {
+        const audioPath = join(PUBLIC, fm.audio);
+        try {
+          await access(audioPath);
+        } catch {
+          console.error(
+            `✗  ${kind}/${file} — audio file missing on disk: ${fm.audio}`
+          );
+          errors++;
+        }
+      }
+    } else if (fm.audio) {
+      // Non-writing: audio is optional but if referenced, file must exist
       const audioPath = join(PUBLIC, fm.audio);
       try {
         await access(audioPath);
