@@ -252,6 +252,11 @@ export const featuresConfigSchema = z
     memoryVault: z
       .boolean()
       .describe("User memory vault via Lago (requires LAGO_URL)"),
+    agentAuth: z
+      .boolean()
+      .describe(
+        "Agent Auth Protocol tools — discover, connect, and execute capabilities on external services"
+      ),
   })
   .default({
     sandbox: false,
@@ -264,6 +269,7 @@ export const featuresConfigSchema = z
     followupSuggestions: false,
     knowledgeGraph: false,
     memoryVault: false,
+    agentAuth: false,
   });
 
 export const authenticationConfigSchema = z

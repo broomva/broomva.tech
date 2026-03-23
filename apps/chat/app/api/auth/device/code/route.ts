@@ -10,16 +10,33 @@ import {
 const deviceCodeSchema = z.object({
   client_id: z.string().default("cli"),
   scope: z.string().default(""),
+  // --- Agent registration fields (BRO-56) ---
+  agent_name: z.string().max(256).optional(),
+  host_id: z.string().max(128).optional(),
+  public_key: z.string().optional(),
+  requested_capabilities: z.array(z.string()).optional(),
 });
 
 /**
  * POST /api/auth/device/code
  *
- * RFC 8628 — Device Authorization Request.
+ * RFC 8628 -- Device Authorization Request.
  * Returns a device_code, user_code, and verification URI.
  *
  * Body (optional):
  *   { "client_id": "broomva-cli", "scope": "" }
+ *
+ * Extended for BRO-56 agent flow:
+ *   {
+ *     "client_id": "agent:my-agent",
+ *     "agent_name": "My Agent",
+ *     "host_id": "abc123",
+ *     "public_key": "...",
+ *     "requested_capabilities": ["chat:send", "chat:read"]
+ *   }
+ *
+ * When agent_name is present, the verification URI includes agent context
+ * so the approval page displays the agent's name and requested capabilities.
  */
 export async function POST(request: Request) {
   try {
@@ -50,7 +67,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { client_id: clientId, scope } = result.data;
+    const {
+      client_id: clientId,
+      scope,
+      agent_name: agentName,
+      host_id: hostId,
+      public_key: publicKey,
+      requested_capabilities: requestedCapabilities,
+    } = result.data;
 
     const deviceCode = Array.from(crypto.getRandomValues(new Uint8Array(32)))
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -62,9 +86,24 @@ export async function POST(request: Request) {
     const id = crypto.randomUUID();
     const now = new Date();
 
+    // If this is an agent flow, encode agent metadata in the scope field
+    const isAgentFlow = Boolean(agentName);
+    const effectiveScope = isAgentFlow
+      ? JSON.stringify({
+          agent_name: agentName,
+          host_id: hostId,
+          public_key: publicKey,
+          requested_capabilities: requestedCapabilities ?? [],
+        })
+      : scope;
+
+    const effectiveClientId = isAgentFlow
+      ? `agent:${agentName}`
+      : clientId;
+
     await db.execute(sql`
       INSERT INTO "DeviceAuthCode" ("id", "deviceCode", "userCode", "scope", "clientId", "status", "expiresAt", "pollingInterval", "createdAt")
-      VALUES (${id}, ${deviceCode}, ${userCode}, ${scope}, ${clientId}, ${"pending"}, ${expiresAt.toISOString()}, ${interval}, ${now.toISOString()})
+      VALUES (${id}, ${deviceCode}, ${userCode}, ${effectiveScope}, ${effectiveClientId}, ${"pending"}, ${expiresAt.toISOString()}, ${interval}, ${now.toISOString()})
     `);
 
     const baseUrl =
@@ -73,14 +112,39 @@ export async function POST(request: Request) {
         ? `https://${process.env.VERCEL_URL}`
         : "http://localhost:3001");
 
-    return NextResponse.json({
+    // Build verification URI — include agent context in query params when available
+    let verificationUriComplete = `${baseUrl}/device?code=${userCode}`;
+    if (isAgentFlow) {
+      const params = new URLSearchParams({
+        code: userCode,
+        agent_name: agentName!,
+        ...(requestedCapabilities && requestedCapabilities.length > 0
+          ? { capabilities: requestedCapabilities.join(",") }
+          : {}),
+      });
+      verificationUriComplete = `${baseUrl}/device?${params.toString()}`;
+    }
+
+    const response: Record<string, unknown> = {
       device_code: deviceCode,
       user_code: userCode,
       verification_uri: `${baseUrl}/device`,
-      verification_uri_complete: `${baseUrl}/device?code=${userCode}`,
+      verification_uri_complete: verificationUriComplete,
       expires_in: 900,
       interval,
-    });
+    };
+
+    // Include agent_id hint when in agent flow
+    if (isAgentFlow && publicKey) {
+      const data = new TextEncoder().encode(publicKey);
+      const hash = await crypto.subtle.digest("SHA-256", data);
+      const hex = Array.from(new Uint8Array(hash))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      response.agent_id = hex.slice(0, 16);
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Device code request failed:", error);
     return NextResponse.json(

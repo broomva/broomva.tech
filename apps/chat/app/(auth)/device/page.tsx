@@ -13,10 +13,19 @@ export const metadata: Metadata = {
 export default async function DevicePage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{
+    code?: string;
+    agent_name?: string;
+    capabilities?: string;
+  }>;
 }) {
   const params = await searchParams;
   const prefillCode = params.code ?? "";
+  const agentName = params.agent_name ?? "";
+  // capabilities are passed as a comma-separated string in the query param
+  const capabilities = params.capabilities
+    ? params.capabilities.split(",").filter(Boolean)
+    : [];
 
   return (
     <div className="container mx-auto flex h-dvh w-screen flex-col items-center justify-center">
@@ -31,7 +40,11 @@ export default async function DevicePage({
         Back
       </Link>
       <div className="mx-auto flex w-full flex-col items-center justify-center sm:w-[420px]">
-        <DeviceAuthForm prefillCode={prefillCode} />
+        <DeviceAuthForm
+          prefillCode={prefillCode}
+          agentName={agentName}
+          capabilities={capabilities}
+        />
       </div>
     </div>
   );

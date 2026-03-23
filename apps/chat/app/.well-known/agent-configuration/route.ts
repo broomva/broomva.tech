@@ -60,6 +60,12 @@ export async function GET() {
 
       // ── Extended platform info (broomva-specific) ───────────────────
 
+      // Agent identity endpoints (BRO-56 — register + status for CLI agents)
+      agent: {
+        register: `${baseUrl}/api/auth/agent/register`,
+        status: `${baseUrl}/api/auth/agent/status`,
+      },
+
       // Legacy auth methods (existing device flow, API tokens, JWT refresh)
       auth: {
         // Device code flow (RFC 8628) — for CLIs and headless agents

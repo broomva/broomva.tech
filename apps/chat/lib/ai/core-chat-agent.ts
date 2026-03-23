@@ -5,8 +5,10 @@ import { getRecentGeneratedImage } from "@/app/(chat)/api/chat/get-recent-genera
 import { type AppModelId, getAppModelDefinition } from "@/lib/ai/app-models";
 import { markdownJoinerTransform } from "@/lib/ai/markdown-joiner-transform";
 import { getLanguageModel, getModelProviderOptions } from "@/lib/ai/providers";
+import { getAgentAuthSDKTools } from "@/lib/ai/tools/agent-auth-tools";
 import { getMcpTools, getTools } from "@/lib/ai/tools/tools";
 import type { ChatMessage, StreamWriter, ToolName } from "@/lib/ai/types";
+import { config } from "@/lib/config";
 import type { CostAccumulator } from "@/lib/credits/cost-accumulator";
 import type { McpConnector } from "@/lib/db/schema";
 import { replaceFilePartUrlByBinaryDataInMessages } from "@/lib/utils/download-assets";
@@ -72,6 +74,12 @@ export async function createCoreChatAgent({
     connectors: mcpConnectors,
   });
 
+  // Get Agent Auth tools if enabled and user is authenticated
+  const { tools: agentAuthTools, cleanup: agentAuthCleanup } =
+    config.features.agentAuth && userId
+      ? await getAgentAuthSDKTools(userId)
+      : { tools: {}, cleanup: () => {} };
+
   // Get base tools
   const baseTools = getTools({
     dataStream,
@@ -86,10 +94,11 @@ export async function createCoreChatAgent({
     costAccumulator,
   });
 
-  // Merge base tools with MCP tools
+  // Merge base tools with MCP tools and Agent Auth tools
   const allTools = {
     ...baseTools,
     ...mcpTools,
+    ...agentAuthTools,
   };
 
   // Compute final activeTools for streamText:
@@ -99,9 +108,15 @@ export async function createCoreChatAgent({
   );
   // 2. Always allow all MCP tools that exist at runtime
   const mcpToolNames = Object.keys(mcpTools);
-  // 3. Build the final activeTools list (cast needed because MCP tools are dynamic)
+  // 3. Always allow all Agent Auth tools that exist at runtime
+  const agentAuthToolNames = Object.keys(agentAuthTools);
+  // 4. Build the final activeTools list (cast needed because dynamic tools are dynamic)
   const activeTools = [
-    ...new Set([...existingBaseActiveTools, ...mcpToolNames]),
+    ...new Set([
+      ...existingBaseActiveTools,
+      ...mcpToolNames,
+      ...agentAuthToolNames,
+    ]),
   ] as (keyof typeof allTools)[];
 
   // Resolve async model config before streamText to ensure cleanup on failure
@@ -114,6 +129,7 @@ export async function createCoreChatAgent({
     ]);
   } catch (error) {
     await mcpCleanup();
+    agentAuthCleanup();
     throw error;
   }
 
@@ -156,8 +172,9 @@ export async function createCoreChatAgent({
     abortSignal,
     providerOptions,
     onFinish: async () => {
-      // Clean up MCP clients when streaming is done (onFinish runs for both success and error)
+      // Clean up MCP clients and Agent Auth client when streaming is done
       await mcpCleanup();
+      agentAuthCleanup();
     },
   });
 

@@ -55,6 +55,7 @@ const config = {
     followupSuggestions: true,
     knowledgeGraph: true, // Requires VAULT_PATH
     memoryVault: true, // Requires LAGO_URL
+    agentAuth: true, // Agent Auth Protocol — connect to external services
   },
   pricing: {
     currency: "USD",

@@ -76,7 +76,7 @@ export const agentAuthInstance = betterAuth({
   basePath: "/api/auth/agent-protocol",
 
   plugins: [
-    // @ts-expect-error — version mismatch between better-auth and @better-auth/agent-auth AuthContext types
+    // @ts-ignore — version mismatch between better-auth and @better-auth/agent-auth AuthContext types
     agentAuth({
       providerName: "Broomva Platform",
       providerDescription:
@@ -117,8 +117,8 @@ export async function verifyAgentRequest(
   capabilities: string[];
 } | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await _verifyAgentRequest(request, agentAuthInstance as any);
+    // @ts-ignore — same version mismatch as above
+    const result = await _verifyAgentRequest(request, agentAuthInstance);
     if (!result) return null;
     return {
       agentId: result.agentId ?? result.agent?.id ?? "",

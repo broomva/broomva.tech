@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
-import { deviceAuthCode } from "@/lib/db/schema";
+import { deviceAuthCode, agent } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { JWT_ACCESS_EXPIRY_MS } from "@/lib/ai/vault/jwt";
 import {
@@ -11,7 +11,7 @@ import {
 /**
  * POST /api/auth/device/token
  *
- * RFC 8628 — Device Access Token Request.
+ * RFC 8628 -- Device Access Token Request.
  * The CLI polls this endpoint until the user approves/denies or the code expires.
  *
  * Body: { "device_code": "...", "grant_type": "urn:ietf:params:oauth:grant-type:device_code" }
@@ -21,7 +21,11 @@ import {
  *   - slow_down: polling too fast (enforced via rate limiting)
  *   - access_denied: user denied
  *   - expired_token: code expired
- *   - 200 + { access_token, token_type, expires_in, refresh_token? }: approved
+ *   - 200 + { access_token, token_type, expires_in, refresh_token?, agent? }: approved
+ *
+ * When the device code was created as part of an agent registration flow
+ * (BRO-56), the response includes an `agent` object with the registered
+ * agent's ID, status, and granted capabilities.
  */
 export async function POST(request: Request) {
   try {
@@ -149,6 +153,46 @@ async function handleTokenRequest(request: Request) {
         response.refresh_token = refreshTokenValue;
       }
 
+      // ---------------------------------------------------------------
+      // Agent info enrichment (BRO-56)
+      // ---------------------------------------------------------------
+      // If this device code was created for an agent registration,
+      // include the registered agent's details in the token response.
+      const agentMeta = parseAgentMetadata(record.scope);
+      if (agentMeta && record.userId) {
+        try {
+          const agentKeyId =
+            agentMeta.agent_key_id ??
+            (agentMeta.public_key
+              ? await deriveAgentKeyId(agentMeta.public_key)
+              : null);
+
+          if (agentKeyId) {
+            const [agentRecord] = await db
+              .select()
+              .from(agent)
+              .where(eq(agent.agentKeyId, agentKeyId))
+              .limit(1);
+
+            if (agentRecord) {
+              response.agent = {
+                agent_id: agentRecord.agentKeyId,
+                name: agentRecord.name,
+                status: agentRecord.status,
+                capabilities: agentRecord.capabilities ?? [],
+                registered_at: agentRecord.createdAt.toISOString(),
+              };
+            }
+          }
+        } catch (err) {
+          // Non-fatal: log and continue with the token response
+          console.error(
+            "[device/token] Agent info enrichment failed (non-fatal):",
+            err,
+          );
+        }
+      }
+
       return NextResponse.json(response);
     }
 
@@ -158,4 +202,36 @@ async function handleTokenRequest(request: Request) {
         { status: 500 }
       );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Agent metadata helpers (shared with device/authorize)
+// ---------------------------------------------------------------------------
+
+interface AgentMetadata {
+  agent_name: string;
+  agent_key_id?: string;
+  public_key?: string;
+  host_id?: string;
+  requested_capabilities: string[];
+}
+
+function parseAgentMetadata(scope: string): AgentMetadata | null {
+  if (!scope.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(scope);
+    if (parsed.agent_name) return parsed as AgentMetadata;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function deriveAgentKeyId(publicKey: string): Promise<string> {
+  const data = new TextEncoder().encode(publicKey);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  const hex = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return hex.slice(0, 16);
 }
