@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# broomva-config — read/write ~/.broomva/config.yaml
+#
+# Usage:
+#   broomva-config get <key>          — read a config value
+#   broomva-config set <key> <value>  — write a config value
+#   broomva-config list               — show all config
+set -euo pipefail
+
+STATE_DIR="${BROOMVA_STATE_DIR:-$HOME/.broomva}"
+CONFIG_FILE="$STATE_DIR/config.yaml"
+
+case "${1:-}" in
+  get)
+    KEY="${2:?Usage: broomva-config get <key>}"
+    grep -E "^${KEY}:" "$CONFIG_FILE" 2>/dev/null | tail -1 | awk '{print $2}' | tr -d '[:space:]' || true
+    ;;
+  set)
+    KEY="${2:?Usage: broomva-config set <key> <value>}"
+    VALUE="${3:?Usage: broomva-config set <key> <value>}"
+    mkdir -p "$STATE_DIR"
+    if grep -qE "^${KEY}:" "$CONFIG_FILE" 2>/dev/null; then
+      sed -i '' "s/^${KEY}:.*/${KEY}: ${VALUE}/" "$CONFIG_FILE"
+    else
+      echo "${KEY}: ${VALUE}" >> "$CONFIG_FILE"
+    fi
+    ;;
+  list)
+    cat "$CONFIG_FILE" 2>/dev/null || true
+    ;;
+  *)
+    echo "Usage: broomva-config {get|set|list} [key] [value]"
+    exit 1
+    ;;
+esac
