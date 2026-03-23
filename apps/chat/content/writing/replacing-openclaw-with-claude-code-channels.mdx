@@ -14,7 +14,7 @@ image: /images/writing/replacing-openclaw-with-claude-code-channels/hero.png
 
 ![Discord sessions architecture — each channel maps to an isolated Claude Code session via tmux](/images/writing/replacing-openclaw-with-claude-code-channels/hero.png)
 
-The agent-on-mobile dream was real. Having your AI agent accessible through Discord and Telegram — from your phone, while walking, between meetings — turned out to be one of the highest-leverage features I built. OpenClaw proved that. But 247K GitHub stars and a Python dependency tree aren't what you need when Claude Code ships native channels.
+The agent-on-mobile dream was real. Having your AI agent accessible through Discord and Telegram — from your phone, while walking, between meetings — turned out to be one of the highest-leverage features I built. OpenClaw proved that. But 331K GitHub stars and a TypeScript dependency tree aren't what you need when Claude Code ships native channels.
 
 ## The mobile agent problem
 
@@ -24,7 +24,7 @@ OpenClaw made this work. It was a framework that bridged messaging platforms to 
 
 But the overhead was real:
 
-- A separate Python framework with its own dependency tree
+- A separate TypeScript framework with its own dependency tree
 - Custom message routing between Discord and the agent runtime
 - Separate authentication and state management
 - Context fragmentation — the Discord agent wasn't quite the same as my terminal agent
@@ -41,7 +41,7 @@ claude --channels plugin:discord@claude-plugins-official
 
 That's it. Your Claude Code session — the same one with your MCP tools, skills, CLAUDE.md context, conversation history — now listens on Discord. Messages arrive, Claude processes them with full workspace access, replies go back to Discord.
 
-No middleware. No framework. No Python. The same Claude Code that runs in your terminal, now reachable from your phone.
+No middleware. No framework. No extra runtime. The same Claude Code that runs in your terminal, now reachable from your phone.
 
 But there was one limitation: a single session handles all channels. If you have five Discord channels, they all share one Claude context. No isolation. A conversation in `#general` bleeds into `#health-os`.
 
@@ -113,7 +113,7 @@ Thread discovery works the same way. Create a thread → watchdog finds it → s
 Here's what's no longer in the stack:
 
 - No external agent framework (OpenClaw or otherwise)
-- No Python runtime for the messaging layer
+- No separate runtime for the messaging layer
 - No custom message routing or webhook handlers
 - No state synchronization between agent and messaging platform
 - No separate authentication system
