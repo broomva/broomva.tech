@@ -26,7 +26,7 @@ function setCookie(name: string, value: string, maxAge: number): void {
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
   const encodedValue = encodeURIComponent(value);
   if ("cookieStore" in window) {
-    // @ts-expect-error cookieStore is not yet in TS lib.dom
+
     window.cookieStore
       .set({
         name,
@@ -50,7 +50,7 @@ function deleteCookie(name: string): void {
     return;
   }
   if ("cookieStore" in window) {
-    // @ts-expect-error cookieStore is not yet in TS lib.dom
+
     window.cookieStore.delete(name).catch(() => {
       // Fail silently if Cookie Store API fails
     });
