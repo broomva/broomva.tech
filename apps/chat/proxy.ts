@@ -180,6 +180,14 @@ export async function proxy(req: NextRequest) {
 
   if (isAuthPage(pathname)) {
     if (isLoggedIn) {
+      // If logged-in user arrives with ?plan= (e.g., from /pricing CTA),
+      // redirect to billing page to trigger checkout instead of home.
+      const plan = url.searchParams.get("plan");
+      if (plan && (pathname === "/login" || pathname === "/register")) {
+        return withSecurityHeaders(
+          NextResponse.redirect(new URL(`/console/billing?plan=${plan}`, url)),
+        );
+      }
       return withSecurityHeaders(
         NextResponse.redirect(new URL("/", url)),
       );

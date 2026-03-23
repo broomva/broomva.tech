@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -179,6 +180,17 @@ export default function BillingPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // -- Auto-trigger checkout from ?plan= query param (pricing page redirect)
+  const searchParams = useSearchParams();
+  const autoUpgradeTriggered = useRef(false);
+  useEffect(() => {
+    const planParam = searchParams.get("plan");
+    if (planParam && tier?.organizationId && !autoUpgradeTriggered.current) {
+      autoUpgradeTriggered.current = true;
+      handleUpgrade(planParam);
+    }
+  }, [searchParams, tier]);
 
   // -- Upgrade handler
   async function handleUpgrade(plan: string) {
