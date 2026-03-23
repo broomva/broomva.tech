@@ -1,16 +1,17 @@
 ---
 title: "How I Replaced OpenClaw with Claude Code Channels and a Discord Watchdog"
-summary: "A 400-line bash script and a tmux watchdog replaced an entire agent framework for mobile AI access"
+summary: "Per-channel Claude Code sessions via tmux — with workdir mapping, session resume, idle suspension, Telegram support, and a self-healing watchdog"
 date: 2026-03-23
-published: false
+published: true
 tags:
   - agent-os
   - claude-code
   - discord
+  - telegram
   - build-log
   - infrastructure
+  - open-source
 image: /images/writing/replacing-openclaw-with-claude-code-channels/hero.png
-audio: /audio/writing/replacing-openclaw-with-claude-code-channels.mp3
 ---
 
 ![Discord sessions architecture — each channel maps to an isolated Claude Code session via tmux](/images/writing/replacing-openclaw-with-claude-code-channels/hero.png)
@@ -46,68 +47,75 @@ No middleware. No framework. No extra runtime. The same Claude Code that runs in
 
 But there was one limitation: a single session handles all channels. If you have five Discord channels, they all share one Claude context. No isolation. A conversation in `#general` bleeds into `#health-os`.
 
-## The discord-sessions skill
+## Claude Remote Sessions
 
-The fix is per-channel isolation through tmux. Each Discord channel gets its own Claude Code session running in its own tmux pane, with its own `DISCORD_STATE_DIR` scoped to only that channel.
+The fix is per-channel isolation through tmux. Each Discord channel gets its own Claude Code session running in its own tmux pane, with its own `DISCORD_STATE_DIR` scoped to only that channel. The same pattern works for Telegram.
 
 The architecture:
 
 ```
-Discord #general      →  tmux: dc-1484927683581317132  →  Claude Code (~/broomva)
-Discord #health-os    →  tmux: dc-1485495724182601748  →  Claude Code (~/broomva/apps/healthOS)
-Discord #life         →  tmux: dc-1485102695441367040  →  Claude Code (~/broomva/core/life)
-Thread: "test-thread" →  tmux: dc-1485478475518443672  →  Claude Code (parent context injected)
-                         dc-watchdog                    →  Respawns dead + discovers new
+Discord #general      →  tmux: dc-<id>  →  Claude Code (~/broomva)
+Discord #health-os    →  tmux: dc-<id>  →  Claude Code (~/broomva/apps/healthOS)
+Discord #life         →  tmux: dc-<id>  →  Claude Code (~/broomva/core/life)
+Discord #chatos       →  tmux: dc-<id>  →  Claude Code (~/broomva/apps/chatOS)
+Thread: "design"      →  tmux: dc-<id>  →  Claude Code (inherits parent workdir)
+Telegram chat         →  tmux: tg-<id>  →  Claude Code (configured workdir)
+                         dc-watchdog     →  Respawns + discovers + suspends idle
 ```
 
-Each session has its own `access.json` that filters to only its assigned channel:
+### Workdir mapping
+
+A `workdir-map.json` file maps channel names to project directories. When the watchdog discovers a new channel, it looks up the name and assigns the right workdir automatically:
 
 ```json
 {
-  "dmPolicy": "allowlist",
-  "allowFrom": ["352126905920782347"],
-  "groups": {
-    "1485495724182601748": { "requireMention": false, "allowFrom": [] }
-  }
+  "general": "~/broomva",
+  "health-os": "~/broomva/apps/healthOS",
+  "life": "~/broomva/core/life",
+  "chatos": "~/broomva/apps/chatOS",
+  "symphony": "~/broomva/core/symphony",
+  "stimulus": "~/broomva/work/stimulus/stimulus"
 }
 ```
 
-Spawning a session is one command:
+The `--workdir` flag means that session loads the project-specific `CLAUDE.md`, giving the agent project context automatically through Claude Code's built-in CLAUDE.md chain. I have 25 channels, each scoped to its own project.
 
-```bash
-./scripts/discord-session-manager.sh spawn 1485495724182601748 \
-  --name "health-os" \
-  --workdir ~/broomva/apps/healthOS
-```
+### Threads inherit context
 
-The `--workdir` flag is key — it means that session loads the project-specific `CLAUDE.md`, giving the agent project context automatically through Claude Code's built-in CLAUDE.md chain.
+Threads get two things from their parent channel: the **workdir** (so the thread agent has the same project context) and the **last 20 messages** (fetched via Discord REST API and injected as a system prompt). The thread session knows what was discussed before it existed.
 
-For threads, the script fetches the last 20 messages from the parent channel via Discord's REST API and injects them as a system prompt, so the thread session starts with full conversational context:
+### Session resume
 
-```bash
-./scripts/discord-session-manager.sh spawn-thread <thread_id> <parent_channel_id>
-```
+Each channel gets a deterministic UUID v5 session ID. When the watchdog respawns a dead session, it uses `--session-id` to resume the previous conversation. Use `--fresh` to start clean.
 
 ## The watchdog daemon
 
-Manual session management doesn't scale. The watchdog daemon handles it all:
+Manual session management doesn't scale. The watchdog daemon handles everything:
 
-**Every 30 seconds**: Check if any registered session died. Respawn it with the same workdir and config.
+**Every 30 seconds**: Respawn any dead session with the same workdir, session ID, and config.
 
-**Every 60 seconds**: Hit the Discord API, discover any new channels or threads, and spawn sessions automatically.
+**Every 60 seconds**: Discover new channels and threads via the Discord API, spawn sessions automatically with mapped workdirs.
+
+**Every 5 minutes**: Clean up stale sessions (deleted channels, archived threads) and suspend idle sessions to free resources.
 
 ```bash
-# Start the watchdog
 ./scripts/discord-watchdog.sh --daemon
-
-# It runs in tmux as dc-watchdog
-# Boot persistence via launchd:
-launchctl load ~/Library/LaunchAgents/com.broomva.discord-watchdog.plist
 ```
 
-The flow: I create a channel on Discord from my phone → within 60 seconds, the watchdog discovers it, creates a `DISCORD_STATE_DIR` with scoped `access.json`, spawns a tmux session running Claude Code with `--channels discord --dangerously-skip-permissions`, and registers it in the session tracker. I send a message, the agent responds.
+The flow: I create a channel on Discord from my phone → within 60 seconds, the watchdog discovers it, looks up the workdir map, spawns a Claude Code session with the right project context, and registers it. I send a message, the agent responds.
 
-Thread discovery works the same way. Create a thread → watchdog finds it → spawns a session with parent context → the thread has its own dedicated agent.
+### Idle suspension
+
+With 25 channels, resource usage matters. Sessions idle beyond 30 minutes are automatically suspended — the tmux process is killed but the registration persists. When I need a channel again, `wake <id>` brings it back instantly with the same conversation history via session resume.
+
+```bash
+# Manual control
+./scripts/discord-session-manager.sh suspend-idle    # suspend all idle sessions
+./scripts/discord-session-manager.sh wake <id>       # wake a specific channel
+./scripts/discord-session-manager.sh wake-all        # wake everything
+```
+
+In practice, I keep 3-5 core channels active and let the rest sleep until needed.
 
 ## What we dropped
 
@@ -120,7 +128,7 @@ Here's what's no longer in the stack:
 - No separate authentication system
 - No Docker containers running middleware
 
-The entire implementation is two bash scripts totaling ~450 lines. The session manager handles spawn/kill/discover/create-channel. The watchdog handles keep-alive and auto-discovery.
+The entire implementation is six bash scripts. The Discord session manager and watchdog handle channels, threads, discovery, stale cleanup, and idle suspension. The Telegram session manager and watchdog handle per-chat sessions. No compiled code, no framework, no runtime dependencies beyond bash, tmux, python3, and curl.
 
 ## What we gained
 
@@ -134,7 +142,11 @@ The compounding advantages are significant:
 
 **Thread context injection** — When a thread is spawned, the parent channel's recent messages are fetched and injected as a system prompt. The thread session knows what was discussed before it existed.
 
-**Session persistence** — Each session's state, system prompt, and workdir are persisted. When the watchdog respawns a dead session, it comes back exactly as it was.
+**Session persistence** — Each session gets a deterministic UUID. When the watchdog respawns a dead session, `--session-id` resumes the exact conversation. Use `--fresh` to start clean.
+
+**Idle suspension** — Sessions idle beyond 30 minutes are suspended automatically. Wake on demand. In practice, 3-5 channels stay active while 20 sleep, keeping resource usage manageable on a laptop.
+
+**Telegram support** — The same pattern works for Telegram via `telegram-session-manager.sh`. Spawn-based (Telegram has no channel listing API), but the same tmux isolation, workdir mapping, and watchdog respawn.
 
 ## The takeaway
 
@@ -142,18 +154,22 @@ The best infrastructure is the kind you delete. OpenClaw proved that mobile agen
 
 Claude Code is already a battle-tested agent runtime. It has tools, skills, hooks, MCP servers, conversation persistence, and now native messaging channels. Building on top of it instead of alongside it eliminates an entire class of integration problems.
 
-A 400-line bash script and a tmux watchdog replaced an entire framework. That's not a hack — that's what simplification looks like when the underlying platform does the hard work.
+A handful of bash scripts and a tmux watchdog replaced an entire framework. That's not a hack — that's what simplification looks like when the underlying platform does the hard work.
 
 ---
 
-Try it yourself:
+The skill is open source. Install it and try it yourself:
 
 ```bash
-# Start a Discord-connected Claude session
-claude --channels plugin:discord@claude-plugins-official --dangerously-skip-permissions
+# Install the skill
+npx skills add broomva/claude-remote-sessions -g -y
 
-# Or use the session manager for per-channel isolation
-git clone https://github.com/broomva/workspace
+# Configure
+./scripts/discord-session-manager.sh init
+
+# Discover all channels and start the watchdog
 ./scripts/discord-session-manager.sh discover-all
 ./scripts/discord-watchdog.sh --daemon
 ```
+
+Source: [github.com/broomva/claude-remote-sessions](https://github.com/broomva/claude-remote-sessions)
