@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   Database,
   GitBranch,
   LineChart,
@@ -77,6 +78,28 @@ export default function LagoDashboardPage() {
             </span>
           </a>
         ))}
+
+        {/* Upgrade CTA card */}
+        <a
+          href="https://lago-platform.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="glass-card group flex flex-col gap-3 border-emerald-500/30 bg-emerald-500/5 sm:col-span-2"
+        >
+          <div className="flex items-center gap-2">
+            <ArrowUpRight className="size-5 text-emerald-400" />
+            <h2 className="text-base font-semibold text-text-primary">
+              Upgrade to Lago Platform
+            </h2>
+          </div>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            Unlimited sessions, full time-series metrics, alerting, team RBAC,
+            and a dedicated SDK. Everything you need for production agent workloads.
+          </p>
+          <span className="mt-auto text-xs font-medium text-emerald-400 group-hover:text-emerald-300 transition-colors">
+            lago-platform.com
+          </span>
+        </a>
       </div>
     </div>
   );

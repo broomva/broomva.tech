@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Database, Loader2, Plus, RefreshCw } from "lucide-react";
+import { ArrowUpRight, Clock, Database, Loader2, Plus, RefreshCw } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -69,6 +69,22 @@ export default function LagoSessionsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {/* Upgrade banner — shown when free tier limit reached */}
+      {sessions.length >= 3 && (
+        <a
+          href="https://lago-platform.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm transition-colors hover:bg-amber-500/20"
+        >
+          <span className="text-amber-200">
+            You&apos;ve reached the free tier limit. Upgrade to{" "}
+            <strong>Lago Platform</strong> for unlimited sessions.
+          </span>
+          <ArrowUpRight className="size-4 shrink-0 text-amber-400" />
+        </a>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold">Sessions</h1>

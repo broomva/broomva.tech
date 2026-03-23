@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Loader2, RefreshCw } from "lucide-react";
+import { Activity, ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ParsedMetric } from "@/lib/lago/types";
@@ -88,6 +88,20 @@ export default function LagoMetricsPage() {
           </button>
         </div>
       </div>
+
+      {/* Upgrade note */}
+      <a
+        href="https://lago-platform.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-between rounded-lg border border-ai-blue/30 bg-ai-blue/10 px-4 py-3 text-sm transition-colors hover:bg-ai-blue/20"
+      >
+        <span className="text-blue-200">
+          Full time-series charts and alerting available on{" "}
+          <strong>Lago Platform</strong>
+        </span>
+        <ArrowUpRight className="size-4 shrink-0 text-ai-blue" />
+      </a>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
