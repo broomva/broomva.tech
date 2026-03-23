@@ -1,0 +1,158 @@
+---
+title: "How I Replaced OpenClaw with Claude Code Channels and a Discord Watchdog"
+summary: "A 400-line bash script and a tmux watchdog replaced an entire agent framework for mobile AI access"
+date: 2026-03-23
+published: true
+tags:
+  - agent-os
+  - claude-code
+  - discord
+  - build-log
+  - infrastructure
+image: /images/writing/replacing-openclaw-with-claude-code-channels/hero.png
+---
+
+![Discord sessions architecture — each channel maps to an isolated Claude Code session via tmux](/images/writing/replacing-openclaw-with-claude-code-channels/hero.png)
+
+The agent-on-mobile dream was real. Having your AI agent accessible through Discord and Telegram — from your phone, while walking, between meetings — turned out to be one of the highest-leverage features I built. OpenClaw proved that. But 247K GitHub stars and a Python dependency tree aren't what you need when Claude Code ships native channels.
+
+## The mobile agent problem
+
+Here's what I wanted: send a message on Discord from my phone, have my AI agent — with full access to my codebase, tools, and context — respond. Not a chatbot. My actual development agent, the one that knows my project structure, runs tests, and commits code.
+
+OpenClaw made this work. It was a framework that bridged messaging platforms to agent runtimes. You'd wire up a Telegram bot or a Discord bot, connect it to your agent, and suddenly your agent was on your phone. It was successful — the concept proved itself daily.
+
+But the overhead was real:
+
+- A separate Python framework with its own dependency tree
+- Custom message routing between Discord and the agent runtime
+- Separate authentication and state management
+- Context fragmentation — the Discord agent wasn't quite the same as my terminal agent
+
+Every layer between "message received" and "agent processes it" was a layer that could break, drift, or need maintenance.
+
+## Claude Code Channels changes everything
+
+In March 2026, Anthropic shipped channels as a research preview for Claude Code. One flag:
+
+```bash
+claude --channels plugin:discord@claude-plugins-official
+```
+
+That's it. Your Claude Code session — the same one with your MCP tools, skills, CLAUDE.md context, conversation history — now listens on Discord. Messages arrive, Claude processes them with full workspace access, replies go back to Discord.
+
+No middleware. No framework. No Python. The same Claude Code that runs in your terminal, now reachable from your phone.
+
+But there was one limitation: a single session handles all channels. If you have five Discord channels, they all share one Claude context. No isolation. A conversation in `#general` bleeds into `#health-os`.
+
+## The discord-sessions skill
+
+The fix is per-channel isolation through tmux. Each Discord channel gets its own Claude Code session running in its own tmux pane, with its own `DISCORD_STATE_DIR` scoped to only that channel.
+
+The architecture:
+
+```
+Discord #general      →  tmux: dc-1484927683581317132  →  Claude Code (~/broomva)
+Discord #health-os    →  tmux: dc-1485495724182601748  →  Claude Code (~/broomva/apps/healthOS)
+Discord #life         →  tmux: dc-1485102695441367040  →  Claude Code (~/broomva/core/life)
+Thread: "test-thread" →  tmux: dc-1485478475518443672  →  Claude Code (parent context injected)
+                         dc-watchdog                    →  Respawns dead + discovers new
+```
+
+Each session has its own `access.json` that filters to only its assigned channel:
+
+```json
+{
+  "dmPolicy": "allowlist",
+  "allowFrom": ["352126905920782347"],
+  "groups": {
+    "1485495724182601748": { "requireMention": false, "allowFrom": [] }
+  }
+}
+```
+
+Spawning a session is one command:
+
+```bash
+./scripts/discord-session-manager.sh spawn 1485495724182601748 \
+  --name "health-os" \
+  --workdir ~/broomva/apps/healthOS
+```
+
+The `--workdir` flag is key — it means that session loads the project-specific `CLAUDE.md`, giving the agent project context automatically through Claude Code's built-in CLAUDE.md chain.
+
+For threads, the script fetches the last 20 messages from the parent channel via Discord's REST API and injects them as a system prompt, so the thread session starts with full conversational context:
+
+```bash
+./scripts/discord-session-manager.sh spawn-thread <thread_id> <parent_channel_id>
+```
+
+## The watchdog daemon
+
+Manual session management doesn't scale. The watchdog daemon handles it all:
+
+**Every 30 seconds**: Check if any registered session died. Respawn it with the same workdir and config.
+
+**Every 60 seconds**: Hit the Discord API, discover any new channels or threads, and spawn sessions automatically.
+
+```bash
+# Start the watchdog
+./scripts/discord-watchdog.sh --daemon
+
+# It runs in tmux as dc-watchdog
+# Boot persistence via launchd:
+launchctl load ~/Library/LaunchAgents/com.broomva.discord-watchdog.plist
+```
+
+The flow: I create a channel on Discord from my phone → within 60 seconds, the watchdog discovers it, creates a `DISCORD_STATE_DIR` with scoped `access.json`, spawns a tmux session running Claude Code with `--channels discord --dangerously-skip-permissions`, and registers it in the session tracker. I send a message, the agent responds.
+
+Thread discovery works the same way. Create a thread → watchdog finds it → spawns a session with parent context → the thread has its own dedicated agent.
+
+## What we dropped
+
+Here's what's no longer in the stack:
+
+- No external agent framework (OpenClaw or otherwise)
+- No Python runtime for the messaging layer
+- No custom message routing or webhook handlers
+- No state synchronization between agent and messaging platform
+- No separate authentication system
+- No Docker containers running middleware
+
+The entire implementation is two bash scripts totaling ~450 lines. The session manager handles spawn/kill/discover/create-channel. The watchdog handles keep-alive and auto-discovery.
+
+## What we gained
+
+The compounding advantages are significant:
+
+**Full MCP tool access** — Every Discord session has the same tools as a terminal session. Read files, edit code, run tests, commit, push — from Discord on your phone.
+
+**CLAUDE.md chain** — Set `--workdir ~/broomva/core/life` and the agent loads both the root workspace CLAUDE.md and the project-specific one. Different channels, different project contexts, automatically.
+
+**Skills and hooks** — The conversation bridge hook captures session history. The control gate hook enforces safety shields. The regression gate runs before destructive operations. All of them work in Discord sessions exactly as they do in the terminal.
+
+**Thread context injection** — When a thread is spawned, the parent channel's recent messages are fetched and injected as a system prompt. The thread session knows what was discussed before it existed.
+
+**Session persistence** — Each session's state, system prompt, and workdir are persisted. When the watchdog respawns a dead session, it comes back exactly as it was.
+
+## The takeaway
+
+The best infrastructure is the kind you delete. OpenClaw proved that mobile agent access is genuinely useful — it's not a gimmick. But the concept didn't need a framework. It needed a messaging protocol (Claude Code channels) and a session orchestrator (tmux + a watchdog script).
+
+Claude Code is already a battle-tested agent runtime. It has tools, skills, hooks, MCP servers, conversation persistence, and now native messaging channels. Building on top of it instead of alongside it eliminates an entire class of integration problems.
+
+A 400-line bash script and a tmux watchdog replaced an entire framework. That's not a hack — that's what simplification looks like when the underlying platform does the hard work.
+
+---
+
+Try it yourself:
+
+```bash
+# Start a Discord-connected Claude session
+claude --channels plugin:discord@claude-plugins-official --dangerously-skip-permissions
+
+# Or use the session manager for per-channel isolation
+git clone https://github.com/broomva/workspace
+./scripts/discord-session-manager.sh discover-all
+./scripts/discord-watchdog.sh --daemon
+```
