@@ -77,44 +77,12 @@ export async function GET(
       );
     }
 
-    // Check if client has cached version (ETag)
-    const ifNoneMatch = request.headers.get("if-none-match");
-    if (ifNoneMatch) {
-      const cleanEtag = ifNoneMatch.replace(/"/g, "");
-      if (cleanEtag === hash) {
-        return new NextResponse(null, {
-          status: 304,
-          headers: {
-            ETag: `"${hash}"`,
-            "Cache-Control": "public, max-age=31536000, immutable",
-          },
-        });
-      }
-    }
-
-    // Fetch from lagod public blob endpoint
-    const blobRes = await fetch(`${lagoUrl}/v1/public/blobs/${hash}`);
-    if (!blobRes.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch asset from storage" },
-        { status: 502 }
-      );
-    }
-
-    const contentType =
-      blobRes.headers.get("content-type") ?? "application/octet-stream";
-    const body = await blobRes.arrayBuffer();
-
-    return new NextResponse(body, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        ETag: `"${hash}"`,
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "CDN-Cache-Control": "public, max-age=31536000, immutable",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    // Redirect directly to lagod's public blob endpoint.
+    // This eliminates the double-buffer: the browser fetches the blob
+    // straight from lagod with proper Range support, Content-Length,
+    // and Accept-Ranges headers — critical for mobile video playback.
+    const blobUrl = `${lagoUrl}/v1/public/blobs/${hash}`;
+    return NextResponse.redirect(blobUrl, 302);
   } catch (error) {
     console.error("[api/assets] proxy error:", error);
     return NextResponse.json(
