@@ -111,6 +111,9 @@
     },
     "check:links": {
       "cache": false
+    },
+    "check:content": {
+      "cache": false
     }
   }
 }

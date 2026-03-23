@@ -57,7 +57,6 @@ for (const kind of KINDS) {
     // Extract frontmatter and body
     const fmLines = lines.slice(fmStart + 1, fmEnd);
     const bodyLines = lines.slice(fmEnd + 1);
-    const body = bodyLines.join("\n");
 
     // Parse simple frontmatter fields
     const fm = {};
