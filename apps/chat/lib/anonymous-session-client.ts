@@ -27,7 +27,7 @@ function setCookie(name: string, value: string, maxAge: number): void {
   const encodedValue = encodeURIComponent(value);
   if ("cookieStore" in window) {
 
-    window.cookieStore
+    (window.cookieStore as CookieStore)
       .set({
         name,
         value: encodedValue,
@@ -51,7 +51,7 @@ function deleteCookie(name: string): void {
   }
   if ("cookieStore" in window) {
 
-    window.cookieStore.delete(name).catch(() => {
+    (window.cookieStore as CookieStore).delete(name).catch(() => {
       // Fail silently if Cookie Store API fails
     });
   } else {
