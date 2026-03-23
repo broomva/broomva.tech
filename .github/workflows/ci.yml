@@ -2,11 +2,25 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".control/**"
+      - "apps/docs/**"
   push:
     branches: ["main"]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - ".control/**"
+      - "apps/docs/**"
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -103,6 +117,8 @@ jobs:
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Only run security on main pushes, not every PR
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
