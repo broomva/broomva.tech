@@ -18,6 +18,7 @@ const PUBLIC_PAGE_PREFIXES = [
   "/terms",
   "/pricing",
   "/skills",
+  "/agents",
   "/.well-known",
 ] as const;
 
