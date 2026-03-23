@@ -41,7 +41,8 @@
     "ai:devtools": "bunx @ai-sdk/devtools",
     "fetch:models": "bun scripts/fetch-models.ts && bun format",
     "check:links": "node scripts/check-links.mjs",
-    "check:content": "node scripts/check-content.mjs"
+    "check:content": "node scripts/check-content.mjs",
+    "generate:audio": "bun scripts/generate-audio.ts"
   },
   "dependencies": {
     "@ai-sdk-tools/store": "1.2.0",
