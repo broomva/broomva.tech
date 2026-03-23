@@ -9,7 +9,13 @@ export const metadata: Metadata = {
   description: "Create an account to get started.",
 };
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string }>;
+}) {
+  const { plan } = await searchParams;
+
   return (
     <div className="container m-auto flex h-dvh w-screen flex-col items-center justify-center px-4">
       <Link
@@ -17,12 +23,12 @@ export default function RegisterPage() {
           buttonVariants({ variant: "ghost" }),
           "absolute top-4 right-4 md:top-8 md:right-8"
         )}
-        href="/login"
+        href={plan ? `/login?plan=${plan}` : "/login"}
       >
         Login
       </Link>
       <div className="mx-auto w-full sm:w-[480px]">
-        <SignupForm />
+        <SignupForm plan={plan} />
       </div>
     </div>
   );

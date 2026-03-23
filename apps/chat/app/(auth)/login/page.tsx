@@ -10,7 +10,13 @@ export const metadata: Metadata = {
   description: "Login to your account",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string }>;
+}) {
+  const { plan } = await searchParams;
+
   return (
     <div className="container mx-auto flex h-dvh w-screen flex-col items-center justify-center">
       <Link
@@ -24,7 +30,7 @@ export default function LoginPage() {
         Back
       </Link>
       <div className="mx-auto flex w-full flex-col items-center justify-center sm:w-[420px]">
-        <LoginForm className="w-full" />
+        <LoginForm className="w-full" plan={plan} />
       </div>
     </div>
   );

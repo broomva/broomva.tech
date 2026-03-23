@@ -213,6 +213,29 @@ export async function removeOrganizationMember(
 }
 
 /**
+ * Ensure a user has at least one personal organization.
+ * If they already have one, return the first. Otherwise, create one
+ * derived from their display name.
+ */
+export async function ensurePersonalOrg(
+  userId: string,
+  userName: string,
+): Promise<Organization> {
+  const orgs = await getUserOrganizations(userId);
+  if (orgs.length > 0) return orgs[0];
+
+  const slug =
+    userName
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 32) || `user-${userId.slice(0, 8)}`;
+
+  return createOrganization(`${userName}'s Workspace`, slug, userId);
+}
+
+/**
  * Update an organization's plan and optional Stripe identifiers.
  */
 export async function updateOrganizationPlan(

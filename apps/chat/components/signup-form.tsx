@@ -17,9 +17,12 @@ import { Label } from "@/components/ui/label";
 
 export function SignupForm({
   className,
+  plan,
   ...props
-}: React.ComponentProps<typeof Card>) {
+}: React.ComponentProps<typeof Card> & { plan?: string }) {
   const [state, formAction, isPending] = useActionState(signUpWithEmail, null);
+
+  const loginHref = plan ? `/login?plan=${plan}` : "/login";
 
   return (
     <div className="flex flex-col gap-6" {...props}>
@@ -32,6 +35,7 @@ export function SignupForm({
         </CardHeader>
         <CardContent>
           <form action={formAction} className="grid gap-6">
+            {plan && <input type="hidden" name="plan" value={plan} />}
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -74,7 +78,7 @@ export function SignupForm({
             <SocialAuthProviders />
             <div className="text-center text-sm">
               Already have an account?{" "}
-              <a className="underline underline-offset-4" href="/login">
+              <a className="underline underline-offset-4" href={loginHref}>
                 Sign in
               </a>
             </div>

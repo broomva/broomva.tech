@@ -18,9 +18,12 @@ import { cn } from "@/lib/utils";
 
 export function LoginForm({
   className,
+  plan,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & { plan?: string }) {
   const [state, formAction, isPending] = useActionState(signInWithEmail, null);
+
+  const registerHref = plan ? `/register?plan=${plan}` : "/register";
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -33,6 +36,7 @@ export function LoginForm({
         </CardHeader>
         <CardContent>
           <form action={formAction} className="grid gap-6">
+            {plan && <input type="hidden" name="plan" value={plan} />}
             <div className="grid gap-3">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -64,7 +68,7 @@ export function LoginForm({
             <SocialAuthProviders />
             <div className="text-center text-sm">
               Don&apos;t have an account?{" "}
-              <a className="underline underline-offset-4" href="/register">
+              <a className="underline underline-offset-4" href={registerHref}>
                 Sign up
               </a>
             </div>

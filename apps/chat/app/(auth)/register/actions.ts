@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
@@ -10,6 +11,7 @@ export async function signUpWithEmail(
   const name = formData.get("name");
   const email = formData.get("email");
   const password = formData.get("password");
+  const plan = formData.get("plan");
 
   if (
     typeof name !== "string" ||
@@ -29,5 +31,9 @@ export async function signUpWithEmail(
     return { error: error.message || "Failed to create account." };
   }
 
-  redirect("/chat");
+  const planParam =
+    typeof plan === "string" && plan
+      ? `?plan=${encodeURIComponent(plan)}`
+      : "";
+  redirect(`/onboarding${planParam}` as Route);
 }
