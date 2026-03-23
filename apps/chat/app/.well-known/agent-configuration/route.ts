@@ -3,26 +3,64 @@ import { NextResponse } from "next/server";
 /**
  * GET /.well-known/agent-configuration
  *
- * Agent Auth Protocol discovery endpoint.
+ * Agent Auth Protocol discovery endpoint (BRO-54).
  * Tells agents how to authenticate with broomva.tech.
+ *
+ * This is the canonical discovery document. The @better-auth/agent-auth
+ * plugin also serves its own discovery at
+ *   /api/auth/agent-protocol/agent-configuration
+ * but this well-known URL is the primary entry point per the AAP spec.
  *
  * @see https://agent-auth-protocol.com/
  */
 export async function GET() {
   const baseUrl = process.env.APP_URL || "https://broomva.tech";
+  const agentBase = `${baseUrl}/api/auth/agent-protocol`;
 
   return NextResponse.json(
     {
-      // Agent Auth Protocol v1
+      // ── Agent Auth Protocol v1 (spec-compliant fields) ──────────────
       version: "1.0",
-
-      // Platform identity
-      name: "Broomva Platform",
+      provider: "broomva.tech",
+      provider_name: "Broomva Platform",
       description:
         "Open AI platform for agents and humans — Agent OS, managed deployments, trust & credit infrastructure",
+      issuer: baseUrl,
       homepage: baseUrl,
 
-      // Authentication methods
+      // Plugin-generated discovery document (canonical source)
+      // Available at: /api/auth/agent-protocol/agent-configuration
+      default_location: `${agentBase}/capability/execute`,
+
+      // Spec-required discovery endpoints (mirrors plugin output)
+      endpoints: {
+        register: `${agentBase}/agent/register`,
+        capabilities: `${agentBase}/capability/list`,
+        describe_capability: `${agentBase}/capability/describe`,
+        execute: `${agentBase}/capability/execute`,
+        request_capability: `${agentBase}/agent/request-capability`,
+        status: `${agentBase}/agent/status`,
+        reactivate: `${agentBase}/agent/reactivate`,
+        revoke: `${agentBase}/agent/revoke`,
+        revoke_host: `${agentBase}/host/revoke`,
+        rotate_key: `${agentBase}/agent/rotate-key`,
+        rotate_host_key: `${agentBase}/host/rotate-key`,
+        introspect: `${agentBase}/agent/introspect`,
+        device_code: `${agentBase}/device/code`,
+      },
+
+      // Supported registration modes
+      modes: ["delegated", "autonomous"],
+
+      // Supported key algorithms (JWK curve names per spec)
+      algorithms: ["Ed25519"],
+
+      // Approval methods
+      approval_methods: ["device_authorization"],
+
+      // ── Extended platform info (broomva-specific) ───────────────────
+
+      // Legacy auth methods (existing device flow, API tokens, JWT refresh)
       auth: {
         // Device code flow (RFC 8628) — for CLIs and headless agents
         device_code: {
