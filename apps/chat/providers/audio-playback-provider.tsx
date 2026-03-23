@@ -130,12 +130,14 @@ export function AudioPlaybackProvider({
   const persistState = useCallback(() => {
     if (!track) return;
     const audio = audioRef.current;
+    const rawDuration = audio?.duration ?? 0;
+    const rawTime = audio?.currentTime ?? 0;
     const persisted: PersistedState = {
       audioSrc: track.audioSrc,
       slug: track.slug,
       title: track.title,
-      currentTime: audio?.currentTime ?? 0,
-      duration: audio?.duration ?? 0,
+      currentTime: Number.isFinite(rawTime) ? rawTime : 0,
+      duration: Number.isFinite(rawDuration) ? rawDuration : 0,
     };
     writeCookie(persisted);
 
@@ -158,9 +160,9 @@ export function AudioPlaybackProvider({
       });
       const audio = getAudio();
       audio.src = cookieState.audioSrc;
-      audio.currentTime = cookieState.currentTime;
-      setCurrentTime(cookieState.currentTime);
-      setDuration(cookieState.duration);
+      audio.currentTime = cookieState.currentTime || 0;
+      setCurrentTime(cookieState.currentTime || 0);
+      setDuration(cookieState.duration || 0);
       setState("paused");
     }
 
@@ -170,7 +172,7 @@ export function AudioPlaybackProvider({
       const serverNewer =
         !local ||
         serverState.audioSrc !== local.audioSrc ||
-        serverState.currentTime > local.currentTime;
+        (serverState.currentTime || 0) > (local.currentTime || 0);
       if (serverNewer) {
         setTrack({
           audioSrc: serverState.audioSrc,
@@ -181,9 +183,9 @@ export function AudioPlaybackProvider({
         if (audio.src !== serverState.audioSrc) {
           audio.src = serverState.audioSrc;
         }
-        audio.currentTime = serverState.currentTime;
-        setCurrentTime(serverState.currentTime);
-        setDuration(serverState.duration);
+        audio.currentTime = serverState.currentTime || 0;
+        setCurrentTime(serverState.currentTime || 0);
+        setDuration(serverState.duration || 0);
         setState("paused");
         writeCookie(serverState);
       }
@@ -194,9 +196,13 @@ export function AudioPlaybackProvider({
     const audio = getAudio();
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
-      if (audio.duration > 0) setDuration(audio.duration);
+      if (Number.isFinite(audio.duration) && audio.duration > 0)
+        setDuration(audio.duration);
     };
-    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onLoadedMetadata = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0)
+        setDuration(audio.duration);
+    };
     const onPlay = () => setState("playing");
     const onPause = () => {
       if (audio.ended) {

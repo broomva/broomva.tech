@@ -209,7 +209,14 @@ export async function getContentBySlug(
     .process(rewrittenContent);
 
   // Rewrite any remaining asset URLs in rendered HTML
-  const html = rewriteAssetUrls(processed.toString());
+  let html = rewriteAssetUrls(processed.toString());
+
+  // Unwrap <video> tags from <p> — remark treats <video> as inline HTML
+  // and wraps it in <p>, which is invalid and breaks rendering on iOS Safari
+  html = html.replace(
+    /<p>(<video\s[^>]*>(?:<\/video>)?)<\/p>/g,
+    "$1",
+  );
 
   // Rewrite frontmatter image/audio URLs
   if (summary.image) {
