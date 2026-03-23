@@ -40,7 +40,8 @@
     "test:types": "rm -rf .next/dev/types && next typegen . && tsc --noEmit",
     "ai:devtools": "bunx @ai-sdk/devtools",
     "fetch:models": "bun scripts/fetch-models.ts && bun format",
-    "check:links": "node scripts/check-links.mjs"
+    "check:links": "node scripts/check-links.mjs",
+    "check:content": "node scripts/check-content.mjs"
   },
   "dependencies": {
     "@ai-sdk-tools/store": "1.2.0",

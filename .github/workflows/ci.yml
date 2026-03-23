@@ -47,6 +47,9 @@ jobs:
       - name: Validate internal links
         run: bun run check:links
 
+      - name: Validate content quality
+        run: bun run check:content
+
   sync-assets:
     name: Sync assets to Lago
     runs-on: ubuntu-latest
