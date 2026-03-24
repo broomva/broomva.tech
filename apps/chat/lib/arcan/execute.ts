@@ -136,15 +136,60 @@ export async function executeViaArcan(
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Extract a plain-text objective from the ChatMessage structure.
- * Arcan expects a string objective, not the full message parts.
+ * Build the objective string sent to arcand's POST /sessions/{id}/runs.
+ *
+ * Arcand accepts only a single `objective: string` — no structured messages
+ * array. To preserve multi-turn context we encode conversation history into
+ * the objective string itself, prefixed before the current user message.
+ *
+ * Format (XML-tagged so arcand's LLM can cleanly distinguish speakers):
+ *
+ *   <conversation_history>
+ *   User: <text of turn N-k>
+ *   Assistant: <text of turn N-k+1>
+ *   ...
+ *   </conversation_history>
+ *
+ *   Current request:
+ *   <user_message>
+ *   <text of current user message>
+ *   </user_message>
+ *
+ * When there is no prior history the <conversation_history> block is omitted
+ * so single-turn requests stay compact.
  */
 function extractObjective(
   userMessage: ChatMessage,
   previousMessages: ChatMessage[]
 ): string {
-  // Extract text content from the user message parts
-  const textParts = userMessage.parts
+  const currentText = extractMessageText(userMessage);
+
+  // Cap at last 20 messages regardless of what the caller trimmed.
+  const history = previousMessages.slice(-20);
+
+  if (history.length === 0) {
+    return currentText;
+  }
+
+  const historyLines = history
+    .map((msg) => {
+      const speaker = msg.role === "assistant" ? "Assistant" : "User";
+      return `${speaker}: ${extractMessageText(msg)}`;
+    })
+    .join("\n");
+
+  return (
+    `<conversation_history>\n${historyLines}\n</conversation_history>\n\n` +
+    `Current request:\n<user_message>\n${currentText}\n</user_message>`
+  );
+}
+
+/**
+ * Extract plain text from a single ChatMessage.
+ * Handles UIMessage v6 parts[] and the legacy content string fallback.
+ */
+function extractMessageText(msg: ChatMessage): string {
+  const textParts = msg.parts
     ?.filter((p: { type: string }) => p.type === "text")
     .map((p: { type: string; text?: string }) => p.text ?? "")
     .filter(Boolean);
@@ -153,10 +198,10 @@ function extractObjective(
     return textParts.join("\n\n");
   }
 
-  // Fallback: check for content field (older message format)
-  if ("content" in userMessage && typeof userMessage.content === "string") {
-    return userMessage.content;
+  // Legacy fallback: pre-v6 messages stored in DB with a content string
+  if ("content" in msg && typeof (msg as { content?: unknown }).content === "string") {
+    return (msg as { content: string }).content;
   }
 
-  return "Continue the conversation.";
+  return "(empty)";
 }
