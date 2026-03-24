@@ -960,40 +960,52 @@ export async function POST(request: NextRequest) {
     const { previousMessages, allowedTools } = contextResult;
 
     // ── Arcan Agent Runtime ─────────────────────────────────────────
-    // For authenticated users, try routing through Arcan (Life instance
-    // on Railway or local ARCAN_URL). Falls back to streamText if
-    // Arcan is unavailable or the user has no Life instance.
-    if (userId && !isAnonymous) {
-      const endpoints = await resolveArcanUrl(userId);
-      if (endpoints) {
-        const session = (await getSafeSession({
-          fetchOptions: { headers: await headers() },
-        })).data;
-        const userEmail = session?.user?.email ?? "";
+    // Try routing through Arcan for both authenticated and anonymous users.
+    // Authenticated: org Life instance on Railway → ARCAN_URL env fallback.
+    // Anonymous: ARCAN_URL env only (no org lookup).
+    // Falls back to streamText if Arcan is unavailable.
+    {
+      const arcanOwnerId = userId ?? anonymousSession?.id ?? null;
+      const arcanEmail = userId
+        ? ((await getSafeSession({
+            fetchOptions: { headers: await headers() },
+          })).data?.user?.email ?? "")
+        : `anon-${anonymousSession?.id?.slice(0, 8)}@guest.broomva.tech`;
 
-        const abortController = new AbortController();
-        const timeoutId = setTimeout(() => {
-          abortController.abort();
-        }, 290_000);
+      if (arcanOwnerId) {
+        // Authenticated users: check org Life instance first, then env
+        // Anonymous users: skip org lookup, only use ARCAN_URL env
+        const endpoints = userId
+          ? await resolveArcanUrl(userId)
+          : process.env.ARCAN_URL
+            ? { arcanUrl: process.env.ARCAN_URL, lagoUrl: process.env.LAGO_URL ?? null }
+            : null;
 
-        const arcanResponse = await executeViaArcan({
-          chatId,
-          userMessage,
-          previousMessages,
-          userId,
-          arcanUrl: endpoints.arcanUrl,
-          userEmail,
-          abortSignal: abortController.signal,
-        });
+        if (endpoints) {
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => {
+            abortController.abort();
+          }, 290_000);
 
-        if (arcanResponse) {
+          const arcanResponse = await executeViaArcan({
+            chatId,
+            userMessage,
+            previousMessages,
+            userId: arcanOwnerId,
+            arcanUrl: endpoints.arcanUrl,
+            userEmail: arcanEmail,
+            abortSignal: abortController.signal,
+          });
+
+          if (arcanResponse) {
+            clearTimeout(timeoutId);
+            log.info({ chatId, anonymous: isAnonymous }, "Routed to Arcan");
+            return arcanResponse;
+          }
+
           clearTimeout(timeoutId);
-          log.info({ chatId }, "Routed to Arcan");
-          return arcanResponse;
+          log.info("Arcan unavailable, falling back to streamText");
         }
-
-        clearTimeout(timeoutId);
-        log.info("Arcan unavailable, falling back to streamText");
       }
     }
 
