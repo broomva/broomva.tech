@@ -10,7 +10,6 @@ import type { ChatMessage } from "@/lib/ai/types";
 import { getSafeSession } from "@/lib/auth";
 import { getChatById, getChatMessageWithPartsById } from "@/lib/db/queries";
 import { ArcanClient, resolveArcanUrl } from "@/lib/arcan";
-import { signLifeJWT } from "@/lib/ai/vault/jwt";
 import { getStreamContext } from "../../route";
 
 function appendMessageResponse(message: ChatMessage) {
@@ -63,11 +62,10 @@ export async function GET(
     const endpoints = await resolveArcanUrl(userId);
     if (endpoints) {
       try {
-        const token = await signLifeJWT({
+        const client = await ArcanClient.forUser(endpoints.arcanUrl, {
           id: userId,
           email: session?.user?.email ?? "",
         });
-        const client = new ArcanClient(endpoints.arcanUrl, token);
         const sseStream = await client.streamEvents(chatId, {
           cursor: Number(cursor),
           replayLimit: 512,

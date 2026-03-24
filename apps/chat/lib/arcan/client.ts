@@ -9,7 +9,7 @@
 
 import "server-only";
 
-import { signLifeJWT } from "@/lib/ai/vault/jwt";
+import { SignJWT } from "jose";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -82,13 +82,23 @@ export class ArcanClient {
 
   /**
    * Create an ArcanClient authenticated for a given user.
-   * Resolves the Arcan URL and signs a Life JWT.
+   *
+   * Signs a minimal HS256 JWT with only the claims arcand validates:
+   * sub, email, exp, iat. No iss/aud — arcand clears those requirements.
    */
   static async forUser(
     arcanUrl: string,
     user: { id: string; email: string }
   ): Promise<ArcanClient> {
-    const token = await signLifeJWT(user);
+    const secret = process.env.AUTH_SECRET;
+    if (!secret) {
+      throw new Error("AUTH_SECRET is required for Arcan JWT signing");
+    }
+    const token = await new SignJWT({ sub: user.id, email: user.email })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("24h")
+      .sign(new TextEncoder().encode(secret));
     return new ArcanClient(arcanUrl, token);
   }
 
