@@ -70,6 +70,10 @@ export interface StreamOptions {
   branch?: string;
   cursor?: number;
   replayLimit?: number;
+  /** Unique ID for this assistant message — used as `messageId` in the Vercel
+   *  AI SDK v6 `start` frame. Pass a fresh UUID per chat turn so React has a
+   *  unique key for each assistant message within the same session. */
+  messageId?: string;
 }
 
 // ─── Client ─────────────────────────────────────────────────────────────────
@@ -191,6 +195,7 @@ export class ArcanClient {
     if (opts.cursor != null) params.set("cursor", String(opts.cursor));
     if (opts.replayLimit != null)
       params.set("replay_limit", String(opts.replayLimit));
+    if (opts.messageId) params.set("message_id", opts.messageId);
 
     const url = `${this.baseUrl}/sessions/${sessionId}/events/stream?${params}`;
     const res = await fetch(url, {

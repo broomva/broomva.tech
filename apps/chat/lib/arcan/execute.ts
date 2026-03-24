@@ -15,6 +15,7 @@ import "server-only";
 import { after } from "next/server";
 import { ArcanClient, ArcanError } from "./client";
 import { createModuleLogger } from "@/lib/logger";
+import { generateUUID } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/ai/types";
 
 const log = createModuleLogger("arcan:execute");
@@ -95,15 +96,19 @@ export async function executeViaArcan(
       log.error({ error: e }, "Arcan run failed");
     });
 
-  // Start streaming events immediately
-  // The cursor picks up from where the client last saw events,
-  // or 0 for a fresh session
+  // Start streaming events immediately.
+  // A fresh UUID per turn ensures each assistant message gets a unique React
+  // key — avoids duplicate key warnings when the same session handles multiple
+  // turns (previously messageId was always the session_id).
+  const messageId = generateUUID();
+
   try {
     const sseStream = await client.streamEvents(
       chatId,
       {
         cursor: lastSequence ?? 0,
         replayLimit: 512,
+        messageId,
       },
       abortSignal
     );
