@@ -11,15 +11,20 @@ ARCAN_PORT="${ARCAN_PORT:-3000}"
 ARCAN_DATA_DIR="${ARCAN_DATA_DIR:-.arcan}"
 ARCAN_PID_FILE="/tmp/arcand-dev.pid"
 
-# ── Source .env.local so arcand inherits API keys ──────────────────
-# Arcand needs ANTHROPIC_API_KEY (or OPENAI_API_KEY, etc.) from the
-# same .env.local the chat app uses.
-if [ -f ".env.local" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env.local 2>/dev/null || true
-  set +a
-fi
+# ── Source env files so arcand inherits API keys ───────────────────
+# Arcand needs ANTHROPIC_API_KEY (or OPENAI_API_KEY). Check multiple
+# locations: chat app .env.local, then the Life repo arcan/.env.
+for envfile in \
+  ".env.local" \
+  "$HOME/broomva/core/life/arcan/.env" \
+  "$HOME/broomva/core/life/.env"; do
+  if [ -f "$envfile" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$envfile" 2>/dev/null || true
+    set +a
+  fi
+done
 
 # ── Check if arcand is already running ─────────────────────────────
 if [ -f "$ARCAN_PID_FILE" ] && kill -0 "$(cat "$ARCAN_PID_FILE")" 2>/dev/null; then
