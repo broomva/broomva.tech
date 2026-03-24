@@ -71,6 +71,7 @@ import {
   checkAuthenticatedRateLimit,
   getClientIP,
 } from "@/lib/utils/rate-limit";
+import { executeViaArcan, resolveArcanUrl } from "@/lib/arcan";
 import { generateTitleFromUserMessage } from "../../actions";
 import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
 
@@ -958,7 +959,46 @@ export async function POST(request: NextRequest) {
 
     const { previousMessages, allowedTools } = contextResult;
 
-    // Fetch MCP connectors for authenticated users (only if MCP integration enabled)
+    // ── Arcan Agent Runtime ─────────────────────────────────────────
+    // For authenticated users, try routing through Arcan (Life instance
+    // on Railway or local ARCAN_URL). Falls back to streamText if
+    // Arcan is unavailable or the user has no Life instance.
+    if (userId && !isAnonymous) {
+      const endpoints = await resolveArcanUrl(userId);
+      if (endpoints) {
+        const session = (await getSafeSession({
+          fetchOptions: { headers: await headers() },
+        })).data;
+        const userEmail = session?.user?.email ?? "";
+
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => {
+          abortController.abort();
+        }, 290_000);
+
+        const arcanResponse = await executeViaArcan({
+          chatId,
+          userMessage,
+          previousMessages,
+          userId,
+          arcanUrl: endpoints.arcanUrl,
+          userEmail,
+          abortSignal: abortController.signal,
+        });
+
+        if (arcanResponse) {
+          clearTimeout(timeoutId);
+          log.info({ chatId }, "Routed to Arcan");
+          return arcanResponse;
+        }
+
+        clearTimeout(timeoutId);
+        log.info("Arcan unavailable, falling back to streamText");
+      }
+    }
+
+    // ── Fallback: Direct streamText (template path) ─────────────────
+    // Used for anonymous users, or when no Arcan instance is available.
     const mcpConnectors: McpConnector[] =
       config.features.mcp && userId && !isAnonymous
         ? await getMcpConnectorsByUserId({ userId })

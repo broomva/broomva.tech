@@ -1,4 +1,7 @@
 
+# Arcan local data (journal + blobs)
+.arcan/
+
 # START Skiller Generated Files
 /.agents/skills
 /.aider.conf.yml

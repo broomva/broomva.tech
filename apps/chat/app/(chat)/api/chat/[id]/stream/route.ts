@@ -9,6 +9,8 @@ import { ChatSDKError } from "@/lib/ai/errors";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getSafeSession } from "@/lib/auth";
 import { getChatById, getChatMessageWithPartsById } from "@/lib/db/queries";
+import { ArcanClient, resolveArcanUrl } from "@/lib/arcan";
+import { signLifeJWT } from "@/lib/ai/vault/jwt";
 import { getStreamContext } from "../../route";
 
 function appendMessageResponse(message: ChatMessage) {
@@ -37,17 +39,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: chatId } = await params;
-  const messageId = request.nextUrl.searchParams.get("messageId");
-
-  if (!messageId) {
-    return new ChatSDKError("bad_request:api").toResponse();
-  }
-
-  // Get message and validate it exists with an active stream
-  const messageWithParts = await getChatMessageWithPartsById({ id: messageId });
-  if (!messageWithParts || messageWithParts.chatId !== chatId) {
-    return new ChatSDKError("not_found:stream").toResponse();
-  }
 
   // Validate chat ownership
   const { data: session } = await getSafeSession({
@@ -64,19 +55,60 @@ export async function GET(
     return new ChatSDKError("forbidden:chat").toResponse();
   }
 
+  // ── Arcan cursor-based replay ───────────────────────────────────
+  // If the user has a Life instance, use Lago's event journal for
+  // stream reconnection instead of Redis resumable streams.
+  const cursor = request.nextUrl.searchParams.get("cursor");
+  if (userId && cursor != null) {
+    const endpoints = await resolveArcanUrl(userId);
+    if (endpoints) {
+      try {
+        const token = await signLifeJWT({
+          id: userId,
+          email: session?.user?.email ?? "",
+        });
+        const client = new ArcanClient(endpoints.arcanUrl, token);
+        const sseStream = await client.streamEvents(chatId, {
+          cursor: Number(cursor),
+          replayLimit: 512,
+        });
+
+        return new Response(sseStream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+            "x-vercel-ai-ui-message-stream": "v1",
+          },
+        });
+      } catch {
+        // Arcan unavailable — fall through to Redis path
+      }
+    }
+  }
+
+  // ── Redis resumable stream fallback ─────────────────────────────
+  const messageId = request.nextUrl.searchParams.get("messageId");
+  if (!messageId) {
+    return new ChatSDKError("bad_request:api").toResponse();
+  }
+
+  const messageWithParts = await getChatMessageWithPartsById({ id: messageId });
+  if (!messageWithParts || messageWithParts.chatId !== chatId) {
+    return new ChatSDKError("not_found:stream").toResponse();
+  }
+
   const { message } = messageWithParts;
 
-  // Stream finished (or we lost the resumable stream) — send the finalized
-  // assistant message as a one-shot "appendMessage" data chunk.
+  // Stream finished — send the finalized message
   if (!message.metadata.activeStreamId) {
     if (message.role !== "assistant") {
       return new Response(null, { status: 204 });
     }
-
     return appendMessageResponse(message);
   }
 
-  // Resume the existing stream
+  // Resume the existing Redis stream
   const streamContext = await getStreamContext();
   if (!streamContext) {
     return new Response(null, { status: 204 });
@@ -86,7 +118,6 @@ export async function GET(
     message.metadata.activeStreamId
   );
   if (!stream) {
-    // Stream missing but message might already be finalized (race vs DB update).
     const refreshed = await getChatMessageWithPartsById({ id: messageId });
     if (
       refreshed &&
@@ -96,7 +127,6 @@ export async function GET(
     ) {
       return appendMessageResponse(refreshed.message);
     }
-
     return new Response(null, { status: 204 });
   }
 

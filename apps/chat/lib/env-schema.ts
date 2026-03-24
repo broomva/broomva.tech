@@ -120,7 +120,14 @@ export const serverEnvSchema = {
     .optional()
     .describe("Absolute path to the Obsidian vault directory"),
 
-  // Lago context engine
+  // Life Agent OS services
+  ARCAN_URL: z
+    .string()
+    .url()
+    .optional()
+    .describe(
+      "Arcan agent runtime URL (e.g. http://localhost:3000). When set, chat routes through Arcan instead of direct streamText"
+    ),
   LAGO_URL: z
     .string()
     .url()
