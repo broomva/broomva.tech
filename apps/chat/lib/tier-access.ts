@@ -60,11 +60,17 @@ const TIER_LIMITS: Record<
 // Free-tier model allowlist
 // ---------------------------------------------------------------------------
 
-/** Community models available on the free tier. */
+/**
+ * Community models available on the free tier.
+ * Must be a superset of ANONYMOUS_LIMITS.AVAILABLE_MODELS — authenticated
+ * free users should never be blocked from models that anonymous users can use.
+ */
 const FREE_TIER_MODELS = [
   "openai/gpt-5-nano",
+  "openai/gpt-5-mini",
   "google/gemini-2.5-flash-lite",
   "google/gemini-3-flash",
+  "anthropic/claude-haiku-4.5",
 ];
 
 // ---------------------------------------------------------------------------

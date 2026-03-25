@@ -102,7 +102,7 @@ function ContextUsage({
   return (
     <Context
       maxTokens={contextMax}
-      modelId={selectedModelId.split("/").join(":") as TokenLensModelId}
+      modelId={(selectedModelId ?? "").split("/").join(":") as TokenLensModelId}
       usage={usage as LanguageModelUsage | undefined}
       usedTokens={usedTokens}
     >

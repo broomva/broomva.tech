@@ -14,7 +14,7 @@ export const ModelSelectorLogo = ({
   const { getModelById } = useChatModels();
   const provider = useMemo(() => {
     const model = getModelById(modelId);
-    return model?.owned_by ?? modelId.split("/")[0] ?? "";
+    return model?.owned_by ?? (modelId ?? "").split("/")[0] ?? "";
   }, [getModelById, modelId]);
 
   if (!provider) {
