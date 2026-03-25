@@ -195,11 +195,13 @@ export async function proxy(req: NextRequest) {
     return withSecurityHeaders(nextWithTenant());
   }
 
-  // Block all other routes for unauthenticated users
+  // Block all other routes for unauthenticated users.
+  // Preserve ?plan= so the pricing → login → onboarding → billing flow works.
   if (!isLoggedIn) {
-    return withSecurityHeaders(
-      NextResponse.redirect(new URL("/login", url)),
-    );
+    const plan = url.searchParams.get("plan");
+    const loginUrl = new URL("/login", url);
+    if (plan) loginUrl.searchParams.set("plan", plan);
+    return withSecurityHeaders(NextResponse.redirect(loginUrl));
   }
 
   return withSecurityHeaders(nextWithTenant());

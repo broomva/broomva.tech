@@ -55,21 +55,28 @@ test.describe("authenticated tier routing", () => {
     await page.goto(url("/chat"));
     await page.waitForLoadState("networkidle");
 
-    // Look for a text input / prompt area
-    const promptInput = page
-      .locator('textarea, input[type="text"]')
-      .filter({ hasText: "" })
-      .first();
+    // The chat input is a Lexical contenteditable div — not a textarea.
+    // We must use pressSequentially (keyboard events) rather than fill()
+    // because Lexical listens to keyboard events, not DOM value setters.
+    const lexicalInput = page.locator('[contenteditable="true"]').first();
+    const isVisible = await lexicalInput.isVisible().catch(() => false);
 
-    const isVisible = await promptInput.isVisible().catch(() => false);
     if (!isVisible) {
-      // Chat may require a specific route — skip if no input found
-      test.skip();
+      // Fallback: try textarea/input (for non-Lexical deployments)
+      const fallback = page.locator('textarea, input[type="text"]').first();
+      const fallbackVisible = await fallback.isVisible().catch(() => false);
+      if (!fallbackVisible) {
+        test.skip();
+        return;
+      }
+      await fallback.fill("Hello, just testing");
+      await fallback.press("Enter");
+    } else {
+      // Click to focus, then type via keyboard events so Lexical processes them
+      await lexicalInput.click();
+      await lexicalInput.pressSequentially("Hello, just testing");
+      await page.keyboard.press("Enter");
     }
-
-    // Type a message and check the response doesn't crash
-    await promptInput.fill("Hello, just testing");
-    await promptInput.press("Enter");
 
     // Wait for either a response or an error message — we just want no 500
     await page.waitForTimeout(3_000);
@@ -94,5 +101,49 @@ test.describe("tier routing – API smoke", () => {
     const response = await request.get(url("/api/trpc/settings.getModelPreference?input=%7B%7D"));
     // 200 or 401 (unauthed) — never 500
     expect(response.status()).not.toBeGreaterThanOrEqual(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Free-tier model gate regression (regression for issue where gpt-5-mini
+// was not in FREE_TIER_MODELS causing all authenticated free users to get 403)
+// ---------------------------------------------------------------------------
+test.describe("free-tier model gate regression", () => {
+  test("POST /api/chat with gpt-5-mini does not return 403 for anonymous", async ({ request }) => {
+    // Anonymous users should be allowed to use gpt-5-mini (default model)
+    // This test posts via the raw API to detect model_not_allowed errors
+    const response = await request.post(url("/api/chat"), {
+      data: {
+        id: "test-regression-" + Date.now(),
+        message: {
+          role: "user",
+          parts: [{ type: "text", text: "ping" }],
+          metadata: { selectedModel: "openai/gpt-5-mini" },
+        },
+        prevMessages: [],
+      },
+      headers: { "Content-Type": "application/json" },
+    });
+    // Anonymous uses credits — 200 (streaming) or 429 (credits exhausted) are OK
+    // 403 means model_not_allowed — that's the regression we're guarding against
+    expect(response.status()).not.toBe(403);
+  });
+
+  test("POST /api/chat with claude-haiku-4.5 does not return 403 for anonymous", async ({
+    request,
+  }) => {
+    const response = await request.post(url("/api/chat"), {
+      data: {
+        id: "test-haiku-" + Date.now(),
+        message: {
+          role: "user",
+          parts: [{ type: "text", text: "ping" }],
+          metadata: { selectedModel: "anthropic/claude-haiku-4.5" },
+        },
+        prevMessages: [],
+      },
+      headers: { "Content-Type": "application/json" },
+    });
+    expect(response.status()).not.toBe(403);
   });
 });

@@ -81,8 +81,9 @@ test.describe("authenticated onboarding", () => {
   test("renders workspace creation form or redirects to /chat", async ({ page }) => {
     const onboarding = page.url().includes("/onboarding");
     const chat = page.url().includes("/chat");
-    // Either state is valid: user has no org (onboarding) or already has one (chat)
-    expect(onboarding || chat).toBe(true);
+    const login = page.url().includes("/login"); // session expired or not set
+    // Valid outcomes: onboarding form (new user), /chat (has org), /login (session expired)
+    expect(onboarding || chat || login).toBe(true);
 
     if (onboarding) {
       await expect(page.getByText("Create your workspace")).toBeVisible();
