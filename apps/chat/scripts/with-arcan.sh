@@ -38,7 +38,10 @@ else
 
   # Auto-detect provider based on available API keys
   if [ -z "${ARCAN_PROVIDER:-}" ]; then
-    if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+    if [ -n "${OPENAI_BASE_URL:-}" ] && [ -n "${OPENAI_API_KEY:-}" ]; then
+      # Vercel AI Gateway (or any OpenAI-compatible endpoint with custom base URL)
+      ARCAN_PROVIDER="openai"
+    elif [ -n "${ANTHROPIC_API_KEY:-}" ]; then
       ARCAN_PROVIDER="anthropic"
     elif [ -n "${OPENAI_API_KEY:-}" ]; then
       ARCAN_PROVIDER="openai"

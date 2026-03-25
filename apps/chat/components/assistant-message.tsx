@@ -20,7 +20,7 @@ const PureAssistantMessage = ({
   const metadata = useMessageMetadataById(messageId);
   const status = useChatStatus();
   const isReconnectingToMessageStream =
-    metadata.activeStreamId !== null && status === "submitted";
+    (metadata?.activeStreamId ?? null) !== null && status === "submitted";
 
   if (!chatId || isReconnectingToMessageStream) {
     return null;
