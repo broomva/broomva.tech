@@ -13,6 +13,7 @@ const BTN =
   "inline-flex size-8 items-center justify-center rounded-full text-text-muted transition hover:text-ai-blue";
 
 function formatTime(s: number) {
+  if (!Number.isFinite(s)) return "0:00";
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${sec.toString().padStart(2, "0")}`;

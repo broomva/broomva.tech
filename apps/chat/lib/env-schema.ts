@@ -126,7 +126,7 @@ export const serverEnvSchema = {
     .url()
     .optional()
     .describe(
-      "Arcan agent runtime URL (e.g. http://localhost:3000). When set, chat routes through Arcan instead of direct streamText"
+      "Arcan agent runtime URL (e.g. http://localhost:7000). When set, chat routes through Arcan instead of direct streamText"
     ),
   LAGO_URL: z
     .string()

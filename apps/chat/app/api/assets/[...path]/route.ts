@@ -17,9 +17,76 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 /**
+ * Parse a Range header and return the start/end byte offsets.
+ */
+function parseRange(
+  rangeHeader: string,
+  totalSize: number
+): { start: number; end: number } | null {
+  const match = rangeHeader.match(/^bytes=(\d+)-(\d*)$/);
+  if (!match) return null;
+  const start = Number.parseInt(match[1], 10);
+  const end = match[2] ? Number.parseInt(match[2], 10) : totalSize - 1;
+  if (start >= totalSize || end >= totalSize || start > end) return null;
+  return { start, end };
+}
+
+/**
+ * Serve a buffer with Range request support.
+ */
+function serveWithRange(
+  request: NextRequest,
+  body: Buffer | Uint8Array,
+  contentType: string,
+  cacheControl: string,
+  extraHeaders?: Record<string, string>
+): NextResponse {
+  const totalSize = body.length;
+  const rangeHeader = request.headers.get("range");
+
+  const baseHeaders: Record<string, string> = {
+    "Content-Type": contentType,
+    "Accept-Ranges": "bytes",
+    "Cache-Control": cacheControl,
+    ...extraHeaders,
+  };
+
+  if (rangeHeader) {
+    const range = parseRange(rangeHeader, totalSize);
+    if (!range) {
+      return new NextResponse(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${totalSize}` },
+      });
+    }
+    const { start, end } = range;
+    const chunk = body.slice(start, end + 1);
+    return new NextResponse(chunk, {
+      status: 206,
+      headers: {
+        ...baseHeaders,
+        "Content-Length": String(chunk.length),
+        "Content-Range": `bytes ${start}-${end}/${totalSize}`,
+      },
+    });
+  }
+
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      ...baseHeaders,
+      "Content-Length": String(totalSize),
+    },
+  });
+}
+
+/**
  * Serve an asset from the public/ directory as a fallback.
  */
-async function serveFromPublic(assetPath: string): Promise<NextResponse | null> {
+async function serveFromPublic(
+  request: NextRequest,
+  assetPath: string
+): Promise<NextResponse | null> {
   const publicPath = join(process.cwd(), "public", assetPath);
   if (!existsSync(publicPath)) return null;
 
@@ -27,13 +94,7 @@ async function serveFromPublic(assetPath: string): Promise<NextResponse | null> 
   const ext = assetPath.slice(assetPath.lastIndexOf(".")).toLowerCase();
   const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
-  return new NextResponse(body, {
-    status: 200,
-    headers: {
-      "Content-Type": contentType,
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  return serveWithRange(request, body, contentType, "public, max-age=3600");
 }
 
 /**
@@ -56,7 +117,7 @@ export async function GET(
   const lagoUrl = process.env.LAGO_URL;
   if (!lagoUrl) {
     // Lago not configured — try public/ fallback
-    const publicRes = await serveFromPublic(assetPath);
+    const publicRes = await serveFromPublic(request, assetPath);
     if (publicRes) return publicRes;
     return NextResponse.json(
       { error: "Asset service not configured" },
@@ -69,7 +130,7 @@ export async function GET(
     const hash = await resolveAssetHash(lagoUrl, assetPath);
     if (!hash) {
       // Asset not in Lago — try public/ fallback
-      const publicRes = await serveFromPublic(assetPath);
+      const publicRes = await serveFromPublic(request, assetPath);
       if (publicRes) return publicRes;
       return NextResponse.json(
         { error: `Asset not found: ${assetPath}` },
