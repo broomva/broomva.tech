@@ -219,6 +219,19 @@ export class ArcanClient {
     return res.body;
   }
 
+  // ─── Identity upgrade (BRO-227) ─────────────────────────────────────
+
+  async upgradeIdentity(
+    sessionId: string,
+    userId: string,
+    identityToken?: string
+  ): Promise<{ session_id: string; new_owner: string; tier: string; capabilities_count: number }> {
+    return this.fetch(`/sessions/${sessionId}/identity`, {
+      method: "PATCH",
+      body: JSON.stringify({ user_id: userId, identity_token: identityToken }),
+    });
+  }
+
   // ─── Approvals ──────────────────────────────────────────────────────
 
   async resolveApproval(
