@@ -1,0 +1,602 @@
+---
+title: "Autonomous Development Workflows: From Terminal to Pull Request"
+summary: "A practical guide to wiring persistent agent sessions, parallel task execution, remote chat interfaces, and self-improving PR feedback loops using the bstack control harness."
+date: 2026-03-25
+published: true
+tags:
+  - autonomy
+  - bstack
+  - control-metalayer
+  - tutorial
+  - agents
+---
+
+![Autonomous development workflow — parallel agent sessions connected by data streams flowing into a central control loop](/images/writing/autonomous-dev-workflows/hero-opt.png)
+
+<video src="/images/writing/autonomous-dev-workflows/video.mp4" autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
+The gap between "AI writes code" and "AI ships features autonomously" is not a model problem. It is an infrastructure problem.
+
+A better model does not fix sessions that die when your laptop sleeps. It does not create guardrails that prevent an agent from deleting your production branch. It does not evaluate which of four competing pull requests best satisfies a ticket's acceptance criteria.
+
+This guide covers how to build autonomous development workflows that actually run — persistent sessions, parallel agents, remote interfaces, automated PR loops, and the governance layer that keeps it all from going sideways.
+
+## What you need
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- A git repository you want to automate
+- [tmux](https://github.com/tmux/tmux) for persistent sessions
+- A task tracker with an API (Linear, GitHub Issues, etc.)
+
+Optional but powerful:
+- Discord or Telegram for remote agent control
+- A VPS or always-on machine for continuous operation
+
+## Part 1: Persistent sessions with tmux
+
+The first problem to solve is session persistence. AI coding sessions are long-running — a complex feature might take 30 minutes of autonomous work. If your SSH connection drops, your terminal closes, or your machine sleeps, the session dies and all context is lost.
+
+tmux solves this. It is a terminal multiplexer that keeps sessions alive in the background, independent of your connection.
+
+### Basic setup
+
+```bash
+# Install tmux
+brew install tmux          # macOS
+sudo apt install tmux      # Ubuntu/Debian
+
+# Create a named session for your project
+tmux new-session -d -s myproject
+
+# Attach to it
+tmux attach -t myproject
+```
+
+### Running Claude in a persistent session
+
+The pattern is: create a tmux session, start Claude Code inside it, detach, and reconnect whenever you want.
+
+```bash
+# Create a session and start Claude in your project directory
+tmux new-session -d -s feature-auth -c ~/projects/myapp
+tmux send-keys -t feature-auth 'claude' Enter
+
+# Send a prompt to the running session
+tmux send-keys -t feature-auth \
+  'Research the auth module and create a PR that adds OAuth2 support' Enter
+
+# Detach — the session keeps running
+# Reattach later from any terminal, any device via SSH
+tmux attach -t feature-auth
+```
+
+### Multiple parallel sessions
+
+This is where it gets interesting. You can run multiple Claude sessions simultaneously, each working on a different task:
+
+```bash
+# Session 1: Working on authentication
+tmux new-session -d -s auth -c ~/projects/myapp
+tmux send-keys -t auth 'claude' Enter
+tmux send-keys -t auth 'Implement OAuth2 provider support per ticket AUTH-42' Enter
+
+# Session 2: Working on billing
+tmux new-session -d -s billing -c ~/projects/myapp
+tmux send-keys -t billing 'claude' Enter
+tmux send-keys -t billing 'Add Stripe subscription tiers per ticket BILL-17' Enter
+
+# Session 3: Watchdog reviewing the other sessions' output
+tmux new-session -d -s reviewer -c ~/projects/myapp
+tmux send-keys -t reviewer 'claude' Enter
+tmux send-keys -t reviewer 'Monitor open PRs and provide code review feedback' Enter
+
+# List all running sessions
+tmux list-sessions
+```
+
+Each session operates in its own git worktree or branch, producing independent pull requests. The sessions survive SSH disconnects, machine sleep, and network interruptions.
+
+### Useful tmux commands
+
+```bash
+tmux list-sessions                    # See all active sessions
+tmux attach -t <name>                 # Reconnect to a session
+tmux kill-session -t <name>           # Stop a session
+tmux send-keys -t <name> 'text' Enter # Send input to a session
+```
+
+## Part 2: Remote interfaces — control agents from anywhere
+
+Running sessions on a server is useful, but you also want to interact with them from your phone, a different computer, or while away from your desk. Claude Code supports chat platform integrations out of the box.
+
+### Discord as a project control surface
+
+Each Discord channel maps to a project folder. You interact with Claude through messages, and it runs commands in the corresponding tmux session on your server.
+
+The setup uses Claude Code's built-in channel support:
+
+```bash
+# In your Claude Code session, configure the Discord integration
+# This creates a bot that bridges Discord messages to your terminal
+claude channels setup discord
+```
+
+Once configured, each channel becomes a persistent Claude session. You can:
+- Send prompts from your phone
+- Receive PR links and status updates
+- Create new task threads within channels
+- Monitor multiple projects from a single Discord server
+
+### Telegram for mobile-first control
+
+Same pattern, different interface — Telegram works well for quick commands and status checks:
+
+```bash
+claude channels setup telegram
+```
+
+The key insight is that these are not chat bots generating responses. They are **interfaces to full Claude Code sessions** running on your server, with access to your filesystem, git repos, and all installed tools.
+
+## Part 3: From tickets to pull requests — the autonomous loop
+
+A single persistent session is useful. The real power comes when you wire it into a complete loop: ticket intake, research, implementation, testing, PR creation, code review, and iteration.
+
+### The autonomous engineer prompt
+
+The core prompt that drives autonomous work follows this structure:
+
+```
+You are an autonomous senior engineer working on this project.
+
+1. Read the ticket details and all linked references
+2. Research the current codebase — understand the dependency chain
+3. Implement the solution following project conventions
+4. Run all checks: lint, type-check, test
+5. Create a pull request with a clear description
+6. Address any CI failures or review feedback
+7. Continue until the PR is mergeable
+
+Definition of done: PR passes all CI checks, follows the control
+layer definitions, and includes tests for new functionality.
+```
+
+This prompt compounds with the project's existing governance. If the repo has a `CLAUDE.md` with conventions, a `.control/policy.yaml` with gates, and pre-commit hooks, the agent inherits all of it automatically. You do not need to repeat "remember to lint" in every prompt because the harness enforces it.
+
+### Parallel agents on different tickets
+
+When you have a backlog of independent tickets, you can dispatch agents in parallel using git worktrees:
+
+```bash
+# Create isolated worktrees for parallel work
+git worktree add ../myapp-auth feature/auth
+git worktree add ../myapp-billing feature/billing
+git worktree add ../myapp-ui feature/ui-refresh
+
+# Launch Claude in each worktree
+tmux new-session -d -s auth -c ../myapp-auth
+tmux send-keys -t auth 'claude "Implement AUTH-42: OAuth2 support"' Enter
+
+tmux new-session -d -s billing -c ../myapp-billing
+tmux send-keys -t billing 'claude "Implement BILL-17: subscription tiers"' Enter
+
+tmux new-session -d -s ui -c ../myapp-ui
+tmux send-keys -t ui 'claude "Implement UI-8: refresh dashboard layout"' Enter
+```
+
+Each agent works in complete isolation — different branches, different directories, no file conflicts. Each produces its own PR.
+
+## Part 4: The feedback loop — automated PR review and iteration
+
+Creating a PR is only half the loop. The other half is getting feedback and iterating until the PR meets quality standards.
+
+### What a good feedback loop looks like
+
+```
+Agent creates PR
+  → CI runs (lint, type-check, tests, build)
+  → Pre-commit hooks enforce formatting and secrets scanning
+  → Another agent reviews the diff for code quality
+  → Review comments posted on the PR
+  → Original agent reads comments and pushes fixes
+  → Loop continues until all checks pass
+```
+
+This is not hypothetical. Claude Code hooks make it concrete.
+
+### Hooks — the governance layer
+
+Claude Code [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) are shell scripts that fire on specific events. They are the enforcement mechanism that makes autonomous work safe.
+
+Here is a real hooks configuration:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "scripts/conversation-bridge-hook.sh",
+          "timeout": 5
+        }]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/control-gate-hook.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "scripts/regression-gate-hook.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [{
+          "type": "command",
+          "command": "scripts/control-gate-hook.sh",
+          "timeout": 5
+        }]
+      }
+    ]
+  }
+}
+```
+
+Three hooks, three purposes:
+
+1. **Stop hook** — After every session, the conversation bridge captures what happened (tools called, files changed, decisions made) and writes it to `docs/conversations/`. This is episodic memory — the next agent session can read what the last one did.
+
+2. **PreToolUse safety gate** — Before any Bash command, Write, or Edit executes, the control gate checks it against `policy.yaml`. If the command matches a blocked pattern (force push, destructive reset, rm -rf on protected paths), the hook returns `{"decision": "block"}` and the agent never executes it.
+
+3. **PreToolUse regression gate** — Before any `git commit`, the regression gate maps staged files against a feature test map and prompts the agent to run E2E tests on affected areas before proceeding.
+
+### The safety gate in detail
+
+The control gate reads rules dynamically from your project's policy file:
+
+```yaml
+# .control/policy.yaml
+gates:
+  hard:
+    - id: G1
+      rule: "No force push to main/master"
+      pattern: "git push.*--force.*(main|master)"
+
+    - id: G2
+      rule: "No destructive git reset"
+      pattern: "git reset --hard"
+
+    - id: G3
+      rule: "No rm -rf on home/root directories"
+      pattern: "rm -rf\\s+(~/|/Users/|/)"
+
+    - id: G4
+      rule: "No writing to secrets files"
+      pattern: "(\\.env|credentials|secrets)"
+```
+
+The hook script parses these rules and blocks matching commands before they execute:
+
+```bash
+#!/bin/bash
+# control-gate-hook.sh — reads policy.yaml, blocks dangerous commands
+
+EVENT=$(cat)
+COMMAND=$(echo "$EVENT" | python3 -c "
+  import sys,json
+  d=json.load(sys.stdin)
+  print(d.get('tool_input',{}).get('command',''))
+" 2>/dev/null)
+
+POLICY="$(git rev-parse --show-toplevel)/.control/policy.yaml"
+
+RESULT=$(echo "$COMMAND" | python3 -c "
+import yaml, re, sys
+with open('$POLICY') as f:
+    policy = yaml.safe_load(f)
+cmd = sys.stdin.read().strip()
+for gate in policy.get('gates', {}).get('hard', []):
+    pattern = gate.get('pattern', '')
+    if pattern and re.search(pattern, cmd):
+        print(f'{gate[\"id\"]}|{gate[\"rule\"]}')
+        break
+")
+
+if [ -n "$RESULT" ]; then
+  GATE_ID=$(echo "$RESULT" | cut -d'|' -f1)
+  REASON=$(echo "$RESULT" | cut -d'|' -f2-)
+  echo "{\"decision\": \"block\", \"reason\": \"Safety shield $GATE_ID: $REASON\"}"
+fi
+```
+
+This is the critical insight: **governance scales better than prompts**. You do not tell the agent "please don't force push" in every prompt. You enforce it structurally, and it applies to every agent, every session, forever.
+
+### The regression gate
+
+Before every commit, the regression gate maps staged files to feature areas and suggests which E2E tests to run:
+
+```json
+{
+  "features": {
+    "auth": {
+      "patterns": ["app/(auth)/**", "app/api/auth/**", "lib/auth*"],
+      "scenarios": [
+        "Navigate to /. Click sign-in. Verify OAuth options render.",
+        "Access /dashboard without login. Verify redirect to sign-in."
+      ]
+    },
+    "billing": {
+      "patterns": ["app/api/billing/**", "lib/stripe*"],
+      "scenarios": [
+        "Navigate to /pricing. Verify Free and Pro tiers display.",
+        "Click upgrade. Verify Stripe checkout loads."
+      ]
+    }
+  }
+}
+```
+
+When you commit changes to auth files, the hook returns an "ask" decision prompting the agent to run those specific scenarios before the commit proceeds. A 10-minute bypass stamp (`make regression-stamp`) lets you skip the gate after tests pass.
+
+## Part 5: The control metalayer — why the harness matters more than the model
+
+Every concept above — hooks, gates, regression maps, conversation bridges — is part of a unified governance framework called the **control metalayer**. It treats the repository as a control system:
+
+| Control concept | Repository equivalent |
+|----------------|----------------------|
+| Plant | The codebase (what changes) |
+| Sensors | Tests, lints, type checks, CI |
+| Actuators | Git commits, PRs, deployments |
+| Controller | The AI agent |
+| Safety shield | Policy gates, pre-commit hooks |
+| Feedback loop | PR reviews, monitoring, alerting |
+| Setpoints | Quality targets in policy.yaml |
+
+### Setpoints — measurable targets
+
+The policy file defines measurable targets the system should maintain:
+
+```yaml
+setpoints:
+  - id: S1
+    name: "gate_pass_rate"
+    target: 0.85
+    alert_below: 0.70
+    measurement: "smoke + check + test pass rate"
+    severity: blocking
+
+  - id: S10
+    name: "skills_installed"
+    target: 27
+    alert_below: 27
+    measurement: "count of installed agent skills"
+    severity: blocking
+
+  - id: S12
+    name: "hooks_wired"
+    target: 3
+    alert_below: 3
+    measurement: "pre-commit + Stop hook + PreToolUse gate"
+    severity: blocking
+
+  - id: S13
+    name: "bridge_freshness_seconds"
+    target: 120
+    alert_above: 3600
+    measurement: "seconds since last conversation bridge run"
+    severity: informational
+```
+
+These are not aspirational. They are enforced. `make control-audit` checks every setpoint and reports compliance:
+
+```bash
+$ make control-audit
+=== Control Metalayer Audit ===
+
+1. Policy
+  [ok] .control/policy.yaml
+
+2. Governance docs
+  [ok] METALAYER.md
+  [ok] CLAUDE.md
+  [ok] AGENTS.md
+
+3. Schemas
+  [ok] schemas/ (symlink)
+  [ok] 5 JSON schemas
+
+4. Conversation bridge
+  [ok] hook script
+  [ok] bridge script
+  [ok] conversations MOC
+
+5. Vault symlinks
+  [ok] vault conversations dir
+
+=== Audit complete ===
+```
+
+### Progressive crystallization — how the system improves itself
+
+The most powerful property of this architecture is that it self-improves. Here is the graduation path for knowledge:
+
+```
+Session 1: Agent hits a CORS error. Fixes it with a proxy pattern.
+    → Captured in conversation log (automatic, via Stop hook)
+
+Session 2: Another agent reads the prior session. Adds a rule to AGENTS.md:
+    "Never call API endpoints directly from the browser."
+
+Session 3: Rule confirmed recurring. Promoted to .control/policy.yaml
+    as a hard gate. Now enforced structurally — no agent can violate it.
+```
+
+| Layer | Where | Lifespan |
+|-------|-------|----------|
+| Working memory | Context window | Single session |
+| Auto-memory | `~/.claude/memory/` | Cross-session |
+| Conversation logs | `docs/conversations/` | Permanent |
+| Working rules | `AGENTS.md` | Until superseded |
+| Enforceable gates | `.control/policy.yaml` | Until policy changes |
+| Invariants | `CLAUDE.md` | Foundational |
+
+Knowledge only graduates when it earns its place. A one-time fix stays in conversation logs. A recurring pattern becomes a rule. A critical rule becomes a gate.
+
+## Part 6: Evaluating competing outputs
+
+When you run parallel agents on the same task with different prompts, you end up with multiple PRs solving the same problem. How do you pick the best one?
+
+The answer is not to compare them manually. Build evaluation into the loop:
+
+### Automated quality signals
+
+Every PR should automatically generate:
+
+- **Line count delta** — Did the PR add 500 lines or 5,000 for the same feature?
+- **Test coverage** — Does it include tests? What is the coverage delta?
+- **Lint and type-check results** — Clean pass or suppressed warnings?
+- **Build output size** — Did the bundle size increase significantly?
+- **Load time metrics** — If you have a staging environment, measure first-render time
+- **Memory footprint** — Track RSS before and after for backend services
+
+### Embedding criteria in tickets
+
+The most effective pattern is to define passing criteria in the ticket itself, so the agent knows what "done" looks like before it starts:
+
+```markdown
+## Acceptance Criteria
+- [ ] OAuth2 flow completes for Google and GitHub providers
+- [ ] Existing session tokens remain valid (no migration required)
+- [ ] Test coverage for auth module >= 80%
+- [ ] No new dependencies > 50KB gzipped
+- [ ] Load time for /login page < 2s on 3G throttle
+```
+
+When multiple agents produce competing PRs, each PR can be scored against these criteria automatically. The one that passes the most criteria wins — or the human reviewer uses the scores to make a fast decision instead of reading every diff line by line.
+
+## Part 7: Bootstrapping a new project
+
+Everything described above — hooks, gates, conversation bridges, regression maps, policy files — can be installed in a new project in minutes.
+
+### Using the agentic control kernel
+
+The control kernel is the bootstrap layer. It installs the governance structure into any repository:
+
+```bash
+# Initialize the control metalayer in your project
+python3 scripts/control_kernel_init.py ~/projects/myapp \
+  --profile governed \
+  --runtime arcan \
+  --ledger lago
+```
+
+This creates:
+- `.control/policy.yaml` — Setpoints and gates
+- `schemas/` — Typed interfaces for state, actions, traces
+- `METALAYER.md` — Control loop documentation
+- Harness gates wired to `make smoke`, `make check`, `make control-audit`
+
+### Using bstack
+
+bstack is a collection of 27 agent skills across 7 layers that provide the full autonomous development stack:
+
+```bash
+# Check current installation status
+bstack status
+
+# Install all skills and wire the control harness
+bstack bootstrap
+```
+
+Bootstrap installs skills, verifies governance files, sets up git hooks, wires the conversation bridge, configures the regression gate, and runs the control audit.
+
+The skill layers:
+
+| Layer | What it provides |
+|-------|-----------------|
+| **Foundation** | Safety gates, governance policy, harness engineering |
+| **Memory** | Conversation bridge, knowledge graph, prompt library |
+| **Orchestration** | Multi-agent dispatch, project scaffolding, self-improvement loops |
+| **Research** | Multi-source research, skills inventory |
+| **Design** | Design systems, production templates |
+| **Platform** | Content pipeline, SEO, brand assets |
+| **Strategy** | Pre-mortem analysis, decision logs, weekly retrospectives |
+
+After bootstrap, verify everything is wired:
+
+```bash
+# Full health check
+make bstack-check
+
+# Verify the control metalayer
+make control-audit
+
+# Check conversation bridge freshness
+ls -la ~/.cache/broomva-bridge-stamp
+
+# Preview regression test coverage for staged changes
+make regression-map
+```
+
+## Part 8: Infrastructure reality
+
+Autonomous agents are compute-hungry. A single Claude Code session uses meaningful CPU and memory. Running three to five in parallel on the same machine requires planning.
+
+### What to expect
+
+- **RAM**: Each tmux + Claude session uses 200-500MB depending on context. Five parallel sessions means 1-2.5GB just for the agent processes, plus whatever your build tools need.
+- **CPU**: Agents spend most time waiting for API responses, but build/test steps can spike all cores. Stagger heavy builds across sessions.
+- **Disk**: Git worktrees are cheap (they share the object store), but `node_modules` per worktree adds up. Use a package manager with hoisting (pnpm, bun) to share dependencies.
+- **Network**: Each agent session makes API calls. Rate limits apply. If you hit them, the agent will retry, but concurrent sessions can amplify the problem.
+
+### Recommended setup
+
+For serious autonomous development:
+
+- **Local**: Mac with 32GB+ RAM, or a Linux workstation. Run sessions directly.
+- **Remote**: A VPS (4+ vCPU, 16GB+ RAM) with tmux. SSH in from anywhere, or use Discord/Telegram integration for mobile access.
+- **Hybrid**: Local for interactive work, remote for overnight batch processing of ticket backlogs.
+
+## Putting it together
+
+The complete flow:
+
+```
+Ticket created in Linear/GitHub
+  → Agent reads ticket (via Linear MCP or GitHub API)
+  → Creates a git worktree and branch
+  → Researches codebase, implements solution
+  → Pre-commit hooks enforce formatting and secrets scanning
+  → Control gate blocks dangerous commands (policy.yaml)
+  → Regression gate prompts E2E tests on affected features
+  → Agent creates PR with description and test results
+  → CI runs, review agent posts feedback
+  → Agent addresses feedback, pushes fixes
+  → Loop continues until PR is mergeable
+  → Conversation bridge captures session to knowledge graph
+  → Next session reads prior sessions, inherits learned patterns
+  → Rules that recur get promoted to AGENTS.md
+  → Critical rules get promoted to .control/policy.yaml
+  → System improves with every session
+```
+
+This is not a demo. It is an operating mode. The quality of the autonomy is determined by the quality of the control system — not the quality of the model.
+
+Invest in the harness.
+
+## Resources
+
+- [Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code hooks reference](https://docs.anthropic.com/en/docs/claude-code/hooks)
+- [Claude Code sub-agents](https://docs.anthropic.com/en/docs/claude-code/sub-agents)
+- [bstack — agent skill stack](https://broomva.tech/skills)
+- [Agentic Control Kernel — control-systems metalayer](https://github.com/broomva/agentic-control-kernel)
+- [tmux documentation](https://github.com/tmux/tmux/wiki)
