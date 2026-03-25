@@ -8,7 +8,7 @@ export type {
   RunOptions,
   StreamOptions,
 } from "./client";
-export { resolveArcanUrl } from "./resolve";
+export { resolveArcanUrl, resolveArcanEndpoints, markInstanceDegraded } from "./resolve";
 export type { ArcanEndpoints } from "./resolve";
 export { executeViaArcan } from "./execute";
 export type { ArcanExecuteOptions } from "./execute";

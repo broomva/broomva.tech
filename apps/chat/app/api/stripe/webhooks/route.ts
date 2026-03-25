@@ -1,9 +1,15 @@
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { logAudit } from "@/lib/db/audit";
 import { db } from "@/lib/db/client";
-import { organization } from "@/lib/db/schema";
+import { organization, organizationLifeInstance } from "@/lib/db/schema";
 import { updateOrganizationPlan } from "@/lib/db/organization";
+import {
+  deleteLifeInstance,
+  isRailwayConfigured,
+  provisionLifeInstance,
+} from "@/lib/railway";
 import { getStripe, PLAN_TIERS, tierFromPriceId, type PlanTier } from "@/lib/stripe";
 import type Stripe from "stripe";
 
@@ -45,6 +51,146 @@ async function replenishCredits(orgId: string, plan: PlanTier) {
       billingPeriodStart: new Date(),
     })
     .where(eq(organization.id, orgId));
+}
+
+// ---------------------------------------------------------------------------
+// Life instance auto-provisioning helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Provision a Railway Life stack for an enterprise org.
+ * Skips silently if Railway is not configured or an instance already exists.
+ * Intended to run as a background task via `after()`.
+ */
+async function autoProvisionLifeInstance(
+  orgId: string,
+  orgSlug: string,
+): Promise<void> {
+  if (!isRailwayConfigured()) return;
+
+  const [existing] = await db
+    .select({ id: organizationLifeInstance.id, status: organizationLifeInstance.status })
+    .from(organizationLifeInstance)
+    .where(eq(organizationLifeInstance.organizationId, orgId))
+    .limit(1);
+
+  // Already provisioned or in-flight — skip
+  if (existing && existing.status !== "failed") return;
+
+  // Upsert the record into "provisioning" state
+  const [instance] = existing
+    ? await db
+        .update(organizationLifeInstance)
+        .set({ status: "provisioning" })
+        .where(eq(organizationLifeInstance.id, existing.id))
+        .returning()
+    : await db
+        .insert(organizationLifeInstance)
+        .values({ organizationId: orgId, status: "provisioning" })
+        .returning();
+
+  logAudit({
+    organizationId: orgId,
+    actorId: "system",
+    action: "life_instance.provision.start",
+    resourceType: "life_instance",
+    resourceId: instance.id,
+    metadata: { trigger: "stripe_webhook" },
+  });
+
+  try {
+    const result = await provisionLifeInstance(orgSlug, orgId);
+
+    await db
+      .update(organizationLifeInstance)
+      .set({
+        railwayProjectId: result.railwayProjectId,
+        railwayEnvironmentId: result.railwayEnvironmentId,
+        arcanUrl: result.services.arcan.url,
+        lagoUrl: result.services.lago.url,
+        autonomicUrl: result.services.autonomic.url,
+        haimaUrl: result.services.haima.url,
+        status: "running",
+        lastHealthCheck: new Date(),
+      })
+      .where(eq(organizationLifeInstance.id, instance.id));
+
+    logAudit({
+      organizationId: orgId,
+      actorId: "system",
+      action: "life_instance.provision.complete",
+      resourceType: "life_instance",
+      resourceId: instance.id,
+      metadata: {
+        trigger: "stripe_webhook",
+        railwayProjectId: result.railwayProjectId,
+      },
+    });
+  } catch (err) {
+    await db
+      .update(organizationLifeInstance)
+      .set({ status: "failed" })
+      .where(eq(organizationLifeInstance.id, instance.id));
+
+    logAudit({
+      organizationId: orgId,
+      actorId: "system",
+      action: "life_instance.provision.failed",
+      resourceType: "life_instance",
+      resourceId: instance.id,
+      metadata: {
+        trigger: "stripe_webhook",
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+  }
+}
+
+/**
+ * Deprovision the Railway Life stack for an org that downgraded from enterprise.
+ * Intended to run as a background task via `after()`.
+ */
+async function autoDeprovisionLifeInstance(orgId: string): Promise<void> {
+  if (!isRailwayConfigured()) return;
+
+  const [instance] = await db
+    .select()
+    .from(organizationLifeInstance)
+    .where(eq(organizationLifeInstance.organizationId, orgId))
+    .limit(1);
+
+  if (!instance || instance.status === "deprovisioning") return;
+
+  await db
+    .update(organizationLifeInstance)
+    .set({ status: "deprovisioning" })
+    .where(eq(organizationLifeInstance.id, instance.id));
+
+  try {
+    if (instance.railwayProjectId) {
+      await deleteLifeInstance(instance.railwayProjectId);
+    }
+
+    await db
+      .delete(organizationLifeInstance)
+      .where(eq(organizationLifeInstance.id, instance.id));
+
+    logAudit({
+      organizationId: orgId,
+      actorId: "system",
+      action: "life_instance.deprovision.complete",
+      resourceType: "life_instance",
+      resourceId: instance.id,
+      metadata: { trigger: "stripe_webhook" },
+    });
+  } catch (err) {
+    await db
+      .update(organizationLifeInstance)
+      .set({ status: "failed" })
+      .where(eq(organizationLifeInstance.id, instance.id));
+
+    console.error("[stripe] Life instance deprovisioning failed:", err);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +273,19 @@ export async function POST(request: Request) {
           },
         });
 
+        // Auto-provision a Railway Life stack on enterprise activation
+        if (plan === "enterprise") {
+          const [org] = await db
+            .select({ slug: organization.slug })
+            .from(organization)
+            .where(eq(organization.id, orgId))
+            .limit(1);
+
+          if (org) {
+            after(autoProvisionLifeInstance(orgId, org.slug));
+          }
+        }
+
         break;
       }
 
@@ -150,6 +309,7 @@ export async function POST(request: Request) {
         const priceId = sub.items.data[0]?.price?.id;
         const plan: PlanTier = priceId ? tierFromPriceId(priceId) : "free";
 
+        const previousPlan = org.plan;
         await updateOrganizationPlan(org.id, plan, undefined, sub.id);
 
         logAudit({
@@ -160,10 +320,21 @@ export async function POST(request: Request) {
           resourceId: org.id,
           metadata: {
             plan,
+            previousPlan,
             stripeSubscriptionId: sub.id,
             status: sub.status,
           },
         });
+
+        // Enterprise upgrade → provision Life stack
+        if (previousPlan !== "enterprise" && plan === "enterprise") {
+          after(autoProvisionLifeInstance(org.id, org.slug));
+        }
+
+        // Enterprise downgrade → deprovision Life stack
+        if (previousPlan === "enterprise" && plan !== "enterprise") {
+          after(autoDeprovisionLifeInstance(org.id));
+        }
 
         break;
       }
@@ -185,6 +356,7 @@ export async function POST(request: Request) {
           break;
         }
 
+        const wasEnterprise = org.plan === "enterprise";
         await updateOrganizationPlan(org.id, "free", undefined, undefined);
 
         // Reset to free-tier credits
@@ -201,6 +373,11 @@ export async function POST(request: Request) {
             stripeSubscriptionId: sub.id,
           },
         });
+
+        // Deprovision Life stack if the org was on enterprise
+        if (wasEnterprise) {
+          after(autoDeprovisionLifeInstance(org.id));
+        }
 
         break;
       }
