@@ -3,7 +3,7 @@
 import { useTheme } from "next-themes";
 import { parse, unparse } from "papaparse";
 import { memo, useEffect, useMemo, useState } from "react";
-import DataGrid, { textEditor } from "react-data-grid";
+import { DataGrid, renderTextEditor, type CellMouseArgs } from "react-data-grid";
 import { cn } from "@/lib/utils";
 
 import "react-data-grid/lib/styles.css";
@@ -64,7 +64,7 @@ const PureSpreadsheetEditor = ({
     const dataColumns = Array.from({ length: MIN_COLS }, (_, i) => ({
       key: i.toString(),
       name: String.fromCharCode(65 + i),
-      renderEditCell: isReadonly ? undefined : textEditor,
+      renderEditCell: isReadonly ? undefined : renderTextEditor,
       width: 120,
       cellClass: cn("border-t bg-bg-deep text-foreground", {
         "border-l": i !== 0,
@@ -126,7 +126,7 @@ const PureSpreadsheetEditor = ({
         sortable: true,
       }}
       enableVirtualization
-      onCellClick={(args) => {
+      onCellClick={(args: CellMouseArgs<Record<string, string>>) => {
         if (args.column.key !== "rowNumber" && !isReadonly) {
           args.selectCell(true);
         }
