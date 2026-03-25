@@ -10,6 +10,7 @@
 import "server-only";
 
 import { SignJWT } from "jose";
+import type { ArcanPolicySet } from "./execute";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -19,7 +20,7 @@ export interface ArcanSessionManifest {
   created_at: string;
   workspace_root: string;
   model_routing: Record<string, unknown>;
-  policy: Record<string, unknown>;
+  policy: ArcanPolicySet;
 }
 
 export interface ArcanRunResponse {
@@ -52,7 +53,7 @@ export interface BudgetState {
 export interface CreateSessionOptions {
   sessionId?: string;
   owner?: string;
-  policy?: Record<string, unknown>;
+  policy?: ArcanPolicySet;
   modelRouting?: Record<string, unknown>;
 }
 
@@ -70,6 +71,10 @@ export interface StreamOptions {
   branch?: string;
   cursor?: number;
   replayLimit?: number;
+  /** Unique ID for this assistant message — used as `messageId` in the Vercel
+   *  AI SDK v6 `start` frame. Pass a fresh UUID per chat turn so React has a
+   *  unique key for each assistant message within the same session. */
+  messageId?: string;
 }
 
 // ─── Client ─────────────────────────────────────────────────────────────────
@@ -191,6 +196,7 @@ export class ArcanClient {
     if (opts.cursor != null) params.set("cursor", String(opts.cursor));
     if (opts.replayLimit != null)
       params.set("replay_limit", String(opts.replayLimit));
+    if (opts.messageId) params.set("message_id", opts.messageId);
 
     const url = `${this.baseUrl}/sessions/${sessionId}/events/stream?${params}`;
     const res = await fetch(url, {

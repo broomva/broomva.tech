@@ -72,6 +72,7 @@ import {
   getClientIP,
 } from "@/lib/utils/rate-limit";
 import { executeViaArcan, resolveArcanUrl } from "@/lib/arcan";
+import type { ArcanPolicySet } from "@/lib/arcan/execute";
 import { generateTitleFromUserMessage } from "../../actions";
 import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
 
@@ -821,6 +822,38 @@ async function finalizeMessageAndCredits({
   }
 }
 
+/**
+ * Maps a subscription plan tier to an arcand PolicySet.
+ * anonymous: heavily gated — no side-effecting capabilities, 5 events/turn
+ * free:      read + search only, 15 events/turn
+ * pro+:      full access, 50 events/turn
+ */
+function buildArcanPolicy(plan: string): ArcanPolicySet {
+  if (plan === "anonymous") {
+    return {
+      allow_capabilities: ["fs:read:/session/**"],
+      gate_capabilities: ["fs:write:**", "exec:cmd:*", "net:egress:*", "secrets:read:*"],
+      max_events_per_turn: 5,
+      max_tool_runtime_secs: 30,
+    };
+  }
+  if (plan === "free") {
+    return {
+      allow_capabilities: ["fs:read:/session/**", "net:egress:*"],
+      gate_capabilities: ["fs:write:**", "exec:cmd:*", "secrets:read:*"],
+      max_events_per_turn: 15,
+      max_tool_runtime_secs: 30,
+    };
+  }
+  // pro / enterprise / any paid tier
+  return {
+    allow_capabilities: ["*"],
+    gate_capabilities: [],
+    max_events_per_turn: 50,
+    max_tool_runtime_secs: 60,
+  };
+}
+
 export async function POST(request: NextRequest) {
   const log = createModuleLogger("api:chat");
   try {
@@ -862,6 +895,8 @@ export async function POST(request: NextRequest) {
       sessionSetup;
 
     // ---- Tier-based model & credit gate (authenticated users only) ----
+    // userPlan is hoisted so the arcan block can build a tier-appropriate policy
+    let userPlan = "anonymous";
     if (userId && !isAnonymous) {
       // Lightweight single-row lookup for org plan + credits
       const [orgRow] = await tierDb
@@ -877,7 +912,7 @@ export async function POST(request: NextRequest) {
         .where(eq(organizationMember.userId, userId))
         .limit(1);
 
-      const userPlan = orgRow?.plan ?? "free";
+      userPlan = orgRow?.plan ?? "free";
 
       if (!isModelAllowed(userPlan, selectedModelId)) {
         return Response.json(
@@ -995,6 +1030,7 @@ export async function POST(request: NextRequest) {
             arcanUrl: endpoints.arcanUrl,
             userEmail: arcanEmail,
             abortSignal: abortController.signal,
+            policy: buildArcanPolicy(userPlan),
           });
 
           if (arcanResponse) {
