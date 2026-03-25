@@ -14,10 +14,12 @@ config({
 const PORT = process.env.PORT || 3000;
 
 /**
- * Set webServer.url and use.baseURL with the location
- * of the WebServer respecting the correct set port
+ * Set webServer.url and use.baseURL with the location of the WebServer.
+ * When TEST_BASE_URL is set (e.g. https://broomva.tech for production runs)
+ * we skip the local dev server entirely.
  */
-const baseURL = `http://localhost:${PORT}`;
+const TEST_BASE_URL = process.env.TEST_BASE_URL;
+const baseURL = TEST_BASE_URL ?? `http://localhost:${PORT}`;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -44,7 +46,7 @@ export default defineConfig({
   },
 
   /* Configure global timeout for each test */
-  timeout: 60 * 1000, // 30 seconds
+  timeout: 60 * 1000, // 60 seconds
   expect: {
     timeout: 60 * 1000,
   },
@@ -91,43 +93,30 @@ export default defineConfig({
         storageState: "playwright/.auth/session.json",
       },
     },
-
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
+    {
+      name: "onboarding",
+      testMatch: /onboarding.test.ts/,
+      dependencies: ["setup:auth"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "tier-routing",
+      testMatch: /tier-routing.test.ts/,
+      dependencies: ["setup:auth"],
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: {
-    command: "bun dev",
-    url: baseURL,
-    timeout: 120 * 1000,
-    reuseExistingServer: !process.env.CI,
-  },
+  /* Skip webServer when testing against a remote URL (TEST_BASE_URL is set) */
+  ...(TEST_BASE_URL
+    ? {}
+    : {
+        webServer: {
+          command: "bun dev",
+          url: baseURL,
+          timeout: 120 * 1000,
+          reuseExistingServer: !process.env.CI,
+        },
+      }),
 });
