@@ -10,6 +10,7 @@
 import "server-only";
 
 import { SignJWT } from "jose";
+import type { ArcanPolicySet } from "./execute";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -19,7 +20,7 @@ export interface ArcanSessionManifest {
   created_at: string;
   workspace_root: string;
   model_routing: Record<string, unknown>;
-  policy: Record<string, unknown>;
+  policy: ArcanPolicySet;
 }
 
 export interface ArcanRunResponse {
@@ -52,7 +53,7 @@ export interface BudgetState {
 export interface CreateSessionOptions {
   sessionId?: string;
   owner?: string;
-  policy?: Record<string, unknown>;
+  policy?: ArcanPolicySet;
   modelRouting?: Record<string, unknown>;
 }
 

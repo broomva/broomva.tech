@@ -20,6 +20,18 @@ import type { ChatMessage } from "@/lib/ai/types";
 
 const log = createModuleLogger("arcan:execute");
 
+/** Mirrors aios-protocol's PolicySet — capability strings must use the aios-protocol format */
+export interface ArcanPolicySet {
+  /** Capabilities allowed without approval. Use aios-protocol format: "fs:read:**", "net:egress:*", "*" */
+  allow_capabilities?: string[];
+  /** Capabilities requiring human approval before execution */
+  gate_capabilities?: string[];
+  /** Max wall-clock seconds for a single tool invocation (default: 30) */
+  max_tool_runtime_secs?: number;
+  /** Max agent events per turn before the run is interrupted (default: 256) */
+  max_events_per_turn?: number;
+}
+
 export interface ArcanExecuteOptions {
   chatId: string;
   userMessage: ChatMessage;
@@ -30,6 +42,8 @@ export interface ArcanExecuteOptions {
   /** Last known event sequence for cursor-based replay */
   lastSequence?: number;
   abortSignal?: AbortSignal;
+  /** Tier-based capability policy for the arcand session */
+  policy?: ArcanPolicySet;
 }
 
 /**
@@ -49,6 +63,7 @@ export async function executeViaArcan(
     userEmail,
     lastSequence,
     abortSignal,
+    policy,
   } = opts;
 
   let client: ArcanClient;
@@ -76,6 +91,7 @@ export async function executeViaArcan(
       await client.createSession({
         sessionId: chatId,
         owner: userId,
+        policy,
       });
       log.info({ chatId }, "Created new Arcan session");
     }
