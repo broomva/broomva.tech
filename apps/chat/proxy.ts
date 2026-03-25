@@ -216,3 +216,6 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|opengraph-image|manifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|mp4|webm|ogg|pdf)$).*)",
   ],
 };
+
+/** Alias expected by the proxy-security-check CI step. */
+export const proxyConfig = config;
