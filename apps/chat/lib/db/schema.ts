@@ -1120,4 +1120,135 @@ export type MarketplaceTransaction = InferSelectModel<
   typeof marketplaceTransaction
 >;
 
+// ─── BRO-228: Tenant Admin Portal tables ──────────────────────────────────────
+
+/**
+ * Per-org RBAC capability overrides for Arcan (BRO-228 — Capability Policy).
+ *
+ * Enterprise admins can configure which Arcan capability strings are
+ * allow-listed for each named role. When present, these override arcand's
+ * built-in tier defaults for sessions belonging to that org.
+ */
+export const organizationArcanRole = pgTable(
+  "OrganizationArcanRole",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Role name matching the Better Auth / tenant role (e.g. "admin", "member"). */
+    roleName: varchar("roleName", { length: 128 }).notNull(),
+    /** JSON array of Arcan capability strings, e.g. ["*"] or ["exec:cmd:ls"]. */
+    allowCapabilities: json("allowCapabilities")
+      .notNull()
+      .$type<string[]>()
+      .default([]),
+    /** Max events allowed per agent turn for this role. */
+    maxEventsPerTurn: integer("maxEventsPerTurn").notNull().default(20),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    OrgArcanRole_org_idx: index("OrgArcanRole_org_idx").on(t.organizationId),
+    OrgArcanRole_org_role_unique: uniqueIndex("OrgArcanRole_org_role_unique").on(
+      t.organizationId,
+      t.roleName,
+    ),
+  }),
+);
+
+export type OrganizationArcanRole = InferSelectModel<
+  typeof organizationArcanRole
+>;
+
+/**
+ * Custom SKILL.md manifests uploaded by enterprise org admins (BRO-228).
+ *
+ * Manifests are stored as raw TOML text, validated server-side before saving.
+ * Skills are assigned to specific roles within the org.
+ */
+export const organizationCustomSkill = pgTable(
+  "OrganizationCustomSkill",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Unique skill name within the org (from TOML `[skill] name`). */
+    name: varchar("name", { length: 256 }).notNull(),
+    /** Raw TOML content of the SKILL.md manifest. */
+    manifestToml: text("manifestToml").notNull(),
+    /** Role names allowed to use this skill. Empty = all roles. */
+    assignedRoles: json("assignedRoles")
+      .notNull()
+      .$type<string[]>()
+      .default([]),
+    /** Whether the skill is active (false = staged/draft). */
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    OrgCustomSkill_org_idx: index("OrgCustomSkill_org_idx").on(t.organizationId),
+    OrgCustomSkill_org_name_unique: uniqueIndex(
+      "OrgCustomSkill_org_name_unique",
+    ).on(t.organizationId, t.name),
+  }),
+);
+
+export type OrganizationCustomSkill = InferSelectModel<
+  typeof organizationCustomSkill
+>;
+
+/**
+ * Private MCP servers registered by enterprise org admins (BRO-226 / BRO-228).
+ *
+ * URL and bearer token are encrypted at rest. The server is injected into
+ * Arcan sessions for org members whose role is in `assignedRoles`.
+ */
+export const organizationMcpServer = pgTable(
+  "OrganizationMcpServer",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    organizationId: uuid("organizationId")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Logical server name (matches SKILL.md `mcp_servers[].name`). */
+    name: varchar("name", { length: 256 }).notNull(),
+    /** MCP server URL — encrypted at rest. */
+    url: encryptedText("url").notNull(),
+    /** Auth bearer token or API key — encrypted at rest. Null for public servers. */
+    bearerToken: encryptedText("bearerToken"),
+    /** Role names allowed to use this server. Empty = all org roles. */
+    assignedRoles: json("assignedRoles")
+      .notNull()
+      .$type<string[]>()
+      .default([]),
+    /** Whether the server is active. */
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    OrgMcpServer_org_idx: index("OrgMcpServer_org_idx").on(t.organizationId),
+    OrgMcpServer_org_name_unique: uniqueIndex("OrgMcpServer_org_name_unique").on(
+      t.organizationId,
+      t.name,
+    ),
+  }),
+);
+
+export type OrganizationMcpServer = InferSelectModel<
+  typeof organizationMcpServer
+>;
+
 export const schema = { user, session, account, verification };
