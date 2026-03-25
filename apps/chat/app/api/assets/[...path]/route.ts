@@ -34,6 +34,14 @@ function parseRange(
 /**
  * Serve a buffer with Range request support.
  */
+/** Copy a Buffer/Uint8Array slice into a plain ArrayBuffer (BodyInit-safe). */
+function toArrayBuffer(data: Buffer | Uint8Array, start = 0, end = data.byteLength): ArrayBuffer {
+  return data.buffer.slice(
+    data.byteOffset + start,
+    data.byteOffset + end
+  ) as ArrayBuffer;
+}
+
 function serveWithRange(
   request: NextRequest,
   body: Buffer | Uint8Array,
@@ -60,18 +68,17 @@ function serveWithRange(
       });
     }
     const { start, end } = range;
-    const chunk = body.slice(start, end + 1);
-    return new NextResponse(chunk, {
+    return new NextResponse(toArrayBuffer(body, start, end + 1), {
       status: 206,
       headers: {
         ...baseHeaders,
-        "Content-Length": String(chunk.length),
+        "Content-Length": String(end - start + 1),
         "Content-Range": `bytes ${start}-${end}/${totalSize}`,
       },
     });
   }
 
-  return new NextResponse(body, {
+  return new NextResponse(toArrayBuffer(body), {
     status: 200,
     headers: {
       ...baseHeaders,
