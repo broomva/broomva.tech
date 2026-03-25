@@ -125,10 +125,11 @@ function PureCommandItem({
           {model.name}
           {model.reasoning && reasoningConfig && (
             <span
-              className="inline-flex shrink-0 items-center gap-1"
+              className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-muted px-1 py-0.5 text-[10px] text-muted-foreground"
               title={reasoningConfig.description}
             >
-              <reasoningConfig.icon className="h-3 w-3 text-muted-foreground" />
+              <reasoningConfig.icon className="h-2.5 w-2.5" />
+              Thinking
             </span>
           )}
         </span>
@@ -284,10 +285,11 @@ function PureModelSelector({
               {selectedItem?.model.name || "Select model"}
               {selectedItem?.model.reasoning && reasoningConfig && (
                 <span
-                  className="inline-flex shrink-0 items-center gap-1"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-muted px-1 py-0.5 text-[10px] text-muted-foreground"
                   title={reasoningConfig.description}
                 >
-                  <reasoningConfig.icon className="h-3 w-3 text-muted-foreground" />
+                  <reasoningConfig.icon className="h-2.5 w-2.5" />
+                  Thinking
                 </span>
               )}
             </p>
