@@ -2,7 +2,7 @@
 -- Services: discoverable agent capabilities with pricing
 -- Transactions: records of service invocations between agents
 
-CREATE TABLE "AgentService" (
+CREATE TABLE IF NOT EXISTS "AgentService" (
 	"id" text PRIMARY KEY NOT NULL,
 	"agentId" text NOT NULL,
 	"userId" text NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE "AgentService" (
 	"updatedAt" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "MarketplaceTransaction" (
+CREATE TABLE IF NOT EXISTS "MarketplaceTransaction" (
 	"id" text PRIMARY KEY NOT NULL,
 	"serviceId" text NOT NULL,
 	"buyerAgentId" text NOT NULL,
@@ -32,20 +32,23 @@ CREATE TABLE "MarketplaceTransaction" (
 	"completedAt" timestamp
 );
 --> statement-breakpoint
-ALTER TABLE "AgentService" ADD CONSTRAINT "AgentService_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+DO $$ BEGIN
+  ALTER TABLE "AgentService" ADD CONSTRAINT "AgentService_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 --> statement-breakpoint
-CREATE INDEX "AgentService_agent_id_idx" ON "AgentService" USING btree ("agentId");
+CREATE INDEX IF NOT EXISTS "AgentService_agent_id_idx" ON "AgentService" USING btree ("agentId");
 --> statement-breakpoint
-CREATE INDEX "AgentService_user_id_idx" ON "AgentService" USING btree ("userId");
+CREATE INDEX IF NOT EXISTS "AgentService_user_id_idx" ON "AgentService" USING btree ("userId");
 --> statement-breakpoint
-CREATE INDEX "AgentService_category_idx" ON "AgentService" USING btree ("category");
+CREATE INDEX IF NOT EXISTS "AgentService_category_idx" ON "AgentService" USING btree ("category");
 --> statement-breakpoint
-CREATE INDEX "AgentService_status_idx" ON "AgentService" USING btree ("status");
+CREATE INDEX IF NOT EXISTS "AgentService_status_idx" ON "AgentService" USING btree ("status");
 --> statement-breakpoint
-CREATE INDEX "MarketplaceTransaction_service_id_idx" ON "MarketplaceTransaction" USING btree ("serviceId");
+CREATE INDEX IF NOT EXISTS "MarketplaceTransaction_service_id_idx" ON "MarketplaceTransaction" USING btree ("serviceId");
 --> statement-breakpoint
-CREATE INDEX "MarketplaceTransaction_buyer_idx" ON "MarketplaceTransaction" USING btree ("buyerAgentId");
+CREATE INDEX IF NOT EXISTS "MarketplaceTransaction_buyer_idx" ON "MarketplaceTransaction" USING btree ("buyerAgentId");
 --> statement-breakpoint
-CREATE INDEX "MarketplaceTransaction_seller_idx" ON "MarketplaceTransaction" USING btree ("sellerAgentId");
+CREATE INDEX IF NOT EXISTS "MarketplaceTransaction_seller_idx" ON "MarketplaceTransaction" USING btree ("sellerAgentId");
 --> statement-breakpoint
-CREATE INDEX "MarketplaceTransaction_status_idx" ON "MarketplaceTransaction" USING btree ("status");
+CREATE INDEX IF NOT EXISTS "MarketplaceTransaction_status_idx" ON "MarketplaceTransaction" USING btree ("status");

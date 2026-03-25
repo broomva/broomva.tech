@@ -1,4 +1,4 @@
-CREATE TABLE "AuditLog" (
+CREATE TABLE IF NOT EXISTS "AuditLog" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organizationId" uuid,
 	"actorId" text,
@@ -11,7 +11,7 @@ CREATE TABLE "AuditLog" (
 	"createdAt" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "Organization" (
+CREATE TABLE IF NOT EXISTS "Organization" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(256) NOT NULL,
 	"slug" varchar(128) NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE "Organization" (
 	CONSTRAINT "Organization_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
-CREATE TABLE "OrganizationApiKey" (
+CREATE TABLE IF NOT EXISTS "OrganizationApiKey" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organizationId" uuid NOT NULL,
 	"createdByUserId" text NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE "OrganizationApiKey" (
 	"createdAt" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "OrganizationLifeInstance" (
+CREATE TABLE IF NOT EXISTS "OrganizationLifeInstance" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organizationId" uuid NOT NULL,
 	"railwayProjectId" varchar(256),
@@ -57,7 +57,7 @@ CREATE TABLE "OrganizationLifeInstance" (
 	"updatedAt" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "OrganizationMember" (
+CREATE TABLE IF NOT EXISTS "OrganizationMember" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organizationId" uuid NOT NULL,
 	"userId" text NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE "OrganizationMember" (
 	"updatedAt" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "UsageEvent" (
+CREATE TABLE IF NOT EXISTS "UsageEvent" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"organizationId" uuid,
 	"userId" text NOT NULL,
@@ -82,28 +82,85 @@ CREATE TABLE "UsageEvent" (
 	"createdAt" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_user_id_fk" FOREIGN KEY ("actorId") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "OrganizationApiKey" ADD CONSTRAINT "OrganizationApiKey_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "OrganizationApiKey" ADD CONSTRAINT "OrganizationApiKey_createdByUserId_user_id_fk" FOREIGN KEY ("createdByUserId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "OrganizationLifeInstance" ADD CONSTRAINT "OrganizationLifeInstance_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "UsageEvent" ADD CONSTRAINT "UsageEvent_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "UsageEvent" ADD CONSTRAINT "UsageEvent_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "AuditLog_org_id_idx" ON "AuditLog" USING btree ("organizationId");--> statement-breakpoint
-CREATE INDEX "AuditLog_actor_id_idx" ON "AuditLog" USING btree ("actorId");--> statement-breakpoint
-CREATE INDEX "AuditLog_action_idx" ON "AuditLog" USING btree ("action");--> statement-breakpoint
-CREATE INDEX "AuditLog_created_at_idx" ON "AuditLog" USING btree ("createdAt");--> statement-breakpoint
-CREATE UNIQUE INDEX "Organization_slug_idx" ON "Organization" USING btree ("slug");--> statement-breakpoint
-CREATE INDEX "Organization_stripe_customer_idx" ON "Organization" USING btree ("stripeCustomerId");--> statement-breakpoint
-CREATE INDEX "OrganizationApiKey_org_id_idx" ON "OrganizationApiKey" USING btree ("organizationId");--> statement-breakpoint
-CREATE INDEX "OrganizationApiKey_key_prefix_idx" ON "OrganizationApiKey" USING btree ("keyPrefix");--> statement-breakpoint
-CREATE INDEX "OrganizationLifeInstance_org_id_idx" ON "OrganizationLifeInstance" USING btree ("organizationId");--> statement-breakpoint
-CREATE INDEX "OrganizationMember_org_id_idx" ON "OrganizationMember" USING btree ("organizationId");--> statement-breakpoint
-CREATE INDEX "OrganizationMember_user_id_idx" ON "OrganizationMember" USING btree ("userId");--> statement-breakpoint
-CREATE UNIQUE INDEX "OrganizationMember_org_user_unique" ON "OrganizationMember" USING btree ("organizationId","userId");--> statement-breakpoint
-CREATE INDEX "UsageEvent_org_id_idx" ON "UsageEvent" USING btree ("organizationId");--> statement-breakpoint
-CREATE INDEX "UsageEvent_user_id_idx" ON "UsageEvent" USING btree ("userId");--> statement-breakpoint
-CREATE INDEX "UsageEvent_created_at_idx" ON "UsageEvent" USING btree ("createdAt");--> statement-breakpoint
-CREATE INDEX "UsageEvent_org_created_idx" ON "UsageEvent" USING btree ("organizationId","createdAt");
+DO $$ BEGIN
+  ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_user_id_fk" FOREIGN KEY ("actorId") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "OrganizationApiKey" ADD CONSTRAINT "OrganizationApiKey_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "OrganizationApiKey" ADD CONSTRAINT "OrganizationApiKey_createdByUserId_user_id_fk" FOREIGN KEY ("createdByUserId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "OrganizationLifeInstance" ADD CONSTRAINT "OrganizationLifeInstance_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "OrganizationMember" ADD CONSTRAINT "OrganizationMember_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "UsageEvent" ADD CONSTRAINT "UsageEvent_organizationId_Organization_id_fk" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "UsageEvent" ADD CONSTRAINT "UsageEvent_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "AuditLog_org_id_idx" ON "AuditLog" USING btree ("organizationId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "AuditLog_actor_id_idx" ON "AuditLog" USING btree ("actorId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "AuditLog_action_idx" ON "AuditLog" USING btree ("action");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "AuditLog_created_at_idx" ON "AuditLog" USING btree ("createdAt");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "Organization_slug_idx" ON "Organization" USING btree ("slug");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "Organization_stripe_customer_idx" ON "Organization" USING btree ("stripeCustomerId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "OrganizationApiKey_org_id_idx" ON "OrganizationApiKey" USING btree ("organizationId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "OrganizationApiKey_key_prefix_idx" ON "OrganizationApiKey" USING btree ("keyPrefix");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "OrganizationLifeInstance_org_id_idx" ON "OrganizationLifeInstance" USING btree ("organizationId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "OrganizationMember_org_id_idx" ON "OrganizationMember" USING btree ("organizationId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "OrganizationMember_user_id_idx" ON "OrganizationMember" USING btree ("userId");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "OrganizationMember_org_user_unique" ON "OrganizationMember" USING btree ("organizationId","userId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "UsageEvent_org_id_idx" ON "UsageEvent" USING btree ("organizationId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "UsageEvent_user_id_idx" ON "UsageEvent" USING btree ("userId");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "UsageEvent_created_at_idx" ON "UsageEvent" USING btree ("createdAt");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "UsageEvent_org_created_idx" ON "UsageEvent" USING btree ("organizationId","createdAt");
+--> statement-breakpoint
+-- Ensure all Organization columns exist if table was created by an earlier schema push
+ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "planCreditsMonthly" integer NOT NULL DEFAULT 50;
+ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "planCreditsRemaining" integer NOT NULL DEFAULT 50;
+ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "billingPeriodStart" timestamp;
+ALTER TABLE "Organization" ADD COLUMN IF NOT EXISTS "neonBranchId" varchar(256);

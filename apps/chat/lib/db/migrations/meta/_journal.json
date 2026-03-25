@@ -358,6 +358,34 @@
       "when": 1774086821844,
       "tag": "0050_add_marketplace_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "tag": "0051_add_agent_audit_columns",
+      "when": 1774233600000,
+      "version": "7",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "tag": "0051_add_agent_table",
+      "when": 1774233601000,
+      "version": "7",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "tag": "0052_add_agent_service_marketplace",
+      "when": 1774233602000,
+      "version": "7",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "tag": "0053_add_tenant_arcan_admin_tables",
+      "when": 1774233603000,
+      "version": "7",
+      "breakpoints": true
     }
   ]
 }
