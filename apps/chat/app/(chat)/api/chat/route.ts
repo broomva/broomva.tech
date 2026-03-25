@@ -71,7 +71,11 @@ import {
   checkAuthenticatedRateLimit,
   getClientIP,
 } from "@/lib/utils/rate-limit";
-import { executeViaArcan, resolveArcanUrl } from "@/lib/arcan";
+import {
+  executeViaArcan,
+  resolveArcanEndpoints,
+  markInstanceDegraded,
+} from "@/lib/arcan";
 import type { ArcanPolicySet } from "@/lib/arcan/execute";
 import { generateTitleFromUserMessage } from "../../actions";
 import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
@@ -994,11 +998,12 @@ export async function POST(request: NextRequest) {
 
     const { previousMessages, allowedTools } = contextResult;
 
-    // ── Arcan Agent Runtime ─────────────────────────────────────────
-    // Try routing through Arcan for both authenticated and anonymous users.
-    // Authenticated: org Life instance on Railway → ARCAN_URL env fallback.
-    // Anonymous: ARCAN_URL env only (no org lookup).
-    // Falls back to streamText if Arcan is unavailable.
+    // ── Arcan Agent Runtime (BRO-225) ──────────────────────────────
+    // Two-tier routing:
+    //   1. Dedicated Railway org instance (enterprise only)
+    //   2. Shared ARCAN_URL env instance (all tiers, fallback)
+    // If the dedicated instance fails health check → mark degraded, try shared.
+    // Anonymous users skip the org lookup and go straight to the shared instance.
     {
       const arcanOwnerId = userId ?? anonymousSession?.id ?? null;
       const arcanEmail = userId
@@ -1008,40 +1013,63 @@ export async function POST(request: NextRequest) {
         : `anon-${anonymousSession?.id?.slice(0, 8)}@guest.broomva.tech`;
 
       if (arcanOwnerId) {
-        // Authenticated users: check org Life instance first, then env
-        // Anonymous users: skip org lookup, only use ARCAN_URL env
-        const endpoints = userId
-          ? await resolveArcanUrl(userId)
-          : process.env.ARCAN_URL
-            ? { arcanUrl: process.env.ARCAN_URL, lagoUrl: process.env.LAGO_URL ?? null }
-            : null;
+        const { dedicated, shared } = userId
+          ? await resolveArcanEndpoints(userId)
+          : {
+              dedicated: null,
+              shared: process.env.ARCAN_URL
+                ? { arcanUrl: process.env.ARCAN_URL, lagoUrl: process.env.LAGO_URL ?? null, isDedicated: false, orgId: null }
+                : null,
+            };
 
-        if (endpoints) {
+        const endpointsToTry = dedicated
+          ? [dedicated, shared].filter(Boolean)
+          : [shared].filter(Boolean);
+
+        for (const endpoint of endpointsToTry) {
+          if (!endpoint) continue;
+
           const abortController = new AbortController();
-          const timeoutId = setTimeout(() => {
-            abortController.abort();
-          }, 290_000);
+          const timeoutId = setTimeout(() => abortController.abort(), 290_000);
+
+          // Degraded policy applied when falling back from a failed dedicated instance
+          const isDegradedFallback = endpoint === shared && dedicated !== null;
+          const policy = isDegradedFallback
+            ? { ...buildArcanPolicy(userPlan), max_events_per_turn: 10 }
+            : buildArcanPolicy(userPlan);
 
           const arcanResponse = await executeViaArcan({
             chatId,
             userMessage,
             previousMessages,
             userId: arcanOwnerId,
-            arcanUrl: endpoints.arcanUrl,
+            arcanUrl: endpoint.arcanUrl,
             userEmail: arcanEmail,
             abortSignal: abortController.signal,
-            policy: buildArcanPolicy(userPlan),
+            policy,
           });
 
+          clearTimeout(timeoutId);
+
           if (arcanResponse) {
-            clearTimeout(timeoutId);
-            log.info({ chatId, anonymous: isAnonymous }, "Routed to Arcan");
+            log.info(
+              { chatId, anonymous: isAnonymous, dedicated: endpoint.isDedicated, degraded: isDegradedFallback },
+              "Routed to Arcan"
+            );
             return arcanResponse;
           }
 
-          clearTimeout(timeoutId);
-          log.info("Arcan unavailable, falling back to streamText");
+          // Dedicated instance unreachable — mark degraded and try shared next
+          if (endpoint.isDedicated && endpoint.orgId) {
+            log.warn(
+              { chatId, orgId: endpoint.orgId, arcanUrl: endpoint.arcanUrl },
+              "Dedicated arcand unreachable — marking degraded, falling back to shared instance (BRO-225)"
+            );
+            await markInstanceDegraded(endpoint.orgId);
+          }
         }
+
+        log.info("Arcan unavailable, falling back to streamText");
       }
     }
 
