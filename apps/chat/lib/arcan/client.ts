@@ -65,6 +65,10 @@ export interface RunOptions {
     input: Record<string, unknown>;
     requested_capabilities?: string[];
   };
+  /** Per-run policy override. When provided, takes precedence over the
+   *  session's stored policy, ensuring the correct tier policy is used even
+   *  for sessions that were auto-created with the default policy. */
+  policy?: ArcanPolicySet;
 }
 
 export interface StreamOptions {
@@ -173,6 +177,7 @@ export class ArcanClient {
         objective: opts.objective,
         branch: opts.branch,
         proposed_tool: opts.proposedTool,
+        policy: opts.policy,
       }),
     });
   }

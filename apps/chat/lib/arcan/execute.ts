@@ -105,9 +105,11 @@ export async function executeViaArcan(
   // Build the objective from the user message content
   const objective = extractObjective(userMessage, previousMessages);
 
-  // Fire the agent run (non-blocking — events stream separately)
+  // Fire the agent run (non-blocking — events stream separately).
+  // Pass policy on every run so the correct tier policy is enforced even for
+  // sessions that were auto-created with PolicySet::default() (owner: "arcan").
   const runPromise = client
-    .run(chatId, { objective })
+    .run(chatId, { objective, policy })
     .catch((e) => {
       log.error({ error: e }, "Arcan run failed");
     });
