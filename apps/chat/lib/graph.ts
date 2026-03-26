@@ -1,12 +1,18 @@
 import "server-only";
 
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import matter from "gray-matter";
+
 import {
   type ContentKind,
   extractWikilinks,
-  getContentBySlug,
   getContentList,
 } from "@/lib/content";
 import { BSTACK_LAYERS } from "@/lib/skills-data";
+
+const CONTENT_ROOT = path.join(process.cwd(), "content");
 
 export type NodeType = "note" | "project" | "writing" | "prompt" | "skill" | "tag";
 
@@ -32,12 +38,12 @@ export interface GraphData {
 
 const CONTENT_KINDS: ContentKind[] = ["notes", "projects", "writing", "prompts"];
 
-function kindToNodeType(kind: ContentKind): NodeType {
-  if (kind === "notes") return "note";
-  if (kind === "projects") return "project";
-  if (kind === "writing") return "writing";
-  return "prompt";
-}
+const KIND_TO_NODE_TYPE: Record<ContentKind, NodeType> = {
+  notes: "note",
+  projects: "project",
+  writing: "writing",
+  prompts: "prompt",
+};
 
 export async function buildPublicGraph(): Promise<GraphData> {
   const nodes: GraphNode[] = [];
@@ -55,7 +61,7 @@ export async function buildPublicGraph(): Promise<GraphData> {
     const items = await getContentList(kind);
     for (const item of items) {
       const nodeId = `${kind}:${item.slug}`;
-      const nodeType = kindToNodeType(kind);
+      const nodeType = KIND_TO_NODE_TYPE[kind];
 
       nodes.push({
         id: nodeId,
@@ -69,13 +75,13 @@ export async function buildPublicGraph(): Promise<GraphData> {
       slugToId.set(item.slug.toLowerCase(), nodeId);
       labelToId.set(item.title.toLowerCase(), nodeId);
 
-      // Fetch raw content for wikilink extraction
-      const doc = await getContentBySlug(kind, item.slug);
-      if (doc?.content) {
-        const wikilinks = extractWikilinks(doc.content);
-        if (wikilinks.length > 0) {
-          wikilinksPerNode.set(nodeId, wikilinks);
-        }
+      // Read raw markdown directly to avoid running the full remark pipeline twice
+      const rawPath = path.join(CONTENT_ROOT, kind, `${item.slug}.mdx`);
+      const raw = await fs.readFile(rawPath, "utf8").catch(() => null);
+      const rawContent = raw ? matter(raw).content : "";
+      const wikilinks = extractWikilinks(rawContent);
+      if (wikilinks.length > 0) {
+        wikilinksPerNode.set(nodeId, wikilinks);
       }
     }
   }
@@ -97,12 +103,17 @@ export async function buildPublicGraph(): Promise<GraphData> {
   }
 
   // 3. Resolve wikilink edges
+  const seenEdges = new Set<string>();
   for (const [sourceId, targets] of wikilinksPerNode) {
     for (const target of targets) {
       const lower = target.toLowerCase();
       const resolvedId = slugToId.get(lower) ?? labelToId.get(lower);
       if (resolvedId && resolvedId !== sourceId) {
-        links.push({ source: sourceId, target: resolvedId, type: "wikilink" });
+        const edgeKey = `${sourceId}|${resolvedId}`;
+        if (!seenEdges.has(edgeKey)) {
+          seenEdges.add(edgeKey);
+          links.push({ source: sourceId, target: resolvedId, type: "wikilink" });
+        }
       }
     }
   }
@@ -113,11 +124,12 @@ export async function buildPublicGraph(): Promise<GraphData> {
   for (const node of nodes) {
     if (!node.tags) continue;
     for (const tag of node.tags) {
-      const existing = tagToNodeIds.get(tag);
+      const normalizedTag = tag.toLowerCase();
+      const existing = tagToNodeIds.get(normalizedTag);
       if (existing) {
         existing.push(node.id);
       } else {
-        tagToNodeIds.set(tag, [node.id]);
+        tagToNodeIds.set(normalizedTag, [node.id]);
       }
     }
   }
