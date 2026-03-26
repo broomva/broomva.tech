@@ -19,6 +19,7 @@ const PUBLIC_PAGE_PREFIXES = [
   "/pricing",
   "/skills",
   "/agents",
+  "/graph",
   "/.well-known",
 ] as const;
 
@@ -38,6 +39,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/trust",
   "/api/marketplace",
   "/api/assets",
+  "/api/graph/public",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
