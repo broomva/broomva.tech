@@ -9,6 +9,8 @@ import {
   ensurePersonalOrg,
   getOrganizationBySlug,
 } from "@/lib/db/organization";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import { EVENT_ORG_CREATED, EVENT_ORG_SKIPPED } from "@/lib/analytics/events";
 
 export async function createOnboardingOrg(
   _prevState: { error?: string; orgId?: string } | null,
@@ -56,6 +58,10 @@ export async function createOnboardingOrg(
       normalizedSlug,
       session.user.id,
     );
+    captureServerEvent(session.user.id, EVENT_ORG_CREATED, {
+      orgId: org.id,
+      orgName: name.trim(),
+    });
     return { orgId: org.id };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create organization.";
@@ -77,6 +83,7 @@ export async function skipOnboarding(
 
   // Ensure a personal org exists before redirecting
   await ensurePersonalOrg(session.user.id, session.user.name ?? "User");
+  captureServerEvent(session.user.id, EVENT_ORG_SKIPPED);
 
   redirect("/chat");
 }
