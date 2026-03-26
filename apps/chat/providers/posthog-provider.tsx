@@ -1,7 +1,7 @@
 "use client";
 
 import posthog from "posthog-js";
-import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react";
+import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 
@@ -21,11 +21,10 @@ if (typeof window !== "undefined" && POSTHOG_KEY) {
 function PostHogPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const ph = usePostHog();
   const lastUrl = useRef("");
 
   useEffect(() => {
-    if (!pathname || !ph) return;
+    if (!pathname) return;
 
     const url = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`;
     if (url === lastUrl.current) return;
@@ -55,8 +54,8 @@ function PostHogPageView() {
     if (utmCampaign) props.utm_campaign = utmCampaign;
     if (utmContent) props.utm_content = utmContent;
 
-    ph.capture("$pageview", props);
-  }, [pathname, searchParams, ph]);
+    posthog.capture("$pageview", props);
+  }, [pathname, searchParams]);
 
   return null;
 }
