@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
   cacheComponents: true,
+  skipTrailingSlashRedirect: true,
   transpilePackages: [
     "@broomva/billing",
     "@broomva/conformance",
@@ -15,6 +17,15 @@ const nextConfig: NextConfig = {
     return [
       { source: "/llms.txt", destination: "/api/llms" },
       { source: "/llms-full.txt", destination: "/api/llms-full" },
+      // Reverse-proxy PostHog to bypass ad blockers
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
     ];
   },
 
@@ -88,4 +99,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Source map upload — reads SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT from env
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  disableLogger: true,
+  automaticVercelMonitors: true,
+});

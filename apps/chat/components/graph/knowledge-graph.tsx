@@ -9,7 +9,7 @@
  */
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GraphData, GraphNode, NodeType } from "@/lib/graph";
 
 // ForceGraph2D uses canvas APIs — must be loaded client-side only
@@ -246,7 +246,7 @@ export function KnowledgeGraph({
   }, [userDataUrl, hasUserLayer]);
 
   // Derived: filtered nodes based on active types + search
-  const filteredData = useCallback((): GraphData => {
+  const filteredData = useMemo((): GraphData => {
     const lq = search.toLowerCase();
     const visibleNodes = graphData.nodes.filter((n) => {
       if (!activeTypes.has(n.type)) return false;
@@ -320,7 +320,7 @@ export function KnowledgeGraph({
       {/* Canvas + side panel */}
       <div className="relative flex-1 overflow-hidden" ref={containerRef}>
         <ForceGraph2D
-          graphData={filteredData()}
+          graphData={filteredData}
           width={dimensions.width - (selectedNode ? 288 : 0)}
           height={dimensions.height}
           backgroundColor="#0a0a0f"
@@ -348,7 +348,7 @@ export function KnowledgeGraph({
 
       {/* Node count footer */}
       <div className="border-t border-[var(--ag-border-default)] px-4 py-1.5 text-xs text-text-muted">
-        {filteredData().nodes.length} nodes · {filteredData().links.length}{" "}
+        {filteredData.nodes.length} nodes · {filteredData.links.length}{" "}
         edges
       </div>
     </div>

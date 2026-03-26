@@ -3,6 +3,8 @@
 import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import { EVENT_USER_LOGGED_IN } from "@/lib/analytics/events";
 
 export async function signInWithEmail(
   _prevState: { error: string } | null,
@@ -16,13 +18,17 @@ export async function signInWithEmail(
     return { error: "Email and password are required." };
   }
 
-  const { error } = await auth.signIn.email({
+  const { data, error } = await auth.signIn.email({
     email,
     password,
   });
 
   if (error) {
     return { error: error.message || "Failed to sign in." };
+  }
+
+  if (data?.user?.id) {
+    captureServerEvent(data.user.id, EVENT_USER_LOGGED_IN);
   }
 
   if (typeof plan === "string" && plan) {

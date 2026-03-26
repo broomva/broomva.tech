@@ -20,6 +20,8 @@ const PUBLIC_PAGE_PREFIXES = [
   "/skills",
   "/agents",
   "/graph",
+  "/links",
+  "/ingest",
   "/.well-known",
 ] as const;
 

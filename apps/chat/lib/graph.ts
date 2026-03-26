@@ -22,13 +22,14 @@ export interface GraphNode {
   type: NodeType;
   url?: string;
   tags?: string[];
+  summary?: string;
   val: number;
 }
 
 export interface GraphLink {
   source: string;
   target: string;
-  type: "wikilink" | "tag" | "reference";
+  type: "wikilink" | "tag" | "reference" | "conversation";
 }
 
 export interface GraphData {
