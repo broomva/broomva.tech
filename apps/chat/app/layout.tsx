@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AudioPlaybackProvider } from "@/providers/audio-playback-provider";
+import { PostHogProvider } from "@/providers/posthog-provider";
 import { config } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -156,19 +157,21 @@ export default async function RootLayout({
           strategy="beforeInteractive"
         />
         <NuqsAdapter>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            disableTransitionOnChange
-            enableSystem
-          >
-            <TooltipProvider>
-              <AudioPlaybackProvider>
-                <Toaster position="top-center" />
-                {children}
-              </AudioPlaybackProvider>
-            </TooltipProvider>
-          </ThemeProvider>
+          <PostHogProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              disableTransitionOnChange
+              enableSystem
+            >
+              <TooltipProvider>
+                <AudioPlaybackProvider>
+                  <Toaster position="top-center" />
+                  {children}
+                </AudioPlaybackProvider>
+              </TooltipProvider>
+            </ThemeProvider>
+          </PostHogProvider>
         </NuqsAdapter>
         <Analytics />
         <SpeedInsights />
