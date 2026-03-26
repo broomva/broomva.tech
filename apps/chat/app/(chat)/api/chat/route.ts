@@ -1012,6 +1012,11 @@ export async function POST(request: NextRequest) {
           })).data?.user?.email ?? "")
         : `anon-${anonymousSession?.id?.slice(0, 8)}@guest.broomva.tech`;
 
+      log.info(
+        { arcanOwnerId, userId, anonId: anonymousSession?.id ?? null, isAnonymous, userPlan },
+        "arcan-owner-debug"
+      );
+
       if (arcanOwnerId) {
         const { dedicated, shared } = userId
           ? await resolveArcanEndpoints(userId)
