@@ -10,11 +10,11 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GraphData, GraphNode, NodeType } from "@/lib/graph/types";
+import type { GraphData, GraphNode, NodeType } from "@/lib/graph";
 
 // ForceGraph2D uses canvas APIs — must be loaded client-side only
 const ForceGraph2D = dynamic(
-  () => import("react-force-graph").then((m) => m.ForceGraph2D),
+  () => import("react-force-graph-2d").then((m) => ({ default: m.default })),
   { ssr: false },
 );
 

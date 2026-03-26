@@ -260,3 +260,8 @@ export async function getAllSlugs(kind: ContentKind): Promise<string[]> {
   const list = await getContentList(kind);
   return list.map((item) => item.slug);
 }
+
+export function extractWikilinks(md: string): string[] {
+  const matches = [...md.matchAll(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g)];
+  return matches.map((m) => m[1].trim());
+}
