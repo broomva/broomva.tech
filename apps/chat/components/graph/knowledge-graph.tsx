@@ -1,7 +1,7 @@
 "use client";
 
 import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ForceGraph2D } from "react-force-graph";
+import ForceGraph2D from "react-force-graph-2d";
 
 import type { GraphData, GraphNode, NodeType } from "@/lib/graph";
 
