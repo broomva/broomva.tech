@@ -68,7 +68,9 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PHProvider client={posthog}>
-      <PostHogPageView />
+      <Suspense fallback={null}>
+        <PostHogPageView />
+      </Suspense>
       <Suspense fallback={null}>
         <UTMTracker />
       </Suspense>
