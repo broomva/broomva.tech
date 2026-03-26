@@ -149,3 +149,5 @@ skills-lock.json
 Cargo.lock
 !crates/**/Cargo.lock
 packages/lago-client/
+.worktrees
+.superpowers

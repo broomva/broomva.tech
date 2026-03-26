@@ -1,24 +1,69 @@
 "use client";
 
+import {
+  BookOpen,
+  Home,
+  Layers,
+  MessageCircle,
+  Network,
+  Sparkles,
+  Terminal,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, Layers, MessageCircle, Terminal, BookOpen } from "lucide-react";
 import authClient from "@/lib/auth-client";
-import { motion, AnimatePresence } from "motion/react";
-import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
+import { useAudioPlayback } from "@/providers/audio-playback-provider";
 import { ContentToolbar } from "./content-toolbar";
+import { Dock, DockIcon, DockItem, DockLabel } from "./dock";
 import { DockAudioControls } from "./dock-audio-controls";
 import { DockSearch } from "./dock-search";
 import { useToolbarDock } from "./toolbar-dock-context";
-import { useAudioPlayback } from "@/providers/audio-playback-provider";
 
 const allLinks = [
   { href: "/", label: "Home", icon: Home, productOnly: true, authOnly: false },
-  { href: "/prompts", label: "Prompts", icon: Sparkles, productOnly: false, authOnly: false },
-  { href: "/skills", label: "Skills", icon: Layers, productOnly: false, authOnly: false },
-  { href: "/chat", label: "Chat", icon: MessageCircle, productOnly: false, authOnly: false },
-  { href: "/console", label: "Console", icon: Terminal, productOnly: false, authOnly: true },
-  { href: "https://docs.broomva.tech/docs", label: "Docs", icon: BookOpen, productOnly: false, authOnly: false },
+  {
+    href: "/prompts",
+    label: "Prompts",
+    icon: Sparkles,
+    productOnly: false,
+    authOnly: false,
+  },
+  {
+    href: "/skills",
+    label: "Skills",
+    icon: Layers,
+    productOnly: false,
+    authOnly: false,
+  },
+  {
+    href: "/graph",
+    label: "Graph",
+    icon: Network,
+    productOnly: false,
+    authOnly: false,
+  },
+  {
+    href: "/chat",
+    label: "Chat",
+    icon: MessageCircle,
+    productOnly: false,
+    authOnly: false,
+  },
+  {
+    href: "/console",
+    label: "Console",
+    icon: Terminal,
+    productOnly: false,
+    authOnly: true,
+  },
+  {
+    href: "https://docs.broomva.tech/docs",
+    label: "Docs",
+    icon: BookOpen,
+    productOnly: false,
+    authOnly: false,
+  },
 ];
 
 const productRoutes = ["/chat", "/project", "/settings", "/console"];
@@ -97,7 +142,11 @@ export function TopNav() {
             return (
               <DockItem
                 key={link.href}
-                onClick={() => link.href.startsWith("http") ? window.open(link.href, "_blank") : router.push(link.href as Route)}
+                onClick={() =>
+                  link.href.startsWith("http")
+                    ? window.open(link.href, "_blank")
+                    : router.push(link.href as Route)
+                }
                 className="cursor-pointer"
               >
                 <DockLabel>{link.label}</DockLabel>

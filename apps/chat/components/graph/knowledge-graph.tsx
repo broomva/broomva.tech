@@ -1,168 +1,356 @@
 "use client";
 
-import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ForceGraph2D from "react-force-graph-2d";
+/**
+ * KnowledgeGraph — BRO-233
+ *
+ * Force-directed canvas graph using react-force-graph.
+ * Renders the public content graph and optionally merges the per-user
+ * Lago overlay when the user is authenticated.
+ */
 
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GraphData, GraphNode, NodeType } from "@/lib/graph";
 
-// NodeObject is not re-exported by react-force-graph, derive it from the component's onNodeClick prop
-type ForceGraph2DProps = ComponentProps<typeof ForceGraph2D>;
-type NodeObject = NonNullable<Parameters<NonNullable<ForceGraph2DProps["onNodeClick"]>>[0]>;
+// ForceGraph2D uses canvas APIs — must be loaded client-side only
+const ForceGraph2D = dynamic(
+  () => import("react-force-graph-2d").then((m) => ({ default: m.default })),
+  { ssr: false },
+);
 
-const NODE_COLORS: Record<string, string> = {
-  note: "#3b82f6",
-  project: "#a855f7",
-  writing: "#eab308",
-  prompt: "#f97316",
-  skill: "#22c55e",
-  tag: "#71717a",
-  memory: "#ef4444",
-  conversation: "#8b5cf6",
-  artifact: "#f8fafc",
+// ─── Node colour palette ────────────────────────────────────────────────────
+
+const NODE_COLORS: Record<NodeType, string> = {
+  note: "#60a5fa", // blue-400
+  project: "#a78bfa", // violet-400
+  writing: "#facc15", // yellow-400
+  prompt: "#fb923c", // orange-400
+  skill: "#4ade80", // green-400
+  tag: "#71717a", // zinc-500
+  memory: "#f87171", // red-400
+  conversation: "#c084fc", // purple-400
+  artifact: "#e4e4e7", // zinc-200
 };
 
-const DIM_COLOR = "#27272a";
-const FALLBACK_COLOR = "#6b7280";
+const NODE_LABELS: Record<NodeType, string> = {
+  note: "Note",
+  project: "Project",
+  writing: "Writing",
+  prompt: "Prompt",
+  skill: "Skill",
+  tag: "Tag",
+  memory: "Memory",
+  conversation: "Conversation",
+  artifact: "Artifact",
+};
+
+const PUBLIC_TYPES: NodeType[] = [
+  "note",
+  "project",
+  "writing",
+  "prompt",
+  "skill",
+  "tag",
+];
+const USER_TYPES: NodeType[] = ["memory", "conversation", "artifact"];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function mergeGraphs(base: GraphData, overlay: GraphData): GraphData {
+  const existingIds = new Set(base.nodes.map((n) => n.id));
+  const newNodes = overlay.nodes.filter((n) => !existingIds.has(n.id));
+  const existingLinks = new Set(
+    base.links.map((l) => `${l.source}|${l.target}`),
+  );
+  const newLinks = overlay.links.filter(
+    (l) => !existingLinks.has(`${l.source}|${l.target}`),
+  );
+  return {
+    nodes: [...base.nodes, ...newNodes],
+    links: [...base.links, ...newLinks],
+  };
+}
+
+// ─── Side panel ──────────────────────────────────────────────────────────────
+
+function NodePanel({
+  node,
+  onClose,
+}: {
+  node: GraphNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="absolute right-0 top-0 h-full w-72 overflow-y-auto border-l border-[var(--ag-border-default)] bg-bg-surface p-5 shadow-xl">
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+          style={{
+            backgroundColor: NODE_COLORS[node.type] + "33",
+            color: NODE_COLORS[node.type],
+          }}
+        >
+          {NODE_LABELS[node.type]}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-text-muted hover:text-text-primary"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
+
+      <h2 className="mt-3 text-base font-semibold text-text-primary leading-snug">
+        {node.label}
+      </h2>
+
+      {node.summary && (
+        <p className="mt-2 text-sm text-text-secondary leading-relaxed">
+          {node.summary}
+        </p>
+      )}
+
+      {node.tags && node.tags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {node.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-[var(--ag-border-default)] px-2 py-0.5 text-xs text-text-muted"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {node.url && (
+        <a
+          href={node.url}
+          target={node.url.startsWith("http") ? "_blank" : undefined}
+          rel={node.url.startsWith("http") ? "noopener noreferrer" : undefined}
+          className="mt-4 inline-flex items-center gap-1.5 text-sm text-ai-blue hover:underline"
+        >
+          Open →
+        </a>
+      )}
+    </div>
+  );
+}
+
+// ─── Filter chips ────────────────────────────────────────────────────────────
+
+function FilterChips({
+  active,
+  hasUserLayer,
+  onChange,
+}: {
+  active: Set<NodeType>;
+  hasUserLayer: boolean;
+  onChange: (types: Set<NodeType>) => void;
+}) {
+  const allTypes = hasUserLayer
+    ? [...PUBLIC_TYPES, ...USER_TYPES]
+    : PUBLIC_TYPES;
+
+  const toggle = (type: NodeType) => {
+    const next = new Set(active);
+    if (next.has(type)) {
+      next.delete(type);
+    } else {
+      next.add(type);
+    }
+    onChange(next);
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {allTypes.map((type) => (
+        <button
+          key={type}
+          type="button"
+          onClick={() => toggle(type)}
+          className="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors"
+          style={{
+            borderColor: active.has(type)
+              ? NODE_COLORS[type]
+              : "var(--ag-border-default)",
+            color: active.has(type) ? NODE_COLORS[type] : "var(--text-muted)",
+            backgroundColor: active.has(type)
+              ? NODE_COLORS[type] + "1a"
+              : "transparent",
+          }}
+        >
+          {NODE_LABELS[type]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 interface KnowledgeGraphProps {
   initialData: GraphData;
+  /** If provided, fetched client-side to add the authenticated user layer */
   userDataUrl?: string;
-  searchQuery?: string;
-  visibleTypes?: NodeType[];
-}
-
-const S = {
-  panel: { position: "absolute" as const, right: 0, top: 0, width: 320, height: "100%", background: "#18181b", borderLeft: "1px solid #27272a", padding: 24, overflowY: "auto" as const, zIndex: 10 },
-  close: { background: "none", border: "none", color: "#a1a1aa", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 },
-  badge: (color: string) => ({ display: "inline-block" as const, background: color, color: "#09090b", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4, textTransform: "uppercase" as const, letterSpacing: "0.05em" }),
-  title: { color: "#f4f4f5", fontSize: 18, fontWeight: 600, marginTop: 10, marginBottom: 8, lineHeight: 1.4 },
-  tags: { display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 },
-  tag: { color: "#a1a1aa", fontSize: 12, background: "#27272a", padding: "2px 6px", borderRadius: 4 },
-  link: { display: "inline-block", color: "#60a5fa", fontSize: 14, textDecoration: "none", marginTop: 4 },
-};
-
-function NodePanel({ node, onClose }: { node: GraphNode; onClose: () => void }) {
-  return (
-    <div style={S.panel}>
-      <button type="button" onClick={onClose} style={S.close}>✕</button>
-      <div style={{ marginTop: 16 }}>
-        <span style={S.badge(NODE_COLORS[node.type] ?? FALLBACK_COLOR)}>{node.type}</span>
-        <h2 style={S.title}>{node.label}</h2>
-        {node.tags && node.tags.length > 0 ? (
-          <div style={S.tags}>
-            {node.tags.map((tag) => <span key={tag} style={S.tag}>#{tag}</span>)}
-          </div>
-        ) : null}
-        {node.url ? <a href={node.url} style={S.link}>View page →</a> : null}
-      </div>
-    </div>
-  );
 }
 
 export function KnowledgeGraph({
   initialData,
   userDataUrl,
-  searchQuery,
-  visibleTypes,
 }: KnowledgeGraphProps) {
-  const [graphData, setGraphData] = useState<GraphData>(initialData);
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [graphData, setGraphData] = useState<GraphData>(initialData);
+  const [hasUserLayer, setHasUserLayer] = useState(false);
+  const [userLayerLoading, setUserLayerLoading] = useState(false);
+  const [showUserLayer, setShowUserLayer] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeTypes, setActiveTypes] = useState<Set<NodeType>>(
+    new Set([...PUBLIC_TYPES]),
+  );
 
-  // Fetch user data overlay on mount
+  // Measure container dimensions
   useEffect(() => {
-    if (!userDataUrl) return;
+    const measure = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({ width: rect.width, height: rect.height });
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Fetch user graph overlay
+  useEffect(() => {
+    if (!userDataUrl || hasUserLayer) return;
+    setUserLayerLoading(true);
     fetch(userDataUrl)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: GraphData | null) => {
-        if (!data) return;
-        setGraphData((prev) => ({
-          nodes: [...prev.nodes, ...data.nodes],
-          links: [...prev.links, ...data.links],
-        }));
+        if (data && (data.nodes.length > 0 || data.links.length > 0)) {
+          setGraphData((prev) => mergeGraphs(prev, data));
+          setHasUserLayer(true);
+          setActiveTypes((prev) => new Set([...prev, ...USER_TYPES]));
+          setShowUserLayer(true);
+        }
       })
-      .catch(() => {});
-  }, [userDataUrl]);
+      .catch(() => null)
+      .finally(() => setUserLayerLoading(false));
+  }, [userDataUrl, hasUserLayer]);
 
-  // Responsive sizing
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      setDimensions({ width, height });
+  // Derived: filtered nodes based on active types + search
+  const filteredData = useCallback((): GraphData => {
+    const lq = search.toLowerCase();
+    const visibleNodes = graphData.nodes.filter((n) => {
+      if (!activeTypes.has(n.type)) return false;
+      if (lq && !n.label.toLowerCase().includes(lq)) return false;
+      if (!showUserLayer && USER_TYPES.includes(n.type as NodeType))
+        return false;
+      return true;
     });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  // Filter visible nodes/links based on visibleTypes prop
-  const filteredData = useMemo(() => {
-    if (!visibleTypes || visibleTypes.length === 0) return graphData;
-    const typeSet = new Set<string>(visibleTypes);
-    const visibleNodes = graphData.nodes.filter((n) => typeSet.has(n.type));
     const visibleIds = new Set(visibleNodes.map((n) => n.id));
-    const visibleLinks = graphData.links.filter((l) => {
-      const src = typeof l.source === "object" ? (l.source as GraphNode).id : l.source;
-      const tgt = typeof l.target === "object" ? (l.target as GraphNode).id : l.target;
-      return visibleIds.has(src) && visibleIds.has(tgt);
-    });
+    const visibleLinks = graphData.links.filter(
+      (l) =>
+        visibleIds.has(l.source as string) &&
+        visibleIds.has(l.target as string),
+    );
     return { nodes: visibleNodes, links: visibleLinks };
-  }, [graphData, visibleTypes]);
+  }, [graphData, activeTypes, search, showUserLayer]);
 
   const nodeColor = useCallback(
-    (node: NodeObject) => {
-      const gNode = node as unknown as GraphNode;
-      if (
-        searchQuery &&
-        !gNode.label.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        return DIM_COLOR;
+    (node: GraphNode) => {
+      if (search && !node.label.toLowerCase().includes(search.toLowerCase())) {
+        return NODE_COLORS[node.type] + "30"; // dim non-matching
       }
-      return NODE_COLORS[gNode.type] ?? FALLBACK_COLOR;
+      return NODE_COLORS[node.type];
     },
-    [searchQuery],
+    [search],
   );
 
-  const nodeVal = useCallback(
-    (node: NodeObject) => {
-      const gNode = node as unknown as GraphNode;
-      if (
-        searchQuery &&
-        gNode.label.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        return (gNode.val ?? 1) * 2;
-      }
-      return gNode.val ?? 1;
-    },
-    [searchQuery],
-  );
+  const nodeLabel = useCallback((node: GraphNode) => node.label, []);
 
-  const handleNodeClick = useCallback((node: NodeObject) => {
-    setSelectedNode(node as unknown as GraphNode);
+  const handleNodeClick = useCallback((node: GraphNode) => {
+    setSelectedNode((prev) => (prev?.id === node.id ? null : node));
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: "relative", width: "100%", height: "100%", background: "#09090b" }}
-    >
-      <ForceGraph2D
-        graphData={filteredData as Parameters<typeof ForceGraph2D>[0]["graphData"]}
-        width={dimensions.width}
-        height={dimensions.height}
-        backgroundColor="#09090b"
-        nodeColor={nodeColor}
-        nodeVal={nodeVal}
-        nodeLabel="label"
-        onNodeClick={handleNodeClick}
-        linkColor={() => "#3f3f46"}
-        linkWidth={0.5}
-      />
-      {selectedNode ? (
-        <NodePanel node={selectedNode} onClose={() => setSelectedNode(null)} />
-      ) : null}
+    <div className="flex h-full flex-col">
+      {/* Controls bar */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--ag-border-default)] px-4 py-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search nodes…"
+          className="h-8 w-48 rounded-lg border border-[var(--ag-border-default)] bg-bg-surface px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-ai-blue focus:outline-none"
+        />
+
+        <FilterChips
+          active={activeTypes}
+          hasUserLayer={hasUserLayer}
+          onChange={setActiveTypes}
+        />
+
+        {userDataUrl && (
+          <div className="ml-auto flex items-center gap-2 text-xs text-text-muted">
+            {userLayerLoading ? (
+              <span className="animate-pulse">Loading your knowledge…</span>
+            ) : hasUserLayer ? (
+              <label className="flex cursor-pointer items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={showUserLayer}
+                  onChange={(e) => setShowUserLayer(e.target.checked)}
+                  className="accent-ai-blue"
+                />
+                My knowledge
+              </label>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {/* Canvas + side panel */}
+      <div className="relative flex-1 overflow-hidden" ref={containerRef}>
+        <ForceGraph2D
+          graphData={filteredData()}
+          width={dimensions.width - (selectedNode ? 288 : 0)}
+          height={dimensions.height}
+          backgroundColor="#0a0a0f"
+          nodeColor={nodeColor as (node: object) => string}
+          nodeLabel={nodeLabel as (node: object) => string}
+          nodeRelSize={4}
+          nodeVal={(node) => (node as GraphNode).val}
+          linkColor={() => "#27272a"}
+          linkWidth={1}
+          linkDirectionalParticles={1}
+          linkDirectionalParticleSpeed={0.003}
+          onNodeClick={handleNodeClick as (node: object) => void}
+          cooldownTicks={150}
+          d3AlphaDecay={0.02}
+          d3VelocityDecay={0.3}
+        />
+
+        {selectedNode && (
+          <NodePanel
+            node={selectedNode}
+            onClose={() => setSelectedNode(null)}
+          />
+        )}
+      </div>
+
+      {/* Node count footer */}
+      <div className="border-t border-[var(--ag-border-default)] px-4 py-1.5 text-xs text-text-muted">
+        {filteredData().nodes.length} nodes · {filteredData().links.length}{" "}
+        edges
+      </div>
     </div>
   );
 }
