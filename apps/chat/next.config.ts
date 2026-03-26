@@ -4,6 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   typedRoutes: true,
   cacheComponents: true,
+  skipTrailingSlashRedirect: true,
   transpilePackages: [
     "@broomva/billing",
     "@broomva/conformance",
