@@ -1,0 +1,185 @@
+---
+title: "OrcaHand: Teaching an Agent to Build and Control a Robotic Hand"
+summary: "How we designed a full-stack agent skill for the ORCA Hand — from 3D printing to sim-to-real RL transfer — using the agentic control kernel as the plant interface."
+date: 2026-03-25
+published: true
+tags:
+  - robotics
+  - agent-os
+  - control-systems
+  - orcahand
+  - reinforcement-learning
+  - open-source
+image: /images/writing/orcahand-building-a-robotic-hand-with-agents/hero.png
+---
+
+There is a question that sits at the intersection of robotics and agent systems: can an LLM-driven agent do more than write code — can it actually control a physical system?
+
+Not in the trivial sense of wrapping an API call. In the real sense: observing joint positions, issuing motor commands, enforcing safety constraints, and improving its own grasp policies over time through reinforcement learning.
+
+We built a skill that does exactly this. It turns the [ORCA Hand](https://orcahand.com/) — an open-source, 17-degree-of-freedom, tendon-driven robotic hand from ETH Zurich — into a first-class plant in our agentic control kernel. The result is a system where Claude can guide you through 3D printing the hand, simulate it in MuJoCo, train RL policies, teleoperate it with Apple Vision Pro, and deploy trained controllers to the physical hardware.
+
+![OrcaHand — 17-DOF tendon-driven dexterous robotic hand](/images/writing/orcahand-building-a-robotic-hand-with-agents/hero.png)
+
+---
+
+## The Numbers
+
+| Metric | Value |
+|--------|-------|
+| Degrees of freedom | 17 (16 finger + 1 wrist) |
+| Self-build cost | ~$1,345 USD |
+| Assembly time | < 8 hours |
+| Continuous operation cycles | 10,000+ without failure |
+| Sim-to-real transfer | Zero-shot via domain randomization |
+| Skill install | `npx skills add broomva/orcahand-skill` |
+
+---
+
+## Why This Matters
+
+Most robotic hand projects live behind paywalls, require custom firmware, or assume you have a PhD in manipulation. ORCA is different: MIT-licensed software, Creative Commons hardware, 3D-printable structure, and off-the-shelf Dynamixel servos. The total self-build cost is under $1,400.
+
+But hardware accessibility is only half the problem. The other half is the software gap between "I have a hand" and "the hand does useful things." That gap is where agent skills live.
+
+---
+
+## The Plant Interface
+
+In control theory, a *plant* is the system being controlled. The agentic control kernel defines a typed interface for plants with four methods: `observe()`, `apply()`, `reset()`, and `constraints()`.
+
+The OrcaHand maps cleanly onto this interface:
+
+```
+observe() → OrcaHandState
+  measured:
+    joint_positions:     17 joints in degrees
+    motor_currents:      17 motors in mA
+    motor_temperatures:  17 motors in celsius
+    tactile_readings:    351 sensors in Newtons (touch model)
+  estimated:
+    grasp_state:  "open" | "contact" | "secured" | "slipping"
+  context:
+    backend: "physical" | "simulated"
+
+apply(action) → ActuationResult
+  directive_type:  setpoint_update | experiment_request | mode_switch
+  payload:
+    joint_targets: {joint_name: degrees}
+    grasp_type:    "power" | "precision" | "pinch"
+```
+
+The key insight is the **dual-backend** design. The same typed schemas work for both the physical hand (via `orca_core` and Dynamixel servos) and the simulated hand (via `orca_sim` and MuJoCo). The LLM supervisory layer does not care which backend it is talking to.
+
+---
+
+## The Multi-Rate Loop
+
+Not every part of a control system should run at the same speed. The Dynamixel firmware runs PID at millisecond rates — no agent should touch that. The retargeter maps human hand poses to joint angles at 30Hz — that is deterministic computation, not reasoning.
+
+The agent's natural home is the *supervisory loop*:
+
+```
+SERVO (ms)     Dynamixel PID firmware. Agent never touches this.
+     |
+MID (10-100ms) Retargeter @ 30Hz / RL policy @ 60Hz
+               Safety shields run here
+     |
+OUTER (sec)    LLM: grasp strategy, mode switch, task goals
+     |
+META (min-day) EGRI: train in sim → evaluate → promote to physical
+```
+
+This is not a philosophical choice — it is an engineering constraint. LLM tool-call latency is hundreds of milliseconds. Servo loops need microsecond determinism. The multi-rate hierarchy places the agent where it can reason without creating timing violations.
+
+---
+
+## Safety Shields
+
+A robotic hand can break itself. Tendons snap under excessive current. Servos burn out above 70°C. Fingers crash into each other outside their range of motion.
+
+The skill defines five safety shields that implement the kernel's full `filter()` / `feasible()` / `fallback()` contract:
+
+| Shield | Invariant | On violation |
+|--------|-----------|-------------|
+| Joint ROM | Targets within bounds | Clamp to valid range |
+| Max Current | < 200mA per motor | Disable torque, alert |
+| Temperature | < 70°C per motor | Cooldown wait |
+| Velocity | < safe joint velocity | Reduce step_size |
+| Tactile | Force < sensor max | Release grasp |
+
+The emergency fallback is simple: `hand.disable_torque()`. The hand goes limp. This is safe because the ORCA Hand has *popping joints* — they dislocate under excess load instead of breaking, then snap back into place.
+
+---
+
+## From Simulation to Reality
+
+The sim-to-real pipeline is where most robotics projects die. Policies that work perfectly in MuJoCo fail on the real hand because of tendon friction, motor latency, and calibration drift.
+
+The skill addresses this through three mechanisms:
+
+1. **Joint reordering map** — Simulation joints are ordered by kinematic chain (thumb → pinky). Physical motors are ordered by daisy-chain wiring. The skill documents the exact remapping: `[0, 13, 14, 15, 16, 10, 11, 12, 4, 5, 6, 1, 2, 3, 7, 8, 9]`.
+
+2. **Domain randomization** — During training, randomize friction (0.005–0.05), tendon stiffness (50–200), motor delay (0–20ms), and observation noise. This forces the policy to be robust to the sim-real gap.
+
+3. **Validation protocol** — Run 100 episodes in sim (must pass 85% success). Then 20 supervised grasps on the real hand. If the gap exceeds 15%, more randomization is needed.
+
+---
+
+## The EGRI Loop
+
+The agentic control kernel provides EGRI (Evaluator-Governed Recursive Improvement) for controller optimization. Applied to the OrcaHand:
+
+- **Mutable artifact**: RL policy weights or retargeter configuration
+- **Evaluator**: sim success rate > 85%, sim-to-real gap < 15%
+- **Promotion**: human approves before deploying to physical hand
+- **Rollback**: revert to previous checkpoint if real-world trial fails
+
+This is not theoretical — the skill ships with a concrete `problem-spec.orcahand.yaml` template that plugs directly into the autoany harness.
+
+---
+
+## Getting Started
+
+Install the skill:
+
+```bash
+npx skills add broomva/orcahand-skill
+```
+
+Bootstrap a workspace (simulation only — no hardware required):
+
+```bash
+python scripts/orcahand_init.py --sim-only
+```
+
+Run your first simulation:
+
+```python
+from orca_sim import OrcaHandRight
+
+env = OrcaHandRight(version="v2", render_mode="human")
+obs, info = env.reset(seed=42)
+
+for _ in range(1000):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        obs, info = env.reset()
+```
+
+The skill has 10 reference files covering every workflow: [hardware build](https://github.com/broomva/orcahand-skill), [calibration](https://github.com/broomva/orcahand-skill), [simulation](https://github.com/broomva/orcahand-skill), [RL training](https://github.com/broomva/orcahand-skill), [teleoperation](https://github.com/broomva/orcahand-skill), [sim-to-real](https://github.com/broomva/orcahand-skill), [EGRI optimization](https://github.com/broomva/orcahand-skill), [API reference](https://github.com/broomva/orcahand-skill), [dependency graph](https://github.com/broomva/orcahand-skill), and [troubleshooting](https://github.com/broomva/orcahand-skill).
+
+---
+
+## What Comes Next
+
+The OrcaHand is the first physical plant in our control kernel. It will not be the last. The typed schemas, safety shields, and multi-rate hierarchy are generic — any system with `observe()`, `apply()`, `reset()`, and `constraints()` can plug into the same architecture.
+
+The hand is open source. The skill is open source. The control kernel is open source.
+
+Build one. Simulate one. Teach it to grasp.
+
+```bash
+npx skills add broomva/orcahand-skill
+```
