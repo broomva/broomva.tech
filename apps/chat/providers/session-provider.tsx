@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import type { Session } from "@/lib/auth";
 import authClient from "@/lib/auth-client";
-import { usePostHog } from "@/providers/posthog-provider";
+import { usePostHog } from "posthog-js/react";
 
 type SessionContextValue = {
   data: Session | null;
