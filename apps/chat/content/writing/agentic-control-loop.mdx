@@ -1,0 +1,189 @@
+---
+title: "The Agentic Control Loop: Re-Engineering LLMs as Supervisory Controllers"
+summary: "Why treating LLMs as supervisory controllers — not autonomous agents — produces systems that scale, recover from failure, and improve over time."
+date: 2026-03-26
+published: true
+tags:
+  - control-systems
+  - agents
+  - agentic-control-kernel
+  - architecture
+  - LLMs
+audio: /audio/writing/agentic-control-loop.mp3
+---
+
+<video src="/images/writing/agentic-control-loop/video.mp4" autoplay loop muted playsInline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
+## The Illusion of Competence
+
+The standard recipe for building an AI agent looks like this: take an LLM, give it tools, wrap it in a loop that says "think, then act, then observe," and let it run. It works brilliantly in demos. It works well enough for single-turn tasks. And it collapses under any sustained operational load.
+
+The collapse is not a mystery. It is a predictable consequence of building systems without feedback, without stability guarantees, and without explicit safety boundaries. When your agent hallucinates a constraint, drifts from its objective over a 30-step trajectory, or takes an irreversible action based on a misread observation — there is no mechanism to catch and correct the error. You find out when the damage is visible.
+
+This is what I call the **systemic crash** problem. Not a single dramatic failure, but the slow accumulation of uncorrected errors that eventually compounds into something unrecoverable. The agent looked competent right until it wasn't.
+
+Every engineering discipline that operates real systems learned this lesson long ago. You do not point a rocket at the moon and hope. You close the loop.
+
+## The Insight Hiding in Plain Sight
+
+Control theory has been solving exactly this problem for over 70 years. The core challenge — keeping a system stable, tracking a reference, rejecting disturbances, operating within constraints, degrading gracefully when things go wrong — is the entire subject matter of the field.
+
+The math that stabilizes a chemical reactor, keeps a quadrotor in the air, or balances a power grid is directly applicable to agent systems. The only prerequisite is a shift in framing:
+
+**Stop treating the LLM as an autonomous agent. Start treating it as a supervisory controller.**
+
+This is not a metaphor. It is a literal architectural choice. The LLM does not get to call tools freely and hope for the best. Instead, it operates within a formal control loop with typed interfaces, safety constraints, and feedback signals that close the gap between intention and outcome.
+
+## The Architecture: Sense, Model, Decide, Actuate, Feedback
+
+The agentic control loop follows the classical control architecture, adapted for LLM-based systems:
+
+```
+Plant ──observe()──> Runtime ──update estimator──> belief_state
+                        |
+                        v
+              LLM Agent: decision(belief_state)
+                        |
+                        v  control_directive (typed)
+              Controller: propose(belief, directive)
+                        |
+                        v  proposed_action
+              Safety Shield: filter(action, belief)
+                        |
+                        v  safe_action + certificate
+              Plant: apply(safe_action)
+                        |
+                        v  result + new observation
+              Trace Ledger: append(event)
+```
+
+Each component has a precise role:
+
+**The Plant** is the system being controlled — a codebase, a cloud deployment, a robot, a business process. It exposes `observe()` to read state and `apply(action)` to change it. The plant is not aware of the controller. It does not need to be.
+
+**The Estimator** maintains a belief state from noisy, partial observations. In cyber plants (code, infrastructure), this might be as simple as aggregating git status, CI results, and test coverage into a structured snapshot. In physical plants, this is a Kalman filter or particle filter. The point is the same: the controller never sees raw sensor data. It sees a typed, uncertainty-aware belief.
+
+**The LLM** operates at the supervisory layer. It receives the belief state and emits a **control directive** — not a raw action, but a structured specification of what the lower layers should do. This might be: "set the target test coverage to 90%, use the aggressive MPC weights, and tighten the safety margin to 0.02." The directive is typed against a JSON schema. If the LLM hallucinates a field that does not exist, the schema rejects it before anything happens.
+
+**The Controller** is a deterministic module that translates the directive into a concrete proposed action. It runs an optimization, applies gains, solves a constrained program — whatever is appropriate for the plant. The key property: the controller is deterministic and verifiable. Given the same belief and directive, it always produces the same action.
+
+**The Safety Shield** projects the proposed action into the safe set. If the action would violate a constraint — deploy to production with failing tests, exceed a resource budget, command a torque that would damage a motor — the shield minimally modifies it to the nearest safe alternative. If no safe alternative exists, it triggers a fallback. The shield is mathematically guaranteed to maintain safety invariants. The LLM cannot override it.
+
+**The Trace Ledger** logs every tick of the loop: observation, belief, directive, proposed action, safe action, shield certificate, result. This creates a complete audit trail and provides the data substrate for improvement.
+
+## Plant Interface and Typed Schemas
+
+The abstraction that makes this work is the **Plant interface** — a standardized API contract that any controllable system must implement:
+
+```
+Plant:
+  observe() -> Observation
+  apply(action: Action) -> ActuationResult
+  reset(seed?) -> Observation
+  constraints() -> ConstraintSet
+```
+
+This is deliberately minimal. A "plant" can be a Kubernetes cluster, a software repository, a robotic arm, or a financial portfolio. The control kernel does not care about the internals. It cares about the interface.
+
+Plants come in three types, each with different control characteristics:
+
+| Type | State | Actions | LLM Role | Safety Layer |
+|------|-------|---------|----------|-------------|
+| **Physical** (robotics, process control) | Continuous | Continuous | Supervisory only (seconds) | CBF-QP shield mandatory |
+| **Cyber-physical** (cloud, IoT) | Mixed | Discrete | Supervisory (seconds-minutes) | Policy gates + SLO constraints |
+| **Cyber** (code, workflows) | Discrete | Discrete | Can be closer to the loop | Harness gates + rollback + evaluators |
+
+The critical design rule: **the LLM never calls `Plant.apply()` directly.** Every action passes through the controller and safety shield. The LLM's job is to set strategy, not to execute tactics.
+
+```
+LLM ──(directive)──> Controller tools (strict schemas)
+                           |
+                       Runtime (trusted)
+                           |
+                      Plant.apply(safe_action)
+```
+
+This is not a limitation — it is the entire point. The LLM gets exactly as much freedom as we can verify.
+
+## Safety Shields: Two Layers, Both Mandatory
+
+Safety in the agentic control loop operates at two distinct layers.
+
+**Layer 1: Policy Gates (pre-action safety).** Before any action reaches the controller, policy gates check semantic and business constraints. These are rules like "destructive actions require human approval," "max 50 control actions per improvement trial," and "the LLM may never target Plant.apply directly." Gates are defined declaratively in a policy file and enforced structurally — not by prompting the LLM to be careful, but by blocking the action if it violates the gate.
+
+Gate types range in severity:
+
+- **Hard gates** block and escalate immediately
+- **Soft gates** log a warning and allow the action
+- **Budget gates** halt when a resource budget is exhausted
+- **Approval gates** pause until a human confirms
+
+**Layer 2: Control-theoretic shields (runtime safety).** For actions that pass the policy gates, a runtime shield ensures the system stays within its safe operating envelope. The canonical pattern is a Control Barrier Function (CBF) solved via quadratic program:
+
+```
+u_safe = argmin ||u - u_proposed||^2
+         s.t.  barrier_constraint(belief, u) >= 0
+               actuation_limits(u)
+```
+
+The shield does the minimum necessary modification. When the proposed action is already safe, the shield is passive — zero modification. When the shield is working hard (high modification magnitude), it signals that the controller is pushing boundaries and may need retuning.
+
+Neither layer alone is sufficient. Policy gates catch semantic violations ("you should not deploy on Friday"). Runtime shields catch dynamic violations ("this torque would exceed the joint limit given current velocity"). Both are always active.
+
+## Multi-Rate Hierarchy: Where the LLM Belongs
+
+Not every part of a control system runs at the same speed, and not every part should involve an LLM. The agentic control loop uses a four-rate hierarchy:
+
+**Inner loop (milliseconds)** — deterministic controllers only. PID, state feedback, MPC at fixed timestep, CBF-QP shield. No LLM involvement. The reason is simple: tool-call runtimes cannot guarantee fixed-cycle deadlines. A 200ms API latency spike in a servo loop is a crash.
+
+**Mid loop (tens to hundreds of milliseconds)** — solver-based planning updates, estimator resets, drift monitors. The LLM may set parameters offline, but does not reason in-band.
+
+**Outer loop (seconds to minutes)** — this is where the LLM operates. It reviews the belief state, sets goals and constraints, selects which controller module to activate, approves escalations. This cadence aligns naturally with tool-driven agents, typed actions, and approval workflows.
+
+**Meta loop (minutes to days)** — recursive improvement of the entire system. The LLM designs experiments, compiles problem specifications, and evaluates whether a new controller configuration is better than the current one.
+
+For slow cyber plants (infrastructure orchestration, code generation, workflow routing), the hierarchy flattens — the "inner loop" might be seconds, and the LLM can act closer to the primary controller. But even here, the safety principles remain identical: typed schemas, policy gates, rollback capability, and harness verification.
+
+## EGRI: The Improvement Loop
+
+A system that maintains stability is useful. A system that also improves over time is transformative.
+
+The meta loop implements **Evaluator-Governed Recursive Improvement (EGRI)** — a structured protocol for making the control system better without breaking it:
+
+1. Define a **problem spec**: what metrics to optimize, what constraints must hold, what artifacts are mutable vs. immutable
+2. Run **trials** in a sandboxed environment — the LLM proposes mutations to controller parameters, safety margins, or model configurations
+3. An **evaluator** (deterministic, trusted, immutable during trials) scores each trial against a scenario library that includes adversarial cases
+4. **Promote** the new configuration only if it improves metrics AND satisfies all constraints
+5. Log everything to a **ledger** for audit, rollback, and cross-run learning
+
+The critical safety rule: the safety shield is part of the immutable harness. It is never bypassed during trials. The evaluator includes holdout scenarios that the mutator cannot see, preventing metric gaming. Constraint violations are hard failures — there is no "soft constraint" exception during promotion decisions.
+
+What gets improved through EGRI:
+
+- MPC cost weights and prediction horizons
+- CBF barrier parameters and safety margins
+- World model configurations (Koopman lifts, regularization)
+- Controller module selection strategies
+- Even the mutation strategy itself (meta-EGRI)
+
+The result is a system where the LLM's intelligence is channeled into structured improvement rather than unconstrained exploration. Each improvement is verified before deployment, logged for rollback, and fed back into the knowledge base for future sessions.
+
+## What This Means in Practice
+
+The agentic control loop is not theoretical. It is the architecture behind the [agentic-control-kernel](https://github.com/broomva/agentic-control-kernel) — a skill package that defines typed schemas, plant interfaces, safety shields, and multi-rate loop specifications for any agent-controlled system.
+
+Here is what changes when you adopt this framing:
+
+**Failures become bounded.** When an agent makes a mistake inside a control loop, the safety shield catches it, the system degrades to a known-safe state, and the trace ledger records exactly what happened. You do not wake up to a production outage caused by an unconstrained agent.
+
+**Improvement becomes systematic.** Instead of hoping the next model version will be better, you run EGRI loops that prove improvement against your actual metrics and constraints. Knowledge graduates from working memory to policy rules to enforceable gates.
+
+**Scaling becomes tractable.** Multi-rate hierarchies let you run multiple agents at different cadences without interference. The inner loop does not wait for the LLM. The LLM does not try to be a servo controller. Each layer does what it is best at.
+
+**Auditability becomes automatic.** Every decision, every action, every shield intervention is logged with full context. Compliance and debugging draw from the same trace stream.
+
+The gap between "AI agent demo" and "AI system in production" is not a model gap. It is a control gap. Close the loop, and the system works. Leave it open, and you are hoping.
+
+---
+
+*The agentic-control-kernel specification — including plant interface contracts, safety shield patterns, multi-rate hierarchy designs, and EGRI loop templates — is available at [github.com/broomva/agentic-control-kernel](https://github.com/broomva/agentic-control-kernel). Contributions welcome.*
