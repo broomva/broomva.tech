@@ -18,43 +18,46 @@ if (typeof window !== "undefined" && POSTHOG_KEY) {
   });
 }
 
+// Fires $pageview on every pathname change — no useSearchParams, no Suspense needed
 function PostHogPageView() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const lastUrl = useRef("");
+  const lastPathname = useRef("");
 
   useEffect(() => {
-    if (!pathname) return;
+    if (!pathname || pathname === lastPathname.current) return;
+    lastPathname.current = pathname;
+    posthog.capture("$pageview", { $current_url: pathname });
+  }, [pathname]);
 
-    const url = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`;
-    if (url === lastUrl.current) return;
-    lastUrl.current = url;
+  return null;
+}
 
+// Persists UTM params to localStorage for cross-page attribution (requires Suspense)
+function UTMTracker() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
     const utmSource = searchParams?.get("utm_source");
-    const utmMedium = searchParams?.get("utm_medium");
-    const utmCampaign = searchParams?.get("utm_campaign");
-    const utmContent = searchParams?.get("utm_content");
+    if (!utmSource) return;
 
-    // Persist UTMs to localStorage for cross-page attribution
-    if (utmSource) {
-      const utmData = {
-        utm_source: utmSource,
-        utm_medium: utmMedium,
-        utm_campaign: utmCampaign,
-        utm_content: utmContent,
-        landing_page: pathname,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem("broomva_utm", JSON.stringify(utmData));
-    }
+    const utmData = {
+      utm_source: utmSource,
+      utm_medium: searchParams?.get("utm_medium"),
+      utm_campaign: searchParams?.get("utm_campaign"),
+      utm_content: searchParams?.get("utm_content"),
+      landing_page: pathname,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem("broomva_utm", JSON.stringify(utmData));
 
-    const props: Record<string, string | null> = { $current_url: url };
-    if (utmSource) props.utm_source = utmSource;
-    if (utmMedium) props.utm_medium = utmMedium;
-    if (utmCampaign) props.utm_campaign = utmCampaign;
-    if (utmContent) props.utm_content = utmContent;
-
-    posthog.capture("$pageview", props);
+    posthog.capture("$pageview", {
+      $current_url: `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
+      utm_source: utmData.utm_source,
+      utm_medium: utmData.utm_medium,
+      utm_campaign: utmData.utm_campaign,
+      utm_content: utmData.utm_content,
+    });
   }, [pathname, searchParams]);
 
   return null;
@@ -65,8 +68,9 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PHProvider client={posthog}>
+      <PostHogPageView />
       <Suspense fallback={null}>
-        <PostHogPageView />
+        <UTMTracker />
       </Suspense>
       {children}
     </PHProvider>
