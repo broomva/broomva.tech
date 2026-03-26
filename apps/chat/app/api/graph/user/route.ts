@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * GET /api/graph/user — authenticated per-user graph overlay from Lago.
  *
@@ -9,7 +11,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getSafeSession } from "@/lib/auth";
 import { createLagoClient, type LagoManifestEntry } from "@/lib/lago-client";
-import { signLagoJWT } from "@/lib/ai/vault/jwt";
+import { signLifeJWT } from "@/lib/ai/vault/jwt";
 
 type UserNode = {
   id: string;
@@ -42,7 +44,6 @@ export async function GET() {
     return NextResponse.json({ error: "Lago not configured" }, { status: 503 });
   }
 
-  const generatedAt = new Date().toISOString();
   const nodes: UserNode[] = [];
   const links: UserLink[] = [];
 
@@ -53,7 +54,7 @@ export async function GET() {
       sessionData.user.email ?? "",
     );
   } catch {
-    return NextResponse.json({ nodes, links, generatedAt }, { status: 503 });
+    return NextResponse.json({ nodes, links, generatedAt: new Date().toISOString() }, { status: 503 });
   }
 
   // -- Sessions (conversation nodes) ----------------------------------------
@@ -61,7 +62,7 @@ export async function GET() {
   try {
     sessions = await client.listSessions();
   } catch {
-    return NextResponse.json({ nodes, links, generatedAt });
+    return NextResponse.json({ nodes, links, generatedAt: new Date().toISOString() });
   }
 
   for (const session of sessions) {
@@ -80,7 +81,6 @@ export async function GET() {
     try {
       entries = await client.getManifest(session.session_id);
     } catch {
-      // skip this session's artifacts — lago might not have them yet
       continue;
     }
 
@@ -99,7 +99,7 @@ export async function GET() {
 
   // -- Memory nodes (graceful degradation) -----------------------------------
   try {
-    const token = await signLagoJWT({
+    const token = await signLifeJWT({
       id: sessionData.user.id,
       email: sessionData.user.email ?? "",
     });
@@ -107,7 +107,11 @@ export async function GET() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
-      const memEntries = (await res.json()) as Array<{ path: string }>;
+      const json = await res.json();
+      // Lago returns either array or { entries: [...] }
+      const memEntries: Array<{ path: string }> = Array.isArray(json)
+        ? json
+        : (json.entries ?? []);
       for (const entry of memEntries) {
         nodes.push({
           id: `memory:${entry.path}`,
@@ -121,5 +125,6 @@ export async function GET() {
     // memory endpoint unavailable — skip silently
   }
 
+  const generatedAt = new Date().toISOString();
   return NextResponse.json({ nodes, links, generatedAt });
 }

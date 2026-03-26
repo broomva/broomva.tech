@@ -14,7 +14,7 @@ import { BSTACK_LAYERS } from "@/lib/skills-data";
 
 const CONTENT_ROOT = path.join(process.cwd(), "content");
 
-export type NodeType = "note" | "project" | "writing" | "prompt" | "skill" | "tag";
+export type NodeType = "note" | "project" | "writing" | "prompt" | "skill" | "tag" | "memory" | "conversation" | "artifact";
 
 export interface GraphNode {
   id: string;
