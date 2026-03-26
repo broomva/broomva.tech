@@ -46,8 +46,6 @@
     "generate:audio": "bun scripts/generate-audio.ts"
   },
   "dependencies": {
-    "@auth/agent": "^0.4.3",
-    "@better-auth/agent-auth": "^0.4.0",
     "@ai-sdk-tools/store": "1.2.0",
     "@ai-sdk/anthropic": "3.0.64",
     "@ai-sdk/devtools": "0.0.15",
@@ -58,6 +56,8 @@
     "@ai-sdk/openai-compatible": "^2.0.28",
     "@ai-sdk/provider": "3.0.8",
     "@ai-sdk/react": "3.0.140",
+    "@auth/agent": "^0.4.3",
+    "@better-auth/agent-auth": "^0.4.0",
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-python": "^6.1.6",
     "@codemirror/state": "^6.5.0",
@@ -154,6 +154,7 @@
     "react-data-grid": "7.0.0-beta.59",
     "react-dom": "19.2.4",
     "react-dropzone": "^14.3.8",
+    "react-force-graph": "^1.48.2",
     "react-hook-form": "^7.62.0",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^3.0.6",
