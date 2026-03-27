@@ -19,7 +19,7 @@ if (typeof window !== "undefined" && POSTHOG_KEY) {
   });
 }
 
-// Fires $pageview on every pathname change — no useSearchParams, no Suspense needed
+// Fires $pageview on every pathname change
 function PostHogPageView() {
   const pathname = usePathname();
   const lastPathname = useRef("");
@@ -71,7 +71,9 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PHProvider client={posthog}>
-      <PostHogPageView />
+      <Suspense fallback={null}>
+        <PostHogPageView />
+      </Suspense>
       <Suspense fallback={null}>
         <UTMTracker />
       </Suspense>
