@@ -10,9 +10,9 @@ export default function SiteLayout({
 }) {
   return (
     <ToolbarDockProvider>
-      <div className="min-h-screen bg-bg-deep text-text-primary pb-24 pt-16">
+      <div className="flex min-h-screen flex-col bg-bg-deep pt-16 text-text-primary">
         <SiteHeader />
-        {children}
+        <main className="flex-1 pb-24">{children}</main>
         <ConditionalFooter />
         <TopNav />
       </div>
