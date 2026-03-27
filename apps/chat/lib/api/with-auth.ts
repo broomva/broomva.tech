@@ -252,7 +252,8 @@ export function withRelayAuth(
       const relayApiKey = process.env.RELAY_API_KEY;
       const bearer = extractBearer(request);
       if (relayApiKey && bearer === relayApiKey) {
-        return await handler(request, { userId: "relay-daemon", isDaemon: true });
+        const userId = process.env.RELAY_USER_ID ?? "relay-daemon";
+        return await handler(request, { userId, isDaemon: true });
       }
 
       // 2. Fall back to session auth
@@ -287,7 +288,7 @@ export function withRelayAuthAndValidation<T extends z.ZodType>(
       const bearer = extractBearer(request);
       let authCtx: RelayAuthContext;
       if (relayApiKey && bearer === relayApiKey) {
-        authCtx = { userId: "relay-daemon", isDaemon: true };
+        authCtx = { userId: process.env.RELAY_USER_ID ?? "relay-daemon", isDaemon: true };
       } else {
         const { data: session } = await getSafeSession({
           fetchOptions: { headers: await headers() },
