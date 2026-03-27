@@ -17,6 +17,7 @@ import {
   DollarSignIcon,
   LogOut,
   MoreHorizontal,
+  Radio,
   Settings2,
   ShieldIcon,
   Sparkles,
@@ -110,6 +111,12 @@ const consoleNav = [
     url: "/console/sandboxes",
     icon: BoxIcon,
     items: [{ title: "Environments", url: "/console/sandboxes" }],
+  },
+  {
+    title: "Relay",
+    url: "/console/relay",
+    icon: Radio,
+    items: [{ title: "Sessions", url: "/console/relay" }],
   },
   {
     title: "Usage",

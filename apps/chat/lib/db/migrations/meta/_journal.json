@@ -397,6 +397,13 @@
     {
       "idx": 56,
       "version": "7",
+      "when": 1774540000000,
+      "tag": "0055_add_sandbox_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
       "when": 1774633286543,
       "tag": "0056_equal_maginty",
       "breakpoints": true
