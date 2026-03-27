@@ -17,10 +17,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { RelaySessionView } from "@/lib/console/types";
 import type { DaemonMessage } from "@/lib/relay/protocol";
+import { RelayWorkspaceSidebar } from "./relay-workspace-sidebar";
 
 type SessionEvent = DaemonMessage & { _key: number };
 type ApprovalEvent = Extract<DaemonMessage, { type: "approval_request" }>;
 type ToolEventMsg = Extract<DaemonMessage, { type: "tool_event" }>;
+type WorkspaceStatusMsg = Extract<DaemonMessage, { type: "workspace_status" }>;
 
 export default function RelaySessionPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +31,8 @@ export default function RelaySessionPage() {
   const [inputValue, setInputValue] = useState("");
   const [pendingApproval, setPendingApproval] =
     useState<ApprovalEvent | null>(null);
+  const [workspaceStatus, setWorkspaceStatus] =
+    useState<WorkspaceStatusMsg | null>(null);
   const [connected, setConnected] = useState(false);
   const [ended, setEnded] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -60,6 +64,13 @@ export default function RelaySessionPage() {
     es.onmessage = (e) => {
       try {
         const event = JSON.parse(e.data) as DaemonMessage;
+
+        // workspace_status updates sidebar state only — not shown in event feed
+        if (event.type === "workspace_status") {
+          setWorkspaceStatus(event as WorkspaceStatusMsg);
+          return;
+        }
+
         keyRef.current += 1;
         setEvents((prev) => [...prev, { ...event, _key: keyRef.current }]);
 
@@ -166,6 +177,11 @@ export default function RelaySessionPage() {
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {id.slice(0, 8)}
         </span>
+
+        <RelayWorkspaceSidebar
+          currentSessionId={id}
+          workspaceStatus={workspaceStatus}
+        />
       </div>
 
       {/* ── Event feed ─────────────────────────────────────────────── */}

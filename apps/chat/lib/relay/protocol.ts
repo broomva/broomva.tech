@@ -68,5 +68,13 @@ export type DaemonMessage =
       hostname: string;
       capabilities: string[];
     }
+  | {
+      type: "workspace_status";
+      sessionId: string;
+      branch: string | null;
+      modified: number;
+      staged: number;
+      lastCommit: string | null;
+    }
   | { type: "pong" }
   | { type: "error"; code: string; message: string };

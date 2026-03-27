@@ -76,6 +76,7 @@ export const POST = withAuthAndValidation(
           case "assistant_message":
           case "tool_event":
           case "approval_request":
+          case "workspace_status":
           case "session_ended": {
             await publishSessionEvent(redis, event.sessionId, payload);
             if (event.type === "session_ended") {
