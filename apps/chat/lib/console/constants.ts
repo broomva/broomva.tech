@@ -14,6 +14,7 @@ import {
   Layers,
   type LucideIcon,
   MessageSquare,
+  Radio,
   Rocket,
   Search,
   Shield,
@@ -27,6 +28,7 @@ export const POLL = {
   FINANCE: 30_000,
   USAGE: 30_000,
   SANDBOXES: 15_000,
+  RELAY: 5_000,
 } as const;
 
 export interface ServiceDef {
@@ -114,6 +116,12 @@ export const CONSOLE_NAV: NavItem[] = [
     label: "Deployments",
     href: "/console/deployments",
     icon: Rocket,
+  },
+  {
+    key: "relay",
+    label: "Relay",
+    href: "/console/relay",
+    icon: Radio,
   },
   {
     key: "sandboxes",

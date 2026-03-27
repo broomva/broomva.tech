@@ -1346,4 +1346,90 @@ export const sandboxSnapshot = pgTable(
 
 export type SandboxSnapshot = InferSelectModel<typeof sandboxSnapshot>;
 
+// ── Relay ─────────────────────────────────────────────────────────────────
+
+/** Relay node — a user's machine running the relayd daemon. */
+export const relayNode = pgTable(
+  "RelayNode",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Display name (defaults to hostname). */
+    name: varchar("name", { length: 128 }).notNull(),
+    /** Machine hostname. */
+    hostname: varchar("hostname", { length: 256 }),
+    /** Connection status. */
+    status: varchar("status", {
+      enum: ["online", "offline", "degraded"],
+      length: 16,
+    })
+      .notNull()
+      .default("offline"),
+    lastSeenAt: timestamp("lastSeenAt"),
+    /** Supported session types (e.g. ["claude-code","arcan","codex"]). */
+    capabilities: json("capabilities").$type<string[]>().default([]),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    RelayNode_user_idx: index("RelayNode_user_idx").on(t.userId),
+    RelayNode_status_idx: index("RelayNode_status_idx").on(t.status),
+  }),
+);
+
+export type RelayNode = InferSelectModel<typeof relayNode>;
+
+/** Relay session — an agent session accessible via relay. */
+export const relaySession = pgTable(
+  "RelaySession",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    nodeId: uuid("nodeId")
+      .notNull()
+      .references(() => relayNode.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Agent runtime type. */
+    sessionType: varchar("sessionType", {
+      enum: ["arcan", "claude-code", "codex"],
+      length: 32,
+    }).notNull(),
+    /** Lifecycle status. */
+    status: varchar("status", {
+      enum: ["active", "idle", "completed", "failed"],
+      length: 16,
+    })
+      .notNull()
+      .default("active"),
+    /** Display name for the session. */
+    name: varchar("name", { length: 256 }),
+    /** Working directory on the remote machine. */
+    workdir: varchar("workdir", { length: 1024 }),
+    /** Remote session identifier (Arcan session_id or tmux session name). */
+    remoteSessionId: varchar("remoteSessionId", { length: 256 }),
+    /** Last received output sequence number (for resumability). */
+    lastSequence: integer("lastSequence").notNull().default(0),
+    /** Model currently in use. */
+    model: varchar("model", { length: 128 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    RelaySession_node_idx: index("RelaySession_node_idx").on(t.nodeId),
+    RelaySession_user_idx: index("RelaySession_user_idx").on(t.userId),
+    RelaySession_status_idx: index("RelaySession_status_idx").on(t.status),
+  }),
+);
+
+export type RelaySession = InferSelectModel<typeof relaySession>;
+
 export const schema = { user, session, account, verification };
