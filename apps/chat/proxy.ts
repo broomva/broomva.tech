@@ -42,6 +42,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/marketplace",
   "/api/assets",
   "/api/graph/public",
+  "/api/relay",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
