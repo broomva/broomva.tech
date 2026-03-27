@@ -7,7 +7,7 @@ import { Suspense, useEffect, useRef } from "react";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST =
-  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "/ingest";
+  process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://t.broomva.tech";
 
 if (typeof window !== "undefined" && POSTHOG_KEY) {
   posthog.init(POSTHOG_KEY, {
@@ -27,7 +27,9 @@ function PostHogPageView() {
   useEffect(() => {
     if (!pathname || pathname === lastPathname.current) return;
     lastPathname.current = pathname;
-    posthog.capture("$pageview", { $current_url: pathname });
+    posthog.capture("$pageview", {
+      $current_url: typeof window !== "undefined" ? window.location.href : pathname,
+    });
   }, [pathname]);
 
   return null;
@@ -69,9 +71,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PHProvider client={posthog}>
-      <Suspense fallback={null}>
-        <PostHogPageView />
-      </Suspense>
+      <PostHogPageView />
       <Suspense fallback={null}>
         <UTMTracker />
       </Suspense>

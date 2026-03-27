@@ -63,7 +63,7 @@ function getServerPostHog(): PostHog | null {
   if (!key) return null;
   if (!_ph) {
     _ph = new PostHog(key, {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
+      host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
       flushAt: 1,
       flushInterval: 0,
     });

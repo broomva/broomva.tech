@@ -17,15 +17,6 @@ const nextConfig: NextConfig = {
     return [
       { source: "/llms.txt", destination: "/api/llms" },
       { source: "/llms-full.txt", destination: "/api/llms-full" },
-      // Reverse-proxy PostHog to bypass ad blockers
-      {
-        source: "/ingest/static/:path*",
-        destination: "https://us-assets.i.posthog.com/static/:path*",
-      },
-      {
-        source: "/ingest/:path*",
-        destination: "https://us.i.posthog.com/:path*",
-      },
     ];
   },
 
