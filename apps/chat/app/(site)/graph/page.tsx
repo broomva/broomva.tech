@@ -36,8 +36,7 @@ export default async function GraphPage() {
   return (
     /* Fixed overlay: starts below the site header, stops above the bottom dock */
     <div
-      className="fixed left-0 right-0 top-16 z-10 flex flex-col overflow-hidden"
-      style={{ bottom: "4.5rem" }}
+      className="fixed bottom-16 left-0 right-0 top-16 z-10 flex flex-col overflow-hidden bg-bg-deep"
     >
       {/* Page title bar */}
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--ag-border-default)] px-5 py-3">
