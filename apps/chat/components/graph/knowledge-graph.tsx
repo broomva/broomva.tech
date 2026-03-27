@@ -6,11 +6,23 @@
  * Force-directed canvas graph using react-force-graph.
  * Renders the public content graph and optionally merges the per-user
  * Lago overlay when the user is authenticated.
+ *
+ * Features:
+ *  - Custom node rendering with glow halos
+ *  - Colored directional particles on links (microanimations)
+ *  - Node hover highlights with neighbor emphasis
+ *  - Type-filtered search with side panel detail view
  */
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { GraphData, GraphNode, NodeType } from "@/lib/graph";
+import type {
+  GraphData,
+  GraphLink,
+  GraphNode,
+  LinkType,
+  NodeType,
+} from "@/lib/graph/types";
 
 // ForceGraph2D uses canvas APIs — must be loaded client-side only
 const ForceGraph2D = dynamic(
@@ -44,6 +56,20 @@ const NODE_LABELS: Record<NodeType, string> = {
   artifact: "Artifact",
 };
 
+const LINK_COLORS: Record<LinkType, string> = {
+  wikilink: "#60a5fa40", // blue, muted
+  tag: "#71717a30", // zinc, very subtle
+  reference: "#a78bfa50", // violet
+  conversation: "#c084fc40", // purple
+};
+
+const LINK_PARTICLE_COLORS: Record<LinkType, string> = {
+  wikilink: "#60a5fa",
+  tag: "#71717a",
+  reference: "#a78bfa",
+  conversation: "#c084fc",
+};
+
 const PUBLIC_TYPES: NodeType[] = [
   "note",
   "project",
@@ -71,6 +97,32 @@ function mergeGraphs(base: GraphData, overlay: GraphData): GraphData {
   };
 }
 
+/** Build a set of neighbor node IDs for a given node */
+function getNeighborIds(
+  nodeId: string,
+  links: GraphLink[],
+): Set<string> {
+  const neighbors = new Set<string>();
+  for (const link of links) {
+    const s = typeof link.source === "object" ? (link.source as GraphNode).id : link.source;
+    const t = typeof link.target === "object" ? (link.target as GraphNode).id : link.target;
+    if (s === nodeId) neighbors.add(t);
+    if (t === nodeId) neighbors.add(s);
+  }
+  return neighbors;
+}
+
+// ─── Hex color helpers ──────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    Number.parseInt(h.slice(0, 2), 16),
+    Number.parseInt(h.slice(2, 4), 16),
+    Number.parseInt(h.slice(4, 6), 16),
+  ];
+}
+
 // ─── Side panel ──────────────────────────────────────────────────────────────
 
 function NodePanel({
@@ -81,7 +133,7 @@ function NodePanel({
   onClose: () => void;
 }) {
   return (
-    <div className="absolute right-0 top-0 h-full w-72 overflow-y-auto border-l border-[var(--ag-border-default)] bg-bg-surface p-5 shadow-xl">
+    <div className="absolute right-0 top-0 h-full w-72 overflow-y-auto border-l border-[var(--ag-border-default)] bg-bg-surface/95 p-5 shadow-xl backdrop-blur-sm">
       <div className="flex items-start justify-between gap-2">
         <span
           className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
@@ -95,7 +147,7 @@ function NodePanel({
         <button
           type="button"
           onClick={onClose}
-          className="text-text-muted hover:text-text-primary"
+          className="text-text-muted hover:text-text-primary transition-colors"
           aria-label="Close"
         >
           ✕
@@ -171,7 +223,7 @@ function FilterChips({
           key={type}
           type="button"
           onClick={() => toggle(type)}
-          className="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors"
+          className="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-all duration-200"
           style={{
             borderColor: active.has(type)
               ? NODE_COLORS[type]
@@ -193,7 +245,6 @@ function FilterChips({
 
 interface KnowledgeGraphProps {
   initialData: GraphData;
-  /** If provided, fetched client-side to add the authenticated user layer */
   userDataUrl?: string;
 }
 
@@ -208,10 +259,17 @@ export function KnowledgeGraph({
   const [userLayerLoading, setUserLayerLoading] = useState(false);
   const [showUserLayer, setShowUserLayer] = useState(false);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [search, setSearch] = useState("");
   const [activeTypes, setActiveTypes] = useState<Set<NodeType>>(
     new Set([...PUBLIC_TYPES]),
   );
+
+  // Neighbors of hovered node — for highlighting
+  const hoverNeighbors = useMemo(() => {
+    if (!hoveredNode) return new Set<string>();
+    return getNeighborIds(hoveredNode.id, graphData.links);
+  }, [hoveredNode, graphData.links]);
 
   // Measure container dimensions
   useEffect(() => {
@@ -256,40 +314,122 @@ export function KnowledgeGraph({
       return true;
     });
     const visibleIds = new Set(visibleNodes.map((n) => n.id));
-    const visibleLinks = graphData.links.filter(
-      (l) =>
-        visibleIds.has(l.source as string) &&
-        visibleIds.has(l.target as string),
-    );
+    const visibleLinks = graphData.links.filter((l) => {
+      const s = typeof l.source === "object" ? (l.source as GraphNode).id : l.source;
+      const t = typeof l.target === "object" ? (l.target as GraphNode).id : l.target;
+      return visibleIds.has(s) && visibleIds.has(t);
+    });
     return { nodes: visibleNodes, links: visibleLinks };
   }, [graphData, activeTypes, search, showUserLayer]);
 
-  const nodeColor = useCallback(
-    (node: GraphNode) => {
-      if (search && !node.label.toLowerCase().includes(search.toLowerCase())) {
-        return NODE_COLORS[node.type] + "30"; // dim non-matching
+  // Custom node canvas renderer with glow effect
+  const paintNode = useCallback(
+    (node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const n = node as GraphNode & { x: number; y: number };
+      const color = NODE_COLORS[n.type];
+      const radius = Math.sqrt(Math.max(n.val, 1)) * 3 + 1.5;
+
+      const isHovered = hoveredNode?.id === n.id;
+      const isNeighbor = hoveredNode && hoverNeighbors.has(n.id);
+      const isDimmed = hoveredNode && !isHovered && !isNeighbor;
+      const isSearchDimmed =
+        search && !n.label.toLowerCase().includes(search.toLowerCase());
+
+      const alpha = isDimmed || isSearchDimmed ? 0.15 : 1;
+      const [r, g, b] = hexToRgb(color);
+
+      // Glow halo for hovered and neighbor nodes
+      if (isHovered || isNeighbor) {
+        const glowRadius = radius + (isHovered ? 12 : 6);
+        const gradient = ctx.createRadialGradient(
+          n.x,
+          n.y,
+          radius,
+          n.x,
+          n.y,
+          glowRadius,
+        );
+        gradient.addColorStop(0, `rgba(${r},${g},${b},${isHovered ? 0.4 : 0.2})`);
+        gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, glowRadius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
       }
-      return NODE_COLORS[node.type];
+
+      // Main node circle
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+      ctx.fill();
+
+      // Label text — show on hover or when zoomed in enough
+      if ((isHovered || globalScale > 2.5) && !isDimmed) {
+        const fontSize = Math.max(10 / globalScale, 2.5);
+        ctx.font = `${fontSize}px "Geist", -apple-system, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = `rgba(244,244,245,${alpha * 0.9})`;
+        ctx.fillText(n.label, n.x, n.y + radius + 2);
+      }
     },
-    [search],
+    [hoveredNode, hoverNeighbors, search],
   );
 
-  const nodeLabel = useCallback((node: GraphNode) => node.label, []);
+  // Link styling
+  const linkColor = useCallback(
+    (link: object) => {
+      const l = link as GraphLink;
+      if (!hoveredNode) return LINK_COLORS[l.type] ?? "#27272a30";
 
-  const handleNodeClick = useCallback((node: GraphNode) => {
-    setSelectedNode((prev) => (prev?.id === node.id ? null : node));
+      const s = typeof l.source === "object" ? (l.source as GraphNode).id : l.source;
+      const t = typeof l.target === "object" ? (l.target as GraphNode).id : l.target;
+      const isConnected = s === hoveredNode.id || t === hoveredNode.id;
+      if (isConnected) return LINK_PARTICLE_COLORS[l.type] ?? "#60a5fa";
+      return "#27272a15";
+    },
+    [hoveredNode],
+  );
+
+  const linkWidth = useCallback(
+    (link: object) => {
+      const l = link as GraphLink;
+      if (!hoveredNode) return l.type === "tag" ? 0.3 : 0.8;
+
+      const s = typeof l.source === "object" ? (l.source as GraphNode).id : l.source;
+      const t = typeof l.target === "object" ? (l.target as GraphNode).id : l.target;
+      const isConnected = s === hoveredNode.id || t === hoveredNode.id;
+      return isConnected ? 1.5 : 0.2;
+    },
+    [hoveredNode],
+  );
+
+  const linkParticleColor = useCallback((link: object) => {
+    const l = link as GraphLink;
+    return LINK_PARTICLE_COLORS[l.type] ?? "#60a5fa";
+  }, []);
+
+  const nodeLabel = useCallback((node: object) => (node as GraphNode).label, []);
+
+  const handleNodeClick = useCallback((node: object) => {
+    const n = node as GraphNode;
+    setSelectedNode((prev) => (prev?.id === n.id ? null : n));
+  }, []);
+
+  const handleNodeHover = useCallback((node: object | null) => {
+    setHoveredNode(node ? (node as GraphNode) : null);
   }, []);
 
   return (
     <div className="flex h-full flex-col">
       {/* Controls bar */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--ag-border-default)] px-4 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--ag-border-default)] px-4 py-2.5">
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search nodes…"
-          className="h-8 w-48 rounded-lg border border-[var(--ag-border-default)] bg-bg-surface px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-ai-blue focus:outline-none"
+          className="h-8 w-48 rounded-lg border border-[var(--ag-border-default)] bg-bg-surface px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-ai-blue focus:outline-none transition-colors"
         />
 
         <FilterChips
@@ -318,24 +458,35 @@ export function KnowledgeGraph({
       </div>
 
       {/* Canvas + side panel */}
-      <div className="relative flex-1 overflow-hidden" ref={containerRef}>
+      <div className="relative min-h-0 flex-1 overflow-hidden" ref={containerRef}>
         <ForceGraph2D
           graphData={filteredData}
           width={dimensions.width - (selectedNode ? 288 : 0)}
           height={dimensions.height}
           backgroundColor="#0a0a0f"
-          nodeColor={nodeColor as (node: object) => string}
-          nodeLabel={nodeLabel as (node: object) => string}
-          nodeRelSize={4}
-          nodeVal={(node) => (node as GraphNode).val}
-          linkColor={() => "#27272a"}
-          linkWidth={1}
-          linkDirectionalParticles={1}
-          linkDirectionalParticleSpeed={0.003}
-          onNodeClick={handleNodeClick as (node: object) => void}
-          cooldownTicks={150}
-          d3AlphaDecay={0.02}
-          d3VelocityDecay={0.3}
+          nodeCanvasObject={paintNode}
+          nodePointerAreaPaint={(node: object, color: string, ctx: CanvasRenderingContext2D) => {
+            const n = node as GraphNode & { x: number; y: number };
+            const radius = Math.sqrt(Math.max(n.val, 1)) * 3 + 4;
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+          }}
+          nodeLabel={nodeLabel}
+          linkColor={linkColor}
+          linkWidth={linkWidth}
+          linkDirectionalParticles={2}
+          linkDirectionalParticleSpeed={0.004}
+          linkDirectionalParticleWidth={1.5}
+          linkDirectionalParticleColor={linkParticleColor}
+          linkCurvature={0.1}
+          onNodeClick={handleNodeClick}
+          onNodeHover={handleNodeHover}
+          cooldownTicks={200}
+          d3AlphaDecay={0.015}
+          d3VelocityDecay={0.25}
+          warmupTicks={50}
         />
 
         {selectedNode && (
@@ -346,10 +497,16 @@ export function KnowledgeGraph({
         )}
       </div>
 
-      {/* Node count footer */}
-      <div className="border-t border-[var(--ag-border-default)] px-4 py-1.5 text-xs text-text-muted">
-        {filteredData.nodes.length} nodes · {filteredData.links.length}{" "}
-        edges
+      {/* Status bar */}
+      <div className="flex shrink-0 items-center gap-4 border-t border-[var(--ag-border-default)] px-4 py-1.5 text-xs text-text-muted">
+        <span>
+          {filteredData.nodes.length} nodes · {filteredData.links.length} edges
+        </span>
+        {hoveredNode && (
+          <span className="truncate" style={{ color: NODE_COLORS[hoveredNode.type] }}>
+            {hoveredNode.label}
+          </span>
+        )}
       </div>
     </div>
   );

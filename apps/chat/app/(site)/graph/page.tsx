@@ -3,6 +3,10 @@
  *
  * Knowledge graph page. Public layer is pre-built at deploy time (ISR).
  * Authenticated layer is fetched client-side by <KnowledgeGraph> itself.
+ *
+ * Layout: fixed overlay covering the viewport below the site header (top-16).
+ * The graph sits at z-10 — above the site footer (z-0) but below TopNav (z-40).
+ * Bottom is inset by 4.5rem to clear the TopNav dock.
  */
 
 import type { Metadata } from "next";
@@ -30,13 +34,15 @@ export default async function GraphPage() {
   ]);
 
   return (
+    /* Fixed overlay: starts below the site header, stops above the bottom dock */
     <div
-      className="fixed inset-0 top-16 flex flex-col"
-      style={{ height: "calc(100dvh - 4rem)" }}
+      className="fixed left-0 right-0 top-16 z-10 flex flex-col overflow-hidden"
+      style={{ bottom: "4.5rem" }}
     >
-      <div className="flex items-center justify-between border-b border-[var(--ag-border-default)] px-5 py-3">
+      {/* Page title bar */}
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--ag-border-default)] px-5 py-3">
         <div>
-          <h1 className="font-display text-lg font-semibold text-text-primary">
+          <h1 className="font-display text-base font-semibold text-text-primary">
             Knowledge Graph
           </h1>
           <p className="text-xs text-text-muted">
@@ -48,7 +54,8 @@ export default async function GraphPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      {/* Graph canvas — fills remaining height */}
+      <div className="min-h-0 flex-1 overflow-hidden">
         <KnowledgeGraph
           initialData={initialData}
           userDataUrl={session ? "/api/graph/user" : undefined}

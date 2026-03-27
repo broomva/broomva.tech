@@ -46,6 +46,7 @@ interface ParsedDoc {
   summary: string;
   tags: string[];
   links: string[]; // extracted external link labels / internal refs
+  related: string[]; // explicit frontmatter related slugs
   wikilinks: string[];
   published: boolean;
 }
@@ -85,6 +86,12 @@ async function readKind(kind: ContentKind): Promise<ParsedDoc[]> {
           .map((l) => l.label)
       : [];
 
+    // `related` is an array of sibling slugs declared in frontmatter
+    // e.g.  related: [harness-over-prompting, release-rhythm]
+    const related: string[] = Array.isArray(data.related)
+      ? data.related.filter((r): r is string => typeof r === "string")
+      : [];
+
     docs.push({
       slug,
       kind,
@@ -92,6 +99,7 @@ async function readKind(kind: ContentKind): Promise<ParsedDoc[]> {
       summary: typeof data.summary === "string" ? data.summary : "",
       tags,
       links,
+      related,
       wikilinks: extractWikilinks(content),
       published: true,
     });
@@ -111,13 +119,16 @@ export async function buildPublicGraph(): Promise<GraphData> {
 
   // Track tag usage to compute tag node sizes
   const tagUsage: Map<string, number> = new Map();
-  // Maps slug → node id for wikilink resolution
+  // Maps slug → node id for wikilink resolution (also populated with titles)
   const slugToId: Map<string, string> = new Map();
 
   // ── Content nodes ────────────────────────────────────────────────────────
   for (const doc of allDocs) {
     const nodeId = `${doc.kind}:${doc.slug}`;
     slugToId.set(doc.slug, nodeId);
+    // Also index by title (lowercased, slug-form) for wikilink resolution
+    slugToId.set(doc.title.toLowerCase().replace(/\s+/g, "-"), nodeId);
+    slugToId.set(doc.title.toLowerCase(), nodeId);
 
     const node: GraphNode = {
       id: nodeId,
@@ -190,13 +201,35 @@ export async function buildPublicGraph(): Promise<GraphData> {
     }
   }
 
+  // ── Edge deduplication helper ────────────────────────────────────────────
+  const seenEdges = new Set<string>();
+  function addEdge(source: string, target: string, type: GraphLink["type"]) {
+    const key = [source, target].sort().join("|");
+    if (seenEdges.has(key)) return;
+    seenEdges.add(key);
+    links.push({ source, target, type });
+  }
+
   // ── Wikilink edges ───────────────────────────────────────────────────────
   for (const doc of allDocs) {
     const sourceId = `${doc.kind}:${doc.slug}`;
     for (const wl of doc.wikilinks) {
       const targetId = slugToId.get(wl);
       if (targetId && targetId !== sourceId) {
-        links.push({ source: sourceId, target: targetId, type: "wikilink" });
+        addEdge(sourceId, targetId, "wikilink");
+      }
+    }
+  }
+
+  // ── Explicit `related:` frontmatter edges (Obsidian relationships) ──────
+  for (const doc of allDocs) {
+    const sourceId = `${doc.kind}:${doc.slug}`;
+    for (const rel of doc.related) {
+      // Strip wikilink brackets if present: [[slug]] → slug
+      const normalised = rel.replace(/^\[\[|\]\]$/g, "").trim().toLowerCase().replace(/\s+/g, "-");
+      const targetId = slugToId.get(normalised);
+      if (targetId && targetId !== sourceId) {
+        addEdge(sourceId, targetId, "reference");
       }
     }
   }

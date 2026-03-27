@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
-import { buildPublicGraph } from "@/lib/graph";
+import { buildPublicGraph } from "@/lib/graph/build-public";
 
 const getCachedPublicGraph = unstable_cache(
   async () => buildPublicGraph(),
