@@ -42,11 +42,19 @@ export default function RelaySessionPage() {
       .catch(() => {});
   }, [id]);
 
-  // SSE stream for live session output
+  // SSE stream for live session output.
+  // On (re)connect the server replays the last 500 buffered events before
+  // subscribing to live events, so we clear stale state on every open to
+  // avoid duplicates.
   useEffect(() => {
     const es = new EventSource(`/api/relay/sessions/${id}/stream`);
 
-    es.onopen = () => setConnected(true);
+    es.onopen = () => {
+      setConnected(true);
+      // Clear events on reconnect — replay buffer will repopulate them.
+      setEvents([]);
+      keyRef.current = 0;
+    };
     es.onerror = () => setConnected(false);
 
     es.onmessage = (e) => {

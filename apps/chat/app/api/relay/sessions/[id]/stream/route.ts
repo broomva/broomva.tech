@@ -1,11 +1,20 @@
 import { createClient } from "redis";
-import { sessionOutputChannel } from "@/lib/relay/redis-channels";
+import {
+  sessionOutputChannel,
+  sessionReplayKey,
+} from "@/lib/relay/redis-channels";
 
 /**
  * GET /api/relay/sessions/[id]/stream
  *
- * SSE stream of session output for the browser. Subscribes to the
- * Redis pub/sub channel that relayd publishes to via /api/relay/events.
+ * SSE stream of session output for the browser.
+ *
+ * On connect, replays the last N buffered events from Redis so reconnecting
+ * browsers catch up on missed output. Then subscribes to the live pub/sub
+ * channel for subsequent events.
+ *
+ * Multiple browsers can subscribe to the same session simultaneously — each
+ * gets its own subscriber connection.
  */
 export async function GET(
   _request: Request,
@@ -15,10 +24,19 @@ export async function GET(
 
   const encoder = new TextEncoder();
   const channel = sessionOutputChannel(sessionId);
+  const replayKey = sessionReplayKey(sessionId);
 
   const stream = new ReadableStream({
     async start(controller) {
       let subscriber: ReturnType<typeof createClient> | null = null;
+
+      const enqueue = (data: string) => {
+        try {
+          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+        } catch {
+          // Controller already closed
+        }
+      };
 
       try {
         subscriber = createClient({
@@ -26,19 +44,30 @@ export async function GET(
         });
         await subscriber.connect();
 
-        // Send initial SSE comment as keepalive
-        controller.enqueue(encoder.encode(": connected\n\n"));
+        // --- Replay buffered events before subscribing ---
+        // Use a short-lived client so we don't block the subscriber connection
+        // (subscriber.lRange is unavailable while in subscribe mode).
+        const reader = createClient({
+          url: process.env.REDIS_URL || "redis://localhost:6379",
+        });
+        await reader.connect();
+        const buffered = await reader.lRange(replayKey, 0, -1);
+        await reader.quit();
 
+        // Send replayed events with a marker so the client can distinguish them
+        for (const item of buffered) {
+          enqueue(item);
+        }
+
+        // Signal end of replay so the client can stop showing "connecting"
+        controller.enqueue(encoder.encode(": replayed\n\n"));
+
+        // --- Subscribe for live events ---
         await subscriber.subscribe(channel, (message) => {
-          try {
-            const sseData = `data: ${message}\n\n`;
-            controller.enqueue(encoder.encode(sseData));
-          } catch {
-            // Controller closed
-          }
+          enqueue(message);
         });
 
-        // Keepalive every 15s to prevent connection timeout
+        // Keepalive every 15 s to prevent proxy timeouts
         const keepalive = setInterval(() => {
           try {
             controller.enqueue(encoder.encode(": keepalive\n\n"));
@@ -47,7 +76,6 @@ export async function GET(
           }
         }, 15_000);
 
-        // Clean up when client disconnects
         _request.signal.addEventListener("abort", async () => {
           clearInterval(keepalive);
           if (subscriber) {

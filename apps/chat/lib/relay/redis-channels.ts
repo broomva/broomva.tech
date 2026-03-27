@@ -28,3 +28,15 @@ export function sessionOutputChannel(sessionId: string): string {
 export function sessionInputChannel(sessionId: string): string {
   return `${PREFIX}:session:${sessionId}:input`;
 }
+
+/**
+ * Redis list key for session event replay buffer.
+ * Stores the last 500 session events (any type) as JSON strings.
+ * Used by SSE stream to replay missed events on reconnect.
+ */
+export function sessionReplayKey(sessionId: string): string {
+  return `${PREFIX}:session:${sessionId}:replay`;
+}
+
+/** Maximum number of events to keep in the replay buffer. */
+export const REPLAY_BUFFER_SIZE = 500;
