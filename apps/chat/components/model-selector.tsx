@@ -163,6 +163,7 @@ function PureModelSelector({
   const { data: session } = useSession();
   const isAnonymous = !session?.user;
   const { models: chatModels, allModels } = useChatModels();
+  const posthog = usePostHog();
 
   const [open, setOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -258,13 +259,14 @@ function PureModelSelector({
 
   const selectModel = useCallback(
     (id: AppModelId) => {
+      posthog?.capture(EVENT_MODEL_SELECTED, { model: id });
       startTransition(() => {
         setOptimisticModelId(id);
         onModelChangeAction?.(id);
         setOpen(false);
       });
     },
-    [onModelChangeAction, setOptimisticModelId]
+    [onModelChangeAction, posthog, setOptimisticModelId]
   );
 
   return (

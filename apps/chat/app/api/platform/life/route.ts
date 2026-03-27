@@ -16,6 +16,8 @@ import {
   provisionLifeInstance,
   restartLifeInstance,
 } from "@/lib/railway";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import { EVENT_DEPLOYMENT_PROVISIONED } from "@/lib/analytics/events";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -205,6 +207,12 @@ export async function POST(request: NextRequest) {
           haima: result.services.haima.url,
         },
       },
+    });
+
+    captureServerEvent(userId, EVENT_DEPLOYMENT_PROVISIONED, {
+      orgId,
+      instanceId: instance.id,
+      railwayProjectId: result.railwayProjectId,
     });
 
     return NextResponse.json(
