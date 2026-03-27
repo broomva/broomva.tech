@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 import { getSafeSession } from "@/lib/auth";
 import { logAudit } from "@/lib/db/audit";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import { EVENT_ESCROW_CREATED } from "@/lib/analytics/events";
 import {
   createEscrow,
   disputeEscrow,
@@ -127,6 +129,14 @@ export async function POST(request: Request) {
         amountCredits: task.priceCredits,
         commissionCredits: escrow.commissionCredits,
       },
+    });
+
+    captureServerEvent(session.user.id, EVENT_ESCROW_CREATED, {
+      escrowId: escrow.id,
+      taskId,
+      buyerOrgId,
+      sellerOrgId,
+      amountCredits: task.priceCredits,
     });
 
     return NextResponse.json({ escrow }, { status: 201 });

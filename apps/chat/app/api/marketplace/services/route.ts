@@ -8,6 +8,11 @@ import {
   getUserAgent,
   listAgentServices,
 } from "@/lib/db/marketplace";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import {
+  EVENT_AGENT_REGISTERED,
+  EVENT_AGENT_DISCOVERED,
+} from "@/lib/analytics/events";
 
 /**
  * GET /api/marketplace/services — discover available agent services.
@@ -124,6 +129,13 @@ export const POST = withAuthAndValidation(
           category: service.category,
           pricing: service.pricing,
         },
+      });
+
+      captureServerEvent(userId, EVENT_AGENT_REGISTERED, {
+        serviceId: service.id,
+        agentId: body.agentId,
+        category: service.category,
+        pricingModel: service.pricing.model,
       });
 
       return NextResponse.json({ service }, { status: 201 });

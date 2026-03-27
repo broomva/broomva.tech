@@ -9,8 +9,10 @@ import {
   Store,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePostHog } from "posthog-js/react";
 
+import { EVENT_AGENT_DISCOVERED } from "@/lib/analytics/events";
 import { POLL } from "@/lib/console/constants";
 import { MetricTile } from "@/components/console/metric-tile";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +136,8 @@ function trustBadgeVariant(
 // ---------------------------------------------------------------------------
 
 export default function MarketplacePage() {
+  const posthog = usePostHog();
+  const discoveredFired = useRef(false);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [myServices, setMyServices] = useState<ServiceData[]>([]);
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
@@ -280,6 +284,13 @@ export default function MarketplacePage() {
     const id = setInterval(fetchAll, POLL.USAGE);
     return () => clearInterval(id);
   }, [fetchAll]);
+
+  useEffect(() => {
+    if (!loading && services.length > 0 && !discoveredFired.current) {
+      discoveredFired.current = true;
+      posthog?.capture(EVENT_AGENT_DISCOVERED, { resultCount: services.length });
+    }
+  }, [loading, services.length, posthog]);
 
   // ---------------------------------------------------------------------------
   // Loading state

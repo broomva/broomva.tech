@@ -5,6 +5,13 @@ import { logAudit } from "@/lib/db/audit";
 import { db } from "@/lib/db/client";
 import { organization, organizationLifeInstance } from "@/lib/db/schema";
 import { updateOrganizationPlan } from "@/lib/db/organization";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import {
+  EVENT_SUBSCRIPTION_CREATED,
+  EVENT_SUBSCRIPTION_UPGRADED,
+  EVENT_SUBSCRIPTION_CANCELLED,
+  EVENT_DEPLOYMENT_PROVISIONED,
+} from "@/lib/analytics/events";
 import {
   deleteLifeInstance,
   isRailwayConfigured,
@@ -125,6 +132,13 @@ async function autoProvisionLifeInstance(
         trigger: "stripe_webhook",
         railwayProjectId: result.railwayProjectId,
       },
+    });
+
+    captureServerEvent(orgId, EVENT_DEPLOYMENT_PROVISIONED, {
+      organizationId: orgId,
+      orgSlug,
+      railwayProjectId: result.railwayProjectId,
+      instanceId: instance.id,
     });
   } catch (err) {
     await db
@@ -273,6 +287,12 @@ export async function POST(request: Request) {
           },
         });
 
+        captureServerEvent(orgId, EVENT_SUBSCRIPTION_CREATED, {
+          plan,
+          organizationId: orgId,
+          stripeSubscriptionId: session.subscription,
+        });
+
         // Auto-provision a Railway Life stack on enterprise activation
         if (plan === "enterprise") {
           const [org] = await db
@@ -326,6 +346,15 @@ export async function POST(request: Request) {
           },
         });
 
+        if (plan !== previousPlan) {
+          captureServerEvent(org.id, EVENT_SUBSCRIPTION_UPGRADED, {
+            plan,
+            previousPlan,
+            organizationId: org.id,
+            stripeSubscriptionId: sub.id,
+          });
+        }
+
         // Enterprise upgrade → provision Life stack
         if (previousPlan !== "enterprise" && plan === "enterprise") {
           after(autoProvisionLifeInstance(org.id, org.slug));
@@ -372,6 +401,12 @@ export async function POST(request: Request) {
             previousPlan: org.plan,
             stripeSubscriptionId: sub.id,
           },
+        });
+
+        captureServerEvent(org.id, EVENT_SUBSCRIPTION_CANCELLED, {
+          previousPlan: org.plan,
+          organizationId: org.id,
+          stripeSubscriptionId: sub.id,
         });
 
         // Deprovision Life stack if the org was on enterprise

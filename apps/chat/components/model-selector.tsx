@@ -35,6 +35,8 @@ import { cn } from "@/lib/utils";
 import { useChatModels } from "@/providers/chat-models-provider";
 import { useSession } from "@/providers/session-provider";
 import { ModelSelectorLogo } from "./model-selector-logo";
+import { usePostHog } from "posthog-js/react";
+import { EVENT_MODEL_SELECTED } from "@/lib/analytics/events";
 
 type FeatureFilter = Record<string, boolean>;
 
@@ -161,6 +163,7 @@ function PureModelSelector({
   const { data: session } = useSession();
   const isAnonymous = !session?.user;
   const { models: chatModels, allModels } = useChatModels();
+  const posthog = usePostHog();
 
   const [open, setOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -256,13 +259,14 @@ function PureModelSelector({
 
   const selectModel = useCallback(
     (id: AppModelId) => {
+      posthog?.capture(EVENT_MODEL_SELECTED, { model: id });
       startTransition(() => {
         setOptimisticModelId(id);
         onModelChangeAction?.(id);
         setOpen(false);
       });
     },
-    [onModelChangeAction, setOptimisticModelId]
+    [onModelChangeAction, posthog, setOptimisticModelId]
   );
 
   return (

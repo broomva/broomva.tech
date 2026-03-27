@@ -9,7 +9,9 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import { usePostHog } from "posthog-js/react";
 import type { AppModelId } from "@/lib/ai/app-models";
+import { EVENT_MODEL_SELECTED } from "@/lib/analytics/events";
 
 type DefaultModelContextType = {
   defaultModel: AppModelId;
@@ -30,11 +32,13 @@ export function DefaultModelProvider({
   defaultModel: initialModel,
 }: DefaultModelClientProviderProps) {
   const [currentModel, setCurrentModel] = useState<AppModelId>(initialModel);
+  const posthog = usePostHog();
 
   const changeModel = useCallback(
     async (modelId: AppModelId) => {
       // Update local state immediately
       setCurrentModel(modelId);
+      posthog?.capture(EVENT_MODEL_SELECTED, { model: modelId });
 
       try {
         // Update cookies for persistence
@@ -52,7 +56,7 @@ export function DefaultModelProvider({
         setCurrentModel(initialModel);
       }
     },
-    [initialModel]
+    [initialModel, posthog]
   );
 
   const value = useMemo(
