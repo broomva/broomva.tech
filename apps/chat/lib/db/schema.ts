@@ -1251,4 +1251,99 @@ export type OrganizationMcpServer = InferSelectModel<
   typeof organizationMcpServer
 >;
 
+// ---------------------------------------------------------------------------
+// Sandbox Tables (BRO-261)
+// ---------------------------------------------------------------------------
+
+/** Live state of a sandbox execution environment managed by arcand. */
+export const sandboxInstance = pgTable(
+  "SandboxInstance",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    /** Owning organization. Null for personal (user-scoped) sandboxes. */
+    organizationId: uuid("organizationId").references(() => organization.id, {
+      onDelete: "cascade",
+    }),
+    /** The registered agent that owns this sandbox. Null for ad-hoc sandboxes. */
+    agentId: uuid("agentId").references(() => agentRegistration.id, {
+      onDelete: "set null",
+    }),
+    /** Provider-assigned sandbox ID (e.g. Vercel sandbox name, e2b sandbox id). */
+    sandboxId: varchar("sandboxId", { length: 256 }).notNull().unique(),
+    /** Arcan session ID that created this sandbox. */
+    sessionId: varchar("sessionId", { length: 256 }),
+    /** Backend provider: vercel, e2b, local. */
+    provider: varchar("provider", {
+      enum: ["vercel", "e2b", "local"],
+      length: 32,
+    }).notNull(),
+    /** Current lifecycle status. */
+    status: varchar("status", {
+      enum: ["starting", "running", "snapshotted", "stopped", "failed"],
+      length: 32,
+    })
+      .notNull()
+      .default("starting"),
+    /** vCPUs allocated. Null = provider default. */
+    vcpus: integer("vcpus"),
+    /** Memory in MB. Null = provider default. */
+    memoryMb: integer("memoryMb"),
+    /** Whether the sandbox auto-snapshots on session end. */
+    persistent: boolean("persistent").notNull().default(false),
+    /** Last time a command was executed in this sandbox. */
+    lastExecAt: timestamp("lastExecAt"),
+    /** Total number of commands executed. */
+    execCount: integer("execCount").notNull().default(0),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    SandboxInstance_org_idx: index("SandboxInstance_org_idx").on(
+      t.organizationId,
+    ),
+    SandboxInstance_agent_idx: index("SandboxInstance_agent_idx").on(
+      t.agentId,
+    ),
+    SandboxInstance_status_idx: index("SandboxInstance_status_idx").on(
+      t.status,
+    ),
+    SandboxInstance_provider_idx: index("SandboxInstance_provider_idx").on(
+      t.provider,
+    ),
+  }),
+);
+
+export type SandboxInstance = InferSelectModel<typeof sandboxInstance>;
+
+/** Point-in-time filesystem snapshot of a sandbox. */
+export const sandboxSnapshot = pgTable(
+  "SandboxSnapshot",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sandboxInstanceId: uuid("sandboxInstanceId")
+      .notNull()
+      .references(() => sandboxInstance.id, { onDelete: "cascade" }),
+    /** Provider-assigned snapshot ID. */
+    snapshotId: varchar("snapshotId", { length: 256 }).notNull(),
+    /** What triggered this snapshot. */
+    trigger: varchar("trigger", {
+      enum: ["idle_reaper", "manual", "session_end", "api"],
+      length: 32,
+    }).notNull(),
+    /** Snapshot size in bytes. Null = not yet known. */
+    sizeBytes: integer("sizeBytes"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    SandboxSnapshot_instance_idx: index("SandboxSnapshot_instance_idx").on(
+      t.sandboxInstanceId,
+    ),
+  }),
+);
+
+export type SandboxSnapshot = InferSelectModel<typeof sandboxSnapshot>;
+
 export const schema = { user, session, account, verification };

@@ -37,3 +37,8 @@ export const EVENT_ESCROW_CREATED = "escrow_created";
 // ── Console / Platform ────────────────────────────────────────────────────────
 export const EVENT_CONSOLE_PAGE_VIEWED = "console_page_viewed";
 export const EVENT_DEPLOYMENT_PROVISIONED = "deployment_provisioned";
+
+// ── Sandbox ───────────────────────────────────────────────────────────────────
+export const EVENT_SANDBOX_CREATED = "sandbox_created";
+export const EVENT_SANDBOX_DESTROYED = "sandbox_destroyed";
+export const EVENT_SANDBOX_SNAPSHOT_MANUAL = "sandbox_snapshot_manual";

@@ -50,3 +50,44 @@ export interface FinancialState {
   runway_months: number;
   last_updated: string;
 }
+
+// ── Sandbox ───────────────────────────────────────────────────────────────────
+
+export type SandboxProvider = "vercel" | "e2b" | "local";
+export type SandboxStatus =
+  | "starting"
+  | "running"
+  | "snapshotted"
+  | "stopped"
+  | "failed";
+export type SnapshotTrigger = "idle_reaper" | "manual" | "session_end" | "api";
+
+export interface SandboxInstanceView {
+  id: string;
+  sandboxId: string;
+  sessionId: string | null;
+  agentId: string | null;
+  provider: SandboxProvider;
+  status: SandboxStatus;
+  vcpus: number | null;
+  memoryMb: number | null;
+  persistent: boolean;
+  execCount: number;
+  lastExecAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SandboxSnapshotView {
+  id: string;
+  snapshotId: string;
+  trigger: SnapshotTrigger;
+  sizeBytes: number | null;
+  createdAt: string;
+}
+
+export interface SandboxMetrics {
+  active: number;
+  snapshotted: number;
+  execs24h: number;
+}

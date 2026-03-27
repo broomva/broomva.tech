@@ -5,6 +5,7 @@
 import {
   BarChart3,
   Bot,
+  Box,
   Brain,
   Building2,
   CircuitBoard,
@@ -25,6 +26,7 @@ export const POLL = {
   SESSIONS: 10_000,
   FINANCE: 30_000,
   USAGE: 30_000,
+  SANDBOXES: 15_000,
 } as const;
 
 export interface ServiceDef {
@@ -112,6 +114,12 @@ export const CONSOLE_NAV: NavItem[] = [
     label: "Deployments",
     href: "/console/deployments",
     icon: Rocket,
+  },
+  {
+    key: "sandboxes",
+    label: "Sandboxes",
+    href: "/console/sandboxes",
+    icon: Box,
   },
   {
     key: "organization",
