@@ -44,6 +44,14 @@ export type ServerMessage =
 
 export type DaemonMessage =
   | { type: "output"; sessionId: string; data: string; seq: number }
+  | { type: "assistant_message"; sessionId: string; text: string }
+  | {
+      type: "tool_event";
+      sessionId: string;
+      toolName: string;
+      toolId: string;
+      input: Record<string, unknown>;
+    }
   | { type: "session_created"; session: SessionInfo }
   | { type: "session_ended"; sessionId: string; reason: string }
   | {

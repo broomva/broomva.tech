@@ -1,5 +1,7 @@
 "use client";
 
+import type { Route } from "next";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { POLL } from "@/lib/console/constants";
 import type {
@@ -180,7 +182,10 @@ function SessionRow({ session }: { session: RelaySessionView }) {
           : "text-zinc-400";
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
+    <Link
+      href={`/console/relay/session/${session.id}` as Route}
+      className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 transition-colors hover:bg-accent"
+    >
       <span className={`text-xs font-medium uppercase ${statusColor}`}>
         {session.status}
       </span>
@@ -198,6 +203,6 @@ function SessionRow({ session }: { session: RelaySessionView }) {
           {session.model}
         </span>
       )}
-    </div>
+    </Link>
   );
 }

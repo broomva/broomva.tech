@@ -52,6 +52,16 @@ export const POST = withAuthAndValidation(
             break;
           }
 
+          case "assistant_message":
+          case "tool_event": {
+            // Structured events — publish to session channel for browser SSE subscribers
+            await redis.publish(
+              sessionOutputChannel(event.sessionId),
+              JSON.stringify(event),
+            );
+            break;
+          }
+
           case "session_created": {
             // Create session record in DB
             await db.insert(relaySession).values({
