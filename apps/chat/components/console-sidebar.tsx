@@ -7,6 +7,7 @@ import {
   Bell,
   BookOpen,
   BotIcon,
+  BoxIcon,
   BrainIcon,
   ChevronRight,
   ChevronsUpDown,
@@ -103,6 +104,12 @@ const consoleNav = [
     url: "/console/agents",
     icon: BotIcon,
     items: [{ title: "Overview", url: "/console/agents" }],
+  },
+  {
+    title: "Sandboxes",
+    url: "/console/sandboxes",
+    icon: BoxIcon,
+    items: [{ title: "Environments", url: "/console/sandboxes" }],
   },
   {
     title: "Usage",

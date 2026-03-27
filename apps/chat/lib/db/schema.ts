@@ -1251,4 +1251,185 @@ export type OrganizationMcpServer = InferSelectModel<
   typeof organizationMcpServer
 >;
 
+// ---------------------------------------------------------------------------
+// Sandbox Tables (BRO-261)
+// ---------------------------------------------------------------------------
+
+/** Live state of a sandbox execution environment managed by arcand. */
+export const sandboxInstance = pgTable(
+  "SandboxInstance",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    /** Owning organization. Null for personal (user-scoped) sandboxes. */
+    organizationId: uuid("organizationId").references(() => organization.id, {
+      onDelete: "cascade",
+    }),
+    /** The registered agent that owns this sandbox. Null for ad-hoc sandboxes. */
+    agentId: uuid("agentId").references(() => agentRegistration.id, {
+      onDelete: "set null",
+    }),
+    /** Provider-assigned sandbox ID (e.g. Vercel sandbox name, e2b sandbox id). */
+    sandboxId: varchar("sandboxId", { length: 256 }).notNull().unique(),
+    /** Arcan session ID that created this sandbox. */
+    sessionId: varchar("sessionId", { length: 256 }),
+    /** Backend provider: vercel, e2b, local. */
+    provider: varchar("provider", {
+      enum: ["vercel", "e2b", "local"],
+      length: 32,
+    }).notNull(),
+    /** Current lifecycle status. */
+    status: varchar("status", {
+      enum: ["starting", "running", "snapshotted", "stopped", "failed"],
+      length: 32,
+    })
+      .notNull()
+      .default("starting"),
+    /** vCPUs allocated. Null = provider default. */
+    vcpus: integer("vcpus"),
+    /** Memory in MB. Null = provider default. */
+    memoryMb: integer("memoryMb"),
+    /** Whether the sandbox auto-snapshots on session end. */
+    persistent: boolean("persistent").notNull().default(false),
+    /** Last time a command was executed in this sandbox. */
+    lastExecAt: timestamp("lastExecAt"),
+    /** Total number of commands executed. */
+    execCount: integer("execCount").notNull().default(0),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    SandboxInstance_org_idx: index("SandboxInstance_org_idx").on(
+      t.organizationId,
+    ),
+    SandboxInstance_agent_idx: index("SandboxInstance_agent_idx").on(
+      t.agentId,
+    ),
+    SandboxInstance_status_idx: index("SandboxInstance_status_idx").on(
+      t.status,
+    ),
+    SandboxInstance_provider_idx: index("SandboxInstance_provider_idx").on(
+      t.provider,
+    ),
+  }),
+);
+
+export type SandboxInstance = InferSelectModel<typeof sandboxInstance>;
+
+/** Point-in-time filesystem snapshot of a sandbox. */
+export const sandboxSnapshot = pgTable(
+  "SandboxSnapshot",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sandboxInstanceId: uuid("sandboxInstanceId")
+      .notNull()
+      .references(() => sandboxInstance.id, { onDelete: "cascade" }),
+    /** Provider-assigned snapshot ID. */
+    snapshotId: varchar("snapshotId", { length: 256 }).notNull(),
+    /** What triggered this snapshot. */
+    trigger: varchar("trigger", {
+      enum: ["idle_reaper", "manual", "session_end", "api"],
+      length: 32,
+    }).notNull(),
+    /** Snapshot size in bytes. Null = not yet known. */
+    sizeBytes: integer("sizeBytes"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    SandboxSnapshot_instance_idx: index("SandboxSnapshot_instance_idx").on(
+      t.sandboxInstanceId,
+    ),
+  }),
+);
+
+export type SandboxSnapshot = InferSelectModel<typeof sandboxSnapshot>;
+
+// ── Relay ─────────────────────────────────────────────────────────────────
+
+/** Relay node — a user's machine running the relayd daemon. */
+export const relayNode = pgTable(
+  "RelayNode",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Display name (defaults to hostname). */
+    name: varchar("name", { length: 128 }).notNull(),
+    /** Machine hostname. */
+    hostname: varchar("hostname", { length: 256 }),
+    /** Connection status. */
+    status: varchar("status", {
+      enum: ["online", "offline", "degraded"],
+      length: 16,
+    })
+      .notNull()
+      .default("offline"),
+    lastSeenAt: timestamp("lastSeenAt"),
+    /** Supported session types (e.g. ["claude-code","arcan","codex"]). */
+    capabilities: json("capabilities").$type<string[]>().default([]),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    RelayNode_user_idx: index("RelayNode_user_idx").on(t.userId),
+    RelayNode_status_idx: index("RelayNode_status_idx").on(t.status),
+  }),
+);
+
+export type RelayNode = InferSelectModel<typeof relayNode>;
+
+/** Relay session — an agent session accessible via relay. */
+export const relaySession = pgTable(
+  "RelaySession",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    nodeId: uuid("nodeId")
+      .notNull()
+      .references(() => relayNode.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Agent runtime type. */
+    sessionType: varchar("sessionType", {
+      enum: ["arcan", "claude-code", "codex"],
+      length: 32,
+    }).notNull(),
+    /** Lifecycle status. */
+    status: varchar("status", {
+      enum: ["active", "idle", "completed", "failed"],
+      length: 16,
+    })
+      .notNull()
+      .default("active"),
+    /** Display name for the session. */
+    name: varchar("name", { length: 256 }),
+    /** Working directory on the remote machine. */
+    workdir: varchar("workdir", { length: 1024 }),
+    /** Remote session identifier (Arcan session_id or tmux session name). */
+    remoteSessionId: varchar("remoteSessionId", { length: 256 }),
+    /** Last received output sequence number (for resumability). */
+    lastSequence: integer("lastSequence").notNull().default(0),
+    /** Model currently in use. */
+    model: varchar("model", { length: 128 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    RelaySession_node_idx: index("RelaySession_node_idx").on(t.nodeId),
+    RelaySession_user_idx: index("RelaySession_user_idx").on(t.userId),
+    RelaySession_status_idx: index("RelaySession_status_idx").on(t.status),
+  }),
+);
+
+export type RelaySession = InferSelectModel<typeof relaySession>;
+
 export const schema = { user, session, account, verification };

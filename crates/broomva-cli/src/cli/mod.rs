@@ -5,6 +5,7 @@ pub mod context;
 pub mod daemon_cmd;
 pub mod output;
 pub mod prompts;
+pub mod relay;
 pub mod skills;
 
 use clap::{Parser, Subcommand};
@@ -77,6 +78,11 @@ pub enum Command {
     Console {
         #[command(subcommand)]
         command: Option<ConsoleCommand>,
+    },
+    /// Relay — remote agent session management.
+    Relay {
+        #[command(subcommand)]
+        action: RelayCommand,
     },
 }
 
@@ -268,6 +274,30 @@ pub enum DaemonCommand {
     },
 }
 
+// ── Relay ──
+
+#[derive(Subcommand, Debug)]
+pub enum RelayCommand {
+    /// Register this machine as a relay node (device auth flow).
+    Auth {
+        /// Node display name (defaults to hostname).
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Start the relay daemon.
+    Start {
+        /// Local API bind address.
+        #[arg(long, default_value = "127.0.0.1:3004")]
+        bind: String,
+    },
+    /// Stop the relay daemon.
+    Stop,
+    /// Show relay node and session status.
+    Status,
+    /// List active relay sessions.
+    Sessions,
+}
+
 // ── Console ──
 
 #[derive(Subcommand, Debug)]
@@ -426,6 +456,13 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 daemon_cmd::handle_logs(lines, level.as_deref(), format).await
             }
             DaemonCommand::Tasks { all } => daemon_cmd::handle_tasks(all, format).await,
+        },
+        Command::Relay { action } => match action {
+            RelayCommand::Auth { name } => relay::handle_auth(&client, name).await,
+            RelayCommand::Start { bind } => relay::handle_start(&client, &bind).await,
+            RelayCommand::Stop => relay::handle_stop().await,
+            RelayCommand::Status => relay::handle_status(&client, format).await,
+            RelayCommand::Sessions => relay::handle_sessions(&client, format).await,
         },
     }
 }
