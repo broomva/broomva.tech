@@ -118,7 +118,6 @@ pub struct ContextInfo {
 // ── Auth ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct DeviceCodeResponse {
     pub device_code: String,
     pub user_code: String,
@@ -141,12 +140,19 @@ pub struct DeviceTokenRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct TokenResponse {
     pub access_token: String,
+    #[serde(default)]
     pub token_type: Option<String>,
+    #[serde(default)]
     pub expires_in: Option<u64>,
+    #[serde(default)]
     pub expires_at: Option<String>,
+    #[serde(default)]
+    pub refresh_token: Option<String>,
+    /// Agent info (present when registering as agent)
+    #[serde(default)]
+    pub agent: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

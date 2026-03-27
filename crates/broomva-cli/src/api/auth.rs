@@ -70,16 +70,26 @@ pub async fn device_login(client: &reqwest::Client, base: &str) -> BroomvaResult
             })?;
 
         let status = poll_resp.status();
+        let body = poll_resp.text().await.unwrap_or_default();
 
         if status.is_success() {
-            let token: TokenResponse = poll_resp.json().await?;
-            config::store_token(&token.access_token, token.expires_at.as_deref())?;
-            println!("  Authenticated successfully.");
-            return Ok(token);
+            match serde_json::from_str::<TokenResponse>(&body) {
+                Ok(token) => {
+                    config::store_token(&token.access_token, token.expires_at.as_deref())?;
+                    println!("  Authenticated successfully.");
+                    return Ok(token);
+                }
+                Err(e) => {
+                    return Err(BroomvaError::Api {
+                        status: status.as_u16(),
+                        message: format!("failed to parse token response: {e}"),
+                        body: Some(body),
+                    });
+                }
+            }
         }
 
         // Try to parse as error response.
-        let body = poll_resp.text().await.unwrap_or_default();
         if let Ok(err) = serde_json::from_str::<DeviceTokenError>(&body) {
             match err.error.as_str() {
                 "authorization_pending" => {
@@ -193,14 +203,24 @@ pub async fn device_login_as_agent(
             })?;
 
         let status = poll_resp.status();
+        let body = poll_resp.text().await.unwrap_or_default();
 
         if status.is_success() {
-            let token: TokenResponse = poll_resp.json().await?;
-            println!("  Relay node registered successfully.");
-            return Ok(token);
+            match serde_json::from_str::<TokenResponse>(&body) {
+                Ok(token) => {
+                    println!("  Relay node registered successfully.");
+                    return Ok(token);
+                }
+                Err(e) => {
+                    return Err(BroomvaError::Api {
+                        status: status.as_u16(),
+                        message: format!("failed to parse token response: {e}"),
+                        body: Some(body),
+                    });
+                }
+            }
         }
 
-        let body = poll_resp.text().await.unwrap_or_default();
         if let Ok(err) = serde_json::from_str::<DeviceTokenError>(&body) {
             match err.error.as_str() {
                 "authorization_pending" => continue,
