@@ -4,7 +4,7 @@ import { createClient } from "redis";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
 import { db } from "@/lib/db/client";
 import { relayNode } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 /**
  * GET /api/relay/poll?nodeId=xxx
@@ -15,8 +15,7 @@ import { eq } from "drizzle-orm";
  *
  * relayd calls this every 1-2s.
  */
-export async function GET(request: Request) {
-  // withAuth doesn't support searchParams easily, handle inline
+export const GET = withRelayAuth(async (request, { userId }) => {
   const url = new URL(request.url);
   const nodeId = url.searchParams.get("nodeId");
 
@@ -28,11 +27,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Update heartbeat
+    // Heartbeat — only update nodes owned by the authenticated user
     await db
       .update(relayNode)
       .set({ lastSeenAt: new Date(), status: "online" })
-      .where(eq(relayNode.id, nodeId));
+      .where(and(eq(relayNode.id, nodeId), eq(relayNode.userId, userId)));
 
     // Pop next command from Redis list (non-blocking)
     const redis = createClient({
@@ -53,4 +52,4 @@ export async function GET(request: Request) {
     console.error("[relay/poll] Error:", err);
     return NextResponse.json({ command: null });
   }
-}
+});

@@ -105,6 +105,12 @@ export default defineConfig({
       dependencies: ["setup:auth"],
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "relay-auth",
+      testMatch: /relay-auth.test.ts/,
+      // No auth dependency — tests unauthenticated + JWT Bearer flows directly
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 
   /* Run your local dev server before starting the tests */
