@@ -33,3 +33,7 @@ export const EVENT_CREDITS_EXHAUSTED = "credits_exhausted";
 export const EVENT_AGENT_REGISTERED = "agent_registered";
 export const EVENT_AGENT_DISCOVERED = "agent_discovered";
 export const EVENT_ESCROW_CREATED = "escrow_created";
+
+// ── Console / Platform ────────────────────────────────────────────────────────
+export const EVENT_CONSOLE_PAGE_VIEWED = "console_page_viewed";
+export const EVENT_DEPLOYMENT_PROVISIONED = "deployment_provisioned";

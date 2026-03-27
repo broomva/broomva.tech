@@ -7,6 +7,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TopNav } from "@/components/site/top-nav";
 import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
 import { getSafeSession } from "@/lib/auth";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import { EVENT_CONSOLE_PAGE_VIEWED } from "@/lib/analytics/events";
 
 export default async function ConsoleLayout({
   children,
@@ -20,6 +22,8 @@ export default async function ConsoleLayout({
   if (!session?.user) {
     redirect("/login");
   }
+
+  captureServerEvent(session.user.id, EVENT_CONSOLE_PAGE_VIEWED);
 
   return (
     <ToolbarDockProvider>

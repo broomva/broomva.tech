@@ -35,6 +35,8 @@ import { cn } from "@/lib/utils";
 import { useChatModels } from "@/providers/chat-models-provider";
 import { useSession } from "@/providers/session-provider";
 import { ModelSelectorLogo } from "./model-selector-logo";
+import { usePostHog } from "posthog-js/react";
+import { EVENT_MODEL_SELECTED } from "@/lib/analytics/events";
 
 type FeatureFilter = Record<string, boolean>;
 

@@ -32,6 +32,8 @@ import { useGetCredits } from "@/hooks/chat-sync-hooks";
 import authClient from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/providers/session-provider";
+import { usePostHog } from "posthog-js/react";
+import { EVENT_USER_LOGGED_OUT } from "@/lib/analytics/events";
 
 export function SidebarUserNav() {
   const { data: session } = useSession();
@@ -39,6 +41,7 @@ export function SidebarUserNav() {
   const { setTheme, resolvedTheme } = useTheme();
   const router = useRouter();
   const { isMobile, state } = useSidebar();
+  const posthog = usePostHog();
   const isDesktopCollapsed = !isMobile && state === "collapsed";
 
   const user = session?.user;
@@ -149,6 +152,7 @@ export function SidebarUserNav() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={async () => {
+                posthog?.capture(EVENT_USER_LOGGED_OUT);
                 await authClient.signOut();
                 window.location.href = "/";
               }}

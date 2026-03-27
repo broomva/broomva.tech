@@ -77,6 +77,13 @@ import {
   markInstanceDegraded,
 } from "@/lib/arcan";
 import type { ArcanPolicySet } from "@/lib/arcan/execute";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import {
+  EVENT_CHAT_STARTED,
+  EVENT_CREDITS_EXHAUSTED,
+  EVENT_MESSAGE_SENT,
+  EVENT_TOOL_USED,
+} from "@/lib/analytics/events";
 import { generateTitleFromUserMessage } from "../../actions";
 import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
 
@@ -801,6 +808,20 @@ async function finalizeMessageAndCredits({
     log.info({ entries }, "Cost accumulator entries");
     log.info({ totalCost }, "Cost accumulator total cost");
 
+    // Capture tool_used if assistant message contains tool-* parts (AI SDK v6 naming)
+    if (userId && !isAnonymous) {
+      const toolParts = (messages.at(-1)?.parts ?? []).filter(
+        (p) => typeof p.type === "string" && p.type.startsWith("tool-"),
+      );
+      if (toolParts.length > 0) {
+        captureServerEvent(userId, EVENT_TOOL_USED, {
+          chatId,
+          toolCount: toolParts.length,
+          tools: toolParts.map((p) => p.type.slice("tool-".length)),
+        });
+      }
+    }
+
     // Deduct credits for authenticated users
     if (userId && !isAnonymous) {
       await deductCredits(userId, totalCost);
@@ -931,6 +952,9 @@ export async function POST(request: NextRequest) {
       if (orgRow) {
         const creditCheck = canSpendCredits(orgRow.planCreditsRemaining);
         if (!creditCheck.allowed && userPlan === "free") {
+          captureServerEvent(userId, EVENT_CREDITS_EXHAUSTED, {
+            remaining: creditCheck.remaining,
+          });
           return Response.json(
             {
               error: "credits_exhausted",
@@ -972,6 +996,18 @@ export async function POST(request: NextRequest) {
         return result.error;
       }
       isNewChat = result.isNewChat;
+      after(() => {
+        captureServerEvent(userId, EVENT_MESSAGE_SENT, {
+          chatId,
+          model: selectedModelId,
+        });
+        if (isNewChat) {
+          captureServerEvent(userId, EVENT_CHAT_STARTED, {
+            chatId,
+            model: selectedModelId,
+          });
+        }
+      });
     } else if (anonymousSession) {
       // Pre-deduct credits for anonymous users (cookies must be set before streaming)
       await setAnonymousSession({

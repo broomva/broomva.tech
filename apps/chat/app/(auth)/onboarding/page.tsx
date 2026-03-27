@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { getSafeSession } from "@/lib/auth";
 import { getUserOrganizations } from "@/lib/db/organization";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import {
+  EVENT_ONBOARDING_STARTED,
+  EVENT_PLAN_SELECTED,
+} from "@/lib/analytics/events";
 
 export const metadata: Metadata = {
   title: "Welcome — Set up your workspace",
@@ -32,6 +37,15 @@ export default async function OnboardingPage({
   // If user already has an org and no plan to select, skip onboarding entirely
   if (hasExistingOrg && !plan) {
     redirect("/chat");
+  }
+
+  captureServerEvent(session.user.id, EVENT_ONBOARDING_STARTED, {
+    hasExistingOrg,
+    plan: plan ?? null,
+  });
+
+  if (plan) {
+    captureServerEvent(session.user.id, EVENT_PLAN_SELECTED, { plan });
   }
 
   return (

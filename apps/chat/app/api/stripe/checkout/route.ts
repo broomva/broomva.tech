@@ -5,6 +5,11 @@ import { withAuthAndValidation } from "@/lib/api/with-auth";
 import { getOrganizationById, isOrganizationMember } from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
 import { getStripe, PLAN_TIERS, type PlanTier } from "@/lib/stripe";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import {
+  EVENT_CHECKOUT_STARTED,
+  EVENT_PLAN_SELECTED,
+} from "@/lib/analytics/events";
 
 const checkoutSchema = z.object({
   plan: z.enum(["pro", "team"]),
@@ -68,6 +73,16 @@ export const POST = withAuthAndValidation(
         resourceType: "organization",
         resourceId: organizationId,
         metadata: { plan, checkoutSessionId: checkoutSession.id },
+      });
+
+      captureServerEvent(userId, EVENT_PLAN_SELECTED, {
+        plan,
+        organizationId,
+      });
+      captureServerEvent(userId, EVENT_CHECKOUT_STARTED, {
+        plan,
+        organizationId,
+        checkoutSessionId: checkoutSession.id,
       });
 
       return NextResponse.json({ url: checkoutSession.url });
