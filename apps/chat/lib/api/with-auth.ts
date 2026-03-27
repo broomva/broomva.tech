@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getSafeSession, type Session } from "@/lib/auth";
+import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,12 +218,12 @@ export function withAuthAndValidation<T extends z.ZodType>(
 }
 
 // ---------------------------------------------------------------------------
-// withRelayAuth — session OR relay API key
+// withRelayAuth — Life JWT Bearer OR session cookie
 // ---------------------------------------------------------------------------
 
 /**
  * Auth context for relay daemon requests.
- * When authenticated via API key, userId is a synthetic daemon identifier.
+ * `isDaemon` is true when authenticated via a Life JWT (device auth flow).
  */
 export interface RelayAuthContext {
   userId: string;
@@ -239,31 +240,48 @@ function extractBearer(request: Request): string | null {
 }
 
 /**
- * Wraps a relay route handler with dual auth: valid session OR RELAY_API_KEY.
- * Used by all /api/relay/* routes so that the relayd daemon (which sends an
- * API key Bearer token) and browser users (session cookies) both work.
+ * Resolves auth from a request using the relay auth priority:
+ *   1. Life JWT Bearer token (issued by device auth flow — `relayd auth`)
+ *   2. Session cookie (browser users on /console/relay)
+ *
+ * Returns null if neither succeeds.
+ */
+async function resolveRelayAuth(
+  request: Request,
+): Promise<RelayAuthContext | null> {
+  // 1. Life JWT Bearer — issued to users via `relayd auth` device flow
+  const bearer = extractBearer(request);
+  if (bearer) {
+    const payload = await verifyLifeJWT(bearer);
+    if (payload) {
+      return { userId: payload.sub, isDaemon: true };
+    }
+  }
+
+  // 2. Session cookie — browser users on /console/relay
+  const { data: session } = await getSafeSession({
+    fetchOptions: { headers: await headers() },
+  });
+  if (session?.user?.id) {
+    return { userId: session.user.id, isDaemon: false };
+  }
+
+  return null;
+}
+
+/**
+ * Wraps a relay route handler with proper auth:
+ *   - Life JWT Bearer (issued via `relayd auth` device flow) for daemon access
+ *   - Session cookie for browser users on /console/relay
  */
 export function withRelayAuth(
   handler: (request: Request, ctx: RelayAuthContext) => Promise<Response>,
 ): RouteHandler {
   return async (request: Request) => {
     try {
-      // 1. Check for relay daemon API key
-      const relayApiKey = process.env.RELAY_API_KEY;
-      const bearer = extractBearer(request);
-      if (relayApiKey && bearer === relayApiKey) {
-        const userId = process.env.RELAY_USER_ID ?? "relay-daemon";
-        return await handler(request, { userId, isDaemon: true });
-      }
-
-      // 2. Fall back to session auth
-      const { data: session } = await getSafeSession({
-        fetchOptions: { headers: await headers() },
-      });
-      if (!session?.user?.id) {
-        return errorResponse("Not authenticated", 401);
-      }
-      return await handler(request, { userId: session.user.id, isDaemon: false });
+      const ctx = await resolveRelayAuth(request);
+      if (!ctx) return errorResponse("Not authenticated", 401);
+      return await handler(request, ctx);
     } catch (err) {
       console.error("[withRelayAuth] Unhandled error:", err);
       return errorResponse("Internal server error", 500, err);
@@ -272,7 +290,7 @@ export function withRelayAuth(
 }
 
 /**
- * Combines relay auth (session OR API key) with Zod body validation.
+ * Combines relay auth (Life JWT OR session cookie) with Zod body validation.
  */
 export function withRelayAuthAndValidation<T extends z.ZodType>(
   schema: T,
@@ -284,20 +302,8 @@ export function withRelayAuthAndValidation<T extends z.ZodType>(
   return async (request: Request) => {
     try {
       // --- Auth ---
-      const relayApiKey = process.env.RELAY_API_KEY;
-      const bearer = extractBearer(request);
-      let authCtx: RelayAuthContext;
-      if (relayApiKey && bearer === relayApiKey) {
-        authCtx = { userId: process.env.RELAY_USER_ID ?? "relay-daemon", isDaemon: true };
-      } else {
-        const { data: session } = await getSafeSession({
-          fetchOptions: { headers: await headers() },
-        });
-        if (!session?.user?.id) {
-          return errorResponse("Not authenticated", 401);
-        }
-        authCtx = { userId: session.user.id, isDaemon: false };
-      }
+      const authCtx = await resolveRelayAuth(request);
+      if (!authCtx) return errorResponse("Not authenticated", 401);
 
       // --- Validation ---
       const raw = await parseJsonBody(request);
