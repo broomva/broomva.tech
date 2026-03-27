@@ -7,7 +7,7 @@ import {
   DocsTitle,
 } from "fumadocs-ui/page";
 import { notFound } from "next/navigation";
-import type { MDXContent } from "mdx/types";
+import type { ComponentType } from "react";
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -16,7 +16,7 @@ export default async function Page(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  const MDX = page.data.body as unknown as MDXContent;
+  const MDX = page.data.body as unknown as ComponentType<Record<string, unknown>>;
 
   return (
     <DocsPage toc={page.data.toc}>

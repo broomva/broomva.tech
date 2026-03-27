@@ -611,3 +611,17 @@
 @media (max-width: 768px) { .lexical-content-editable { font-size: 16px; } }
 .editor-container { background: var(--ag-bg-elevated); margin: 20px auto; border-radius: 2px; max-width: 600px; color: var(--ag-text-primary); position: relative; line-height: 20px; font-weight: 400; text-align: left; }
 .editor-input { resize: none; font-size: 15px; position: relative; tab-size: 1; outline: 0; padding: 10px 10px 5px; caret-color: currentColor; }
+
+/* ============================================================================
+   Knowledge Graph — fullscreen layout overrides
+   ============================================================================ */
+
+/* When .graph-fullscreen is present, hide the site footer and remove padding */
+.graph-fullscreen ~ #footer,
+.graph-fullscreen ~ footer {
+  display: none;
+}
+/* The parent wrapper in (site)/layout.tsx adds pb-24 — remove it for graph */
+:has(> .graph-fullscreen) {
+  padding-bottom: 0 !important;
+}
