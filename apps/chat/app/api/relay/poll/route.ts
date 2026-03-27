@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withAuth } from "@/lib/api/with-auth";
+import { withRelayAuth } from "@/lib/api/with-auth";
 import { createClient } from "redis";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
 import { db } from "@/lib/db/client";

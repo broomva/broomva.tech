@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withAuthAndValidation } from "@/lib/api/with-auth";
+import { withRelayAuthAndValidation } from "@/lib/api/with-auth";
 import { z } from "zod";
 import { createClient } from "redis";
 import {
@@ -46,7 +46,7 @@ async function publishSessionEvent(
  * browsers can catch up on missed events.
  * Handles session lifecycle events (created, ended) by updating DB.
  */
-export const POST = withAuthAndValidation(
+export const POST = withRelayAuthAndValidation(
   eventsSchema,
   async (_request, { userId, body }) => {
     const { nodeId, events } = body;

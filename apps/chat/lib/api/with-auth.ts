@@ -215,3 +215,103 @@ export function withAuthAndValidation<T extends z.ZodType>(
     }
   };
 }
+
+// ---------------------------------------------------------------------------
+// withRelayAuth — session OR relay API key
+// ---------------------------------------------------------------------------
+
+/**
+ * Auth context for relay daemon requests.
+ * When authenticated via API key, userId is a synthetic daemon identifier.
+ */
+export interface RelayAuthContext {
+  userId: string;
+  isDaemon: boolean;
+}
+
+/**
+ * Extracts the Bearer token from the Authorization header.
+ */
+function extractBearer(request: Request): string | null {
+  const auth = request.headers.get("authorization") ?? "";
+  if (auth.startsWith("Bearer ")) return auth.slice(7).trim();
+  return null;
+}
+
+/**
+ * Wraps a relay route handler with dual auth: valid session OR RELAY_API_KEY.
+ * Used by all /api/relay/* routes so that the relayd daemon (which sends an
+ * API key Bearer token) and browser users (session cookies) both work.
+ */
+export function withRelayAuth(
+  handler: (request: Request, ctx: RelayAuthContext) => Promise<Response>,
+): RouteHandler {
+  return async (request: Request) => {
+    try {
+      // 1. Check for relay daemon API key
+      const relayApiKey = process.env.RELAY_API_KEY;
+      const bearer = extractBearer(request);
+      if (relayApiKey && bearer === relayApiKey) {
+        return await handler(request, { userId: "relay-daemon", isDaemon: true });
+      }
+
+      // 2. Fall back to session auth
+      const { data: session } = await getSafeSession({
+        fetchOptions: { headers: await headers() },
+      });
+      if (!session?.user?.id) {
+        return errorResponse("Not authenticated", 401);
+      }
+      return await handler(request, { userId: session.user.id, isDaemon: false });
+    } catch (err) {
+      console.error("[withRelayAuth] Unhandled error:", err);
+      return errorResponse("Internal server error", 500, err);
+    }
+  };
+}
+
+/**
+ * Combines relay auth (session OR API key) with Zod body validation.
+ */
+export function withRelayAuthAndValidation<T extends z.ZodType>(
+  schema: T,
+  handler: (
+    request: Request,
+    ctx: RelayAuthContext & { body: z.infer<T> },
+  ) => Promise<Response>,
+): RouteHandler {
+  return async (request: Request) => {
+    try {
+      // --- Auth ---
+      const relayApiKey = process.env.RELAY_API_KEY;
+      const bearer = extractBearer(request);
+      let authCtx: RelayAuthContext;
+      if (relayApiKey && bearer === relayApiKey) {
+        authCtx = { userId: "relay-daemon", isDaemon: true };
+      } else {
+        const { data: session } = await getSafeSession({
+          fetchOptions: { headers: await headers() },
+        });
+        if (!session?.user?.id) {
+          return errorResponse("Not authenticated", 401);
+        }
+        authCtx = { userId: session.user.id, isDaemon: false };
+      }
+
+      // --- Validation ---
+      const raw = await parseJsonBody(request);
+      if (raw === undefined) {
+        return errorResponse("Invalid or missing JSON body", 400);
+      }
+      const result = schema.safeParse(raw);
+      if (!result.success) {
+        return errorResponse("Validation failed", 400, result.error.issues);
+      }
+
+      return await handler(request, { ...authCtx, body: result.data as z.infer<T> });
+    } catch (err) {
+      console.error("[withRelayAuthAndValidation] Unhandled error:", err);
+      return errorResponse("Internal server error", 500, err);
+    }
+  };
+}

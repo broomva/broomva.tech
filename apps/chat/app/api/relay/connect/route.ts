@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withAuthAndValidation } from "@/lib/api/with-auth";
+import { withRelayAuthAndValidation } from "@/lib/api/with-auth";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { relayNode } from "@/lib/db/schema";
@@ -17,7 +17,7 @@ const connectSchema = z.object({
  * Register or reconnect a relay node. Called by relayd on startup.
  * Returns the node ID for subsequent poll/events calls.
  */
-export const POST = withAuthAndValidation(
+export const POST = withRelayAuthAndValidation(
   connectSchema,
   async (_request, { userId, body }) => {
     try {
