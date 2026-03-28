@@ -26,7 +26,6 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type * as React from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -56,9 +55,9 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 const consoleNav = [
   {
@@ -126,7 +125,7 @@ const consoleNav = [
   },
   {
     title: "Settings",
-    url: "/console",
+    url: "/settings",
     icon: Settings2,
     items: [
       { title: "General", url: "/settings" },
@@ -146,17 +145,74 @@ export function ConsoleSidebar({
   userName = "Agent",
   userEmail = "agent@life.os",
   userAvatar = "",
-  ...props
-}: React.ComponentProps<typeof Sidebar> & {
+  className,
+}: {
   userName?: string;
   userEmail?: string;
   userAvatar?: string;
+  className?: string;
 }) {
   const pathname = usePathname();
+  const { isMobile, state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
+  if (isMobile) {
+    return (
+      <Sidebar collapsible="offcanvas" className={className}>
+        <ConsoleSidebarBody
+          pathname={pathname}
+          userName={userName}
+          userEmail={userEmail}
+          userAvatar={userAvatar}
+        />
+      </Sidebar>
+    );
+  }
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+    <div
+      className="group peer hidden shrink-0 text-sidebar-foreground md:block"
+      data-state={state}
+      data-collapsible={isCollapsed ? "icon" : ""}
+      data-variant="inset"
+      data-side="left"
+    >
+      <aside
+        aria-label="Console navigation"
+        data-sidebar="sidebar"
+        className={cn(
+          "flex h-svh shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-linear",
+          isCollapsed
+            ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
+            : "w-[--sidebar-width]",
+          className,
+        )}
+      >
+        <ConsoleSidebarBody
+          pathname={pathname}
+          userName={userName}
+          userEmail={userEmail}
+          userAvatar={userAvatar}
+        />
+      </aside>
+    </div>
+  );
+}
+
+function ConsoleSidebarBody({
+  pathname,
+  userName,
+  userEmail,
+  userAvatar,
+}: {
+  pathname: string;
+  userName: string;
+  userEmail: string;
+  userAvatar: string;
+}) {
+  return (
+    <>
+      <SidebarHeader className="border-b border-sidebar-border p-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
@@ -164,7 +220,7 @@ export function ConsoleSidebar({
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <BrainIcon className="size-4" />
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold">Life Console</span>
                   <span className="truncate text-xs">Agent OS</span>
                 </div>
@@ -174,17 +230,15 @@ export function ConsoleSidebar({
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="gap-4 overflow-y-auto p-0">
         <NavMainSection items={consoleNav} pathname={pathname} />
         <ServicesSection items={services} pathname={pathname} />
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border p-3">
         <UserNav name={userName} email={userEmail} avatar={userAvatar} />
       </SidebarFooter>
-
-      <SidebarRail />
-    </Sidebar>
+    </>
   );
 }
 
@@ -216,7 +270,7 @@ function NavMainSection({
                   <SidebarMenuButton tooltip={item.title}>
                     <item.icon />
                     <span>{item.title}</span>
-                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[collapsible=icon]:hidden group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
@@ -311,11 +365,11 @@ function UserNav({
                   {getInitials(name)}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-semibold">{name}</span>
                 <span className="truncate text-xs">{email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

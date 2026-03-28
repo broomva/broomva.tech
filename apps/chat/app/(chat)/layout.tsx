@@ -104,8 +104,8 @@ export default async function ChatLayout({
                   </DefaultModelProvider>
                 </ChatModelsProvider>
               </SidebarInset>
-              <TopNav />
             </SidebarProvider>
+            <TopNav />
           </ChatProviders>
         </SessionProvider>
       </HydrateClient>

@@ -1,9 +1,13 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ConsoleSidebar } from "@/components/console-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SIDEBAR_COOKIE_NAME,
+} from "@/components/ui/sidebar";
 import { TopNav } from "@/components/site/top-nav";
 import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
 import { getSafeSession } from "@/lib/auth";
@@ -15,9 +19,11 @@ export default async function ConsoleLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
   const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
+  const defaultOpen = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value !== "false";
 
   if (!session?.user) {
     redirect("/login");
@@ -27,7 +33,7 @@ export default async function ConsoleLayout({
 
   return (
     <ToolbarDockProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={defaultOpen}>
         <ConsoleSidebar
           userName={session.user.name ?? "Agent"}
           userEmail={session.user.email}
