@@ -44,10 +44,22 @@ export function RelayContextProvider({
   );
 }
 
+/**
+ * Returns the relay context value, or throws if not within a provider.
+ * Use `useOptionalRelayContext` when the component may render outside a session.
+ */
 export function useRelayContext(): RelayContextValue {
   const ctx = useContext(RelayContext);
   if (!ctx) {
     throw new Error("useRelayContext must be used within RelayContextProvider");
   }
   return ctx;
+}
+
+/**
+ * Returns the relay context value, or null if not within a provider.
+ * Safe to use in components that render both on the index page and session pages.
+ */
+export function useOptionalRelayContext(): RelayContextValue | null {
+  return useContext(RelayContext);
 }

@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { RelaySessionView } from "@/lib/console/types";
-import { useRelayContext } from "./relay-context";
+import { useOptionalRelayContext } from "./relay-context";
 
 // ── Section header (mirrors ContextSidebar pattern) ────────────────────────
 
@@ -59,13 +59,16 @@ function SectionHeader({
 // ── Git section ────────────────────────────────────────────────────────────
 
 function GitSection() {
-  const { workspaceStatus } = useRelayContext();
+  const ctx = useOptionalRelayContext();
+  const workspaceStatus = ctx?.workspaceStatus ?? null;
 
   if (!workspaceStatus) {
     return (
       <SectionHeader icon={GitBranch} title="Git">
         <p className="text-[11px] text-muted-foreground">
-          Waiting for workspace status...
+          {ctx
+            ? "Waiting for workspace status..."
+            : "Select a session to view git status"}
         </p>
       </SectionHeader>
     );
@@ -117,16 +120,21 @@ function SessionContextSection({
 }: {
   session: RelaySessionView | null;
 }) {
-  const { sessionId } = useRelayContext();
+  const ctx = useOptionalRelayContext();
+  const sessionId = ctx?.sessionId;
 
   if (!session) {
     return (
       <SectionHeader icon={CpuIcon} title="Session">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono truncate">
-              {sessionId.slice(0, 12)}...
-            </span>
+            {sessionId ? (
+              <span className="font-mono truncate">
+                {sessionId.slice(0, 12)}...
+              </span>
+            ) : (
+              <span>No session selected</span>
+            )}
           </div>
         </div>
       </SectionHeader>
