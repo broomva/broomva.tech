@@ -72,7 +72,13 @@ export function RelayChatSync({
       setConnected(true);
       // On reconnect, the server replays buffered events.
       // Clear store messages to avoid duplicates from replay.
-      storeApi.getState().setMessages([]);
+      // Set status to "streaming" BEFORE any messages arrive so that
+      // pushMessage() immediately updates _throttledMessages (which
+      // getMessageIds() reads from). Without this, the first messages
+      // go through the throttled path and don't trigger re-renders.
+      const state = storeApi.getState();
+      state.setMessages([]);
+      state.setStatus("streaming");
       lastMessageIdRef.current = null;
     };
 
@@ -108,13 +114,11 @@ export function RelayChatSync({
         });
 
         if (chatMessage) {
-          // Update status to streaming while events are flowing
-          const state = storeApi.getState();
-          state.setStatus("streaming");
-          // Use pushMessage to add to the base messages array that
-          // useMessageIds() reads from (not addMessageToTree which
-          // only updates the allMessages tree).
-          state.pushMessage(chatMessage);
+          // pushMessage writes to the base messages array that
+          // useMessageIds() reads from. Status is already "streaming"
+          // (set in onopen) so pushMessage immediately updates
+          // _throttledMessages, triggering re-renders.
+          storeApi.getState().pushMessage(chatMessage);
           lastMessageIdRef.current = chatMessage.id;
         }
       } catch {
