@@ -5,8 +5,8 @@ import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { relayNode, relaySession } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { createClient } from "redis";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
+import { getRelayRedis } from "@/lib/relay/redis";
 
 const spawnSchema = z.object({
   nodeId: z.string().uuid(),
@@ -89,15 +89,11 @@ export const POST = withRelayAuthAndValidation(
         },
       };
 
-      const redis = createClient({
-        url: process.env.REDIS_URL || "redis://localhost:6379",
-      });
-      await redis.connect();
+      const redis = await getRelayRedis();
       await redis.rPush(
         nodeCommandsChannel(body.nodeId),
         JSON.stringify(spawnCommand),
       );
-      await redis.quit();
 
       return NextResponse.json(
         { sessionId: session.id, status: "spawning" },

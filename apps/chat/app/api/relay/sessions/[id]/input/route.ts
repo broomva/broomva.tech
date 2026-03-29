@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { withAuthAndValidation } from "@/lib/api/with-auth";
 import { z } from "zod";
-import { createClient } from "redis";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
+import { getRelayRedis } from "@/lib/relay/redis";
 import { db } from "@/lib/db/client";
 import { relaySession } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -41,18 +41,13 @@ export const POST = withAuthAndValidation(
       }
 
       // Push input command to the node's command queue
-      const redis = createClient({
-        url: process.env.REDIS_URL || "redis://localhost:6379",
-      });
-      await redis.connect();
-
+      const redis = await getRelayRedis();
       const command = JSON.stringify({
         type: "input",
         sessionId,
         data: body.data,
       });
       await redis.rPush(nodeCommandsChannel(session.nodeId), command);
-      await redis.quit();
 
       return NextResponse.json({ sent: true });
     } catch (err) {

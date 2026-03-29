@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withRelayAuth } from "@/lib/api/with-auth";
-import { createClient } from "redis";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
+import { getRelayRedis } from "@/lib/relay/redis";
 import { db } from "@/lib/db/client";
 import { relayNode } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -34,14 +34,9 @@ export const GET = withRelayAuth(async (request, { userId }) => {
       .where(and(eq(relayNode.id, nodeId), eq(relayNode.userId, userId)));
 
     // Pop next command from Redis list (non-blocking)
-    const redis = createClient({
-      url: process.env.REDIS_URL || "redis://localhost:6379",
-    });
-    await redis.connect();
-
+    const redis = await getRelayRedis();
     const channel = nodeCommandsChannel(nodeId);
     const message = await redis.lPop(channel);
-    await redis.quit();
 
     if (message) {
       return NextResponse.json({ command: JSON.parse(message) });

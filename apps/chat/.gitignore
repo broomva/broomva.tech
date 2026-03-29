@@ -59,3 +59,4 @@ public/search-index.json
 # Lago/aiOS lakebase state
 .lago/
 .lake/
+.env*.local

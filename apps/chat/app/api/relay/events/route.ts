@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { withRelayAuthAndValidation } from "@/lib/api/with-auth";
 import { z } from "zod";
-import { createClient } from "redis";
 import {
   sessionOutputChannel,
   nodeEventsChannel,
   sessionReplayKey,
   REPLAY_BUFFER_SIZE,
 } from "@/lib/relay/redis-channels";
+import { getRelayRedis } from "@/lib/relay/redis";
 import { db } from "@/lib/db/client";
 import { relaySession, relayNode } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { DaemonMessage } from "@/lib/relay/protocol";
 
 const eventsSchema = z.object({
@@ -25,7 +25,7 @@ const eventsSchema = z.object({
  * - Reconnecting browsers can replay missed events.
  */
 async function publishSessionEvent(
-  redis: ReturnType<typeof createClient>,
+  redis: Awaited<ReturnType<typeof getRelayRedis>>,
   sessionId: string,
   payload: string,
 ): Promise<void> {
@@ -51,12 +51,22 @@ export const POST = withRelayAuthAndValidation(
   async (_request, { userId, body }) => {
     const { nodeId, events } = body;
 
-    let redis: ReturnType<typeof createClient> | null = null;
+    // Verify the node belongs to the authenticated user
+    const [node] = await db
+      .select({ id: relayNode.id })
+      .from(relayNode)
+      .where(and(eq(relayNode.id, nodeId), eq(relayNode.userId, userId)))
+      .limit(1);
+
+    if (!node) {
+      return NextResponse.json(
+        { error: "Node not found or not owned by user" },
+        { status: 403 },
+      );
+    }
+
     try {
-      redis = createClient({
-        url: process.env.REDIS_URL || "redis://localhost:6379",
-      });
-      await redis.connect();
+      const redis = await getRelayRedis();
 
       for (const raw of events) {
         const event = raw as unknown as DaemonMessage;
@@ -123,14 +133,8 @@ export const POST = withRelayAuthAndValidation(
         }
       }
 
-      await redis.quit();
       return NextResponse.json({ received: events.length });
     } catch (err) {
-      if (redis) {
-        try {
-          await redis.quit();
-        } catch {}
-      }
       console.error("[relay/events] Error:", err);
       return NextResponse.json(
         { error: "Failed to process events" },

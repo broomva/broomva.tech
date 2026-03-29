@@ -9,6 +9,7 @@ import {
   ensurePersonalOrg,
   getOrganizationBySlug,
 } from "@/lib/db/organization";
+import { upsertUserFromSession } from "@/lib/db/queries";
 import { captureServerEvent } from "@/lib/analytics/posthog";
 import { EVENT_ORG_CREATED, EVENT_ORG_SKIPPED } from "@/lib/analytics/events";
 
@@ -53,6 +54,9 @@ export async function createOnboardingOrg(
   }
 
   try {
+    // Sync Neon Auth user into app user table before creating org
+    await upsertUserFromSession({ sessionUser: session.user });
+
     const org = await createOrganization(
       name.trim(),
       normalizedSlug,
@@ -70,9 +74,9 @@ export async function createOnboardingOrg(
 }
 
 export async function skipOnboarding(
-  _prevState: null,
+  _prevState: { error?: string } | null,
   _formData: FormData,
-): Promise<never> {
+): Promise<{ error?: string } | never> {
   const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
@@ -81,9 +85,18 @@ export async function skipOnboarding(
     redirect("/login");
   }
 
-  // Ensure a personal org exists before redirecting
-  await ensurePersonalOrg(session.user.id, session.user.name ?? "User");
-  captureServerEvent(session.user.id, EVENT_ORG_SKIPPED);
+  try {
+    // Sync Neon Auth user into app user table before creating org
+    await upsertUserFromSession({ sessionUser: session.user });
+
+    // Ensure a personal org exists before redirecting
+    await ensurePersonalOrg(session.user.id, session.user.name ?? "User");
+    captureServerEvent(session.user.id, EVENT_ORG_SKIPPED);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Failed to skip onboarding.";
+    return { error: message };
+  }
 
   redirect("/chat");
 }
