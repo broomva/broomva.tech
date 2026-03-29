@@ -1,12 +1,12 @@
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { createClient } from "redis";
 import { z } from "zod";
 
 import { withAuthAndValidation } from "@/lib/api/with-auth";
 import { db } from "@/lib/db/client";
 import { relaySession } from "@/lib/db/schema";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
+import { getRelayRedis } from "@/lib/relay/redis";
 
 const approveSchema = z.object({
   approvalId: z.string(),
@@ -41,11 +41,7 @@ export const POST = withAuthAndValidation(
         );
       }
 
-      const redis = createClient({
-        url: process.env.REDIS_URL || "redis://localhost:6379",
-      });
-      await redis.connect();
-
+      const redis = await getRelayRedis();
       const command = JSON.stringify({
         type: "approve",
         sessionId,
@@ -53,7 +49,6 @@ export const POST = withAuthAndValidation(
         approved: body.approved,
       });
       await redis.rPush(nodeCommandsChannel(session.nodeId), command);
-      await redis.quit();
 
       return NextResponse.json({ sent: true });
     } catch (err) {
