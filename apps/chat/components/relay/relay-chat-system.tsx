@@ -9,12 +9,17 @@
  */
 
 import { memo } from "react";
-import { MessageTreeSync } from "@/components/message-tree-sync";
 import type { ChatMessage } from "@/lib/ai/types";
 import { CustomStoreProvider } from "@/lib/stores/custom-store-provider";
 import { RelayChatContent } from "./relay-chat-content";
 import { RelayChatSync } from "./relay-chat-sync";
 
+/**
+ * NOTE: We intentionally omit MessageTreeSync here. That component syncs
+ * messages from the DB (via tRPC + ChatIdProvider + DataStreamProvider) —
+ * none of which exist in the relay/console context. Relay messages live
+ * only in memory, written by RelayChatSync from the SSE stream.
+ */
 export const RelayChatSystem = memo(function RelayChatSystem({
   sessionId,
   model,
@@ -24,7 +29,6 @@ export const RelayChatSystem = memo(function RelayChatSystem({
 }) {
   return (
     <CustomStoreProvider<ChatMessage> initialMessages={[]} key={sessionId}>
-      <MessageTreeSync />
       <RelayChatSync sessionId={sessionId} model={model}>
         <RelayChatContent />
       </RelayChatSync>

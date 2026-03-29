@@ -18,7 +18,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/lib/ai/types";
 import type { DaemonMessage } from "@/lib/relay/protocol";
 import { daemonEventToChatMessage } from "@/lib/relay/relay-message-adapter";
-import { useAddMessageToTree } from "@/lib/stores/hooks-threads";
 
 import { RelayContextProvider, type RelayContextValue } from "./relay-context";
 
@@ -37,7 +36,6 @@ export function RelayChatSync({
   children,
 }: RelayChatSyncProps) {
   const storeApi = useChatStoreApi<ChatMessage>();
-  const addMessageToTree = useAddMessageToTree();
 
   const [workspaceStatus, setWorkspaceStatus] =
     useState<WorkspaceStatus | null>(null);
@@ -104,8 +102,12 @@ export function RelayChatSync({
 
         if (chatMessage) {
           // Update status to streaming while events are flowing
-          storeApi.getState().setStatus("streaming");
-          addMessageToTree(chatMessage);
+          const state = storeApi.getState();
+          state.setStatus("streaming");
+          // Use pushMessage to add to the base messages array that
+          // useMessageIds() reads from (not addMessageToTree which
+          // only updates the allMessages tree).
+          state.pushMessage(chatMessage);
           lastMessageIdRef.current = chatMessage.id;
         }
       } catch {
@@ -117,7 +119,7 @@ export function RelayChatSync({
       es.close();
       setConnected(false);
     };
-  }, [sessionId, model, storeApi, addMessageToTree]);
+  }, [sessionId, model, storeApi]);
 
   // ── Relay actions ─────────────────────────────────────────────────────
   const sendInput = useCallback(
