@@ -13,7 +13,13 @@
  */
 
 import { useChatStoreApi } from "@ai-sdk-tools/store";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { ChatMessage } from "@/lib/ai/types";
 import type { DaemonMessage } from "@/lib/relay/protocol";
@@ -49,9 +55,10 @@ export function RelayChatSync({
   const lastMessageIdRef = useRef<string | null>(null);
 
   // ── Initialize store ──────────────────────────────────────────────────
-  // Set the chatId and status in the store so components like
-  // AssistantMessage (which call useChatId()) work correctly.
-  useEffect(() => {
+  // useLayoutEffect fires synchronously after DOM mutations but before
+  // the browser paints — this ensures useChatId() returns the sessionId
+  // before Messages renders visually.
+  useLayoutEffect(() => {
     const state = storeApi.getState();
     state.setId(sessionId);
     state.setStatus("ready");
