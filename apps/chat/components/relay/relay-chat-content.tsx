@@ -8,7 +8,7 @@
  * approval overlay for pending tool approvals.
  */
 
-import { AlertCircle, CheckCircle, Radio, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Radio, WifiOff, XCircle } from "lucide-react";
 import { Messages } from "@/components/messages";
 import { useRelayContext } from "./relay-context";
 import { RelayInput } from "./relay-input";
@@ -55,8 +55,38 @@ function RelayApprovalOverlay() {
   );
 }
 
+function RelayConnectionError() {
+  const { connectionError } = useRelayContext();
+
+  if (!connectionError) return null;
+
+  return (
+    <div className="mx-4 mt-2 shrink-0 rounded-lg border border-red-500/40 bg-red-500/10 p-4">
+      <div className="flex items-start gap-3">
+        <WifiOff className="mt-0.5 size-4 shrink-0 text-red-500" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">
+            Stream connection failed
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Could not connect to the relay stream after multiple retries.
+            This usually means the streaming backend (Redis) is unreachable.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-2 rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RelayHeader() {
-  const { sessionId, connected, ended } = useRelayContext();
+  const { sessionId, connected, ended, connectionError } = useRelayContext();
 
   return (
     <div className="flex shrink-0 items-center gap-3 border-b bg-background px-4 py-3">
@@ -67,11 +97,13 @@ function RelayHeader() {
       </span>
       <div
         className={`ml-auto size-2 shrink-0 rounded-full ${
-          connected
-            ? "bg-green-500"
-            : ended
-              ? "bg-zinc-500"
-              : "animate-pulse bg-yellow-500"
+          connectionError
+            ? "bg-red-500"
+            : connected
+              ? "bg-green-500"
+              : ended
+                ? "bg-zinc-500"
+                : "animate-pulse bg-yellow-500"
         }`}
       />
     </div>
@@ -82,6 +114,8 @@ export function RelayChatContent() {
   return (
     <div className="flex h-full flex-col">
       <RelayHeader />
+
+      <RelayConnectionError />
 
       <Messages className="h-full min-h-0 flex-1" isReadonly={false} />
 

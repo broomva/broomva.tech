@@ -6,18 +6,18 @@
  * Three-tier collapsible hierarchy mirroring Claude Code's workspace view.
  */
 
-import { ChevronRight, FolderOpen, Plus, Radio, Search } from "lucide-react";
+import { ChevronRight, FolderOpen, Radio, Search } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { NewSessionDialog } from "@/components/relay/new-session-dialog";
 import {
   type NodeGroup,
   useRelaySessionsList,
@@ -162,7 +162,7 @@ export function RelayLeftPanel({
 }: {
   currentSessionId?: string;
 }) {
-  const { grouped, metrics, loading } = useRelaySessionsList();
+  const { grouped, nodes, metrics, loading } = useRelaySessionsList();
   const [search, setSearch] = useState("");
 
   // Filter by session name
@@ -204,10 +204,7 @@ export function RelayLeftPanel({
         </div>
 
         {/* New Session */}
-        <Button size="sm" className="w-full" variant="outline">
-          <Plus className="size-3.5" />
-          New Session
-        </Button>
+        <NewSessionDialog nodes={nodes} />
       </div>
 
       {/* Sessions tree */}

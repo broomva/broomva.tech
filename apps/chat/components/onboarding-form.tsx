@@ -115,7 +115,10 @@ export function OnboardingForm({
   );
 
   // --- Skip action
-  const [, skipAction, skipPending] = useActionState(skipOnboarding, null);
+  const [skipState, skipAction, skipPending] = useActionState(
+    skipOnboarding,
+    null,
+  );
 
   // When org creation succeeds, advance to step 2
   useEffect(() => {
@@ -241,7 +244,7 @@ export function OnboardingForm({
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="justify-center">
+          <CardFooter className="flex-col items-center gap-1">
             <form action={skipAction}>
               <Button
                 variant="ghost"
@@ -252,6 +255,9 @@ export function OnboardingForm({
                 {skipPending ? "Setting up..." : "Skip for now"}
               </Button>
             </form>
+            {skipState?.error && (
+              <p className="text-destructive text-xs">{skipState.error}</p>
+            )}
           </CardFooter>
         </Card>
 

@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { upsertUserFromSession } from "@/lib/db/queries";
 import {
   captureServerEvent,
   identifyServerUser,
@@ -39,6 +40,16 @@ export async function signUpWithEmail(
   }
 
   if (data?.user?.id) {
+    // Sync Neon Auth user into app user table immediately after signup
+    await upsertUserFromSession({
+      sessionUser: {
+        id: data.user.id,
+        name: data.user.name ?? name,
+        email: data.user.email ?? email,
+        image: data.user.image ?? null,
+      },
+    });
+
     identifyServerUser(data.user.id, {
       email: data.user.email,
       name: data.user.name,

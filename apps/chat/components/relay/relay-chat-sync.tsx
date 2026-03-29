@@ -50,9 +50,12 @@ export function RelayChatSync({
   );
   const [connected, setConnected] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
 
   // Track last message ID for parentMessageId chaining
   const lastMessageIdRef = useRef<string | null>(null);
+  const retryCountRef = useRef(0);
+  const maxRetries = 5;
 
   // ── Initialize store ──────────────────────────────────────────────────
   // useLayoutEffect fires synchronously after DOM mutations but before
@@ -70,6 +73,8 @@ export function RelayChatSync({
 
     es.onopen = () => {
       setConnected(true);
+      setConnectionError(false);
+      retryCountRef.current = 0;
       // On reconnect, the server replays buffered events.
       // Clear store messages to avoid duplicates from replay.
       // Set status to "streaming" BEFORE any messages arrive so that
@@ -84,6 +89,14 @@ export function RelayChatSync({
 
     es.onerror = () => {
       setConnected(false);
+      retryCountRef.current += 1;
+      // EventSource auto-reconnects, but if we exceed retries the
+      // server is likely unreachable (e.g. Redis down). Close the
+      // connection and show an error state instead of crashing.
+      if (retryCountRef.current >= maxRetries) {
+        es.close();
+        setConnectionError(true);
+      }
     };
 
     es.onmessage = (e) => {
@@ -166,6 +179,7 @@ export function RelayChatSync({
     pendingApproval,
     connected,
     ended,
+    connectionError,
     sendInput,
     approve,
   };

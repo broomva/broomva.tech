@@ -24,6 +24,8 @@ export interface RelayContextValue {
   connected: boolean;
   /** Whether the session has ended. */
   ended: boolean;
+  /** Whether the SSE connection failed after max retries. */
+  connectionError: boolean;
   /** Send text input to the relay session. */
   sendInput: (text: string) => void;
   /** Approve or deny a pending approval request. */
