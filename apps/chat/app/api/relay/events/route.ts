@@ -99,19 +99,24 @@ export const POST = withRelayAuthAndValidation(
           }
 
           case "session_created": {
-            await db.insert(relaySession).values({
-              id: event.session.id,
-              nodeId,
-              userId,
-              sessionType: event.session.sessionType as
-                | "arcan"
-                | "claude-code"
-                | "codex",
-              status: "active",
-              name: event.session.name,
-              workdir: event.session.workdir,
-              model: event.session.model ?? null,
-            });
+            // Session may already exist if created via POST /api/relay/sessions.
+            // The daemon sends session_created as confirmation — skip if duplicate.
+            await db
+              .insert(relaySession)
+              .values({
+                id: event.session.id,
+                nodeId,
+                userId,
+                sessionType: event.session.sessionType as
+                  | "arcan"
+                  | "claude-code"
+                  | "codex",
+                status: "active",
+                name: event.session.name,
+                workdir: event.session.workdir,
+                model: event.session.model ?? null,
+              })
+              .onConflictDoNothing();
             break;
           }
 
