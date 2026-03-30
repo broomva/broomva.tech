@@ -4,6 +4,7 @@ import { configCommand } from "./commands/config.js";
 import { contextCommand } from "./commands/context.js";
 import { daemonCommand } from "./commands/daemon.js";
 import { promptsCommand } from "./commands/prompts.js";
+import { relayCommand } from "./commands/relay.js";
 import { skillsCommand } from "./commands/skills.js";
 import { readConfig } from "./lib/config-store.js";
 import { CliError } from "./lib/errors.js";
@@ -38,6 +39,7 @@ export function createProgram(): Command {
 	program.addCommand(contextCommand());
 	program.addCommand(configCommand());
 	program.addCommand(daemonCommand());
+	program.addCommand(relayCommand());
 
 	return program;
 }
