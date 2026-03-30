@@ -10,6 +10,8 @@
 
 import { memo } from "react";
 import type { ChatMessage } from "@/lib/ai/types";
+import { DataStreamProvider } from "@/components/data-stream-provider";
+import { ArtifactProvider } from "@/hooks/use-artifact";
 import { CustomStoreProvider } from "@/lib/stores/custom-store-provider";
 import { RelayChatContent } from "./relay-chat-content";
 import { RelayChatSync } from "./relay-chat-sync";
@@ -28,10 +30,14 @@ export const RelayChatSystem = memo(function RelayChatSystem({
   model?: string | null;
 }) {
   return (
-    <CustomStoreProvider<ChatMessage> initialMessages={[]} key={sessionId}>
-      <RelayChatSync sessionId={sessionId} model={model}>
-        <RelayChatContent />
-      </RelayChatSync>
-    </CustomStoreProvider>
+    <ArtifactProvider>
+      <DataStreamProvider>
+        <CustomStoreProvider<ChatMessage> initialMessages={[]} key={sessionId}>
+          <RelayChatSync sessionId={sessionId} model={model}>
+            <RelayChatContent />
+          </RelayChatSync>
+        </CustomStoreProvider>
+      </DataStreamProvider>
+    </ArtifactProvider>
   );
 });
