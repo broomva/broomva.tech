@@ -206,8 +206,11 @@ impl BroomvaClient {
     // ── Auth validation ──
 
     pub async fn validate_token(&self) -> BroomvaResult<bool> {
+        // Use /api/relay/nodes as the validation endpoint — it accepts both
+        // session cookies and Bearer JWTs (withRelayAuth), unlike the Neon
+        // Auth session endpoint which only accepts cookies.
         let resp = self
-            .request(Method::GET, "/api/auth/session")
+            .request(Method::GET, "/api/relay/nodes")
             .send()
             .await?;
         Ok(resp.status().is_success())

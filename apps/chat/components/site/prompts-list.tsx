@@ -229,7 +229,7 @@ export function PromptsList({ entries }: PromptsListProps) {
                   </span>
                 )}
                 {featured.model && (
-                  <span className="rounded-full border border-web3-green/30 bg-web3-green/8 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.15em] text-web3-green/80">
+                  <span className="rounded-full border border-accent-blue/30 bg-accent-blue/8 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.15em] text-accent-blue/80">
                     {featured.model}
                   </span>
                 )}
@@ -311,7 +311,7 @@ export function PromptsList({ entries }: PromptsListProps) {
                     {entry.model && (
                       <>
                         <span className="text-border/60">&middot;</span>
-                        <span className="font-mono text-[10px] text-web3-green/60">
+                        <span className="font-mono text-[10px] text-accent-blue/60">
                           {entry.model}
                         </span>
                       </>

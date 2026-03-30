@@ -122,7 +122,7 @@ export default function LaunchLifePage() {
       {/* Hero */}
       <section className="glass-card relative overflow-hidden px-6 py-14 sm:px-10 sm:py-20 text-center">
         <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-ai-blue/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-web3-green/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-accent-blue/10 blur-3xl" />
 
         <p className="relative text-xs uppercase tracking-[0.25em] text-ai-blue mb-4">
           Open Source &middot; MIT License
@@ -292,7 +292,7 @@ curl http://localhost:3000/sessions/{id}/events/stream`}</code>
             >
               <span className="text-sm text-text-primary">{item.area}</span>
               <span
-                className={`font-mono text-sm ${item.status === "strong" ? "text-web3-green" : "text-text-muted"}`}
+                className={`font-mono text-sm ${item.status === "strong" ? "text-accent-blue" : "text-text-muted"}`}
               >
                 {item.score}
               </span>
@@ -303,7 +303,7 @@ curl http://localhost:3000/sessions/{id}/events/stream`}</code>
 
       {/* CTA */}
       <section className="glass-card relative mt-16 overflow-hidden px-6 py-14 text-center sm:px-10">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-web3-green/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-accent-blue/10 blur-3xl" />
         <h2 className="relative font-display text-2xl text-text-primary sm:text-3xl">
           LLMs are controllers, not chatbots.
         </h2>

@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/sidebar";
 import { TopNav } from "@/components/site/top-nav";
 import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
+import { SessionProvider } from "@/providers/session-provider";
+import { TRPCReactProvider } from "@/trpc/react";
 import { getSafeSession } from "@/lib/auth";
 import { captureServerEvent } from "@/lib/analytics/posthog";
 import { EVENT_CONSOLE_PAGE_VIEWED } from "@/lib/analytics/events";
@@ -32,21 +34,25 @@ export default async function ConsoleLayout({
   captureServerEvent(session.user.id, EVENT_CONSOLE_PAGE_VIEWED);
 
   return (
-    <ToolbarDockProvider>
-      <SidebarProvider defaultOpen={defaultOpen}>
-        <ConsoleSidebar
-          userName={session.user.name ?? "Agent"}
-          userEmail={session.user.email}
-          userAvatar={session.user.image ?? ""}
-        />
-        <SidebarInset>
-          <SiteHeader />
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0 pb-24">
-            {children}
-          </div>
-        </SidebarInset>
-        <TopNav />
-      </SidebarProvider>
-    </ToolbarDockProvider>
+    <TRPCReactProvider>
+      <SessionProvider initialSession={session}>
+        <ToolbarDockProvider>
+          <SidebarProvider defaultOpen={defaultOpen}>
+            <ConsoleSidebar
+              userName={session.user.name ?? "Agent"}
+              userEmail={session.user.email}
+              userAvatar={session.user.image ?? ""}
+            />
+            <SidebarInset>
+              <SiteHeader />
+              <div className="flex flex-1 flex-col gap-4 p-4 pt-0 pb-24">
+                {children}
+              </div>
+            </SidebarInset>
+            <TopNav />
+          </SidebarProvider>
+        </ToolbarDockProvider>
+      </SessionProvider>
+    </TRPCReactProvider>
   );
 }

@@ -39,7 +39,7 @@ function SkillCard({ skill, index }: { skill: BstackSkill; index: number }) {
               title={skill.installCommand}
             >
               {copied ? (
-                <span className="text-web3-green">Copied!</span>
+                <span className="text-accent-blue">Copied!</span>
               ) : (
                 skill.installCommand
               )}

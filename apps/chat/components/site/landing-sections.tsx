@@ -203,7 +203,7 @@ function HeroSection({ userName }: { userName?: string | null }) {
       />
 
       <div className="pointer-events-none absolute -right-32 top-1/4 z-[1] h-[28rem] w-[28rem] rounded-full bg-ai-blue/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -left-24 bottom-1/4 z-[1] h-96 w-96 rounded-full bg-web3-green/8 blur-[100px]" />
+      <div className="pointer-events-none absolute -left-24 bottom-1/4 z-[1] h-96 w-96 rounded-full bg-accent-blue/8 blur-[100px]" />
 
       <div className="pointer-events-none relative z-10 mx-auto w-full max-w-3xl text-center">
         {/* Greeting */}

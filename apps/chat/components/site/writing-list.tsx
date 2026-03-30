@@ -263,7 +263,7 @@ export function WritingList({ entries }: WritingListProps) {
                   {featured.pinned ? "Featured" : "Latest"}
                 </span>
                 {detectLanguage(featured) === "ES" && (
-                  <span className="rounded border border-web3-green/30 bg-web3-green/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-web3-green/80">
+                  <span className="rounded border border-accent-blue/30 bg-accent-blue/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-accent-blue/80">
                     ES
                   </span>
                 )}
@@ -384,7 +384,7 @@ export function WritingList({ entries }: WritingListProps) {
                         {detectLanguage(entry) === "ES" && (
                           <>
                             <span className="text-border/60">&middot;</span>
-                            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-web3-green/70">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-accent-blue/70">
                               ES
                             </span>
                           </>

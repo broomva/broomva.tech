@@ -18,7 +18,7 @@
 :root {
   /* --- Brand --- */
   --ag-ai-blue: oklch(0.60 0.12 260);
-  --ag-web3-green: oklch(0.72 0.19 155);
+  --ag-accent-blue: oklch(0.65 0.14 235);
 
   /* --- Surfaces (hue 275 blue-purple) --- */
   --ag-bg-deep: oklch(0.12 0.02 275);
@@ -64,7 +64,7 @@
   --ag-shadow-xl: 0 16px 32px oklch(0 0 0 / 0.50);
   --ag-shadow-2xl: 0 24px 48px oklch(0 0 0 / 0.55);
   --ag-shadow-glow-blue: 0 0 24px oklch(0.60 0.12 260 / 0.20);
-  --ag-shadow-glow-green: 0 0 20px oklch(0.72 0.19 155 / 0.25);
+  --ag-shadow-glow-accent: 0 0 20px oklch(0.65 0.14 235 / 0.25);
 
   /* --- Radius --- */
   --ag-radius-sm: 4px;
@@ -99,7 +99,7 @@
   --secondary-foreground: var(--ag-text-primary);
   --muted: var(--ag-bg-surface);
   --muted-foreground: var(--ag-text-muted);
-  --accent: var(--ag-web3-green);
+  --accent: var(--ag-accent-blue);
   --accent-foreground: oklch(0.12 0.02 275);
   --destructive: var(--ag-error);
   --destructive-foreground: oklch(0.98 0 0);
@@ -121,7 +121,7 @@
 
   /* --- Charts --- */
   --chart-1: var(--ag-ai-blue);
-  --chart-2: var(--ag-web3-green);
+  --chart-2: var(--ag-accent-blue);
   --chart-3: oklch(0.65 0.22 330);
   --chart-4: var(--ag-warning);
   --chart-5: oklch(0.60 0.20 30);
@@ -198,7 +198,7 @@
 @supports not (color: oklch(0 0 0)) {
   :root {
     --ag-ai-blue: #7088b8;
-    --ag-web3-green: #00cc66;
+    --ag-accent-blue: #6b8bc4;
     --ag-bg-deep: #12121a;
     --ag-bg-dark: #001f3f;
     --ag-bg-surface: #1a1a2e;
@@ -228,7 +228,7 @@
   --radius-xl: var(--ag-radius-xl);
   --radius-full: var(--ag-radius-full);
   --color-ai-blue: var(--ag-ai-blue);
-  --color-web3-green: var(--ag-web3-green);
+  --color-accent-blue: var(--ag-accent-blue);
   --color-bg-deep: var(--ag-bg-deep);
   --color-bg-dark: var(--ag-bg-dark);
   --color-bg-surface: var(--ag-bg-surface);
@@ -281,7 +281,7 @@
   --shadow-xl: var(--ag-shadow-xl);
   --shadow-2xl: var(--ag-shadow-2xl);
   --shadow-glow-blue: var(--ag-shadow-glow-blue);
-  --shadow-glow-green: var(--ag-shadow-glow-green);
+  --shadow-glow-accent: var(--ag-shadow-glow-accent);
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-typing: typing 1.5s ease-in-out infinite;
@@ -350,7 +350,7 @@
 }
 
 @utility glow-blue { box-shadow: var(--ag-shadow-glow-blue); }
-@utility glow-green { box-shadow: var(--ag-shadow-glow-green); }
+@utility glow-accent { box-shadow: var(--ag-shadow-glow-accent); }
 
 @utility glass-highlight {
   position: relative;
@@ -521,13 +521,13 @@
     box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.10), var(--ag-shadow-glow-blue);
   }
   .glass-button-accent {
-    background: color-mix(in oklab, var(--ag-web3-green) 85%, transparent);
-    border-color: oklch(0.75 0.19 155 / 0.50);
-    color: oklch(0.12 0.02 275);
+    background: color-mix(in oklab, var(--ag-accent-blue) 85%, transparent);
+    border-color: oklch(0.68 0.14 235 / 0.50);
+    color: oklch(0.98 0 0);
   }
   .glass-button-accent:hover {
-    background: color-mix(in oklab, var(--ag-web3-green) 95%, transparent);
-    box-shadow: var(--ag-shadow-glow-green);
+    background: color-mix(in oklab, var(--ag-accent-blue) 95%, transparent);
+    box-shadow: var(--ag-shadow-glow-accent);
   }
   .glass-badge {
     display: inline-flex;
@@ -566,9 +566,9 @@
 @media (color-gamut: p3) {
   :root {
     --ag-ai-blue: oklch(0.62 0.14 260);
-    --ag-web3-green: oklch(0.72 0.22 155);
+    --ag-accent-blue: oklch(0.67 0.16 235);
     --ag-shadow-glow-blue: 0 0 24px oklch(0.62 0.14 260 / 0.22);
-    --ag-shadow-glow-green: 0 0 20px oklch(0.72 0.22 155 / 0.30);
+    --ag-shadow-glow-accent: 0 0 20px oklch(0.67 0.16 235 / 0.30);
   }
 }
 

@@ -6,7 +6,7 @@
  * Three-tier collapsible hierarchy mirroring Claude Code's workspace view.
  */
 
-import { ChevronRight, FolderOpen, Radio, Search } from "lucide-react";
+import { ChevronRight, Copy, FolderOpen, Radio, Search, Terminal } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
@@ -155,6 +155,68 @@ function NodeGroupItem({
   );
 }
 
+// ── Onboarding card ───────────────────────────────────────────────────────
+
+function CopyCommand({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard.writeText(command);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      className="group flex w-full items-center gap-2 rounded-md bg-zinc-900 px-3 py-2 text-left font-mono text-[11px] text-zinc-300 transition-colors hover:bg-zinc-800"
+    >
+      <Terminal className="size-3 shrink-0 text-zinc-500" />
+      <span className="min-w-0 flex-1 truncate">{command}</span>
+      <Copy
+        className={cn(
+          "size-3 shrink-0 transition-colors",
+          copied
+            ? "text-green-400"
+            : "text-zinc-600 group-hover:text-zinc-400",
+        )}
+      />
+    </button>
+  );
+}
+
+function RelayOnboardingCard() {
+  return (
+    <div className="space-y-3 rounded-lg border border-dashed p-4">
+      <div className="space-y-1">
+        <p className="text-xs font-medium">Connect a machine</p>
+        <p className="text-[10px] leading-relaxed text-muted-foreground">
+          Install the CLI, sign in, and start the relay to connect this machine
+          to your console.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-medium text-muted-foreground">
+          1. Install &amp; authenticate
+        </p>
+        <CopyCommand command="curl -fsSL https://broomva.tech/install | sh" />
+        <CopyCommand command="broomva auth login" />
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-medium text-muted-foreground">
+          2. Start relay
+        </p>
+        <CopyCommand command="broomva relay start" />
+      </div>
+
+      <p className="text-[10px] leading-relaxed text-muted-foreground">
+        Your machine will appear here once connected.
+      </p>
+    </div>
+  );
+}
+
 // ── Main panel ─────────────────────────────────────────────────────────────
 
 export function RelayLeftPanel({
@@ -216,19 +278,7 @@ export function RelayLeftPanel({
             </p>
           )}
           {!loading && filtered.length === 0 && (
-            <div className="rounded-lg border border-dashed p-6 text-center">
-              <p className="text-xs text-muted-foreground">
-                No relay nodes registered.
-              </p>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Install{" "}
-                <code className="rounded bg-muted px-1 py-0.5">relayd</code> and
-                run{" "}
-                <code className="rounded bg-muted px-1 py-0.5">
-                  relayd auth
-                </code>
-              </p>
-            </div>
+            <RelayOnboardingCard />
           )}
           {filtered.map((ng) => (
             <NodeGroupItem

@@ -84,7 +84,7 @@ export function Console({
                     "in_progress",
                     "loading_packages",
                   ].includes(consoleOutput.status),
-                  "text-web3-green": consoleOutput.status === "completed",
+                  "text-accent-blue": consoleOutput.status === "completed",
                   "text-error": consoleOutput.status === "failed",
                 })}
               >
