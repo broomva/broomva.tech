@@ -38,6 +38,7 @@ export type ServerMessage =
     }
   | { type: "kill"; sessionId: string }
   | { type: "list_sessions" }
+  | { type: "list_dir"; path: string; requestId: string }
   | { type: "ping" };
 
 // ── Daemon → Server (events) ──────────────────────────────────────────────
@@ -76,5 +77,18 @@ export type DaemonMessage =
       staged: number;
       lastCommit: string | null;
     }
+  | {
+      type: "dir_listing";
+      requestId: string;
+      path: string;
+      entries: DirEntry[];
+    }
   | { type: "pong" }
   | { type: "error"; code: string; message: string };
+
+// ── Filesystem Types ─────────────────────────────────────────────────────
+
+export interface DirEntry {
+  name: string;
+  isDir: boolean;
+}

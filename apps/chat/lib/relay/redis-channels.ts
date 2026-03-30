@@ -40,3 +40,12 @@ export function sessionReplayKey(sessionId: string): string {
 
 /** Maximum number of events to keep in the replay buffer. */
 export const REPLAY_BUFFER_SIZE = 500;
+
+/**
+ * Redis pub/sub channel for a request/response exchange.
+ * Used by filesystem listing: the API route publishes a `list_dir` command
+ * and subscribes to this channel for the daemon's response.
+ */
+export function requestResponseChannel(requestId: string): string {
+  return `${PREFIX}:response:${requestId}`;
+}

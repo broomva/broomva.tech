@@ -5,6 +5,7 @@ import {
   sessionOutputChannel,
   nodeEventsChannel,
   sessionReplayKey,
+  requestResponseChannel,
   REPLAY_BUFFER_SIZE,
 } from "@/lib/relay/redis-channels";
 import { getRelayRedis } from "@/lib/relay/redis";
@@ -130,6 +131,16 @@ export const POST = withRelayAuthAndValidation(
                 lastSeenAt: new Date(),
               })
               .where(eq(relayNode.id, nodeId));
+            break;
+          }
+
+          case "dir_listing": {
+            // Publish to the one-shot response channel so the waiting
+            // /api/relay/nodes/[nodeId]/fs route receives the result.
+            const respChannel = requestResponseChannel(
+              (event as unknown as { requestId: string }).requestId,
+            );
+            await redis.publish(respChannel, payload);
             break;
           }
 

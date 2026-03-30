@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RemoteFolderPicker } from "@/components/relay/remote-folder-picker";
 import type { RelayNodeView } from "@/lib/console/types";
 
 interface NewSessionDialogProps {
@@ -142,22 +143,12 @@ export function NewSessionDialog({ nodes, trigger }: NewSessionDialogProps) {
           </div>
 
           {/* Workdir */}
-          <div>
-            <label
-              htmlFor="relay-workdir"
-              className="mb-1.5 block text-xs font-medium"
-            >
-              Working Directory
-            </label>
-            <input
-              id="relay-workdir"
-              type="text"
-              value={workdir}
-              onChange={(e) => setWorkdir(e.target.value)}
-              placeholder="/home/user/project"
-              className="flex h-9 w-full rounded-md border bg-transparent px-3 text-xs outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-            />
-          </div>
+          <RemoteFolderPicker
+            nodeId={nodeId}
+            value={workdir}
+            onChange={setWorkdir}
+            disabled={!nodeId}
+          />
 
           {/* Name (optional) */}
           <div>
