@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withAuthAndValidation } from "@/lib/api/with-auth";
+import { withRelayAuthAndValidation } from "@/lib/api/with-auth";
 import { z } from "zod";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
 import { getRelayRedis } from "@/lib/relay/redis";
@@ -17,7 +17,7 @@ const inputSchema = z.object({
  * Send input (text or keystrokes) to a relay session.
  * Pushes an input command to the session's node's Redis command queue.
  */
-export const POST = withAuthAndValidation(
+export const POST = withRelayAuthAndValidation(
   inputSchema,
   async (request, { userId, body }) => {
     const url = new URL(request.url);

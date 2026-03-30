@@ -2,7 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { withAuthAndValidation } from "@/lib/api/with-auth";
+import { withRelayAuthAndValidation } from "@/lib/api/with-auth";
 import { db } from "@/lib/db/client";
 import { relaySession } from "@/lib/db/schema";
 import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
@@ -19,7 +19,7 @@ const approveSchema = z.object({
  * Route an approval decision to the relay node. Pushes an `approve` command
  * to the node's Redis command queue, which relayd picks up on the next poll.
  */
-export const POST = withAuthAndValidation(
+export const POST = withRelayAuthAndValidation(
   approveSchema,
   async (request, { userId, body }) => {
     // Extract session ID: /api/relay/sessions/[id]/approve → at(-2)
