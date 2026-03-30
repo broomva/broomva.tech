@@ -136,13 +136,52 @@ pub async fn handle_start(_client: &BroomvaClient, bind: &str) -> BroomvaResult<
             eprintln!("Relay daemon exited with code {}", status.code().unwrap_or(-1));
         }
     } else {
-        // Fallback: lightweight polling loop (no PTY/agent spawning)
-        eprintln!("life-relayd binary not found — running lightweight relay.");
-        eprintln!("  For full agent support, install life-relayd:");
-        eprintln!("    cargo install --git https://github.com/broomva/life.git life-relayd");
+        eprintln!("life-relayd binary not found.");
         eprintln!();
+        eprintln!("Installing life-relayd (agent relay daemon)...");
 
-        run_lightweight_relay(&api_base, &token.unwrap(), bind).await?;
+        let install_status = ProcessCommand::new("cargo")
+            .arg("install")
+            .arg("--git")
+            .arg("https://github.com/broomva/life.git")
+            .arg("life-relayd")
+            .status();
+
+        match install_status {
+            Ok(s) if s.success() => {
+                eprintln!();
+                // Retry with the freshly installed binary
+                if let Some(binary) = find_relayd_binary() {
+                    eprintln!("Installed. Starting relay daemon ({binary})...");
+                    let status = ProcessCommand::new(&binary)
+                        .arg("start")
+                        .arg("--bind")
+                        .arg(bind)
+                        .arg("--server")
+                        .arg(&api_base)
+                        .env("BROOMVA_TOKEN", token.as_deref().unwrap_or(""))
+                        .status()
+                        .map_err(|e| {
+                            crate::error::BroomvaError::Config(format!(
+                                "failed to exec {binary}: {e}"
+                            ))
+                        })?;
+                    if !status.success() {
+                        eprintln!("Relay daemon exited with code {}", status.code().unwrap_or(-1));
+                    }
+                } else {
+                    eprintln!("Install succeeded but binary not found on PATH.");
+                    eprintln!("Try: cargo install --git https://github.com/broomva/life.git life-relayd");
+                }
+            }
+            _ => {
+                eprintln!("Auto-install failed. Falling back to lightweight mode.");
+                eprintln!("  To install manually:");
+                eprintln!("    cargo install --git https://github.com/broomva/life.git life-relayd");
+                eprintln!();
+                run_lightweight_relay(&api_base, &token.unwrap(), bind).await?;
+            }
+        }
     }
 
     Ok(())
