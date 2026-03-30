@@ -14,7 +14,7 @@ export function RelayShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="-mx-4 -mt-4 -mb-24 flex overflow-hidden"
-      style={{ height: "calc(100dvh - 3.5rem)" }}
+      style={{ height: "calc(100dvh - 3.5rem - 4.5rem)" }}
     >
       {children}
     </div>
