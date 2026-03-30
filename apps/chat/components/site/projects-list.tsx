@@ -263,7 +263,7 @@ export function ProjectsList({ entries }: ProjectsListProps) {
                   {featured.pinned ? "Featured" : "Latest"}
                 </span>
                 {featured.status && (
-                  <span className="rounded border border-web3-green/30 bg-web3-green/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-web3-green/80">
+                  <span className="rounded border border-accent-blue/30 bg-accent-blue/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-accent-blue/80">
                     {featured.status}
                   </span>
                 )}

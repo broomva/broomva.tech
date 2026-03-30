@@ -92,7 +92,7 @@ export function NotesList({ entries }: NotesListProps) {
                   Latest
                 </span>
                 {featured.audio && (
-                  <span className="flex items-center gap-1 rounded border border-web3-green/30 bg-web3-green/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-web3-green/80">
+                  <span className="flex items-center gap-1 rounded border border-accent-blue/30 bg-accent-blue/8 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-accent-blue/80">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="10"
@@ -202,7 +202,7 @@ export function NotesList({ entries }: NotesListProps) {
                     {entry.audio && (
                       <>
                         <span className="text-border/60">&middot;</span>
-                        <span className="font-mono text-[10px] text-web3-green/70">
+                        <span className="font-mono text-[10px] text-accent-blue/70">
                           Audio
                         </span>
                       </>
