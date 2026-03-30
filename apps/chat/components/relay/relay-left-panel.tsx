@@ -199,7 +199,7 @@ function RelayOnboardingCard() {
         <p className="text-[10px] font-medium text-muted-foreground">
           1. Install &amp; authenticate
         </p>
-        <CopyCommand command="bun add -g @broomva/cli" />
+        <CopyCommand command="curl -fsSL https://broomva.tech/install | sh" />
         <CopyCommand command="broomva auth login" />
       </div>
 
@@ -211,11 +211,7 @@ function RelayOnboardingCard() {
       </div>
 
       <p className="text-[10px] leading-relaxed text-muted-foreground">
-        Your machine will appear here once connected. You can also use{" "}
-        <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
-          life relay start
-        </code>{" "}
-        from the Rust CLI.
+        Your machine will appear here once connected.
       </p>
     </div>
   );

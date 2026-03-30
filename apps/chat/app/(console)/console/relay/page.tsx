@@ -51,7 +51,7 @@ function RelayCenterEmpty() {
             <SetupStep
               step={1}
               title="Install the CLI"
-              command="bun add -g @broomva/cli"
+              command="curl -fsSL https://broomva.tech/install | sh"
               done={false}
             />
             <SetupStep
