@@ -92,19 +92,11 @@ export function daemonEventToChatMessage(
     }
 
     case "output":
-      // Wrap terminal output in a fenced code block so Streamdown renders it
-      // with the dark terminal-like code block styling.
-      return {
-        id,
-        role: "assistant",
-        parts: [
-          {
-            type: "text",
-            text: `\`\`\`\n${event.data}\`\`\``,
-          },
-        ],
-        metadata: meta,
-      };
+      // Raw PTY output contains ANSI escape codes, cursor movement sequences,
+      // and terminal control characters. These are noise in a chat UI — the
+      // meaningful content arrives as `assistant_message` and `tool_event`.
+      // Skip raw output to keep the chat feed clean.
+      return null;
 
     case "approval_request":
       // Approval requests are handled via RelayContext overlay, but we also
