@@ -9,6 +9,7 @@ import {
   gte,
   inArray,
   isNull,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import type { Session } from "@/lib/auth";
@@ -1268,7 +1269,10 @@ export async function getUserPromptById(
 }
 
 export async function createUserPrompt(
-  data: Omit<UserPrompt, "id" | "createdAt" | "updatedAt">
+  data: Omit<UserPrompt, "id" | "createdAt" | "updatedAt" | "copyCount" | "isHighlighted"> & {
+    copyCount?: number;
+    isHighlighted?: boolean;
+  }
 ): Promise<UserPrompt> {
   const [result] = await db.insert(userPrompt).values(data).returning();
   return result;
@@ -1346,6 +1350,29 @@ export async function softDeleteUserPrompt(
     .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
     .returning({ id: userPrompt.id });
   return result.length > 0;
+}
+
+export async function incrementPromptCopyCount(
+  slug: string,
+): Promise<{ copyCount: number } | undefined> {
+  const [result] = await db
+    .update(userPrompt)
+    .set({ copyCount: sql`${userPrompt.copyCount} + 1` })
+    .where(and(eq(userPrompt.slug, slug), isNull(userPrompt.deletedAt)))
+    .returning({ copyCount: userPrompt.copyCount });
+  return result;
+}
+
+export async function togglePromptHighlight(
+  id: string,
+  highlighted: boolean,
+): Promise<UserPrompt | undefined> {
+  const [result] = await db
+    .update(userPrompt)
+    .set({ isHighlighted: highlighted })
+    .where(eq(userPrompt.id, id))
+    .returning();
+  return result;
 }
 
 export async function getAudioPlaybackState({

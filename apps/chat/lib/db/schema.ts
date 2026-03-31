@@ -452,6 +452,10 @@ export const userPrompt = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
     deletedAt: timestamp("deletedAt"),
+    /** Number of times this prompt has been copied. */
+    copyCount: integer("copyCount").notNull().default(0),
+    /** Admin-highlighted prompt — shown with visual distinction. */
+    isHighlighted: boolean("isHighlighted").notNull().default(false),
   },
   (t) => ({
     UserPrompt_user_id_idx: index("UserPrompt_user_id_idx").on(t.userId),

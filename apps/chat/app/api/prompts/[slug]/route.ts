@@ -79,10 +79,16 @@ export async function PUT(
     );
   }
 
+  // Only admins can toggle isHighlighted
+  const data = { ...parsed.data };
+  if (data.isHighlighted !== undefined && !isAdmin(auth.email)) {
+    delete data.isHighlighted;
+  }
+
   const updated = await updateUserPrompt(
     dbPrompt.id,
     dbPrompt.userId,
-    parsed.data,
+    data,
   );
   if (!updated) {
     return NextResponse.json({ error: "Update failed" }, { status: 500 });

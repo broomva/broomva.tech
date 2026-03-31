@@ -8,6 +8,8 @@ import { formatDate } from "@/lib/date";
 
 const COLLAPSED_ROWS = 2;
 
+type SortMode = "latest" | "popular";
+
 interface PromptsListProps {
   entries: ContentSummary[];
 }
@@ -15,6 +17,7 @@ interface PromptsListProps {
 export function PromptsList({ entries }: PromptsListProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("latest");
   const [tagsExpanded, setTagsExpanded] = useState(false);
   const [needsCollapse, setNeedsCollapse] = useState(false);
   const [collapsedHeight, setCollapsedHeight] = useState<number | null>(null);
@@ -71,11 +74,17 @@ export function PromptsList({ entries }: PromptsListProps) {
     let result = entries;
     if (activeCategory) result = result.filter((e) => e.category === activeCategory);
     if (activeTag) result = result.filter((e) => e.tags.includes(activeTag));
+    if (sortMode === "popular") {
+      result = [...result].sort((a, b) => (b.copyCount ?? 0) - (a.copyCount ?? 0));
+    }
     return result;
-  }, [entries, activeCategory, activeTag]);
+  }, [entries, activeCategory, activeTag, sortMode]);
 
-  const featured = filtered[0];
-  const rest = filtered.slice(1);
+  // Highlighted prompts come first, then the rest
+  const highlighted = filtered.filter((e) => e.isHighlighted);
+  const nonHighlighted = filtered.filter((e) => !e.isHighlighted);
+  const featured = nonHighlighted[0];
+  const rest = nonHighlighted.slice(1);
 
   const pillClass = (active: boolean) =>
     `rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm transition-all duration-200 ${
@@ -181,19 +190,91 @@ export function PromptsList({ entries }: PromptsListProps) {
         </div>
       )}
 
-      {/* Count */}
-      <p className="mt-6 text-xs text-text-muted/60">
-        {filtered.length} prompt{filtered.length !== 1 ? "s" : ""}
-        {activeCategory ? ` in "${activeCategory}"` : ""}
-        {activeTag ? ` tagged "${activeTag}"` : ""}
-      </p>
+      {/* Count + Sort */}
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-xs text-text-muted/60">
+          {filtered.length} prompt{filtered.length !== 1 ? "s" : ""}
+          {activeCategory ? ` in "${activeCategory}"` : ""}
+          {activeTag ? ` tagged "${activeTag}"` : ""}
+        </p>
+        <div className="flex gap-1">
+          {(["latest", "popular"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setSortMode(mode)}
+              className={`rounded-full px-3 py-1 text-[11px] font-medium tracking-wide transition ${
+                sortMode === mode
+                  ? "bg-zinc-800 text-text-primary"
+                  : "text-text-muted/60 hover:text-text-secondary"
+              }`}
+            >
+              {mode === "latest" ? "Latest" : "Most copied"}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <motion.div
-        key={`${activeCategory ?? "__all__"}-${activeTag ?? "__all__"}`}
+        key={`${activeCategory ?? "__all__"}-${activeTag ?? "__all__"}-${sortMode}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.25 }}
       >
+        {/* Highlighted prompts */}
+        {highlighted.length > 0 && (
+          <div className="mt-6 space-y-4">
+            {highlighted.map((entry, i) => (
+              <motion.div
+                key={entry.slug}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+              >
+                <Link
+                  href={`/prompts/${entry.slug}`}
+                  className="glass-card group block overflow-hidden p-0 ring-1 ring-ai-blue/20"
+                >
+                  <div className="h-px bg-gradient-to-r from-transparent via-ai-blue/50 to-transparent" />
+                  <div className="px-5 py-5 sm:px-7 sm:py-6">
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-full bg-ai-blue/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-ai-blue">
+                        Highlighted
+                      </span>
+                      {(entry.copyCount ?? 0) > 0 && (
+                        <span className="text-[10px] text-text-muted/50">
+                          {entry.copyCount} {entry.copyCount === 1 ? "copy" : "copies"}
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="mt-3 font-display text-xl text-text-primary transition-colors group-hover:text-ai-blue sm:text-2xl">
+                      {entry.title}
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
+                      {entry.summary}
+                    </p>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      {entry.category && (
+                        <span className="rounded-full border border-ai-blue/30 bg-ai-blue/8 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.15em] text-ai-blue/80">
+                          {entry.category}
+                        </span>
+                      )}
+                      {entry.tags.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-border/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-text-muted/60"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
         {/* Featured prompt */}
         {featured && (
           <Link
@@ -204,9 +285,14 @@ export function PromptsList({ entries }: PromptsListProps) {
             <div className="px-5 py-6 sm:px-7 sm:py-8">
               <div className="flex items-center gap-3 text-xs text-text-muted">
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ai-blue/60">
-                  Latest
+                  {sortMode === "popular" ? "Most copied" : "Latest"}
                 </span>
                 <span className="h-px flex-1 bg-border/30" />
+                {(featured.copyCount ?? 0) > 0 && (
+                  <span className="text-[10px] text-text-muted/50">
+                    {featured.copyCount} {featured.copyCount === 1 ? "copy" : "copies"}
+                  </span>
+                )}
                 {featured.version && (
                   <span className="font-mono text-[10px] text-text-muted/70">
                     v{featured.version}
@@ -313,6 +399,14 @@ export function PromptsList({ entries }: PromptsListProps) {
                         <span className="text-border/60">&middot;</span>
                         <span className="font-mono text-[10px] text-accent-blue/60">
                           {entry.model}
+                        </span>
+                      </>
+                    )}
+                    {(entry.copyCount ?? 0) > 0 && (
+                      <>
+                        <span className="text-border/60">&middot;</span>
+                        <span className="text-[10px] text-text-muted/50">
+                          {entry.copyCount} {entry.copyCount === 1 ? "copy" : "copies"}
                         </span>
                       </>
                     )}

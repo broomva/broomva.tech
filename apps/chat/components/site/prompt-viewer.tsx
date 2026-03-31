@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import posthog from "posthog-js";
 import type { PromptVariable } from "@/lib/content";
 
 interface PromptViewerProps {
   content: string;
+  slug: string;
+  title: string;
   variables?: PromptVariable[];
 }
 
-export function PromptViewer({ content, variables }: PromptViewerProps) {
+export function PromptViewer({ content, slug, title, variables }: PromptViewerProps) {
   const [copied, setCopied] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -30,8 +33,19 @@ export function PromptViewer({ content, variables }: PromptViewerProps) {
     navigator.clipboard.writeText(resolvedContent).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+
+      // Client-side tracking
+      posthog.capture("prompt_copied", {
+        prompt_slug: slug,
+        prompt_title: title,
+      });
+
+      // Server-side increment (fire-and-forget)
+      fetch(`/api/prompts/${encodeURIComponent(slug)}/copy`, {
+        method: "POST",
+      }).catch(() => {});
     });
-  }, [resolvedContent]);
+  }, [resolvedContent, slug, title]);
 
   return (
     <div className="space-y-6">

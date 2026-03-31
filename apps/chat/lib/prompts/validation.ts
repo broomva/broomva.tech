@@ -24,4 +24,6 @@ export const createPromptSchema = z.object({
   visibility: z.enum(["public", "private"]).optional().default("private"),
 });
 
-export const updatePromptSchema = createPromptSchema.partial();
+export const updatePromptSchema = createPromptSchema.partial().extend({
+  isHighlighted: z.boolean().optional(),
+});
