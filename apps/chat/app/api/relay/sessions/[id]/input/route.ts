@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { withRelayAuthAndValidation } from "@/lib/api/with-auth";
 import { z } from "zod";
-import { nodeCommandsChannel } from "@/lib/relay/redis-channels";
+import {
+  nodeCommandsChannel,
+  sessionOutputChannel,
+} from "@/lib/relay/redis-channels";
 import { getRelayRedis } from "@/lib/relay/redis";
 import { db } from "@/lib/db/client";
 import { relaySession } from "@/lib/db/schema";
@@ -40,8 +43,17 @@ export const POST = withRelayAuthAndValidation(
         );
       }
 
-      // Push input command to the node's command queue
       const redis = await getRelayRedis();
+
+      // Publish user message to SSE stream so all connected browsers see it
+      const userEvent = JSON.stringify({
+        type: "user_input",
+        sessionId,
+        text: body.data.replace(/\n$/, "").trim(),
+      });
+      await redis.publish(sessionOutputChannel(sessionId), userEvent);
+
+      // Push input command to the node's command queue
       const command = JSON.stringify({
         type: "input",
         sessionId,

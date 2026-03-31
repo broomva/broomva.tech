@@ -117,6 +117,7 @@ export type DaemonMessage =
       requestId: string;
       messages: HistoryMessage[];
     }
+  | { type: "user_input"; sessionId: string; text: string }
   | { type: "pong" }
   | { type: "error"; code: string; message: string };
 

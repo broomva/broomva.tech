@@ -252,29 +252,16 @@ export function RelayChatSync({
       const trimmed = text.trim();
       if (!trimmed) return;
 
-      // Optimistic local echo — add user message to the store immediately
-      // so the user sees their input in the chat before the daemon responds.
-      const userMessage = {
-        id: `user-${Date.now()}`,
-        role: "user" as const,
-        parts: [{ type: "text" as const, text: trimmed }],
-        metadata: {
-          createdAt: new Date(),
-          parentMessageId: lastMessageIdRef.current,
-          selectedModel: (model ?? "claude-code") as never,
-          activeStreamId: null,
-        },
-      } satisfies ChatMessage;
-      storeApi.getState().pushMessage(userMessage);
-      lastMessageIdRef.current = userMessage.id;
-
+      // User message is published to the SSE stream by the input endpoint,
+      // so all connected browsers (including this one) will see it via the
+      // accumulator's user_input handler. No local echo needed.
       await fetch(`/api/relay/sessions/${sessionId}/input`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: `${trimmed}\n` }),
       }).catch(() => {});
     },
-    [sessionId, storeApi],
+    [sessionId],
   );
 
   const approve = useCallback(

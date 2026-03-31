@@ -237,6 +237,19 @@ export class RelayTurnAccumulator {
         return { message: msg, isNew: true };
       }
 
+      case "user_input": {
+        // User message from the input endpoint — render as a user bubble
+        this.flushCurrent();
+        const userMsg: ChatMessage = {
+          id: generateUUID(),
+          role: "user",
+          parts: [{ type: "text", text: event.text }],
+          metadata: makeMetadata(this.parentMessageId, this.model),
+        };
+        this.parentMessageId = userMsg.id;
+        return { message: userMsg, isNew: true };
+      }
+
       case "session_ended": {
         this.flushCurrent();
         const msg = this.buildStandaloneMessage(
