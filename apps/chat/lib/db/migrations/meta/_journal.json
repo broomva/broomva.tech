@@ -407,6 +407,13 @@
       "when": 1774919277258,
       "tag": "0057_bitter_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1774929593335,
+      "tag": "0058_curly_sentinels",
+      "breakpoints": true
     }
   ]
 }

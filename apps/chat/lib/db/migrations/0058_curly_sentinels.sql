@@ -1,0 +1,1 @@
+ALTER TABLE "RelaySession" ADD COLUMN "claudeSessionId" varchar(256);

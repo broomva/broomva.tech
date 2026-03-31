@@ -113,6 +113,27 @@ export const POST = withRelayAuthAndValidation(
             break;
           }
 
+          case "session_mapping": {
+            // Update the relay session with the Claude Code session ID.
+            await db
+              .update(relaySession)
+              .set({ claudeSessionId: event.claudeSessionId })
+              .where(eq(relaySession.id, event.sessionId));
+            // Also publish to live subscribers for reference.
+            await publishSessionEvent(redis, event.sessionId, payload);
+            break;
+          }
+
+          case "history_messages": {
+            // Publish to the one-shot response channel so the waiting
+            // /api/relay/sessions/[id]/history route receives the result.
+            const respChannel = requestResponseChannel(
+              (event as unknown as { requestId: string }).requestId,
+            );
+            await redis.publish(respChannel, payload);
+            break;
+          }
+
           case "session_created": {
             // Session may already exist if created via POST /api/relay/sessions.
             // The daemon sends session_created as confirmation — skip if duplicate.

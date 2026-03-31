@@ -1421,6 +1421,8 @@ export const relaySession = pgTable(
     lastSequence: integer("lastSequence").notNull().default(0),
     /** Model currently in use. */
     model: varchar("model", { length: 128 }),
+    /** Claude Code's internal session ID (for loading conversation history). */
+    claudeSessionId: varchar("claudeSessionId", { length: 256 }),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt")
       .notNull()

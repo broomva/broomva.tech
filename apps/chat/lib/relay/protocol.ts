@@ -39,6 +39,7 @@ export type ServerMessage =
   | { type: "kill"; sessionId: string }
   | { type: "list_sessions" }
   | { type: "list_dir"; path: string; requestId: string }
+  | { type: "load_history"; sessionId: string; requestId: string }
   | { type: "ping" };
 
 // ── Daemon → Server (events) ──────────────────────────────────────────────
@@ -105,8 +106,33 @@ export type DaemonMessage =
       path: string;
       entries: DirEntry[];
     }
+  | {
+      type: "session_mapping";
+      sessionId: string;
+      claudeSessionId: string;
+    }
+  | {
+      type: "history_messages";
+      sessionId: string;
+      requestId: string;
+      messages: HistoryMessage[];
+    }
   | { type: "pong" }
   | { type: "error"; code: string; message: string };
+
+// ── History Types ────────────────────────────────────────────────────────
+
+export interface HistoryToolUse {
+  name: string;
+  inputPreview: string;
+}
+
+export interface HistoryMessage {
+  role: "user" | "assistant";
+  text: string;
+  tools: HistoryToolUse[];
+  timestamp?: string;
+}
 
 // ── Filesystem Types ─────────────────────────────────────────────────────
 

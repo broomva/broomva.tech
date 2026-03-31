@@ -214,6 +214,8 @@ export class RelayTurnAccumulator {
       case "node_info":
       case "session_list":
       case "dir_listing":
+      case "session_mapping":
+      case "history_messages":
         return null;
 
       default:
@@ -410,6 +412,9 @@ export function daemonEventToChatMessage(
     case "pong":
     case "node_info":
     case "session_list":
+    case "dir_listing":
+    case "session_mapping":
+    case "history_messages":
       return null;
 
     default:

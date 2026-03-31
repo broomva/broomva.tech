@@ -22,7 +22,7 @@ import {
 } from "react";
 
 import type { ChatMessage } from "@/lib/ai/types";
-import type { DaemonMessage } from "@/lib/relay/protocol";
+import type { DaemonMessage, HistoryMessage } from "@/lib/relay/protocol";
 import { RelayTurnAccumulator } from "@/lib/relay/relay-message-adapter";
 
 import { RelayContextProvider, type RelayContextValue } from "./relay-context";
@@ -61,6 +61,8 @@ export function RelayChatSync({
   const rafRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
   const maxRetries = 5;
+  // Track whether history has been loaded (prevents duplicate loads)
+  const historyLoadedRef = useRef(false);
 
   // ── Initialize store ──────────────────────────────────────────────────
   // useLayoutEffect fires synchronously after DOM mutations but before
@@ -72,6 +74,68 @@ export function RelayChatSync({
     state.setStatus("ready");
   }, [sessionId, storeApi]);
 
+  // ── Load history from Claude Code session files ────────────────────
+  useEffect(() => {
+    if (historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(
+          `/api/relay/sessions/${sessionId}/history`,
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          messages?: HistoryMessage[];
+        };
+        if (!data.messages || data.messages.length === 0) return;
+
+        // Convert HistoryMessage[] to ChatMessage[]
+        const chatMessages: ChatMessage[] = [];
+        let parentId: string | null = null;
+
+        for (const hm of data.messages) {
+          const id = `hist-${chatMessages.length}-${Date.now()}`;
+          const toolText = hm.tools
+            .map(
+              (t) =>
+                `**${t.name}** \`${t.inputPreview.slice(0, 80)}\``,
+            )
+            .join("\n\n");
+          const fullText = [hm.text, toolText]
+            .filter(Boolean)
+            .join("\n\n");
+          if (!fullText) continue;
+
+          chatMessages.push({
+            id,
+            role: hm.role === "user" ? "user" : "assistant",
+            parts: [{ type: "text" as const, text: fullText }],
+            metadata: {
+              createdAt: hm.timestamp
+                ? new Date(hm.timestamp)
+                : new Date(),
+              parentMessageId: parentId,
+              selectedModel: (model ?? "claude-code") as never,
+              activeStreamId: null,
+            },
+          });
+          parentId = id;
+        }
+
+        if (chatMessages.length > 0) {
+          const state = storeApi.getState();
+          state.setMessages(chatMessages);
+          lastMessageIdRef.current = parentId;
+        }
+      } catch {
+        // History loading is best-effort — silently ignore errors.
+      }
+    }
+
+    loadHistory();
+  }, [sessionId, model, storeApi]);
+
   // ── SSE connection ────────────────────────────────────────────────────
   useEffect(() => {
     const es = new EventSource(`/api/relay/sessions/${sessionId}/stream`);
@@ -81,15 +145,18 @@ export function RelayChatSync({
       setConnectionError(false);
       retryCountRef.current = 0;
       // On reconnect, the server replays buffered events.
-      // Clear store messages to avoid duplicates from replay.
-      // Set status to "streaming" BEFORE any messages arrive so that
-      // pushMessage() immediately updates _throttledMessages (which
-      // getMessageIds() reads from). Without this, the first messages
-      // go through the throttled path and don't trigger re-renders.
+      // If history was loaded, we need to keep those messages and layer
+      // SSE events on top. Only clear if no history was loaded yet.
       const state = storeApi.getState();
-      state.setMessages([]);
+      const existingMessages = state.messages;
+      if (existingMessages.length === 0) {
+        state.setMessages([]);
+      }
       state.setStatus("streaming");
-      lastMessageIdRef.current = null;
+      // Preserve lastMessageIdRef if history was loaded
+      if (existingMessages.length === 0) {
+        lastMessageIdRef.current = null;
+      }
       accumulatorRef.current = new RelayTurnAccumulator(model);
       pendingUpdateRef.current = null;
     };
