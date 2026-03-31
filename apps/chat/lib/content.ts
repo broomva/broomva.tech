@@ -59,6 +59,8 @@ export interface ContentSummary {
   model?: string;
   version?: string;
   variables?: PromptVariable[];
+  copyCount?: number;
+  isHighlighted?: boolean;
 }
 
 export interface ContentDocument extends ContentSummary {

@@ -4,6 +4,7 @@ import { PageHero } from "@/components/site/page-hero";
 import { PromptViewer } from "@/components/site/prompt-viewer";
 import { formatDate } from "@/lib/date";
 import { getAllSlugs, getContentBySlug } from "@/lib/content";
+import { getPromptBySlug } from "@/lib/db/queries";
 
 export async function generateStaticParams() {
   const slugs = await getAllSlugs("prompts");
@@ -39,6 +40,15 @@ export default async function PromptSlugPage({
     notFound();
   }
 
+  // Merge DB stats (copyCount) if available
+  let copyCount = 0;
+  try {
+    const dbPrompt = await getPromptBySlug(slug);
+    if (dbPrompt) copyCount = dbPrompt.copyCount;
+  } catch {
+    // DB not ready — show 0
+  }
+
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <PageHero title={entry.title} description={entry.summary} />
@@ -59,7 +69,12 @@ export default async function PromptSlugPage({
             v{entry.version}
           </span>
         ) : null}
-        <span className="ml-auto text-xs uppercase tracking-[0.18em] text-text-muted">
+        <span className="ml-auto flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-text-muted">
+          {copyCount > 0 && (
+            <span className="normal-case tracking-normal text-text-muted/50">
+              {copyCount} {copyCount === 1 ? "copy" : "copies"}
+            </span>
+          )}
           {formatDate(entry.date)}
         </span>
       </div>
@@ -78,7 +93,7 @@ export default async function PromptSlugPage({
       ) : null}
 
       <div className="mt-8">
-        <PromptViewer content={entry.content} variables={entry.variables} />
+        <PromptViewer content={entry.content} slug={entry.slug} title={entry.title} variables={entry.variables} />
       </div>
 
       {entry.links.length > 0 ? (

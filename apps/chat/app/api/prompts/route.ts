@@ -28,6 +28,8 @@ function dbToSummary(p: UserPrompt): ContentSummary {
     model: p.model ?? undefined,
     version: p.version ?? undefined,
     variables: p.variables ?? undefined,
+    copyCount: p.copyCount ?? 0,
+    isHighlighted: p.isHighlighted ?? false,
   };
 }
 
