@@ -54,6 +54,12 @@ export const GET = withRelayAuth(
       );
     }
 
+    // New sessions without a Claude session mapping have no history yet.
+    // Skip the daemon call to avoid loading a previous unrelated conversation.
+    if (!session.claudeSessionId) {
+      return NextResponse.json({ messages: [] });
+    }
+
     const requestId = crypto.randomUUID();
     const responseChannel = requestResponseChannel(requestId);
 

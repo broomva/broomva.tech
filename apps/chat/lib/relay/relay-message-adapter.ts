@@ -164,6 +164,60 @@ export class RelayTurnAccumulator {
         return { message: this.currentMessage, isNew: true };
       }
 
+      // ── Streaming content deltas (word-by-word text) ──────────────
+
+      case "content_block_start": {
+        // A new content block is starting. If it's text and we don't
+        // have a current message yet, create one for streaming.
+        if (event.blockType === "text" && !this.isStreaming) {
+          this.textBuffer = "";
+          this.toolParts = [];
+          this.isStreaming = true;
+          this.currentMessage = this.buildNewMessage();
+          return { message: this.currentMessage, isNew: true };
+        }
+        return null;
+      }
+
+      case "content_delta": {
+        // Streaming text delta — append to current message
+        if (this.isStreaming && this.currentMessage) {
+          this.textBuffer += event.text;
+          this.currentMessage = this.rebuildMessage();
+          return { message: this.currentMessage, isNew: false };
+        }
+
+        // No current message yet — create one
+        this.textBuffer = event.text;
+        this.toolParts = [];
+        this.isStreaming = true;
+        this.currentMessage = this.buildNewMessage();
+        return { message: this.currentMessage, isNew: true };
+      }
+
+      case "content_block_stop":
+        // Block finished — no action needed, the message is already built
+        return null;
+
+      case "tool_result": {
+        // Tool execution completed — append result to current turn
+        const resultText = event.isError
+          ? `> **Error**: ${event.content}`
+          : `> ${event.content.slice(0, 200)}${event.content.length > 200 ? "..." : ""}`;
+
+        if (this.isStreaming && this.currentMessage) {
+          this.toolParts.push(resultText);
+          this.currentMessage = this.rebuildMessage();
+          return { message: this.currentMessage, isNew: false };
+        }
+        return null;
+      }
+
+      case "turn_result":
+        // Turn completed — flush the current turn
+        // (the accumulator stays ready for the next turn)
+        return null;
+
       // ── Raw PTY output (skip — noise in chat UI) ──────────────────
 
       case "output":
