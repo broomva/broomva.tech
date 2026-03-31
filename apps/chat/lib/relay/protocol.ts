@@ -69,6 +69,28 @@ export type DaemonMessage =
       hostname: string;
       capabilities: string[];
     }
+  | { type: "content_delta"; sessionId: string; index: number; text: string }
+  | {
+      type: "content_block_start";
+      sessionId: string;
+      index: number;
+      blockType: string;
+    }
+  | { type: "content_block_stop"; sessionId: string; index: number }
+  | {
+      type: "tool_result";
+      sessionId: string;
+      toolUseId: string;
+      content: string;
+      isError: boolean;
+    }
+  | {
+      type: "turn_result";
+      sessionId: string;
+      costUsd?: number;
+      durationMs?: number;
+      numTurns?: number;
+    }
   | {
       type: "workspace_status";
       sessionId: string;

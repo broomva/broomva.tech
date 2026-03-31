@@ -84,6 +84,20 @@ export const POST = withRelayAuthAndValidation(
             break;
           }
 
+          case "content_delta": {
+            // Publish to live subscribers only — skip replay buffer to
+            // prevent overflow from high-frequency streaming deltas.
+            await redis.publish(
+              sessionOutputChannel(event.sessionId),
+              payload,
+            );
+            break;
+          }
+
+          case "content_block_start":
+          case "content_block_stop":
+          case "tool_result":
+          case "turn_result":
           case "assistant_message":
           case "tool_event":
           case "approval_request":

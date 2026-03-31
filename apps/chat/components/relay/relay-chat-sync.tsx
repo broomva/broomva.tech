@@ -23,7 +23,7 @@ import {
 
 import type { ChatMessage } from "@/lib/ai/types";
 import type { DaemonMessage } from "@/lib/relay/protocol";
-import { daemonEventToChatMessage } from "@/lib/relay/relay-message-adapter";
+import { RelayTurnAccumulator } from "@/lib/relay/relay-message-adapter";
 
 import { RelayContextProvider, type RelayContextValue } from "./relay-context";
 
@@ -52,8 +52,13 @@ export function RelayChatSync({
   const [ended, setEnded] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
 
+  // Accumulator for merging streaming events into messages
+  const accumulatorRef = useRef<RelayTurnAccumulator | null>(null);
   // Track last message ID for parentMessageId chaining
   const lastMessageIdRef = useRef<string | null>(null);
+  // Throttle store updates during streaming
+  const pendingUpdateRef = useRef<ChatMessage | null>(null);
+  const rafRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
   const maxRetries = 5;
 
@@ -85,6 +90,8 @@ export function RelayChatSync({
       state.setMessages([]);
       state.setStatus("streaming");
       lastMessageIdRef.current = null;
+      accumulatorRef.current = new RelayTurnAccumulator(model);
+      pendingUpdateRef.current = null;
     };
 
     es.onerror = () => {
@@ -120,19 +127,42 @@ export function RelayChatSync({
           setConnected(false);
         }
 
-        // Convert and write to store
-        const chatMessage = daemonEventToChatMessage(event, {
-          parentMessageId: lastMessageIdRef.current,
-          model,
-        });
+        // Process through the accumulator
+        const acc = accumulatorRef.current;
+        if (!acc) return;
+        acc.setParentMessageId(lastMessageIdRef.current);
 
-        if (chatMessage) {
-          // pushMessage writes to the base messages array that
-          // useMessageIds() reads from. Status is already "streaming"
-          // (set in onopen) so pushMessage immediately updates
-          // _throttledMessages, triggering re-renders.
-          storeApi.getState().pushMessage(chatMessage);
-          lastMessageIdRef.current = chatMessage.id;
+        const result = acc.processEvent(event);
+        if (!result) return;
+
+        const { message, isNew } = result;
+
+        if (isNew) {
+          // New message — push directly
+          storeApi.getState().pushMessage(message);
+          lastMessageIdRef.current = message.id;
+        } else {
+          // Update existing message — throttle via rAF
+          pendingUpdateRef.current = message;
+
+          if (!rafRef.current) {
+            rafRef.current = requestAnimationFrame(() => {
+              rafRef.current = null;
+              const pending = pendingUpdateRef.current;
+              if (!pending) return;
+              pendingUpdateRef.current = null;
+
+              // Replace the last message in the store
+              const state = storeApi.getState();
+              const messages = state.messages;
+              const idx = messages.findIndex((m) => m.id === pending.id);
+              if (idx >= 0) {
+                const updated = [...messages];
+                updated[idx] = pending;
+                state.setMessages(updated);
+              }
+            });
+          }
         }
       } catch {
         // Silently ignore parse errors (keepalive comments, etc.)
@@ -142,6 +172,10 @@ export function RelayChatSync({
     return () => {
       es.close();
       setConnected(false);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, [sessionId, model, storeApi]);
 
