@@ -142,6 +142,21 @@ export const serverEnvSchema = {
       "App URL for non-Vercel deployments (full URL including https://)"
     ),
 
+  // Langfuse observability (set in Vercel, read by langfuse-vercel LangfuseExporter)
+  LANGFUSE_PUBLIC_KEY: z
+    .string()
+    .optional()
+    .describe("Langfuse public key for OTel trace export"),
+  LANGFUSE_SECRET_KEY: z
+    .string()
+    .optional()
+    .describe("Langfuse secret key for OTel trace export"),
+  LANGFUSE_BASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .describe("Langfuse base URL (e.g. https://cloud.langfuse.com)"),
+
   // Vercel platform (auto-set by Vercel)
   VERCEL_URL: z.string().optional().describe("Auto-set by Vercel platform"),
 };

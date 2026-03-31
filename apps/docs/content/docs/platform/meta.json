@@ -1,4 +1,4 @@
 {
   "title": "Platform",
-  "pages": ["chat", "console", "billing", "organizations", "deployments"]
+  "pages": ["chat", "console", "billing", "organizations", "deployments", "observability-security"]
 }
