@@ -6,6 +6,7 @@ import { deviceAuthCode, agent } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { signLifeJWT } from "@/lib/ai/vault/jwt";
 import { withAuthAndValidation } from "@/lib/api/with-auth";
+import { upsertUserFromSession } from "@/lib/db/queries";
 
 const authorizeSchema = z.object({
   user_code: z.string().min(1, "user_code is required"),
@@ -65,9 +66,12 @@ async function deriveAgentKeyId(publicKey: string): Promise<string> {
  */
 export const POST = withAuthAndValidation(
   authorizeSchema,
-  async (_request, { userId, email, body }) => {
+  async (_request, { userId, email, session, body }) => {
     const userCode = body.user_code.toUpperCase().trim();
     const { action } = body;
+
+    // Sync Neon Auth user into app user table before any FK references
+    await upsertUserFromSession({ sessionUser: session.user });
 
     const [record] = await db
       .select()
