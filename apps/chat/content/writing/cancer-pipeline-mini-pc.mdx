@@ -13,7 +13,10 @@ tags:
   - egri
   - remote-gpu
 audio: /audio/writing/cancer-pipeline-mini-pc.mp3
+image: /images/writing/cancer-pipeline-mini-pc/hero.png
 ---
+
+![Running a Cancer Pipeline on a $500 Mini PC](/images/writing/cancer-pipeline-mini-pc/hero.png)
 
 Last week we compiled every detail of Sid Sijbrandij's fight against osteosarcoma into a [research repo](https://github.com/broomva/founder-mode-cancer) and an [agent skill](https://github.com/broomva/founder-mode-oncology). Yesterday we ran the actual pipeline on his actual data.
 
@@ -24,6 +27,8 @@ The data: 1.29 GB downloaded from Sid's publicly available 25 TB dataset on Goog
 The result: **FAP overexpression confirmed in 15 minutes**. The same finding that took a dedicated care team and 10x Genomics expertise to discover — reproduced on commodity hardware with open-source tools.
 
 Cost: **$0**.
+
+![Pipeline Overview](/images/writing/cancer-pipeline-mini-pc/pipeline-overview.png)
 
 ## The Setup
 
@@ -57,6 +62,8 @@ Total download: **1.29 GB**. One snag: `gsutil` on the NUC had corrupted credent
 The biggest surprise: the VCFs are **already VEP-annotated**. Phase 2 (variant annotation) — which we'd budgeted 1-2 hours for — was completely unnecessary. The Sarek pipeline that processed the WGS had already run VEP and snpEff on every variant call.
 
 ## Phase 3: The 15-Minute Breakthrough (scRNA-seq)
+
+![UMAP Clustering — 17 Leiden clusters from 4,452 tumor cells](/images/writing/cancer-pipeline-mini-pc/umap-clusters.png)
 
 This is the phase that matters most. In Sid's treatment, single-cell RNA sequencing revealed that his tumor cells were overexpressing **FAP (Fibroblast Activation Protein)** — a target invisible to standard gene panels and whole exome sequencing. This finding enabled the radioligand therapy that shrank his tumor enough for surgery.
 
@@ -93,6 +100,10 @@ This independently reproduces the key clinical finding: FAP overexpression in th
 
 Total time for Phase 3: **2 minutes 27 seconds** on the NUC.
 
+![Target Discovery — 14 significant surface targets, FAP highlighted](/images/writing/cancer-pipeline-mini-pc/target-discovery.png)
+
+![Dotplot — Gene expression across all 17 clusters](/images/writing/cancer-pipeline-mini-pc/dotplot-targets.png)
+
 ## Phase 4: Neoantigen Candidates
 
 The osteosarc.com dataset includes pre-computed pVACtools neoantigen predictions for the T2 tumor. We used them directly rather than re-running the prediction pipeline.
@@ -125,6 +136,8 @@ We ran each peptide through the ESMFold API — Meta's fast protein structure pr
 Two peptides achieved **T1 tier** (pLDDT > 85) — both from the BMP1 gene. Five more at T2. These are the candidates you'd put in a peptide vaccine.
 
 Important caveat: ESMFold predicts single-chain structure. For proper peptide-MHC binding validation, you'd run AlphaFold Multimer with the full HLA heavy chain. ESMFold on 9-mers measures intrinsic foldability, not MHC binding geometry. The next trial should use ColabFold multimer on the NUC's RTX 3060.
+
+![Neoantigen Candidates — Binding affinity vs structural confidence](/images/writing/cancer-pipeline-mini-pc/neoantigen-scatter.png)
 
 ## Phase 6: Treatment Recommendation
 
