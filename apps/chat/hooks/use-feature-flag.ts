@@ -8,8 +8,8 @@
  */
 
 import { useFeatureFlagEnabled } from "posthog-js/react";
-import type { FeatureFlag } from "@/lib/feature-flags";
-import { getStaticFeatureFlag } from "@/lib/feature-flags";
+import type { FeatureFlag } from "@/lib/feature-flags-shared";
+import { getStaticFeatureFlag } from "@/lib/feature-flags-shared";
 
 /**
  * Returns true if the feature flag is enabled for the current user.
