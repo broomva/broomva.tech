@@ -1,0 +1,109 @@
+---
+title: "Colombia's Energy Paradox: 39% Above World Average and 1.9M People in the Dark"
+summary: "Colombian industry pays some of the highest electricity prices in the Americas while 1.9 million people survive on less than 6 hours of diesel power per day. Both problems share the same root cause — and the same solution."
+date: 2026-04-01
+published: true
+tags:
+  - fleet-intelligence
+  - microgrids
+  - energy-transition
+  - colombia
+  - renewable-energy
+  - multi-agent-systems
+image: /images/writing/colombia-energy-paradox/hero.png
+---
+
+# Colombia's Energy Paradox
+
+Colombia has an energy problem that defies simple explanation. It's not a shortage — the country generates more electricity than it consumes, mostly from hydropower. It's not a lack of policy — Ley 2099 de 2021, CONPES 4075, and a $349 billion COP FENOGE fund are all pushing toward renewables. The problem is structural, and it manifests as a paradox.
+
+![Colombia's energy paradox — industrial zones glow while vast regions remain dark](/images/writing/colombia-energy-paradox/hero.png)
+
+**On one side:** Colombian businesses pay USD 0.231 per kWh — 39% above the world average and 64% above the South American average. During El Niño events, when reservoirs drop below 30% capacity and thermal plants exceed 50% of generation, wholesale prices surge over 90%. In the first half of 2024, electricity went from USD 50/MWh to USD 96/MWh. For energy-intensive industries — mining at 30% of operating expenses, data centers at 40-60% — these costs are existential.
+
+**On the other side:** 1,664 localities classified as *Zonas No Interconectadas* (ZNI) occupy 52% of Colombia's territory and are home to 1.9 million people. Only 34% have electricity service, often limited to less than 6 hours per day. The installed generation capacity depends 78% on diesel — 262,056 kW out of 335,271 kW total. Generation costs run 3 to 5 times higher than the national interconnected system.
+
+## The Same Root Cause
+
+![The paradox: industry overpays while communities go dark — same underlying problem](/images/writing/colombia-energy-paradox/paradox-infographic.png)
+
+Strip away the context — the boardrooms and the jungle communities — and both sides face the same technical failure: **microgrids operating without intelligence.**
+
+Industrial facilities with on-site solar and battery storage run them with SCADA systems that were, as Microgrid Knowledge put it in 2025, "built for monitoring and basic control — not for predictive analytics and forecasting, dynamic optimization, or real-time market participation." The result: suboptimal dispatch, wasted renewable capacity, unnecessary diesel backup, and energy costs that eat into margins.
+
+ZNI communities with donor-funded solar installations run them with rule-based controllers — or, in 1,476 out of 1,664 localities, by phone call to IPSE headquarters. The result: panels that degrade undetected, batteries that discharge incorrectly, diesel generators that run when the sun is shining, and solar plants that generate zero kWh for eight years while nobody notices.
+
+Both environments lack the same three capabilities:
+
+1. **Prediction** — no forecasting of solar generation or demand patterns
+2. **Coordination** — no communication between neighboring systems
+3. **Learning** — no transfer of operational knowledge between similar sites
+
+## The Failures Are Already Documented
+
+This isn't hypothetical. The evidence is in the news:
+
+- **Puerto Nariño, Amazonas:** Three solar plants costing COP $30 billion have not generated a single kWh in eight years due to governance failures. An intelligent monitoring system would have detected zero output in days, not years.
+
+- **Bahía Málaga, Chocó:** A community energy system designed for 70% solar / 30% diesel operates predominantly on diesel because the design didn't account for the Pacific coast's extreme cloud cover (3.0-3.5 kWh/m²/day vs 6.0+ in La Guajira).
+
+- **La Guajira, Wayúu territories:** Solar projects worth COP $43 billion showed no trace of installed panels a year after the contract was signed.
+
+The technology isn't the problem — it's being installed. The gap is **operational intelligence**: software that monitors, predicts, optimizes, and alerts in real time. Software that runs autonomously on site, without depending on a phone call or a technician who can't reach the community for months.
+
+## The Scale of the Opportunity
+
+| Metric | Value | Source |
+|--------|-------|--------|
+| ZNI localities | 1,664 across 18 departments | IPSE, 2025 |
+| Population affected | ~1.9 million people | IPSE, 2025 |
+| Diesel dependency | 78% of installed capacity | IPSE, 2025 |
+| Service coverage | 34% of localities | OCDE, 2023 |
+| Industrial electricity price | USD 0.231/kWh (39% above world avg) | GlobalPetrolPrices, 2025 |
+| El Niño price surge | >90% increase in H1 2024 | Rystad Energy, 2024 |
+| Ecopetrol renewable portfolio | 951 MW total (381 MW operational) | Ecopetrol Q4 2025 |
+| FENOGE investment | COP $349 billion for 500 community energy systems | MinEnergía, 2024 |
+| Global microgrid market | USD 43-100B, growing 16-20% CAGR | Multiple market reports, 2025 |
+
+The Colombian government is pouring money into renewable hardware. Ecopetrol alone surpassed its 900 MW portfolio target five years early, reaching 951 MW by end of 2025. FENOGE is funding 500 community energy systems. But hardware without intelligence is infrastructure without impact — as Puerto Nariño proves.
+
+## What Fleet Intelligence Means
+
+![Five structural problems — one solution](/images/writing/colombia-energy-paradox/five-problems.png)
+
+The concept we're developing is **autonomous fleet intelligence** — the ability for a distributed set of software agents to operate, optimize, and coordinate multiple microgrids as a unified system with minimal human intervention.
+
+Each microgrid gets an autonomous agent running on a $80 Raspberry Pi, powered by the same solar panels it manages. The agent:
+
+- **Predicts** solar generation and local demand using lightweight Transformer models (PatchTST, ~500 KB, inference in <2 ms)
+- **Optimizes** energy dispatch via linear programming — when to charge batteries, when to run diesel, when to shed load
+- **Learns** from other agents at similar sites via federated learning, without sharing raw data
+- **Reasons** about anomalies using a small language model that queries a knowledge graph of territorial context
+
+The same architecture that optimizes an Ecopetrol solar farm can, after model compression and domain adaptation, manage a community microgrid in Coquí, Chocó. That transferability — from data-rich industrial environments to data-scarce community environments — is the core research question.
+
+## Why Now
+
+Three factors converge in 2025-2026 that make this the right moment:
+
+**Regulatory readiness.** CREG Resolución 101 072 de 2025 just created the legal framework for community energy systems. Decreto 2236 de 2023 defines microgrids formally. The rules exist — the technology to operate within them doesn't.
+
+**Infrastructure investment.** FENOGE's $349 billion COP fund is deploying renewable hardware into ZNI at unprecedented scale. Without operational intelligence, these installations risk becoming the next Puerto Nariño.
+
+**Edge AI maturity.** Quantized Transformer models run in sub-millisecond latencies on $80 hardware. Foundation models like Chronos-Bolt (9M parameters) enable zero-shot forecasting at new sites with zero historical data. BitNet 1.58-bit language models run with <0.5 GB RAM, enabling on-device reasoning. The hardware-software convergence is here.
+
+## What's Next
+
+This is the first post in a five-part series on **Fleet Intelligence for Renewable Microgrids**:
+
+1. **Colombia's Energy Paradox** ← you are here
+2. [Fleet Intelligence: Why Microgrids Need Autonomous Agents, Not Better SCADA](/writing/fleet-intelligence-microgrids)
+3. [The Three-Tier Forecasting Stack: PatchTST, Foundation Models, and Why LLMs Can't Predict Power](/writing/three-tier-forecasting-stack)
+4. [From Refinery to Selva: Domain Adaptation for Energy AI](/writing/from-refinery-to-selva)
+5. [Edge Agents in the Wild: Rust, Raspberry Pi, and Autonomous Microgrids](/writing/edge-agents-in-the-wild)
+
+The series documents research conducted for a Minciencias scholarship proposal (Convocatoria 975, "Becas para el Cambio") under the Transición Energética mission. The code is open source at [github.com/broomva/microgrid-agent](https://github.com/broomva/microgrid-agent). The architecture is designed to be built upon.
+
+---
+
+*This research is conducted in the context of the Maestría en Inteligencia Artificial (MAIA) at Universidad de los Andes, in articulation with the TICSw research group (A1, Minciencias) and the PIIOM Mission 3: Transición Energética.*
