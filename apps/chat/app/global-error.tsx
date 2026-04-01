@@ -115,6 +115,14 @@ export default function GlobalError({
                   e.currentTarget.style.background = "oklch(0.60 0.12 260)";
                   e.currentTarget.style.boxShadow = "none";
                 }}
+                onFocus={(e) => {
+                  e.currentTarget.style.background = "oklch(0.65 0.14 260)";
+                  e.currentTarget.style.boxShadow = "0 0 24px oklch(0.60 0.12 260 / 0.20)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.background = "oklch(0.60 0.12 260)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
               >
                 Try Again
               </button>
@@ -138,6 +146,14 @@ export default function GlobalError({
                   e.currentTarget.style.borderColor = "oklch(0.50 0.02 275 / 0.60)";
                 }}
                 onMouseOut={(e) => {
+                  e.currentTarget.style.background = "oklch(0.22 0.03 275)";
+                  e.currentTarget.style.borderColor = "oklch(0.40 0.02 275 / 0.50)";
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.background = "oklch(0.26 0.03 275)";
+                  e.currentTarget.style.borderColor = "oklch(0.50 0.02 275 / 0.60)";
+                }}
+                onBlur={(e) => {
                   e.currentTarget.style.background = "oklch(0.22 0.03 275)";
                   e.currentTarget.style.borderColor = "oklch(0.40 0.02 275 / 0.50)";
                 }}
