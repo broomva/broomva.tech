@@ -1,0 +1,181 @@
+---
+title: "Fleet Intelligence: Why Microgrids Need Autonomous Agents, Not Better SCADA"
+summary: "SCADA was built for monitoring, not thinking. VOLTTRON got close. Here's what autonomous fleet intelligence actually looks like — and why every microgrid needs it."
+date: 2026-04-01
+published: true
+tags:
+  - fleet-intelligence
+  - microgrids
+  - multi-agent-systems
+  - scada
+  - edge-computing
+  - energy-transition
+image: /images/writing/fleet-intelligence-microgrids/hero.png
+audio: /audio/writing/fleet-intelligence-microgrids.mp3
+---
+
+# Fleet Intelligence: Why Microgrids Need Autonomous Agents, Not Better SCADA
+
+In 1998, an engineer at IBM built a messaging protocol for monitoring oil pipelines over satellite links in the Sahara. The protocol needed to be lightweight enough for intermittent, expensive bandwidth and resilient enough to handle days of disconnection. That protocol was MQTT, and twenty-eight years later it remains the backbone of IoT telemetry worldwide.
+
+The energy industry, by contrast, is still running its control systems on architectures designed in the 1960s.
+
+![An autonomous agent node replacing a traditional SCADA dashboard](/images/writing/fleet-intelligence-microgrids/hero.png)
+
+SCADA -- Supervisory Control and Data Acquisition -- was built for an era when a power plant meant one large generator connected to one grid. An operator sat in front of a green-on-black display, watched gauges tick, and intervened when something went wrong. SCADA was a dashboard with an alarm bell. That was sufficient.
+
+Then the world changed. A single industrial facility might now operate solar arrays, battery storage, backup diesel generators, EV charging stations, combined heat and power systems, and a connection to a grid that itself is becoming increasingly unreliable. Managing the interaction of five to fifteen different distributed energy resources in real time, while optimizing for cost, emissions, reliability, and grid participation simultaneously -- that exceeds what a dashboard was designed to do.
+
+As Microgrid Knowledge put it plainly in 2025: SCADA was "built for monitoring and basic control -- not for predictive analytics and forecasting, dynamic optimization, or real-time market participation."
+
+## The ISA-95 Hierarchy: Where Control Lives
+
+To understand why SCADA fails, you need to understand the control hierarchy it sits in. The Purdue Reference Model, formalized as ISA-95 (ANSI/ISA-95, IEC 62264), defines five levels of industrial control that map cleanly to microgrids:
+
+| ISA-95 Level | Manufacturing Equivalent | Microgrid Equivalent | Timescale |
+|:---|:---|:---|:---|
+| **Level 0** | Physical process | Physical energy flow -- panels, batteries, diesel engines, wires | Continuous |
+| **Level 1** | Basic control (PLC/DCS) | Local device controllers -- inverter firmware, charge controllers, genset ECUs | Milliseconds |
+| **Level 2** | Supervisory control (SCADA/HMI) | Microgrid controller / Energy Management System | Seconds to minutes |
+| **Level 3** | Manufacturing operations (MES) | Fleet / portfolio management -- DERMS, fleet coordination, analytics | Minutes to hours |
+| **Level 4** | Business planning (ERP) | Enterprise / market / regulatory -- trading, billing, reporting | Hours to days |
+
+SCADA lives at Level 2. It polls devices every one to ten seconds via Modbus or DNP3, stores time-series data in historians, and provides an HMI for operators to visualize system state and manually intervene. That is all it does.
+
+![ISA-95 control hierarchy mapped to multi-agent microgrid architecture](/images/writing/fleet-intelligence-microgrids/isa95-mapping.png)
+
+The problem is that modern microgrids need intelligence spanning Levels 2 through 3 -- and SCADA has no mechanism for prediction, optimization, or coordination across sites. It is fundamentally a monitoring tool being asked to be a brain.
+
+## What SCADA Cannot Do
+
+The limitations are structural, not incremental. No amount of additional features bolted onto SCADA changes the underlying architecture:
+
+**No prediction.** SCADA cannot anticipate a solar generation dip thirty minutes from now based on approaching cloud cover. It cannot forecast that tomorrow's demand will spike because of a scheduled industrial process. It reacts; it does not predict.
+
+**No optimization.** Traditional controllers optimize for a single objective -- minimize cost, or maximize reliability, or reduce emissions. Industrial facilities need multi-objective optimization that adapts in real time: minimize cost while maintaining reliability above 99.9% while reducing emissions below a regulatory threshold while participating in demand response programs. This is a constrained optimization problem that changes every fifteen minutes.
+
+**No coordination.** SCADA is site-local. It has no mechanism for coordinating dispatch across multiple sites -- no way for a solar-rich site to inform a storage-rich neighboring site that excess generation is available. In a world where Ecopetrol operates 420 MWp of renewable capacity across multiple facilities in Meta, Huila, Tolima, and Boyaca, this blindness is expensive.
+
+**Communication bottleneck.** Centralized SCADA architectures "may be inadequate to cope with the high penetration of DERs" -- as the number of sensors, actuators, and distributed energy resources grows, centralized polling creates congestion in communication infrastructure and risks crashing central processors. This is documented in IEEE literature.
+
+**No learning.** When a SCADA system is commissioned at a new site, it starts from zero. Nothing learned at a similar site last year -- no load patterns, no seasonal solar curves, no equipment degradation signatures -- transfers automatically. Every site is a greenfield.
+
+## VOLTTRON: The Closest Precedent
+
+The U.S. Department of Energy and Pacific Northwest National Laboratory recognized these limitations. Their answer was VOLTTRON, an open-source multi-agent platform specifically designed for distributed energy management.
+
+VOLTTRON got the architecture right. Agents communicate via a publish-subscribe message bus (ZeroMQ). Multiple VOLTTRON instances -- on separate Raspberry Pis, for example -- can federate and communicate as if on the same platform. The system runs on commodity hardware, supports Modbus, BACnet, DNP3, and MQTT, and was validated in the Clean Energy Transactive Campus (CETC) project demonstrating building-grid integration.
+
+VOLTTRON proved the core thesis: multi-agent energy management works on edge hardware.
+
+But VOLTTRON has four gaps that prevent it from being the fleet intelligence platform modern microgrids need:
+
+**No knowledge graph.** VOLTTRON agents are stateless between sessions. There is no structured representation of the relationships between DERs, loads, weather patterns, and operational history. An agent cannot query "which DER at this site behaves most like the one I am commissioning at a new site?" because there is no knowledge layer to query.
+
+**No fleet coordination.** VOLTTRON federation enables communication between instances, but there is no fleet-level intelligence -- no model aggregation, no federated learning, no cross-site anomaly detection. Each instance operates in isolation with a communication channel, not as part of an intelligent fleet.
+
+**No reinforcement learning.** VOLTTRON agents execute predefined control strategies. They do not learn from outcomes. A dispatch decision that resulted in unnecessary diesel consumption yesterday produces the same decision today if the same inputs arrive. There is no feedback loop from consequences to future behavior.
+
+**No offline-first design.** VOLTTRON assumes a connected environment. For the 1,664 Zonas No Interconectadas in Colombia -- where connectivity is intermittent at best and nonexistent at worst -- this assumption is disqualifying. An agent that fails when it loses internet is not an autonomous agent.
+
+## The Competitive Landscape: What the Majors Offer
+
+The industrial microgrid market is valued at USD 43-100 billion in 2025, growing at 16-20% CAGR. The major players have responded to SCADA's limitations, but each stops short:
+
+| Platform | Approach | Strength | Gap |
+|:---|:---|:---|:---|
+| **Schneider EcoStruxure** | Cloud-based MPC with edge controller | 40% building cost reduction | Cloud-dependent, proprietary |
+| **Siemens Spectrum Power 7** | SCADA-based with forecasting | Market participation, utility integration | Still SCADA-centric, single-site |
+| **ABB Microgrid Plus** | Distributed control for hybrid plants | Proven in mining, remote sites | Heavy industrial only, not fleet-level |
+| **AutoGrid Pro 2.0** | Utility-scale optimization | DER fleet management | Utility-centric, not self-consumption |
+| **Stem Inc.** | AI-driven storage optimization | Battery lifecycle management | Storage-only, not full orchestration |
+| **Husk Power** | AI fleet management of mini-grids | 400+ sites, commercially profitable | Proprietary, India/Nigeria focus |
+
+![Competitive landscape: current platforms and the autonomy gap](/images/writing/fleet-intelligence-microgrids/competitive-landscape.png)
+
+Schneider and Siemens come closest but remain centralized and cloud-dependent. VOLTTRON is architecturally aligned but is a research platform without industrial productization. Husk Power -- which manages over 400 mini-grids serving 1.5 million people in India and Nigeria using AI fleet management, and became profitable in late 2022 -- proves the commercial viability of the approach. But their system is proprietary and region-specific.
+
+The gap is clear: **no platform currently offers true multi-agent control that is edge-deployable, fleet-coordinated, reinforcement-learning-adaptive, knowledge-graph-aware, and designed for offline operation.**
+
+## What Fleet Intelligence Actually Looks Like
+
+The architecture we are building replaces the Level 2-3 boundary in the ISA-95 hierarchy with an integrated autonomous agent. In industrial settings, this agent interfaces with existing SCADA via OPC-UA or Modbus TCP. In off-grid communities, it IS the SCADA and EMS in a single device.
+
+The agent runs a decision loop every five to sixty minutes -- the perceive-predict-optimize-actuate (PPOA) cycle:
+
+**Perceive.** Read all device states via protocol adapters. Solar output, load demand, battery state of charge, genset status, bus voltage, bus frequency, ambient temperature, irradiance. The protocol adapters (Modbus RTU, VE.Direct, CAN bus, OPC-UA) are Rust traits -- the dispatch optimizer receives the same data structure regardless of whether it came from a Schneider inverter over OPC-UA or a Victron MPPT over VE.Direct.
+
+**Predict.** Run forecasting models to estimate solar generation and load demand over the planning horizon. At industrial sites with abundant data: full Transformer models (PatchTST, ~500 KB). At new sites with no history: foundation model zero-shot forecasting (Chronos-Bolt, 9M parameters). Both compressed to run inference in under 50 ms on a Raspberry Pi 5 using INT8 quantization.
+
+**Optimize.** Solve the dispatch problem -- a linear program or mixed-integer linear program (MILP) that determines the optimal power setpoint for every DER over the planning horizon. Minimize cost subject to power balance, battery limits, generator ramp rates, and safety constraints. The HiGHS solver handles this in under one second on ARM64 hardware.
+
+**Actuate.** Write setpoints to devices. Start or stop the diesel generator. Adjust battery charge rate. Shed non-critical load if necessary. Every action passes through safety gates that enforce hard physical constraints -- SOC never below 15%, genset minimum run time respected, voltage within bounds -- before any write command reaches hardware.
+
+![The agent loop: perceive, predict, optimize, actuate](/images/writing/fleet-intelligence-microgrids/agent-loop.png)
+
+After every cycle, the agent logs the decision and its reasoning to an append-only event journal (Lago). If connected, it queues telemetry for fleet upload via MQTT. If disconnected, the queue persists on disk and flushes when connectivity is restored -- the same store-and-forward pattern that MQTT was originally invented for.
+
+## The Mathematical Invariance
+
+Here is the insight that makes the dual industrial-to-community deployment possible. The dispatch optimization problem is mathematically identical at both scales:
+
+```
+minimize    sum(c_i * P_i * dt)        for all generators i, timesteps t
+subject to: sum(P_i) = P_load + P_loss  (power balance)
+            SOC_min <= SOC <= SOC_max    (battery limits)
+            P_min <= P_i <= P_max        (generator limits)
+            dP/dt <= ramp_rate           (ramp constraints)
+```
+
+This formulation works for a 50 MW industrial microgrid with twenty DERs or a 50 kW community system with three DERs. The physics is identical. Only the parameter values change: SOC minimum of 10% versus 15%, voltage tolerance of 5% versus 10%, the number of decision variables. The same solver, the same safety gates, the same agent loop.
+
+The difference is not in the math. It is in the operational context: data availability (1 GB/year versus 1 MB/year), forecast accuracy (MAPE 5-15% versus 20-40%), connectivity (always-on versus intermittent), and the consequences of failure (production loss at $1,000/hour versus community blackout). The fleet intelligence layer handles these differences through model compression, transfer learning, and graceful degradation -- not through fundamentally different architectures.
+
+## Agent-to-Agent: Fleet as Organism
+
+The fleet coordinator is where individual agent intelligence becomes collective intelligence. Operating at ISA-95 Level 3, it manages ten to hundreds of agent nodes via an MQTT topic hierarchy:
+
+```
+fleet/{region}/status          # Node health heartbeats
+fleet/{region}/telemetry       # Periodic data summaries
+fleet/{region}/models/update   # New model weights broadcast
+fleet/{region}/knowledge       # Knowledge graph updates
+site/{site_id}/dispatch        # Site-specific results
+site/{site_id}/alerts          # Site-specific alerts
+```
+
+The fleet coordinator aggregates forecasting models via federated learning -- each site contributes gradient updates without sharing raw data, and the aggregated model is broadcast back. When a new site is commissioned, it receives a pre-trained model that encodes patterns from every similar site in the fleet. Transfer learning experiments show this reduces forecasting error by 40-60% compared to training from scratch.
+
+Cross-site anomaly detection catches failures that site-local monitoring misses. When one agent sees battery capacity degrading faster than the fleet average, the pattern is flagged -- and the knowledge transfers to other agents managing the same battery chemistry.
+
+The fleet coordinator does not need to know whether a node is an Ecopetrol refinery or a community microgrid in Nuqui. It interacts with the same API surface. The same MQTT topic structure. The same message formats. Scale is a parameter, not an architecture.
+
+## Why This Matters Now
+
+The convergence is economic and technical.
+
+Colombian businesses pay USD 0.231/kWh -- 39% above the world average. During El Nino in 2024, wholesale prices surged over 90%. Unplanned downtime costs manufacturing plants USD 500,000 to $2.3 million per hour. Data centers, growing at 21.5% CAGR in Colombia with USD 1.3 billion in active investment from ODATA alone, demand five-nines uptime. The economic case for intelligent microgrid control is not theoretical -- it is arithmetic.
+
+On the technology side: quantized Transformer models run inference in under 2 ms on a $80 Raspberry Pi. HiGHS solves MILP dispatch problems in under a second on ARM64. MQTT was literally designed for intermittent satellite links. BitNet 1.58-bit language models run with under 0.5 GB RAM, enabling on-device reasoning about anomalies. Every piece of the stack is mature enough for production deployment.
+
+And the regulatory framework is ready. Colombia's Ley 2099 de 2021 offers a 50% income tax deduction on renewable energy investments. CREG Resolucion 101 072 de 2025 creates the legal framework for community energy systems. Ecopetrol has a direct cooperation agreement with Minciencias for energy transition R&D. The institutional scaffolding exists. The gap is operational intelligence -- software that makes the hardware work.
+
+SCADA was built for monitoring. The industry has been trying to make it think for twenty years. It is time to replace the dashboard with an agent.
+
+---
+
+## Series Navigation
+
+This is post 2 of 5 in the **Fleet Intelligence for Renewable Microgrids** series:
+
+1. [Colombia's Energy Paradox: 39% Above World Average and 1.9M People in the Dark](/writing/colombia-energy-paradox)
+2. **Fleet Intelligence: Why Microgrids Need Autonomous Agents, Not Better SCADA** -- you are here
+3. [The Three-Tier Forecasting Stack: PatchTST, Foundation Models, and Why LLMs Can't Predict Power](/writing/three-tier-forecasting-stack)
+4. [From Refinery to Selva: Domain Adaptation for Energy AI](/writing/from-refinery-to-selva)
+5. [Edge Agents in the Wild: Rust, Raspberry Pi, and Autonomous Microgrids](/writing/edge-agents-in-the-wild)
+
+The series documents research conducted for a Minciencias scholarship proposal (Convocatoria 975, "Becas para el Cambio") under the Transicion Energetica mission. The code is open source at [github.com/broomva/microgrid-agent](https://github.com/broomva/microgrid-agent). The architecture is designed to be built upon.
+
+---
+
+*This research is conducted in the context of the Maestria en Inteligencia Artificial (MAIA) at Universidad de los Andes, in articulation with the TICSw research group (A1, Minciencias) and the PIIOM Mission 3: Transicion Energetica.*
