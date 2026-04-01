@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { SERVICES } from "@/lib/console/constants";
 import { MetricTile } from "@/components/console/metric-tile";
 import type { ServiceStatus as MetricStatus } from "@/lib/console/types";
+import { useFeatureFlag } from "@/hooks/use-feature-flag";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -151,6 +152,7 @@ function railwayStatusToMetric(status: string): MetricStatus {
 // ---------------------------------------------------------------------------
 
 export default function DeploymentsPage() {
+  const deploymentsEnabled = useFeatureFlag("managed_deployments");
   const [org, setOrg] = useState<OrgSummary | null>(null);
   const [instance, setInstance] = useState<LifeInstance | null>(null);
   const [railwayServices, setRailwayServices] = useState<
@@ -367,6 +369,44 @@ export default function DeploymentsPage() {
     if (!org) return;
     await fetchInstance(org.id);
   };
+
+  // ── Render: Feature flag gate (BRO-393) ─────────────────────────────
+
+  if (!deploymentsEnabled) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold">Deployments</h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            Managed Life Agent OS instance provisioning and health monitoring.
+          </p>
+        </div>
+        <div className="glass-card">
+          <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <div className="rounded-full bg-[var(--ag-accent)]/10 p-4">
+              <Rocket className="size-8 text-[var(--ag-accent)]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">
+                Managed Deployments
+              </h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-text-secondary">
+                Managed Life Agent OS deployments require a paid plan. Upgrade to
+                provision and manage dedicated instances.
+              </p>
+            </div>
+            <a
+              href="/pricing"
+              className="glass-button inline-flex items-center gap-2"
+            >
+              <Zap className="size-4" />
+              View Pricing
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Render: Loading ─────────────────────────────────────────────────
 

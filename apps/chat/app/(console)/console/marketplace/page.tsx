@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePostHog } from "posthog-js/react";
 
 import { EVENT_AGENT_DISCOVERED } from "@/lib/analytics/events";
+import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import { POLL } from "@/lib/console/constants";
 import { MetricTile } from "@/components/console/metric-tile";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,7 @@ function trustBadgeVariant(
 
 export default function MarketplacePage() {
   const posthog = usePostHog();
+  const marketplaceEnabled = useFeatureFlag("marketplace_enabled");
   const discoveredFired = useRef(false);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [myServices, setMyServices] = useState<ServiceData[]>([]);
@@ -291,6 +293,44 @@ export default function MarketplacePage() {
       posthog?.capture(EVENT_AGENT_DISCOVERED, { resultCount: services.length });
     }
   }, [loading, services.length, posthog]);
+
+  // ---------------------------------------------------------------------------
+  // Feature flag gate (BRO-393)
+  // ---------------------------------------------------------------------------
+  if (!marketplaceEnabled) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-8">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold">Marketplace</h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            Discover and offer agent services.
+          </p>
+        </div>
+        <div className="glass-card">
+          <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <div className="rounded-full bg-[var(--ag-accent)]/10 p-4">
+              <Store className="size-8 text-[var(--ag-accent)]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary">
+                Marketplace Access
+              </h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-text-secondary">
+                The agent marketplace is available on paid plans. Upgrade to
+                discover and offer agent services.
+              </p>
+            </div>
+            <a
+              href="/pricing"
+              className="glass-button inline-flex items-center gap-2"
+            >
+              View Pricing
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Loading state

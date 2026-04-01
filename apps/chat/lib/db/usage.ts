@@ -1,7 +1,32 @@
 import "server-only";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "./client";
-import { usageEvent } from "./schema";
+import { organization, usageEvent } from "./schema";
+
+/**
+ * Atomically deduct credits from an organization's planCreditsRemaining.
+ * Returns true if the deduction succeeded (org had enough credits), false otherwise.
+ */
+export async function deductOrgCredits(
+  orgId: string,
+  amount: number,
+): Promise<boolean> {
+  const rows = await db
+    .update(organization)
+    .set({
+      planCreditsRemaining: sql`${organization.planCreditsRemaining} - ${amount}`,
+    })
+    .where(
+      and(
+        eq(organization.id, orgId),
+        sql`${organization.planCreditsRemaining} >= ${amount}`,
+      ),
+    )
+    .returning({ id: organization.id });
+
+  // If the WHERE guard failed (insufficient credits), no rows are returned
+  return rows.length > 0;
+}
 
 /**
  * Record a single usage event.

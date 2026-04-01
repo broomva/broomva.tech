@@ -7,7 +7,7 @@ import type { ParsedMetric } from "@/lib/lago/types";
 import { parsePrometheusText } from "@/lib/lago/types";
 
 const LAGO_BASE =
-  process.env.NEXT_PUBLIC_LAGO_URL ?? "https://lago.broomva.tech";
+  process.env.NEXT_PUBLIC_LAGO_URL ?? "https://api.lago.arcan.la";
 
 export default function LagoMetricsPage() {
   const [metrics, setMetrics] = useState<ParsedMetric[]>([]);

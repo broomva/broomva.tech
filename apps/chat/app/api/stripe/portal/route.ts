@@ -42,7 +42,7 @@ export const POST = withAuthAndValidation(
 
       const portalSession = await getStripe().billingPortal.sessions.create({
         customer: org.stripeCustomerId,
-        return_url: `${appUrl}/settings/billing`,
+        return_url: `${appUrl}/console/billing`,
       });
 
       logAudit({

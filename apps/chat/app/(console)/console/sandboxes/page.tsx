@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import { MetricTile } from "@/components/console/metric-tile";
 import {
   AlertDialog,
@@ -138,6 +139,7 @@ function EmptyState() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function SandboxesPage() {
+  const sandboxEnabled = useFeatureFlag("sandbox");
   const [sandboxes, setSandboxes] = useState<SandboxInstanceView[]>([]);
   const [metrics, setMetrics] = useState<SandboxMetrics>({
     active: 0,
@@ -223,6 +225,36 @@ export default function SandboxesPage() {
       setActionLoading(null);
     }
   }, []);
+
+  // ── Feature flag gate (BRO-393) ─────────────────────────────────────
+  if (!sandboxEnabled) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-xl font-semibold text-text-primary">Sandboxes</h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            Active execution environments managed by Arcan
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card">
+          <div className="flex flex-col items-center justify-center py-20 text-center text-text-secondary gap-3">
+            <BoxIcon className="size-10 opacity-30" />
+            <p className="text-sm font-medium">Sandbox access requires a plan upgrade</p>
+            <p className="text-xs text-text-muted max-w-xs">
+              Code execution sandboxes are available on Pro plans and above.
+              Upgrade to enable agent sandbox environments.
+            </p>
+            <a
+              href="/pricing"
+              className="mt-2 inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
+            >
+              View Pricing
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
