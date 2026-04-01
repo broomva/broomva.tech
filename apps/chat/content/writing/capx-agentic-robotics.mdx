@@ -1,0 +1,119 @@
+---
+title: "CaP-X: When Code Becomes the Robot Policy"
+summary: "NVIDIA's CaP-X turns robot manipulation into a code generation problem. A training-free LLM harness matches human expert code, and a 7B model hits 80% success after just 50 RL iterations."
+date: 2026-04-01
+published: true
+tags:
+  - robotics
+  - agent-os
+  - agentic-robotics
+  - capx
+  - reinforcement-learning
+  - open-source
+  - skill-library
+image: /images/writing/capx-agentic-robotics/hero.png
+---
+
+Three years ago, an AI agent learned to play Minecraft by writing its own skill library. It called itself Voyager. It explored, reflected on what worked, and accumulated reusable code functions — a growing repertoire of capabilities that no one explicitly programmed.
+
+Today, the team behind Voyager — Jim Fan, Guanzhi Wang, and collaborators at NVIDIA, Berkeley, Stanford, and CMU — released CaP-X. The same pattern. But this time the agent isn't stacking blocks in a game. It's picking up cubes, wiping spills, and inserting pegs on a real Franka Panda robot arm.
+
+The thesis is disarmingly simple: robot control is a code generation problem. Give an LLM the right perception APIs (what can the robot see?) and control APIs (what can the robot do?), and it will write Python code that solves manipulation tasks — zero-shot, no training required.
+
+## The Architecture
+
+CaP-X is built on the standard Gymnasium interface, but with a twist. The agent's "action" isn't a joint torque or a motion trajectory. It's a Python program.
+
+```
+LLM → generates Python code → composes perception + control APIs → robot executes
+```
+
+The perception stack runs as microservices: SAM3 for segmentation, Molmo 2 for pointing, ContactGraspNet for 6-DOF grasp planning, OWL-ViT for detection. Each one is a function call the LLM can compose in its generated code.
+
+The control stack provides primitives at multiple abstraction levels — from high-level `goto_pose()` and `grasp()` calls with built-in IK solving, all the way down to raw joint-level commands. This layering turns out to be critical, because it lets CaP-X measure exactly how much of the agent's performance comes from human-designed abstractions versus genuine reasoning.
+
+## CaP-Gym: 187 Physical Exams for LLMs
+
+The framework wraps 187 manipulation tasks from three standard simulators:
+
+| Environment | Tasks | Robot | Setting |
+|-------------|-------|-------|---------|
+| RoboSuite | 7 core tasks | Franka Panda | Tabletop, bimanual |
+| LIBERO-PRO | 130+ with perturbations | Franka Panda | Kitchen, living room |
+| BEHAVIOR | 50 household tasks | R1Pro humanoid | Mobile manipulation |
+
+This is pitched as "LLM's first Physical Exam" — a standardized benchmark where the test is not answering questions or writing essays, but generating code that makes a robot succeed in the physical world. The tasks range from simple (lift a cube) to genuinely hard (bimanual handover, peg insertion requiring sub-millimeter precision).
+
+## CaP-Bench: The Leaderboard
+
+CaP-Bench evaluates 12 frontier models across 8 tiers that systematically vary three dimensions:
+
+**Perception noise** — Does the agent get ground-truth object positions (oracle mode) or noisy perception from SAM3 and Molmo?
+
+**API abstraction** — Does the agent get high-level primitives (`goto_pose`, `grasp`) or low-level commands?
+
+**Multi-turn feedback** — Can the agent observe the result and try again, or is it one-shot?
+
+The results are revealing. Performance drops 30-50% when you move from high-level to low-level APIs. This is the abstraction tax — frontier LLMs are significantly worse at writing robot control code when they don't have well-designed primitives to compose.
+
+But the multi-turn tiers recover much of that gap. When agents can observe what happened and iterate, they close about 60% of the performance difference. Self-reflection works in the physical world, just as it did in Minecraft.
+
+## CaP-Agent0: Training-Free, Human-Level
+
+CaP-Agent0 is the headline result — a training-free agentic harness that matches or exceeds human expert code on 4 out of 7 tasks. It has three components, all descended from Voyager:
+
+**Visual Differencing Module (VDM):** Instead of feeding raw images to the LLM (which causes cross-modal alignment failures), VDM converts before/after scene pairs into structured text descriptions. "The red cube moved 3cm to the left. The gripper is now open." This textual scene delta is far more useful than a second image.
+
+**Auto-synthesized skill library:** The Voyager lineage is clearest here. Successful execution traces are analyzed, and reusable functions are extracted — quaternion conversions, grasp filters, geometric utilities. 9 task-agnostic skills were discovered. They persist across trials, compounding value over time.
+
+**Parallel ensembled reasoning:** Three frontier models (Gemini-3-Pro, GPT-5.2, Claude Opus 4.5) generate candidate solutions. The best one wins. This multi-model ensemble outperforms any single model by 8-15%.
+
+Perhaps the most striking comparison: CaP-Agent0 is competitive with trained VLA policies (OpenVLA, pi_0, pi_0.5) on LIBERO-PRO tasks — despite requiring zero training data and zero gradient updates.
+
+## CaP-RL: 50 Iterations to Near-Human
+
+If you have a gym, you have RL. CaP-RL applies GRPO (Group Relative Policy Optimization) to Qwen2.5-Coder-7B — not to make it better at general coding, but specifically at writing robot manipulation code.
+
+The results after just 50 training iterations:
+
+| Task | Base 7B | +CaP-RL | Human Expert |
+|------|---------|---------|-------------|
+| Cube Lift (sim) | 25% | **80%** | 93% |
+| Cube Stack (sim) | 4% | **44%** | 73% |
+| Spill Wipe (sim) | 30% | **93%** | 100% |
+| Cube Lift (real) | 24% | **84%** | 92% |
+| Cube Stack (real) | 12% | **76%** | 84% |
+
+Two things stand out. First, the improvement is massive — a 7B model goes from barely functional to near-human-expert on real hardware in 50 iterations. Second, sim-to-real transfer is essentially free. Because the agent reasons over abstract API calls rather than raw pixels, the same code that works in simulation works on the real Franka Panda with minimal degradation.
+
+The model learns genuine robotic reasoning: causal sequencing (identify → grasp → transport → release), dynamic geometric calculations instead of hardcoded offsets, and the elimination of "step skipping" failures where untrained models try to place an object they haven't grasped yet.
+
+## Connecting to the Agent OS
+
+We built a [skill for CaP-X](https://github.com/broomva/capx-agentic-robotics) that integrates it with our Agent OS stack. Three connection points:
+
+**Arcan orchestration** — Multi-step manipulation pipelines as task graphs: perceive → plan → execute → verify → reflect. Failure triggers self-correction, not a crash.
+
+**Spaces agent networking** — Multiple robot agents sharing a skill library channel. A grasp filter discovered by one Franka transfers to another via Spaces. The Voyager pattern doesn't just accumulate skills within one agent — it distributes them across a fleet.
+
+**Lago persistence** — Evaluation traces, trained checkpoints, and benchmark scores stored as versioned blobs. Every CaP-RL training run is reproducible.
+
+Install the skill:
+
+```bash
+npx skills add broomva/capx-agentic-robotics -g -y
+```
+
+## What This Means
+
+The most interesting thing about CaP-X isn't the benchmark scores. It's the implication.
+
+Every time a frontier LLM gets better at writing code, robots get better at manipulation — for free. No new training data. No new architecture. No new sim-to-real tricks. Just better code generation feeding into the same perception and control APIs.
+
+VLAs (vision-language-action models) are powerful, but they require expensive training pipelines and struggle with distribution shift. CaP-X's code-as-policy approach is complementary: VLAs are "just API calls" within the same framework, and the training-free harness already matches their performance on many tasks.
+
+The Voyager pattern didn't just graduate from Minecraft. It found a career.
+
+---
+
+**Paper:** [arXiv:2603.22435](https://arxiv.org/abs/2603.22435) | **Code:** [github.com/capgym/cap-x](https://github.com/capgym/cap-x) | **Skill:** [github.com/broomva/capx-agentic-robotics](https://github.com/broomva/capx-agentic-robotics)
