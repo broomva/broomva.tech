@@ -1,0 +1,193 @@
+---
+title: "Running a Cancer Pipeline on a $500 Mini PC"
+summary: "We ran scRNA-seq target discovery, neoantigen prediction, and structural validation on Sid Sijbrandij's real osteosarcoma data — on an Intel NUC with an RTX 3060, reproducing the FAP breakthrough in 15 minutes for $0."
+date: 2026-04-01
+published: true
+tags:
+  - bioinformatics
+  - cancer
+  - scrna-seq
+  - neoantigen
+  - alphafold
+  - open-source
+  - egri
+  - remote-gpu
+audio: /audio/writing/cancer-pipeline-mini-pc.mp3
+---
+
+Last week we compiled every detail of Sid Sijbrandij's fight against osteosarcoma into a [research repo](https://github.com/broomva/founder-mode-cancer) and an [agent skill](https://github.com/broomva/founder-mode-oncology). Yesterday we ran the actual pipeline on his actual data.
+
+The hardware: an Intel NUC with an RTX 3060 sitting under a desk, accessed over Tailscale SSH from a MacBook.
+
+The data: 1.29 GB downloaded from Sid's publicly available 25 TB dataset on Google Cloud.
+
+The result: **FAP overexpression confirmed in 15 minutes**. The same finding that took a dedicated care team and 10x Genomics expertise to discover — reproduced on commodity hardware with open-source tools.
+
+Cost: **$0**.
+
+## The Setup
+
+The NUC is a Windows machine with 32 GB RAM, 8 CPU cores, and an NVIDIA RTX 3060 (12 GB VRAM). It runs Python 3.11. No WSL, no Linux, no cloud instance.
+
+The pipeline is orchestrated by an EGRI (Evaluator-Governed Recursive Improvement) harness — a framework that structures experiments as measurable trials with rollback capability. Each phase produces concrete outputs that the evaluator scores.
+
+Connection: SSH over Tailscale. The NUC sits on a private mesh network. Scripts are deployed via `scp`, executed via `ssh`, results pulled back the same way.
+
+```
+Mac (control) ──── Tailscale SSH ────> NUC (RTX 3060, 32GB RAM)
+                                        │
+                                        ├── Phase 1: gsutil → HTTP download
+                                        ├── Phase 3: Scanpy (scRNA-seq)
+                                        ├── Phase 4: pVACtools predictions
+                                        ├── Phase 5: ESMFold API
+                                        └── Phase 6: Treatment report
+```
+
+## Phase 1: Getting the Data ($0, 20 minutes)
+
+Sid's dataset lives at `gs://osteosarc-genomics` — 24.88 TiB of publicly readable data on Google Cloud Storage. We don't need all of it. The test plan targets:
+
+- **Pre-called somatic VCFs** (Sarek 3.5.1 pipeline: Mutect2 + Strelka + FreeBayes, already VEP-annotated)
+- **Existing pVACtools neoantigen predictions** (12,420 epitopes across 17 mutated genes)
+- **T1 scRNA-seq raw count matrix** (4,452 cells x 24,524 genes)
+- **RNA-seq gene expression** (UCLA 2025 sample)
+
+Total download: **1.29 GB**. One snag: `gsutil` on the NUC had corrupted credentials. Since the bucket is publicly readable, we bypassed gsutil entirely and used Python `requests` against the GCS JSON API. Every file downloaded over plain HTTPS.
+
+The biggest surprise: the VCFs are **already VEP-annotated**. Phase 2 (variant annotation) — which we'd budgeted 1-2 hours for — was completely unnecessary. The Sarek pipeline that processed the WGS had already run VEP and snpEff on every variant call.
+
+## Phase 3: The 15-Minute Breakthrough (scRNA-seq)
+
+This is the phase that matters most. In Sid's treatment, single-cell RNA sequencing revealed that his tumor cells were overexpressing **FAP (Fibroblast Activation Protein)** — a target invisible to standard gene panels and whole exome sequencing. This finding enabled the radioligand therapy that shrank his tumor enough for surgery.
+
+We loaded the T1 raw count matrix into Scanpy:
+
+- **4,452 cells** passed QC (no MT gene filtering needed — 0% mitochondrial reads)
+- **23,880 genes** after minimum-cells filtering
+- **17 Leiden clusters** identified
+- **Differential expression**: 405,960 gene-cluster combinations tested
+
+Then we checked 17 known surface targets across all clusters:
+
+| Gene | log2FC | p-adj | Cluster | What It Is |
+|------|--------|-------|---------|------------|
+| **KIT** | 5.79 | 9.4e-07 | 6 | Receptor tyrosine kinase |
+| **CTLA4** | 4.94 | 5.9e-08 | 1 | Checkpoint (Ipilimumab target) |
+| **LAG3** | 4.80 | 2.4e-20 | 7 | Exhaustion marker |
+| **FOLR1** | 4.48 | 5.0e-33 | 3 | Folate receptor |
+| **PDGFRA** | 4.37 | 3.7e-149 | 5 | Stromal marker |
+| **PD-1** | 4.28 | 1.6e-07 | 1 | Checkpoint (Dostarlimab target) |
+| **EGFR** | 4.07 | 3.1e-37 | 9 | Growth factor receptor |
+| **FAP** | 2.81 | 2.1e-24 | 9 | **The radioligand target** |
+| **CD276** | 2.84 | 5.6e-75 | 3 | B7-H3 (experimental) |
+| **EPHA2** | 2.30 | 2.1e-04 | 6 | Experimental PET target |
+
+**14 of 17 targets were significantly overexpressed** (log2FC > 1, adjusted p-value < 0.05).
+
+The clustering tells a clear story:
+- **Cluster 9** = tumor cells (FAP+, EGFR+, ERBB2+, MET+)
+- **Clusters 0/1/7** = exhausted immune cells (PD-1+, CTLA4+, LAG3+, TIGIT+, TIM-3+)
+- **Cluster 5** = stroma (PDGFRA+++)
+
+This independently reproduces the key clinical finding: FAP overexpression in the tumor cluster, alongside an exhausted but present immune infiltrate that explains why checkpoint inhibitors work.
+
+Total time for Phase 3: **2 minutes 27 seconds** on the NUC.
+
+## Phase 4: Neoantigen Candidates
+
+The osteosarc.com dataset includes pre-computed pVACtools neoantigen predictions for the T2 tumor. We used them directly rather than re-running the prediction pipeline.
+
+Key findings from the existing predictions:
+
+- **12,420 total epitopes** screened
+- **17 mutated genes** with predicted neoantigens
+- **5 HLA alleles**: HLA-A\*01:01, HLA-B\*08:01, HLA-B\*27:05, HLA-C\*01:02, HLA-C\*07:01
+- **Top candidate**: VPS72 peptide `AREERALLP` — IC50 = **3.8 nM** (HLA-C\*07:01)
+
+An IC50 of 3.8 nM is exceptionally strong binding. For context, anything below 500 nM is considered a binder; below 50 nM is strong. 3.8 nM means the peptide-MHC complex is very stable.
+
+We extracted 13 unique peptides as the top 50 candidates for structural validation.
+
+## Phase 5: Structural Validation (ESMFold)
+
+We ran each peptide through the ESMFold API — Meta's fast protein structure predictor. No GPU needed; the API handles inference.
+
+| Peptide | Gene | IC50 (nM) | pLDDT | Tier |
+|---------|------|-----------|-------|------|
+| IILNFTTLDL | BMP1 | 22.6 | 87 | **T1** |
+| ILNFTTLDL | BMP1 | 25.5 | 87 | **T1** |
+| ERALLPLEL | VPS72 | 62.8 | 82 | T2 |
+| KRFHATISF | DYNC1H1 | 29.6 | 82 | T2 |
+| KIILNFTTL | BMP1 | 56.5 | 80 | T2 |
+| TRTMANCER | NME1 | 23.8 | 79 | T2 |
+| GRSCHLIQH | ZNF436 | 23.4 | 77 | T2 |
+
+Two peptides achieved **T1 tier** (pLDDT > 85) — both from the BMP1 gene. Five more at T2. These are the candidates you'd put in a peptide vaccine.
+
+Important caveat: ESMFold predicts single-chain structure. For proper peptide-MHC binding validation, you'd run AlphaFold Multimer with the full HLA heavy chain. ESMFold on 9-mers measures intrinsic foldability, not MHC binding geometry. The next trial should use ColabFold multimer on the NUC's RTX 3060.
+
+## Phase 6: Treatment Recommendation
+
+The pipeline synthesized all findings into a structured treatment recommendation:
+
+**Layer 1** (Foundation): Dostarlimab (PD-1) + Ipilimumab (CTLA-4) — both targets confirmed overexpressed in immune clusters
+
+**Layer 2** (Vaccine): Top 10 neoantigen peptides from structural validation, with GM-CSF adjuvant
+
+**Layer 3** (Oncolytic): AdaPT-001 — TGF-beta trap virus, intratumoral
+
+**Layer 4** (Radioligand): 177Lu-FAPi / 225Ac-FAPi — FAP confirmed at log2FC=2.81
+
+**Layer 5** (Cell therapy): SNK-01 NK cells
+
+Each recommendation is grounded in specific data from the pipeline phases. The FAP radioligand recommendation references the exact cluster, fold change, and p-value. The checkpoint inhibitor recommendation cites the exhaustion markers.
+
+## What This Proves
+
+This was not a toy demo. We ran Scanpy on real single-cell data from a real patient's tumor biopsy. We used real pVACtools neoantigen predictions against real somatic mutations. We validated real peptide structures through a real prediction model.
+
+The entire pipeline ran on hardware you can buy for $500.
+
+| Metric | Value |
+|--------|-------|
+| Total hardware cost | ~$500 (used NUC) |
+| Cloud GPU cost | $0 |
+| Data download | 1.29 GB (of 24.88 TiB available) |
+| Wall clock time | ~15 min (excluding download) |
+| scRNA-seq analysis | 2 min 27 sec |
+| Neoantigen extraction | < 1 min |
+| Structural validation | ~20 sec (API calls) |
+| Targets confirmed | 14 significant (FAP, B7H3, EPHA2, EGFR, PD-1, CTLA4, ...) |
+| Vaccine candidates (T1+T2) | 7 |
+
+The bottleneck wasn't compute. It wasn't cost. It was knowing what to run and in what order. That's what the [founder-mode-oncology skill](https://github.com/broomva/founder-mode-oncology) encodes.
+
+## Try It Yourself
+
+**Install the skill:**
+```bash
+npx skills add broomva/founder-mode-oncology
+```
+
+**Clone the pipeline:**
+```bash
+git clone https://github.com/broomva/founder-mode-cancer
+cd founder-mode-cancer
+pip install scanpy anndata pandas mhcflurry requests pyyaml
+python egri/founder-mode-pipeline/scripts/download_data.py .
+python egri/founder-mode-pipeline/scripts/phase3_scrna.py .
+```
+
+**Explore the data:**
+- [osteosarc.com](https://osteosarc.com) — interactive portal for all 25 TB
+- `gsutil ls gs://osteosarc-genomics/` — browse the bucket directly
+
+**Read the research:**
+- [First post: Founder Mode on Cancer](https://broomva.tech/writing/founder-mode-cancer) — the framework
+- [Century of Bio: Going Founder Mode on Cancer](https://centuryofbio.com/p/sid) — Elliot Hershberg's deep-dive
+
+---
+
+The tools exist. The data is open. The framework is documented. A $500 computer under a desk can reproduce findings that changed the course of someone's cancer treatment.
+
+What's your excuse?
