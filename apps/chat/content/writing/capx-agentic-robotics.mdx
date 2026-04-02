@@ -11,9 +11,11 @@ tags:
   - reinforcement-learning
   - open-source
   - skill-library
-image: /images/writing/capx-agentic-robotics/hero.png
+image: /images/writing/capx-agentic-robotics/hero-opt.png
 audio: /audio/writing/capx-agentic-robotics.mp3
 ---
+
+![A Franka Panda robot arm connected to an LLM generating Python manipulation code](/images/writing/capx-agentic-robotics/hero-opt.png)
 
 Three years ago, an AI agent learned to play Minecraft by writing its own skill library. It called itself Voyager. It explored, reflected on what worked, and accumulated reusable code functions — a growing repertoire of capabilities that no one explicitly programmed.
 
@@ -22,6 +24,8 @@ Today, the team behind Voyager — Jim Fan, Guanzhi Wang, and collaborators at N
 The thesis is disarmingly simple: robot control is a code generation problem. Give an LLM the right perception APIs (what can the robot see?) and control APIs (what can the robot do?), and it will write Python code that solves manipulation tasks — zero-shot, no training required.
 
 ## The Architecture
+
+![CaP-X pipeline: LLM generates Python code that composes perception and control APIs](/images/writing/capx-agentic-robotics/architecture-opt.png)
 
 CaP-X is built on the standard Gymnasium interface, but with a twist. The agent's "action" isn't a joint torque or a motion trajectory. It's a Python program.
 

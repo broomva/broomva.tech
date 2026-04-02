@@ -25,6 +25,8 @@ The original `@broomva/cli` was a TypeScript package distributed via npm. It wor
 
 The Rust rewrite solves all of these. The binary is **3.7MB stripped**, starts instantly, and follows the exact same patterns as [Symphony](https://github.com/broomva/symphony) — clap, reqwest, axum, thiserror, tokio.
 
+![The broomva CLI architecture: a single 3.7MB binary with 6 command groups radiating outward](/images/writing/broomva-cli-rust/architecture-opt.png)
+
 ## What the CLI does
 
 ```
