@@ -116,8 +116,12 @@ export async function GET() {
 
       // Life services (for agents that want to connect to the Agent OS)
       services: {
+        arcan: {
+          url: (process.env.ARCAN_URL || "https://arcan.la").trim(),
+          description: "Agent runtime daemon",
+        },
         lago: {
-          url: (process.env.LAGO_URL || "https://lago.broomva.tech").trim(),
+          url: (process.env.LAGO_URL || "https://api.lago.arcan.la").trim(),
           description: "Event-sourced persistence substrate",
         },
         autonomic: {

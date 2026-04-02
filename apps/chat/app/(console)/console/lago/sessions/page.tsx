@@ -9,7 +9,7 @@ import type { LagoSession, SessionTier } from "@/lib/lago/types";
 import { classifySessionTier, TIER_COLORS } from "@/lib/lago/types";
 
 const LAGO_BASE =
-  process.env.NEXT_PUBLIC_LAGO_URL ?? "https://lago.broomva.tech";
+  process.env.NEXT_PUBLIC_LAGO_URL ?? "https://api.lago.arcan.la";
 
 type FilterTier = "all" | SessionTier;
 

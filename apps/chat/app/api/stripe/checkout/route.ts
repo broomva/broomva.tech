@@ -58,8 +58,8 @@ export const POST = withAuthAndValidation(
             quantity: 1,
           },
         ],
-        success_url: `${appUrl}/settings/billing?checkout=success`,
-        cancel_url: `${appUrl}/settings/billing?checkout=cancel`,
+        success_url: `${appUrl}/console/billing?checkout=success`,
+        cancel_url: `${appUrl}/console/billing?checkout=cancel`,
         metadata: {
           organizationId,
           plan,

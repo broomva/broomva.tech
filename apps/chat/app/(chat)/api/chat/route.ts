@@ -38,7 +38,7 @@ import { createAnonymousSession } from "@/lib/create-anonymous-session";
 import { CostAccumulator } from "@/lib/credits/cost-accumulator";
 import { canSpend, deductCredits } from "@/lib/db/credits";
 import { getMcpConnectorsByUserId } from "@/lib/db/mcp-queries";
-import { recordUsageEvent } from "@/lib/db/usage";
+import { deductOrgCredits, recordUsageEvent } from "@/lib/db/usage";
 import {
   getChatById,
   getMessageById,
@@ -84,6 +84,8 @@ import {
   EVENT_MESSAGE_SENT,
   EVENT_TOOL_USED,
 } from "@/lib/analytics/events";
+import { getServerFeatureFlag } from "@/lib/feature-flags";
+import type { FeatureFlag } from "@/lib/feature-flags";
 import { generateTitleFromUserMessage } from "../../actions";
 import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
 
@@ -119,7 +121,10 @@ async function ensureRedisClients() {
     redisPublisher = null;
     redisSubscriber = null;
     redisConnectPromise = null;
-    console.warn("Redis unavailable, continuing without resumable streams.", error);
+    console.warn(
+      "Redis unavailable, continuing without resumable streams.",
+      error,
+    );
     return null;
   }
 }
@@ -170,7 +175,7 @@ async function handleAnonymousSession({
       success: false,
       error: Response.json(
         { error: rateLimitResult.error, type: "RATE_LIMIT_EXCEEDED" },
-        { status: 429, headers: rateLimitResult.headers || {} }
+        { status: 429, headers: rateLimitResult.headers || {} },
       ),
     };
   }
@@ -189,14 +194,14 @@ async function handleAnonymousSession({
           suggestion:
             "Create an account to get more credits and access to more AI models",
         },
-        { status: 402, headers: rateLimitResult.headers || {} }
+        { status: 402, headers: rateLimitResult.headers || {} },
       ),
     };
   }
 
   if (
     !(ANONYMOUS_LIMITS.AVAILABLE_MODELS as readonly AppModelId[]).includes(
-      selectedModelId
+      selectedModelId,
     )
   ) {
     log.warn("Model not available for anonymous users");
@@ -207,7 +212,7 @@ async function handleAnonymousSession({
           error: "Model not available for anonymous users",
           availableModels: ANONYMOUS_LIMITS.AVAILABLE_MODELS,
         },
-        { status: 403, headers: rateLimitResult.headers || {} }
+        { status: 403, headers: rateLimitResult.headers || {} },
       ),
     };
   }
@@ -304,21 +309,98 @@ async function handleUserValidationAndCredits({
   return { isNewChat: validationResult.isNewChat };
 }
 
+// ── Feature-flag tool gating (BRO-393) ───────────────────────────────────────
+
 /**
- * Determines which built-in tools are allowed based on model capabilities.
+ * Mapping from feature flag to the tool names it gates.
+ * When a flag is disabled, all listed tools are excluded.
+ */
+const FLAG_GATED_TOOLS: Partial<Record<FeatureFlag, ToolName[]>> = {
+  deep_research: ["deepResearch"],
+  sandbox: ["codeExecution"],
+  image_generation: ["generateImage"],
+  web_search: ["webSearch"],
+  url_retrieval: ["retrieveUrl"],
+  knowledge_graph: ["searchKnowledge", "readKnowledgeNote"],
+};
+
+/** The feature flags that gate premium chat tools. */
+const TOOL_GATING_FLAGS = Object.keys(FLAG_GATED_TOOLS) as FeatureFlag[];
+
+/**
+ * Evaluate feature flags and return the set of tool names that should be
+ * excluded because their flag is disabled for this user/org.
+ */
+async function getGatedToolNames(
+  userId: string,
+  orgId?: string | null,
+): Promise<Set<ToolName>> {
+  const groups = orgId ? { organization: orgId } : undefined;
+  const disabled = new Set<ToolName>();
+
+  const results = await Promise.all(
+    TOOL_GATING_FLAGS.map(async (flag) => ({
+      flag,
+      enabled: await getServerFeatureFlag(flag, userId, groups),
+    })),
+  );
+
+  for (const { flag, enabled } of results) {
+    if (!enabled) {
+      for (const tool of FLAG_GATED_TOOLS[flag] ?? []) {
+        disabled.add(tool);
+      }
+    }
+  }
+
+  return disabled;
+}
+
+/**
+ * Returns a user-facing upgrade message when a gated tool is explicitly
+ * requested but the feature flag is disabled.
+ */
+function getToolGateUpgradeMessage(toolName: ToolName): string {
+  const messages: Partial<Record<ToolName, string>> = {
+    deepResearch:
+      "Deep research requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+    codeExecution:
+      "Code execution (sandbox) requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+    generateImage:
+      "Image generation requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+    webSearch:
+      "Web search requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+    retrieveUrl:
+      "URL retrieval requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+    searchKnowledge:
+      "Knowledge graph search requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+    readKnowledgeNote:
+      "Knowledge graph access requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+  };
+  return (
+    messages[toolName] ??
+    "This feature requires a plan upgrade. Visit /pricing for details."
+  );
+}
+
+/**
+ * Determines which built-in tools are allowed based on model capabilities
+ * and feature flags.
  * MCP tools are handled separately in core-chat-agent.
  */
 function determineAllowedTools({
   isAnonymous,
   modelDefinition,
   explicitlyRequestedTools,
+  gatedTools,
 }: {
   isAnonymous: boolean;
   modelDefinition: AppModelDefinition;
   explicitlyRequestedTools: ToolName[] | null;
+  gatedTools?: Set<ToolName>;
 }): ToolName[] {
   // Start with all tools or anonymous-limited tools
-  const allowedTools: ToolName[] = isAnonymous
+  let allowedTools: ToolName[] = isAnonymous
     ? [...ANONYMOUS_LIMITS.AVAILABLE_TOOLS]
     : [...allTools];
 
@@ -327,10 +409,15 @@ function determineAllowedTools({
     return [];
   }
 
+  // Remove tools disabled by feature flags (BRO-393)
+  if (gatedTools && gatedTools.size > 0) {
+    allowedTools = allowedTools.filter((tool) => !gatedTools.has(tool));
+  }
+
   // If specific tools were requested, filter them against allowed tools
   if (explicitlyRequestedTools && explicitlyRequestedTools.length > 0) {
     return explicitlyRequestedTools.filter((tool) =>
-      allowedTools.includes(tool)
+      allowedTools.includes(tool),
     );
   }
 
@@ -365,6 +452,7 @@ async function createChatStream({
   selectedModelId,
   explicitlyRequestedTools,
   userId,
+  organizationId,
   allowedTools,
   abortController,
   isAnonymous,
@@ -381,6 +469,7 @@ async function createChatStream({
   selectedModelId: AppModelId;
   explicitlyRequestedTools: ToolName[] | null;
   userId: string | null;
+  organizationId: string | null;
   allowedTools: ToolName[];
   abortController: AbortController;
   isAnonymous: boolean;
@@ -452,7 +541,7 @@ async function createChatStream({
                 costAccumulator.addLLMCost(
                   selectedModelId,
                   part.totalUsage,
-                  "main-chat"
+                  "main-chat",
                 );
               }
               return {
@@ -462,7 +551,7 @@ async function createChatStream({
               };
             }
           },
-        })
+        }),
       );
       await result.consumeStream();
 
@@ -487,6 +576,7 @@ async function createChatStream({
       await finalizeMessageAndCredits({
         messages,
         userId,
+        organizationId,
         isAnonymous,
         chatId,
         costAccumulator,
@@ -500,13 +590,16 @@ async function createChatStream({
       if (!isAnonymous) {
         after(() =>
           Promise.resolve(
-            updateMessageActiveStreamId({ id: messageId, activeStreamId: null })
+            updateMessageActiveStreamId({
+              id: messageId,
+              activeStreamId: null,
+            }),
           ).catch((dbError) => {
             log.error(
               { error: dbError },
-              "Failed to clear activeStreamId on stream error"
+              "Failed to clear activeStreamId on stream error",
             );
-          })
+          }),
         );
       }
 
@@ -525,6 +618,7 @@ async function executeChatRequest({
   selectedModelId,
   explicitlyRequestedTools,
   userId,
+  organizationId,
   isAnonymous,
   isNewChat,
   allowedTools,
@@ -538,6 +632,7 @@ async function executeChatRequest({
   selectedModelId: AppModelId;
   explicitlyRequestedTools: ToolName[] | null;
   userId: string | null;
+  organizationId: string | null;
   isAnonymous: boolean;
   isNewChat: boolean;
   allowedTools: ToolName[];
@@ -589,6 +684,7 @@ async function executeChatRequest({
     selectedModelId,
     explicitlyRequestedTools,
     userId,
+    organizationId,
     allowedTools,
     abortController,
     isAnonymous,
@@ -608,7 +704,7 @@ async function executeChatRequest({
         const keys = await publisher.keys(keyPattern);
         if (keys.length > 0) {
           await Promise.all(
-            keys.map((key: string) => publisher.expire(key, 300))
+            keys.map((key: string) => publisher.expire(key, 300)),
           );
         }
       } catch (error) {
@@ -630,7 +726,7 @@ async function executeChatRequest({
     log.debug("Returning resumable stream");
     return new Response(
       await streamContext.resumableStream(streamId, sseStream),
-      { headers: sseHeaders }
+      { headers: sseHeaders },
     );
   }
 
@@ -714,6 +810,7 @@ async function prepareRequestContext({
   anonymousPreviousMessages,
   modelDefinition,
   explicitlyRequestedTools,
+  gatedTools,
 }: {
   userMessage: ChatMessage;
   chatId: string;
@@ -721,6 +818,7 @@ async function prepareRequestContext({
   anonymousPreviousMessages: ChatMessage[];
   modelDefinition: AppModelDefinition;
   explicitlyRequestedTools: ToolName[] | null;
+  gatedTools?: Set<ToolName>;
 }): Promise<{
   previousMessages: ChatMessage[];
   allowedTools: ToolName[];
@@ -732,18 +830,19 @@ async function prepareRequestContext({
     isAnonymous,
     modelDefinition,
     explicitlyRequestedTools,
+    gatedTools,
   });
 
   // Validate input token limit (50k tokens for user message)
   const totalTokens = calculateMessagesTokens(
-    await convertToModelMessages([userMessage])
+    await convertToModelMessages([userMessage]),
   );
 
   if (totalTokens > MAX_INPUT_TOKENS) {
     log.warn({ totalTokens, MAX_INPUT_TOKENS }, "Token limit exceeded");
     const error = new ChatSDKError(
       "input_too_long:chat",
-      `Message too long: ${totalTokens} tokens (max: ${MAX_INPUT_TOKENS})`
+      `Message too long: ${totalTokens} tokens (max: ${MAX_INPUT_TOKENS})`,
     );
     return {
       previousMessages: [],
@@ -756,7 +855,7 @@ async function prepareRequestContext({
     ? anonymousPreviousMessages
     : await getThreadUpToMessageId(
         chatId,
-        userMessage.metadata.parentMessageId
+        userMessage.metadata.parentMessageId,
       );
 
   const previousMessages = messageThreadToParent.slice(-5);
@@ -768,12 +867,14 @@ async function prepareRequestContext({
 async function finalizeMessageAndCredits({
   messages,
   userId,
+  organizationId,
   isAnonymous,
   chatId,
   costAccumulator,
 }: {
   messages: ChatMessage[];
   userId: string | null;
+  organizationId: string | null;
   isAnonymous: boolean;
   chatId: string;
   costAccumulator: CostAccumulator;
@@ -826,9 +927,17 @@ async function finalizeMessageAndCredits({
     if (userId && !isAnonymous) {
       await deductCredits(userId, totalCost);
 
+      // Deduct org-level credits (atomic — skips if org has insufficient balance)
+      if (organizationId) {
+        deductOrgCredits(organizationId, totalCost).catch((err) => {
+          log.error({ error: err }, "Failed to deduct org credits");
+        });
+      }
+
       // Record usage event (fire-and-forget, non-blocking)
       const tokenBreakdown = costAccumulator.getTokenBreakdown();
       recordUsageEvent({
+        organizationId: organizationId ?? undefined,
         userId,
         type: "ai_tokens",
         resource: tokenBreakdown.modelId ?? undefined,
@@ -857,7 +966,12 @@ function buildArcanPolicy(plan: string): ArcanPolicySet {
   if (plan === "anonymous") {
     return {
       allow_capabilities: ["fs:read:/session/**"],
-      gate_capabilities: ["fs:write:**", "exec:cmd:*", "net:egress:*", "secrets:read:*"],
+      gate_capabilities: [
+        "fs:write:**",
+        "exec:cmd:*",
+        "net:egress:*",
+        "secrets:read:*",
+      ],
       max_events_per_turn: 5,
       max_tool_runtime_secs: 30,
     };
@@ -922,10 +1036,12 @@ export async function POST(request: NextRequest) {
     // ---- Tier-based model & credit gate (authenticated users only) ----
     // userPlan is hoisted so the arcan block can build a tier-appropriate policy
     let userPlan = "anonymous";
+    let orgId: string | null = null;
     if (userId && !isAnonymous) {
       // Lightweight single-row lookup for org plan + credits
       const [orgRow] = await tierDb
         .select({
+          orgId: organization.id,
           plan: organization.plan,
           planCreditsRemaining: organization.planCreditsRemaining,
         })
@@ -937,6 +1053,7 @@ export async function POST(request: NextRequest) {
         .where(eq(organizationMember.userId, userId))
         .limit(1);
 
+      orgId = orgRow?.orgId ?? null;
       userPlan = orgRow?.plan ?? "free";
 
       if (!isModelAllowed(userPlan, selectedModelId)) {
@@ -1019,6 +1136,40 @@ export async function POST(request: NextRequest) {
     const explicitlyRequestedTools =
       determineExplicitlyRequestedTools(selectedTool);
 
+    // ── Feature-flag tool gating (BRO-393) ──────────────────────────
+    // Evaluate PostHog feature flags to determine which premium tools
+    // should be excluded for this user/org. Anonymous users skip this
+    // (they already have a restricted tool set from ANONYMOUS_LIMITS).
+    let gatedTools: Set<ToolName> | undefined;
+
+    if (userId && !isAnonymous) {
+      gatedTools = await getGatedToolNames(userId, orgId);
+
+      // If the user explicitly requested a gated tool (e.g. clicked the
+      // deep-research button), return an upgrade message immediately
+      // instead of silently stripping the tool.
+      if (
+        gatedTools.size > 0 &&
+        explicitlyRequestedTools &&
+        explicitlyRequestedTools.length > 0
+      ) {
+        const blockedTool = explicitlyRequestedTools.find((t) =>
+          gatedTools!.has(t),
+        );
+        if (blockedTool) {
+          return Response.json(
+            {
+              error: "feature_gated",
+              message: getToolGateUpgradeMessage(blockedTool),
+              upgradeUrl: "/pricing",
+            },
+            { status: 403 },
+          );
+        }
+      }
+
+    }
+
     const contextResult = await prepareRequestContext({
       userMessage,
       chatId,
@@ -1026,6 +1177,7 @@ export async function POST(request: NextRequest) {
       anonymousPreviousMessages,
       modelDefinition,
       explicitlyRequestedTools,
+      gatedTools,
     });
 
     if (contextResult.error) {
@@ -1038,14 +1190,16 @@ export async function POST(request: NextRequest) {
     // Two-tier routing:
     //   1. Dedicated Railway org instance (enterprise only)
     //   2. Shared ARCAN_URL env instance (all tiers, fallback)
-    // If the dedicated instance fails health check → mark degraded, try shared.
+    // If the dedicated instance fails health check -> mark degraded, try shared.
     // Anonymous users skip the org lookup and go straight to the shared instance.
     {
       const arcanOwnerId = userId ?? anonymousSession?.id ?? null;
       const arcanEmail = userId
-        ? ((await getSafeSession({
-            fetchOptions: { headers: await headers() },
-          })).data?.user?.email ?? "")
+        ? ((
+            await getSafeSession({
+              fetchOptions: { headers: await headers() },
+            })
+          ).data?.user?.email ?? "")
         : `anon-${anonymousSession?.id?.slice(0, 8)}@guest.broomva.tech`;
 
       if (arcanOwnerId) {
@@ -1054,7 +1208,12 @@ export async function POST(request: NextRequest) {
           : {
               dedicated: null,
               shared: process.env.ARCAN_URL
-                ? { arcanUrl: process.env.ARCAN_URL, lagoUrl: process.env.LAGO_URL ?? null, isDedicated: false, orgId: null }
+                ? {
+                    arcanUrl: process.env.ARCAN_URL,
+                    lagoUrl: process.env.LAGO_URL ?? null,
+                    isDedicated: false,
+                    orgId: null,
+                  }
                 : null,
             };
 
@@ -1066,7 +1225,10 @@ export async function POST(request: NextRequest) {
           if (!endpoint) continue;
 
           const abortController = new AbortController();
-          const timeoutId = setTimeout(() => abortController.abort(), 290_000);
+          const timeoutId = setTimeout(
+            () => abortController.abort(),
+            290_000,
+          );
 
           // Degraded policy applied when falling back from a failed dedicated instance
           const isDegradedFallback = endpoint === shared && dedicated !== null;
@@ -1089,8 +1251,13 @@ export async function POST(request: NextRequest) {
 
           if (arcanResponse) {
             log.info(
-              { chatId, anonymous: isAnonymous, dedicated: endpoint.isDedicated, degraded: isDegradedFallback },
-              "Routed to Arcan"
+              {
+                chatId,
+                anonymous: isAnonymous,
+                dedicated: endpoint.isDedicated,
+                degraded: isDegradedFallback,
+              },
+              "Routed to Arcan",
             );
             return arcanResponse;
           }
@@ -1098,8 +1265,12 @@ export async function POST(request: NextRequest) {
           // Dedicated instance unreachable — mark degraded and try shared next
           if (endpoint.isDedicated && endpoint.orgId) {
             log.warn(
-              { chatId, orgId: endpoint.orgId, arcanUrl: endpoint.arcanUrl },
-              "Dedicated arcand unreachable — marking degraded, falling back to shared instance (BRO-225)"
+              {
+                chatId,
+                orgId: endpoint.orgId,
+                arcanUrl: endpoint.arcanUrl,
+              },
+              "Dedicated arcand unreachable — marking degraded, falling back to shared instance (BRO-225)",
             );
             await markInstanceDegraded(endpoint.orgId);
           }
@@ -1111,8 +1282,17 @@ export async function POST(request: NextRequest) {
 
     // ── Fallback: Direct streamText (template path) ─────────────────
     // Used for anonymous users, or when no Arcan instance is available.
+    // Gate MCP connectors behind the mcp feature flag (BRO-393)
+    const mcpFlagEnabled =
+      userId && !isAnonymous
+        ? await getServerFeatureFlag(
+            "mcp",
+            userId,
+            orgId ? { organization: orgId } : undefined,
+          )
+        : false;
     const mcpConnectors: McpConnector[] =
-      config.features.mcp && userId && !isAnonymous
+      config.features.mcp && mcpFlagEnabled && userId && !isAnonymous
         ? await getMcpConnectorsByUserId({ userId })
         : [];
 
@@ -1129,6 +1309,7 @@ export async function POST(request: NextRequest) {
       selectedModelId,
       explicitlyRequestedTools,
       userId,
+      organizationId: orgId,
       isAnonymous,
       isNewChat,
       allowedTools,
@@ -1144,7 +1325,7 @@ export async function POST(request: NextRequest) {
             ? { message: error.message, stack: error.stack }
             : error,
       },
-      "RESPONSE > POST /api/chat error"
+      "RESPONSE > POST /api/chat error",
     );
     return new Response("Internal Server Error", {
       status: 500,

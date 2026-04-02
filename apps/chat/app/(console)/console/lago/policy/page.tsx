@@ -7,7 +7,7 @@ import type { LagoHealth, LagoSession } from "@/lib/lago/types";
 import { classifySessionTier } from "@/lib/lago/types";
 
 const LAGO_BASE =
-  process.env.NEXT_PUBLIC_LAGO_URL ?? "https://lago.broomva.tech";
+  process.env.NEXT_PUBLIC_LAGO_URL ?? "https://api.lago.arcan.la";
 
 export default function LagoPolicyPage() {
   const [health, setHealth] = useState<LagoHealth | null>(null);
