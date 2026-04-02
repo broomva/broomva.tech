@@ -58,6 +58,12 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  outputFileTracingExcludes: {
+    "*": [
+      "./public/audio/**",
+      "./public/images/**",
+    ],
+  },
   experimental: {
     optimizePackageImports: [
       "react-tweet",
