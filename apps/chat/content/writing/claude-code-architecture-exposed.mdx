@@ -1,0 +1,291 @@
+---
+title: "Claude Code's Architecture Exposed: Feature Flags, Memory, and Why Constraint Beats Capability"
+summary: "A deep analysis of Claude Code's leaked source — three-layer feature flags, self-healing memory, compaction-driven knowledge extraction, and the architectural patterns that make agent systems reliable at scale."
+date: 2026-04-01
+published: true
+tags:
+  - AI
+  - agents
+  - architecture
+  - Claude Code
+  - feature-flags
+  - memory-systems
+  - reverse-engineering
+---
+
+The Claude Code source map leak revealed something more interesting than unreleased features — it exposed a production-grade agent architecture where every reliability mechanism is a constraint, not a capability upgrade. Here's what 512K lines of TypeScript teach us about building agent systems that actually work.
+
+*Disclaimer: All code snippets in this post are illustrative pseudocode based on publicly reported analysis — no actual source code is reproduced. This is architectural commentary, not a source dump.*
+
+## The Leak
+
+On March 31, 2026, a `.map` source map file was accidentally included in `@anthropic-ai/claude-code` version 2.1.88 on npm. It pointed to a zip archive containing the full TypeScript source. Anthropic pulled the package within hours, but mirrors had already spread everywhere.
+
+A sourcemap is designed to undo minification. This one contained `sourcesContent` — the complete original source of all 1,884 files, inline. Someone just ran `npm pack`, extracted the tarball, and parsed the `.map` file. Every original filename, variable name, and comment — restored.
+
+![Sourcemap anatomy showing the sourcesContent field that caused the leak](/images/writing/claude-code-architecture-exposed/sourcemap-anatomy-opt.png)
+
+The DMCA response was aggressive — 8,100+ GitHub repos disabled. But the architectural knowledge is out. And it's worth studying, because Claude Code isn't just a chat wrapper. It's a 2,000+ file, 43-tool, 85-hook agent runtime with patterns that solve problems the entire industry is struggling with.
+
+## The Build Pipeline: Source to Your Machine
+
+Before the architecture, the build pipeline. This is where the first layer of reliability lives.
+
+2,000+ TypeScript files go through `bun:bundle` — Bun's native bundler. During bundling, 32 compile-time feature flags are evaluated. Every flag set to `false` causes the bundler to tree-shake the entire associated code path. The code isn't hidden — it's physically eliminated from the output.
+
+![Build pipeline: source files through bun:bundle with feature flag evaluation](/images/writing/claude-code-architecture-exposed/build-pipeline-opt.png)
+
+But there's another layer: a string blocklist that removes internal codenames from the output. Sensitive strings are encoded as individual charCodes to survive the filter:
+
+```javascript
+// Illustrative pattern — not actual source:
+// Instead of: const name = "InternalName"
+const name = String.fromCharCode(73,110,116,101,114,110,97,108)
+```
+
+The result is a single minified `cli.js`. No directory structure, no filenames, no folder organization. And the "protection" before the leak was just this:
+
+1. **Minification** — variables renamed to `a`, `b`, `c`
+2. **Tree-shaking** — disabled features physically absent
+3. **String stripping** — codenames removed
+4. **Single bundle** — one flat file
+
+None of this is encryption. JavaScript can't truly be hidden — it runs in a JS engine that needs to read it. The leak happened because `cli.js.map` shipped in the npm package. A one-line `.npmignore` oversight.
+
+## Three-Layer Feature Flag Architecture
+
+This is the system that determines which features exist, which are active, and who gets what. It's a funnel, not a switch.
+
+### Layer 1: Build-Time Flags (32 Switches)
+
+Compile-time constants evaluated by `bun:bundle`. Think C preprocessor `#ifdef`, but for a TypeScript CLI:
+
+```
+if (feature('KAIROS')) {
+  registerTool(SleepTool);
+  registerCommand('/dream');
+}
+```
+
+When Anthropic builds the npm package, they decide which flags are `true`. The bundler tree-shakes everything behind disabled flags — that code doesn't exist in the shipped binary. 32 flags controlling whether entire code paths ship.
+
+### Layer 2: GrowthBook Runtime Gates
+
+Code existing in the binary doesn't mean it's active. At startup, Claude Code fetches feature flags from GrowthBook — a remote feature flag service. These are the `tengu_*` prefixed gates — server-side toggles Anthropic controls without deploying new code:
+
+- `tengu_turtle_carbon` — UltraThink
+- `tengu_malort_pedway` — Computer Use
+- `tengu_onyx_plover` — Auto-Dream
+- `tengu_cobalt_raccoon` — Auto-Compact
+- `tengu_portal_quail` — Memory Extract
+
+The naming is intentionally opaque. `tengu_malort_pedway` tells you nothing about Computer Use. Per-account rollout without touching the binary.
+
+### Layer 3: Env Var Overrides
+
+The escape hatch. Force features on or off per session:
+
+```bash
+CLAUDE_CODE_COORDINATOR_MODE=1 claude
+USER_TYPE=ant claude
+```
+
+Internal employees ("Ants") get different defaults — features always-on while external users are gated behind rollout flags.
+
+### The Dual-Gating Pattern
+
+The key insight: most unreleased features use **dual gating** — both the build flag AND the GrowthBook gate must be true:
+
+```
+if (feature('KAIROS') && growthbook.isOn('tengu_kairos')) {
+  enableKairosMode();
+}
+```
+
+![Decision flow: build flag, GrowthBook gate, env override — a funnel, not a switch](/images/writing/claude-code-architecture-exposed/decision-flow-opt.png)
+
+Even if you patch the binary to enable a build flag, GrowthBook still needs to return `true` for your account. The full decision chain is a funnel — each layer narrows what's possible.
+
+![Dual-gating table showing features with their build flags and GrowthBook gates](/images/writing/claude-code-architecture-exposed/dual-gating-table-opt.png)
+
+## The Memory Architecture: A Masterclass in Constraint
+
+Claude Code's memory system is the most well-designed part of the codebase. It isn't "store everything" — it's constrained, structured, and self-healing.
+
+### Memory = Index, Not Storage
+
+`MEMORY.md` is always loaded into context, but it's just pointers — approximately 150 characters per line, capped at 200 lines. Actual knowledge lives in separate topic files, fetched only when relevant.
+
+Three bandwidth-aware layers:
+
+| Layer | Behavior | When accessed |
+|-------|----------|---------------|
+| Index (`MEMORY.md`) | Always in context | Every turn |
+| Topic files | Loaded on-demand | When relevant |
+| Conversation transcripts | Never loaded | Only grep'd for search |
+
+This is a universal information architecture pattern. Everything in Claude Code follows it — tools (43 core, deferred schemas, MCP catalogs), config (settings.json, CLAUDE.md hierarchy, rules), even features (build flags, GrowthBook gates, env overrides). Small hot layer, medium warm layer, large cold layer.
+
+### Four Memory Types
+
+Each memory has a `type` field that determines retention, visibility, and how it gets injected into the system prompt:
+
+| Type | Purpose | Lifespan |
+|------|---------|----------|
+| `user` | Role, preferences, knowledge level | Long-lived, cross-session |
+| `feedback` | Corrections and confirmations | Learning signal, permanent |
+| `project` | Goals, deadlines, ongoing work | Medium-lived, project-scoped |
+| `reference` | Pointers to external systems, URLs | Stable, rarely changes |
+
+### Strict Write Discipline
+
+The rule: write to the topic file first, then update the index. Never dump content into the index itself. This prevents entropy — the index stays small, the content stays organized. Memory files have YAML frontmatter (`name`, `description`, `type`) with markdown body.
+
+### Memory is Rewritten, Not Appended
+
+A background process (autoDream) continuously edits memories:
+- Merges duplicates
+- Removes contradictions
+- Converts vague references to absolute ("Thursday" becomes "2026-03-05")
+- Aggressively prunes stale entries
+
+This consolidation runs in a **forked subagent** with limited tool access — preventing corruption of the main context window. Memory is a living document, not a log.
+
+### Staleness is First-Class
+
+If a memory contradicts the current codebase, the memory is wrong — not the code. Code-derived facts are never stored. The model must verify memories against current state before acting on them.
+
+Retrieval is skeptical, not blind. Memory is a hint, not truth.
+
+### What They Don't Store is the Real Insight
+
+No debugging logs. No code structure. No PR history. No git blame. No architecture diagrams.
+
+If it's derivable from the current state of the repo, don't persist it. This is the opposite of how most "AI memory" systems work — they store everything and drown in noise. Claude Code stores almost nothing and stays sharp.
+
+### Memory as Side-Effect of Compaction
+
+This is the architectural insight that ties everything together.
+
+When context hits ~93% usage (187K of 200K tokens), auto-compact triggers. Claude summarizes old messages above a boundary marker, freeing ~40-60% of context. But the same compaction pass also extracts durable insights into memory files.
+
+The pressure that forces forgetting also forces crystallization. More sessions mean more compaction, which means more memory extraction, which means better future context. It's a virtuous cycle driven by scarcity.
+
+```
+Context pressure → Summarization → Memory extraction
+                → Old tokens freed    → Knowledge persists
+```
+
+Three compaction strategies work together:
+- **Auto-Compact**: Triggers at ~93.5% context. Summarizes old messages. Frees 40-60% of context.
+- **MicroCompact**: Per-tool-result compression. Only Bash, FileRead, Grep outputs. Runs every turn.
+- **Post-Compact Recovery**: Restores up to 5 recently-read files (25K tokens) and runs background memory extraction.
+
+Circuit breaker: if compaction fails 3 times consecutively, it stops trying. Fail-safe, not fail-hard.
+
+## Beyond Flags and Memory: Other Architectural Finds
+
+### The Scale
+
+- 2,000+ source files, 512K lines TypeScript
+- 43 built-in tools, 101 command directories, 85 React hooks, 144 UI components
+- 24 MCP integration files across 6 transports
+- Terminal UI: custom React reconciler backed by Yoga flexbox, ANSI diff renderer
+- Boot sequence: 11 steps from `claude` to REPL
+
+The entire terminal is React.
+
+### 3-Layer Permission System
+
+1. **Tool Registry Filter** — blocked tools removed from context entirely. Claude never sees them.
+2. **Per-Call Permission Check** — allow/deny rules against tool name + arguments.
+3. **Interactive User Prompt** — ask once / always / deny.
+
+Bash commands go through a full shell AST parser that detects `rm -rf`, fork bombs, `curl|bash`, sudo escalation, and TTY injection before execution. Structural analysis, not pattern matching.
+
+### Dual Authentication
+
+Two parallel auth paths: OAuth tokens (prefixed `sk-ant-oat01-`) routing through a claude.ai proxy for subscription users, and direct API keys (prefixed `sk-ant-api03-`) hitting api.anthropic.com for pay-per-token users. Binary attestation via Zig HTTP stack — the server validates a computed hash to confirm requests come from the official binary.
+
+### Anti-Distillation
+
+Fake tool definitions injected into system prompts to poison training data scraped from API traffic. Reasoning chains summarized cryptographically server-side. An "undercover mode" strips internal references from all outputs — always on, no opt-out.
+
+### 8 Unreleased Features
+
+- **BUDDY** — virtual pet with rarity tiers (Common to Legendary), 18 species
+- **KAIROS** — persistent always-on mode with overnight "dream" memory consolidation
+- **ULTRAPLAN** — 30-minute cloud-hosted planning sessions
+- **Coordinator Mode** — multi-agent orchestration with parallel workers
+- **Bridge** — remote control from phone/browser (now shipped)
+- **Daemon Mode** — background sessions via `claude --bg`
+- **UDS Inbox** — inter-session IPC via Unix domain sockets
+- **Auto-Dream** — automatic memory organization after 5+ sessions
+
+### Telemetry Architecture
+
+410+ distinct event names across dual pipelines (Datadog + first-party BigQuery). Dual-column PII protection where `_PROTO_*` fields carry unredacted data for privileged queries while general sinks only see redacted values. Disk-backed retry queue with quadratic backoff. Privacy cascade: three levels from "everything on" to "only API calls to the model provider."
+
+## The Compounding Error Problem
+
+Here's where this analysis goes from "interesting reverse engineering" to "this matters for the industry."
+
+The math of multi-agent systems is unforgiving. If each step has accuracy `p`, then `n` steps gives you `p^n`:
+
+| Accuracy/Step | 5 Steps | 10 Steps | 20 Steps | 100 Steps |
+|---------------|---------|----------|----------|-----------|
+| 95% | 77.4% | 59.9% | 35.8% | 0.6% |
+| 90% | 59.0% | 34.9% | 12.2% | 0.003% |
+| 85% | 44.4% | 19.7% | 3.9% | ~0% |
+
+The industry response has been "use a bigger, more expensive model." Going from 85% to 95% per step costs 30x more in inference. But 95%^20 is still a coin flip. You can't outspend exponential decay.
+
+Claude Code's answer to this is scattered across the codebase but consistent: every reliability mechanism is a **constraint**, not a capability upgrade.
+
+- Permission gates can't be hallucinated past
+- Dual-gating requires two independent systems to agree
+- Memory verification demands current-state checks before acting
+- AST-level bash parsing is structural, not heuristic
+- Auto-compact circuit breakers are fail-safe, not fail-hard
+
+The pattern: **don't make agents think harder — make it structurally impossible for them to drift.**
+
+## The Architecture That Wins
+
+The industry is converging on the same solution from different directions:
+
+**Expensive models for planning, cheap models for execution.** Claude Code uses Opus for design decisions and allows Haiku-class models for routine tool execution. The dual-gating pattern is exactly this — expensive compile-time decisions, cheap runtime checks.
+
+**Structured graphs for reliability.** Whether it's Claude Code's permission gates, [OpenServ's SERV Reasoning](https://openserv.ai) with explicit decision nodes, or workflow engines like Temporal — the pattern is the same. Constrained execution paths where the agent cannot freestyle, cannot drift, and cannot invent states that don't exist.
+
+**Audit trails for trust.** Claude Code logs 410+ event types. Everything is traceable. In our own [Life Agent OS](https://github.com/broomva), we take this further with event-sourced persistence (Lago) where every state change is an immutable event, and cryptographic agent identity (Anima) for on-chain verifiability.
+
+### Our Stack: Same Answer, Different First Principles
+
+We've been building toward the same architectural answer in the Life Agent OS — an open-source Rust-based agent operating system:
+
+| Problem | Claude Code's Answer | Life Agent OS Answer |
+|---------|---------------------|---------------------|
+| Feature rollout | 3-layer flag funnel | `.control/policy.yaml` + EGRI evaluator |
+| Execution reliability | Permission gates + AST parsing | Autonomic homeostatic regulation |
+| Memory | memdir + skeptical retrieval | Lago event-sourced + `lago-memory` |
+| Multi-agent coordination | Coordinator Mode | Symphony orchestrator |
+| Planning vs execution split | Build-time vs runtime | Opus plans, Haiku executes |
+| Shared state | Session storage | Lago event journal |
+| Economic layer | Token budget tracking | Haima x402 agent payments |
+| Audit trail | 410+ telemetry events | Event-sourced replay + Anima identity |
+| Self-improvement | autoDream memory rewriting | Autoany EGRI loops |
+
+The difference: they went flag-first (constrain what code ships), we went event-source-first (constrain what state changes are possible). Both converge on the same insight.
+
+## The Real Takeaway
+
+The best feature flag systems aren't on/off — they're funnels. The best memory systems store almost nothing. The best agent architectures make failure structurally impossible rather than statistically unlikely.
+
+512K lines of TypeScript is reproducible. The patterns — compaction-driven memory, dual-gating, three-layer bandwidth design, skeptical retrieval, constraint-first reliability — those are the actual intellectual property. And now they're public knowledge.
+
+The moat isn't the model. It's the architecture around it.
+
+---
+
+*Sources: VentureBeat, The Register, The Hacker News, GitHub DMCA transparency page, Decrypt, and community analysis. Full 35-tweet thread with diagrams at [@broomva_tech](https://x.com/broomva_tech/status/2039377589807038909).*
