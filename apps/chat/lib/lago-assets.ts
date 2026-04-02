@@ -8,6 +8,7 @@
  */
 
 const LAGO_URL = process.env.LAGO_URL;
+const LAGO_ASSET_REWRITE = process.env.LAGO_ASSET_REWRITE === "true";
 
 /** Asset path prefixes that should be rewritten to Lago. */
 const REWRITABLE_PREFIXES = [
@@ -40,7 +41,7 @@ function isRewritable(path: string): boolean {
  * - The path is a brand/local-only asset
  */
 export function rewriteAssetUrl(path: string): string {
-  if (!LAGO_URL || !isRewritable(path)) {
+  if (!LAGO_ASSET_REWRITE || !LAGO_URL || !isRewritable(path)) {
     return path;
   }
   // Route through the Next.js proxy for edge caching
@@ -54,7 +55,7 @@ export function rewriteAssetUrl(path: string): string {
  * rewritable asset paths and replaces them with Lago proxy URLs.
  */
 export function rewriteAssetUrls(html: string): string {
-  if (!LAGO_URL) return html;
+  if (!LAGO_ASSET_REWRITE || !LAGO_URL) return html;
 
   // Match src="..." and href="..." with local asset paths
   return html.replace(
@@ -73,7 +74,7 @@ export function rewriteAssetUrls(html: string): string {
  * and HTML img tags within MDX.
  */
 export function rewriteMarkdownAssets(markdown: string): string {
-  if (!LAGO_URL) return markdown;
+  if (!LAGO_ASSET_REWRITE || !LAGO_URL) return markdown;
 
   // Markdown images: ![alt](/images/...)
   let result = markdown.replace(
