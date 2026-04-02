@@ -105,6 +105,23 @@ async function serveFromPublic(
 }
 
 /**
+ * Redirect to the static asset path served by Vercel CDN.
+ *
+ * On Vercel, public/ files are served directly at their original path
+ * (e.g., /images/writing/foo/hero.png) by the CDN. The serverless function
+ * bundle excludes public/images/** and public/audio/** via
+ * outputFileTracingExcludes, so fs.readFile won't find them — but the
+ * CDN still serves them. This redirect is the final fallback.
+ */
+function redirectToStatic(
+  request: NextRequest,
+  assetPath: string
+): NextResponse {
+  const url = new URL(assetPath, request.url);
+  return NextResponse.redirect(url, 302);
+}
+
+/**
  * GET /api/assets/[...path]
  *
  * Proxies asset requests to lagod's public blob endpoint.
@@ -123,26 +140,20 @@ export async function GET(
 
   const lagoUrl = process.env.LAGO_URL;
   if (!lagoUrl) {
-    // Lago not configured — try public/ fallback
+    // Lago not configured — try public/ fallback, then static redirect
     const publicRes = await serveFromPublic(request, assetPath);
     if (publicRes) return publicRes;
-    return NextResponse.json(
-      { error: "Asset service not configured" },
-      { status: 503 }
-    );
+    return redirectToStatic(request, assetPath);
   }
 
   try {
     // Look up the asset hash from the site-assets manifest
     const hash = await resolveAssetHash(lagoUrl, assetPath);
     if (!hash) {
-      // Asset not in Lago — try public/ fallback
+      // Asset not in Lago — try public/ fallback, then static redirect
       const publicRes = await serveFromPublic(request, assetPath);
       if (publicRes) return publicRes;
-      return NextResponse.json(
-        { error: `Asset not found: ${assetPath}` },
-        { status: 404 }
-      );
+      return redirectToStatic(request, assetPath);
     }
 
     // Redirect directly to lagod's public blob endpoint.
@@ -153,10 +164,7 @@ export async function GET(
     return NextResponse.redirect(blobUrl, 302);
   } catch (error) {
     console.error("[api/assets] proxy error:", error);
-    return NextResponse.json(
-      { error: "Internal error fetching asset" },
-      { status: 500 }
-    );
+    return redirectToStatic(request, assetPath);
   }
 }
 
