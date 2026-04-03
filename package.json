@@ -22,6 +22,7 @@
     "turbo": "^2.5.8"
   },
   "dependencies": {
+    "jose": "^6.2.2",
     "stripe": "^20.4.1"
   }
 }

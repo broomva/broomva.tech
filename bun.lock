@@ -5,6 +5,7 @@
     "": {
       "name": "@broomva/tech",
       "dependencies": {
+        "jose": "^6.2.2",
         "stripe": "^20.4.1",
       },
       "devDependencies": {
