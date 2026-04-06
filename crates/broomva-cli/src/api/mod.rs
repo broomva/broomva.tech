@@ -188,7 +188,10 @@ impl BroomvaClient {
     // ── Console ──
 
     pub async fn get_console_health(&self) -> BroomvaResult<ConsoleHealth> {
-        let resp = self.request(Method::GET, "/api/console/health").send().await?;
+        let resp = self
+            .request(Method::GET, "/api/console/health")
+            .send()
+            .await?;
         let resp = self.check_response(resp).await?;
         Ok(resp.json().await?)
     }
@@ -209,10 +212,7 @@ impl BroomvaClient {
         // Use /api/relay/nodes as the validation endpoint — it accepts both
         // session cookies and Bearer JWTs (withRelayAuth), unlike the Neon
         // Auth session endpoint which only accepts cookies.
-        let resp = self
-            .request(Method::GET, "/api/relay/nodes")
-            .send()
-            .await?;
+        let resp = self.request(Method::GET, "/api/relay/nodes").send().await?;
         Ok(resp.status().is_success())
     }
 }

@@ -6,6 +6,7 @@ pub mod daemon_cmd;
 pub mod output;
 pub mod prompts;
 pub mod relay;
+pub mod setup;
 pub mod skills;
 
 use clap::{Parser, Subcommand};
@@ -39,11 +40,13 @@ pub struct Cli {
     pub format: OutputFormat,
 
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Interactive onboarding setup wizard.
+    Setup,
     /// Authentication commands.
     Auth {
         #[command(subcommand)]
@@ -313,13 +316,28 @@ pub enum ConsoleCommand {
 // ── Dispatch ──
 
 pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
-    let format = resolve_format(&cli);
+    // No subcommand → show banner + quick help.
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            setup::print_no_args_banner();
+            return Ok(());
+        }
+    };
+
+    // Setup wizard runs without API client.
+    if matches!(command, Command::Setup) {
+        return setup::run().await;
+    }
+
+    let format = resolve_format_from_parts(cli.format, cli.no_color);
     let api_base = config::resolve_api_base(cli.api_base.as_deref())?;
     let token = config::resolve_token(cli.token.as_deref())?;
 
     let client = BroomvaClient::new(api_base, token);
 
-    match cli.command {
+    match command {
+        Command::Setup => unreachable!(),
         Command::Auth { action } => match action {
             AuthCommand::Login { manual } => auth::handle_login(&client, manual).await,
             AuthCommand::Logout => auth::handle_logout().await,
@@ -467,10 +485,10 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
     }
 }
 
-fn resolve_format(cli: &Cli) -> OutputFormat {
+fn resolve_format_from_parts(format: OutputFormat, _no_color: bool) -> OutputFormat {
     // CLI flag takes precedence.
-    if cli.format != OutputFormat::Table {
-        return cli.format;
+    if format != OutputFormat::Table {
+        return format;
     }
     // Check config default.
     if let Ok(cfg) = config::read_config()

@@ -5,10 +5,34 @@ REPO="broomva/broomva.tech"
 INSTALL_DIR="${BROOMVA_INSTALL_DIR:-/usr/local/bin}"
 SKIP_SKILLS="${BROOMVA_SKIP_SKILLS:-}"
 
-echo ""
-echo "  broomva — CLI, skills, and stack installer"
-echo "  ==========================================="
-echo ""
+# ── Colored banner ──
+
+print_banner() {
+  if [ -t 1 ] && [ -z "$NO_COLOR" ]; then
+    echo ""
+    echo -e "\033[93m    ██████╗ ██████╗  ██████╗  ██████╗ ███╗   ███╗██╗   ██╗ █████╗ \033[0m"
+    echo -e "\033[33m    ██╔══██╗██╔══██╗██╔═══██╗██╔═══██╗████╗ ████║██║   ██║██╔══██╗\033[0m"
+    echo -e "\033[38;5;208m    ██████╔╝██████╔╝██║   ██║██║   ██║██╔████╔██║██║   ██║███████║\033[0m"
+    echo -e "\033[93m    ██╔══██╗██╔══██╗██║   ██║██║   ██║██║╚██╔╝██║╚██╗ ██╔╝██╔══██║\033[0m"
+    echo -e "\033[33m    ██████╔╝██║  ██║╚██████╔╝╚██████╔╝██║ ╚═╝ ██║ ╚████╔╝ ██║  ██║\033[0m"
+    echo -e "\033[38;5;208m    ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝  ╚═══╝  ╚═╝  ╚═╝\033[0m"
+    echo ""
+    echo -e "    \033[2mBuilding autonomous software systems\033[0m"
+  else
+    echo ""
+    echo "    ██████╗ ██████╗  ██████╗  ██████╗ ███╗   ███╗██╗   ██╗ █████╗ "
+    echo "    ██╔══██╗██╔══██╗██╔═══██╗██╔═══██╗████╗ ████║██║   ██║██╔══██╗"
+    echo "    ██████╔╝██████╔╝██║   ██║██║   ██║██╔████╔██║██║   ██║███████║"
+    echo "    ██╔══██╗██╔══██╗██║   ██║██║   ██║██║╚██╔╝██║╚██╗ ██╔╝██╔══██║"
+    echo "    ██████╔╝██║  ██║╚██████╔╝╚██████╔╝██║ ╚═╝ ██║ ╚████╔╝ ██║  ██║"
+    echo "    ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝  ╚═══╝  ╚═╝  ╚═╝"
+    echo ""
+    echo "    Building autonomous software systems"
+  fi
+  echo ""
+}
+
+print_banner
 
 # ── Step 1: Install the broomva CLI binary ──
 
@@ -150,6 +174,37 @@ install_bstack() {
   fi
 }
 
+# ── Step 4: Optionally install Life Agent OS ──
+
+install_life_framework() {
+  echo ""
+  echo "  Would you like to install Life Agent OS?"
+  echo "  (AI agent runtime with arcan chat, life deploy, etc.)"
+  echo ""
+  printf "  Install Life Agent OS? [y/N] "
+  read -r answer
+  if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
+    echo ""
+    echo "  [4/4] Installing Life Agent OS..."
+    if command -v cargo >/dev/null 2>&1; then
+      cargo install life-os arcan 2>/dev/null || {
+        echo "  [info] Building from source..."
+        TMPDIR=$(mktemp -d)
+        git clone --depth 1 https://github.com/broomva/life.git "$TMPDIR/life"
+        cargo install --path "$TMPDIR/life/crates/life"
+        cargo install --path "$TMPDIR/life/crates/arcan/arcan"
+        rm -rf "$TMPDIR"
+      }
+      echo "  [ok]  Life Agent OS installed (life + arcan commands)"
+    else
+      echo "  [skip] cargo not found, install Rust first: https://rustup.rs"
+    fi
+  else
+    echo "  [skip] Life Agent OS not installed"
+    echo "         Install later: cargo install life-os arcan"
+  fi
+}
+
 # ── Run ──
 
 install_binary
@@ -157,15 +212,22 @@ echo ""
 install_broomva_skill
 echo ""
 install_bstack
+echo ""
+install_life_framework
 
 echo ""
 echo "  ==========================================="
 echo "  Installation complete!"
 echo ""
 echo "  Get started:"
-echo "    broomva --help          # CLI usage"
+echo "    broomva setup           # Interactive setup wizard"
 echo "    broomva auth login      # Authenticate"
 echo "    broomva prompts list    # Browse prompts"
 echo "    broomva skills list     # Browse skills"
 echo "    broomva daemon start    # Start monitoring"
+echo ""
+echo "  Life Agent OS:"
+echo "    life setup              # Configure AI providers"
+echo "    arcan chat              # Interactive agent TUI"
+echo "    arcan shell             # Agent REPL"
 echo ""

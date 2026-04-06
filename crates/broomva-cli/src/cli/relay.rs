@@ -127,13 +127,14 @@ pub async fn handle_start(_client: &BroomvaClient, bind: &str) -> BroomvaResult<
             .env("BROOMVA_TOKEN", token.as_deref().unwrap_or(""))
             .status()
             .map_err(|e| {
-                crate::error::BroomvaError::Config(format!(
-                    "failed to exec {binary}: {e}"
-                ))
+                crate::error::BroomvaError::Config(format!("failed to exec {binary}: {e}"))
             })?;
 
         if !status.success() {
-            eprintln!("Relay daemon exited with code {}", status.code().unwrap_or(-1));
+            eprintln!(
+                "Relay daemon exited with code {}",
+                status.code().unwrap_or(-1)
+            );
         }
     } else {
         eprintln!("life-relayd binary not found.");
@@ -167,17 +168,24 @@ pub async fn handle_start(_client: &BroomvaClient, bind: &str) -> BroomvaResult<
                             ))
                         })?;
                     if !status.success() {
-                        eprintln!("Relay daemon exited with code {}", status.code().unwrap_or(-1));
+                        eprintln!(
+                            "Relay daemon exited with code {}",
+                            status.code().unwrap_or(-1)
+                        );
                     }
                 } else {
                     eprintln!("Install succeeded but binary not found on PATH.");
-                    eprintln!("Try: cargo install --git https://github.com/broomva/life.git life-relayd");
+                    eprintln!(
+                        "Try: cargo install --git https://github.com/broomva/life.git life-relayd"
+                    );
                 }
             }
             _ => {
                 eprintln!("Auto-install failed. Falling back to lightweight mode.");
                 eprintln!("  To install manually:");
-                eprintln!("    cargo install --git https://github.com/broomva/life.git life-relayd");
+                eprintln!(
+                    "    cargo install --git https://github.com/broomva/life.git life-relayd"
+                );
                 eprintln!();
                 run_lightweight_relay(&api_base, &token.unwrap(), bind).await?;
             }
@@ -189,11 +197,7 @@ pub async fn handle_start(_client: &BroomvaClient, bind: &str) -> BroomvaResult<
 
 /// Lightweight relay: register node + poll loop (no PTY spawning).
 /// Useful for testing the connection or when the Rust daemon isn't installed.
-async fn run_lightweight_relay(
-    api_base: &str,
-    token: &str,
-    _bind: &str,
-) -> BroomvaResult<()> {
+async fn run_lightweight_relay(api_base: &str, token: &str, _bind: &str) -> BroomvaResult<()> {
     let http = reqwest::Client::new();
     let hostname = hostname::get()
         .map(|h| h.to_string_lossy().into_owned())
@@ -317,11 +321,14 @@ pub async fn handle_status(client: &BroomvaClient, _format: OutputFormat) -> Bro
     if let Ok(Some(t)) = config::read_config().map(|c| c.token) {
         req = req.header("Authorization", format!("Bearer {t}"));
     }
-    let res = req.send().await.map_err(|e| crate::error::BroomvaError::Api {
-        status: 0,
-        message: format!("request failed: {e}"),
-        body: None,
-    })?;
+    let res = req
+        .send()
+        .await
+        .map_err(|e| crate::error::BroomvaError::Api {
+            status: 0,
+            message: format!("request failed: {e}"),
+            body: None,
+        })?;
 
     let body: serde_json::Value = res.json().await.unwrap_or_default();
 
@@ -330,11 +337,19 @@ pub async fn handle_status(client: &BroomvaClient, _format: OutputFormat) -> Bro
     eprintln!("  ─────────────────────────────");
     eprintln!(
         "  Authenticated:  {}",
-        if config::resolve_token(None)?.is_some() { "yes" } else { "no" }
+        if config::resolve_token(None)?.is_some() {
+            "yes"
+        } else {
+            "no"
+        }
     );
     eprintln!(
         "  Local daemon:   {}",
-        if daemon_running { "running (port 3004)" } else { "not running" }
+        if daemon_running {
+            "running (port 3004)"
+        } else {
+            "not running"
+        }
     );
     eprintln!(
         "  Relayd binary:  {}",
@@ -358,8 +373,14 @@ pub async fn handle_status(client: &BroomvaClient, _format: OutputFormat) -> Bro
     }
 
     if let Some(metrics) = body.get("metrics") {
-        let online = metrics.get("nodesOnline").and_then(|n| n.as_u64()).unwrap_or(0);
-        let active = metrics.get("sessionsActive").and_then(|n| n.as_u64()).unwrap_or(0);
+        let online = metrics
+            .get("nodesOnline")
+            .and_then(|n| n.as_u64())
+            .unwrap_or(0);
+        let active = metrics
+            .get("sessionsActive")
+            .and_then(|n| n.as_u64())
+            .unwrap_or(0);
         eprintln!();
         eprintln!("  {online} node(s) online, {active} active session(s)");
     }
@@ -380,11 +401,14 @@ pub async fn handle_sessions(client: &BroomvaClient, _format: OutputFormat) -> B
     if let Ok(Some(t)) = config::read_config().map(|c| c.token) {
         req = req.header("Authorization", format!("Bearer {t}"));
     }
-    let res = req.send().await.map_err(|e| crate::error::BroomvaError::Api {
-        status: 0,
-        message: format!("request failed: {e}"),
-        body: None,
-    })?;
+    let res = req
+        .send()
+        .await
+        .map_err(|e| crate::error::BroomvaError::Api {
+            status: 0,
+            message: format!("request failed: {e}"),
+            body: None,
+        })?;
 
     let body: serde_json::Value = res.json().await.unwrap_or_default();
 
@@ -395,10 +419,22 @@ pub async fn handle_sessions(client: &BroomvaClient, _format: OutputFormat) -> B
         }
         eprintln!("Relay Sessions:");
         for session in sessions {
-            let name = session.get("name").and_then(|v| v.as_str()).unwrap_or("untitled");
-            let stype = session.get("sessionType").and_then(|v| v.as_str()).unwrap_or("?");
-            let status = session.get("status").and_then(|v| v.as_str()).unwrap_or("?");
-            let workdir = session.get("workdir").and_then(|v| v.as_str()).unwrap_or("");
+            let name = session
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("untitled");
+            let stype = session
+                .get("sessionType")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let status = session
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("?");
+            let workdir = session
+                .get("workdir")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             eprintln!("  [{status:9}] [{stype:11}] {name}  {workdir}");
         }
     }
