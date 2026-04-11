@@ -1,0 +1,364 @@
+---
+title: "The Agent Cockpit Wars: Evaluating the New Wave of AI Coding Orchestrators"
+summary: "Nine tools, three market tiers, and the defining architectural shift of 2026: the editor is no longer where AI lives — it's where agents are commanded. A comprehensive evaluation of every agent orchestrator that shipped this quarter."
+date: 2026-04-10
+published: true
+tags:
+  - AI
+  - agents
+  - developer-tools
+  - orchestration
+  - evaluation
+  - Cursor
+  - Codex
+  - Claude Code
+image: /images/writing/agent-cockpit-wars/conductor-og-opt.png
+audio: /audio/writing/agent-cockpit-wars.mp3
+---
+
+<video src="/images/writing/agent-cockpit-wars/video.mp4" autoplay muted loop playsInline style="width:100%;border-radius:8px;margin-bottom:1.5rem"></video>
+
+In the span of three months, nine separate teams shipped the same insight: the future of coding isn't an AI inside your editor — it's an editor built around your agents. The question is no longer "which AI assistant should I add to VS Code?" It's "which command center should I use to orchestrate autonomous coding agents?"
+
+This is a comprehensive, reference-quality evaluation of every tool in this new category. I tested all nine, read every privacy policy (or noted their absence), inspected analytics payloads, and mapped the architectural decisions that will determine which of these survive.
+
+## The Paradigm Shift
+
+The old model was straightforward: take an existing editor (VS Code, Neovim, JetBrains), add an AI plugin, get smarter autocomplete and inline chat. GitHub Copilot pioneered this in 2022. Cursor refined it through 2024-2025. The AI was a guest in your editor's house.
+
+Then Claude Code and OpenAI Codex shipped as CLI agents that operate autonomously — reading files, running commands, creating branches, opening PRs. They don't need an editor. They need a *control plane*.
+
+The new model inverts the relationship. The editor doesn't host the AI — the editor is built *around* the AI agents. It provides:
+
+- **Isolation**: each agent gets its own workspace (worktree, VM, or container)
+- **Orchestration**: run multiple agents in parallel on different tasks
+- **Visibility**: see what each agent is doing in real time
+- **Control**: approve, reject, or redirect agent actions
+
+This is the "agent cockpit" — a command center purpose-built for supervising autonomous coding agents. And nine teams shipped their version in Q1 2026.
+
+## The Three-Tier Market Structure
+
+Not all nine tools are competing for the same position. The market has already stratified into three tiers:
+
+### Tier 1: Platforms
+
+**Cursor 3** and **Codex App for Mac** own their models, run cloud execution environments, and target enterprise. They're not wrapping other people's agents — they *are* the agents. Pricing reflects this: Cursor charges up to $200/month; Codex is bundled with ChatGPT Plus at $20/month.
+
+### Tier 2: Orchestrators
+
+**Conductor**, **Polyscope**, **Superconductor**, and **Omnara** are agent-agnostic. They wrap Claude Code, Codex CLI, or any agent that runs in a terminal. Their value proposition is the orchestration layer: parallel agents, isolation, visual dashboards. They live or die on UX and trust.
+
+### Tier 3: Experiments
+
+**SuperHQ**, **VibeCanvas**, and **Graft** are earlier-stage projects pushing novel ideas — sandboxed VMs, infinite canvases, and multi-provider editors. They're smaller teams (often solo), lower star counts, but some have the most interesting architectural decisions in the entire category.
+
+## Deep Evaluations
+
+### Tier 1: The Platforms
+
+---
+
+#### Cursor 3
+
+**Website**: [cursor.com](https://cursor.com)
+
+![Cursor 3 — the agent-centric workspace](/images/writing/agent-cockpit-wars/cursor-og-opt.png)
+
+Released April 2, 2026. Cursor 3 is a ground-up rebuild — not an iteration on the VS Code fork that defined Cursor 1 and 2. The thesis is that an agent-centric workspace needs different primitives than a human-centric editor.
+
+**Key features:**
+- **Composer 2**: Cursor's own model, trained specifically for multi-file code generation and editing
+- **Cloud + local agents**: seamless handoff between cloud execution (for heavy tasks) and local execution (for latency-sensitive work)
+- **Design Mode**: annotate UI screenshots to direct the agent visually — point at a button and say "make this rounded"
+- **Background agents**: run in VMs, continue working after you close your laptop
+- **Plugin marketplace**: third-party extensions for the agent workflow
+- **Self-hosted option**: for enterprises that can't send code to the cloud
+
+**Business**: $2B ARR. Half of Fortune 500 as customers. SOC2, SSO, SCIM compliance. $0-200/month pricing tiers.
+
+**Assessment**: Cursor 3 is the market leader by revenue and adoption. The rebuild was the right call — the VS Code fork was accumulating architectural debt. Design Mode is genuinely novel. The risk is model lock-in: you use Cursor's models or you don't use Cursor. For teams already invested in Claude or GPT-4, this is a tax.
+
+---
+
+#### Codex App for Mac
+
+**Website**: [openai.com/codex](https://openai.com/codex)
+
+Launched February 2, 2026. OpenAI's desktop command center for running parallel Codex agents. This is the full-stack answer to "what if OpenAI built the IDE?"
+
+**Key features:**
+- **Cloud execution**: every agent runs in a full Linux container, not just a worktree
+- **Git worktree isolation**: each task gets its own worktree within the container
+- **Skills system**: first-party integrations with Figma, Linear, Vercel — the agent can create a Vercel deployment or file a Linear ticket as part of its workflow
+- **Automations**: scheduled agents that run on cron (nightly test suites, weekly dependency updates)
+- **Parallel agents**: visual dashboard showing all running agents and their progress
+
+**Business**: Included with ChatGPT Plus ($20/month). Electron-based. OpenAI models only.
+
+**Assessment**: The Skills system is Codex's strongest differentiator — no other tool has first-party integrations with the development workflow tools (Figma, Linear, Vercel) that agents actually need to be useful beyond code generation. Automations (scheduled agents) are underrated — this is where agent orchestrators become infrastructure, not just tools. The limitation is model lock-in: OpenAI models only, no Claude Code support.
+
+---
+
+### Tier 2: The Orchestrators
+
+---
+
+#### Conductor
+
+**Website**: [conductor.build](https://conductor.build)
+
+![Conductor — run a team of coding agents on your Mac](/images/writing/agent-cockpit-wars/conductor-og-opt.png)
+
+By Melty Labs (YC S24, $22M Series A). Founded by Charlie Holtz (ex-Replicate) and Jackson de Campos (ex-Netflix ML). The best-funded pure orchestrator.
+
+**Key features:**
+- **Multi-agent parallel execution**: run Claude Code and Codex agents side-by-side
+- **Git worktree isolation**: each agent gets its own worktree — clean git state, no conflicts
+- **Checkpoints**: snapshot agent state at any point, roll back if the agent goes off track
+- **Spotlight testing**: one-click test execution with results fed back to the agent
+- **Multi-model mode**: use different models for different tasks (Claude for architecture, GPT-4 for tests)
+- **Agent support**: Claude Code + Codex (and counting)
+
+**Business**: Free (bring your own API keys). Closed-source. macOS only. Used at Linear, Vercel, Notion, Spotify.
+
+**Red flag**: Conductor requests **full read/write GitHub permissions** during setup. This is unusual for an orchestrator — it needs to create worktrees and branches, but full R/W access to all repositories is broader than necessary. The [privacy policy](https://conductor.build/privacy) exists but permits sharing data with ad networks and business partners. For a tool that runs inside your codebase, this warrants scrutiny.
+
+**Assessment**: The strongest orchestrator by feature set and team pedigree. Checkpoints and Spotlight testing are genuinely useful workflow additions. The GitHub permissions concern is real but may reflect expediency over malice — still, the contrast with SuperHQ's credential isolation approach is stark.
+
+---
+
+#### Polyscope
+
+**Website**: [getpolyscope.com](https://getpolyscope.com)
+
+![Polyscope — AI agent orchestration with copy-on-write clones](/images/writing/agent-cockpit-wars/polyscope-card-opt.png)
+
+By Beyond Code, the studio behind Laravel Herd and Expose. Marcel Pociot built two of the Laravel ecosystem's most-used tools, and Polyscope brings that same pragmatic builder sensibility to agent orchestration.
+
+**Key features:**
+- **Copy-on-write clones**: lighter than git worktrees — the OS handles deduplication at the filesystem level. Faster to create, smaller disk footprint.
+- **Built-in preview browser**: see a live preview of the app the agent is building, right inside the orchestrator. Enables visual prompting — "that header is too large" while pointing at the rendered UI.
+- **Remote server mode**: run Polyscope on a VPS, control it from anywhere. Your agents run on a beefy remote machine while you supervise from a laptop or phone.
+- **Mobile access**: full orchestrator control from your phone, powered by remote mode.
+- **PHP SDK**: automate Polyscope workflows programmatically.
+
+**Business**: Freemium. Closed-source. Fathom analytics (privacy-respecting, no personal data collection).
+
+**Assessment**: Polyscope is the most opinionated orchestrator, and that's its strength. Copy-on-write clones are genuinely better than worktrees for the common case (faster, smaller). The built-in preview browser solves a real problem — agents that generate UI code need visual feedback, not just test results. Remote mode is underrated: most developers have a powerful desktop at home and a laptop on the go. Polyscope lets you use both. The Laravel community endorsement gives it a distribution advantage that pure-play tools lack.
+
+---
+
+#### Superconductor
+
+**Website**: [super.engineering](https://super.engineering)
+
+100% Rust, Metal GPU rendering, under 50ms startup. Superconductor is the performance play in the orchestrator tier.
+
+**Key features:**
+- **Agent-agnostic**: wraps any CLI-based agent (Claude Code, Codex, Aider, custom agents)
+- **Native macOS app**: not Electron, not a web wrapper — native Rust with Metal GPU rendering
+- **Git worktree isolation**: standard worktree-per-agent model
+- **Sub-50ms startup**: the app is ready before your terminal prompt
+
+**Business**: Alpha stage. Closed-source. PostHog analytics. Unknown team. X: [@superdoteng](https://x.com/superdoteng).
+
+**Assessment**: The "performance-first" positioning is distinctive but may not be enough. In a category where the value is orchestration UX, raw speed is table stakes, not a differentiator. The unknown team is a risk — agent orchestrators are trust-sensitive tools that run inside your codebase. PostHog analytics is standard but worth noting. Watch this one for the Rust+Metal architecture; ignore it until the team ships more features.
+
+---
+
+#### Omnara
+
+**Website**: [omnara.com](https://omnara.com)
+
+YC S25. Founded by Ishaan (ex-Microsoft AI, built Kaito) and Kartik (ex-ThirdAI, Georgia Tech). Omnara's story is the most instructive in the entire category.
+
+**Key features (current):**
+- **Voice-first**: coding by voice, from your phone or Apple Watch
+- **Built on Claude Agent SDK**: not a CLI wrapper — direct SDK integration
+- **Mobile (iOS/Android/watchOS)**: full agent control from any device
+- **Cloud persistence**: sessions survive across devices
+- **Push notifications**: get notified when your agent finishes
+
+**The pivot story**: Omnara started as an open-source CLI wrapper for Claude Code. It worked. 2,600 GitHub stars, Apache 2.0 license. Then they archived it and pivoted to a completely different architecture.
+
+Why? Because wrapping CLIs is fundamentally fragile. Every time Claude Code updates its output format, flag names, or authentication flow, the wrapper breaks. You're building on someone else's `stdout`. The Omnara team learned this the hard way and rebuilt on the Claude Agent SDK — a stable, versioned API that doesn't break when the CLI ships a new release.
+
+**Assessment**: The pivot from CLI wrapper to Agent SDK is the single most important architectural lesson in this category. Every orchestrator that wraps `claude` or `codex` as a subprocess will face the same fragility. Omnara's bet is that voice + mobile + Agent SDK is a durable combination. The mobile-first approach is genuinely differentiated — no other orchestrator works from an Apple Watch.
+
+---
+
+### Tier 3: The Experiments
+
+---
+
+#### SuperHQ
+
+**Website**: [github.com/superhq-ai/superhq](https://github.com/superhq-ai/superhq)
+
+![SuperHQ — sandboxed VM orchestration for AI agents](/images/writing/agent-cockpit-wars/superhq-screenshot-opt.png)
+
+Open-source (Universal Permissive License). Rust (98.6%). 7 stars. 1 contributor. Self-described "vibe-coded" alpha. And yet, SuperHQ has the most interesting security architecture of any tool in this evaluation.
+
+**Key features:**
+- **Sandboxed VMs**: agents don't run in worktrees — they run in isolated virtual machines. If an agent goes rogue, it can't touch your host filesystem, network, or credentials.
+- **Auth gateway**: agents never see your real API keys. SuperHQ runs a reverse proxy that intercepts API calls and swaps in the real credentials. The agent operates with a token that only works through the gateway.
+- **GPUI framework**: uses the same UI framework as Zed editor
+- **macOS 14+ Apple Silicon**: native performance, no Electron
+
+**Business**: Open-source (UPL). Solo developer. Alpha.
+
+**Assessment**: SuperHQ solves the problem that no one else is even acknowledging: credential exposure. When you run Claude Code in a worktree, the agent has access to your `~/.ssh`, your `~/.gitconfig`, your environment variables, your API keys. Git worktree isolation protects your *code* but not your *credentials*. SuperHQ's auth gateway pattern is the architecturally correct solution. The VM isolation is also superior to worktrees for security — it's a proper sandbox, not just a branch.
+
+The risk is obvious: 1 contributor, 7 stars, alpha quality. This is a research project, not a product. But the ideas deserve to be stolen by every other tool in this list.
+
+---
+
+#### VibeCanvas
+
+**Website**: [vibecanvas.dev](https://vibecanvas.dev)
+
+![VibeCanvas — build with agents on an infinite canvas](/images/writing/agent-cockpit-wars/vibecanvas-preview-opt.png)
+
+Open-source (MIT). TypeScript. 14 stars. An infinite canvas for running AI agents — think Figma meets terminal.
+
+**Key features:**
+- **Infinite canvas**: arrange terminals, files, and agent outputs spatially
+- **CRDT-based (Automerge)**: real-time collaboration built into the data model
+- **Local SQLite storage**: no cloud dependency
+- **No analytics**: zero tracking
+- **CLI install**: `curl -fsSL https://vibecanvas.dev/install | bash`
+
+**Business**: Open-source (MIT). Unknown team. v0.3.0.
+
+**Assessment**: The infinite canvas metaphor is compelling for visual thinkers who want to spatially organize their agent workflows. CRDTs mean collaboration is theoretically possible, though it's unclear who's using this for multiplayer agent orchestration today. The MIT license and zero analytics make this the most trust-friendly option. The risk is the same as any 14-star project: sustainability.
+
+---
+
+#### Graft
+
+**Website**: [graftapp.io](https://graftapp.io)
+
+A macOS AI code editor with autonomous agents that view your entire codebase and execute tasks concurrently. Closed-source. Alpha.
+
+**Key features:**
+- **Multi-provider**: supports Claude, OpenAI, Gemini, Kimi, Qwen, Grok, Minimax, and Cursor models
+- **Autonomous agents**: agents see your full codebase, not just the current file
+- **Git worktree isolation**: each agent gets its own worktree
+- **macOS native**: built for Mac
+
+**Founder**: Gabor Cselle — Senior Product Director at Google, ex-OpenAI, 3x founder (most recently Pebble, acquired). Strong pedigree.
+
+**Red flags**: Google Analytics + Google Ads tracking in a code editor. No privacy policy published. For a tool that has access to your entire codebase and runs autonomous agents, the absence of a privacy policy is a significant concern.
+
+**Assessment**: The multi-provider support (8 model providers) is the broadest in the category. Gabor's background at Google and OpenAI provides credibility. But the Google Analytics + Ads tracking without a privacy policy is disqualifying for security-conscious teams. If your code is proprietary, you need to know where telemetry goes.
+
+## The Isolation Spectrum
+
+How each tool keeps agent activities separated from your main codebase is the most consequential architectural decision in this category. The approaches differ dramatically in security, performance, and operational overhead.
+
+| Isolation Model | Tools | Security | Performance | Disk Overhead | Credential Protection |
+|----------------|-------|----------|-------------|---------------|----------------------|
+| **Git worktrees** | Conductor, Graft, Superconductor, Codex App | Medium — code isolated, credentials exposed | Fast — shared `.git` objects | Low — hardlinks to objects | None |
+| **Copy-on-write clones** | Polyscope | Medium — code isolated, credentials exposed | Fastest — OS-level dedup | Lowest — only changed blocks | None |
+| **Sandboxed VMs** | SuperHQ | High — full OS-level isolation | Slower — VM overhead | Higher — full VM images | Yes — auth gateway |
+| **Cloud containers** | Cursor 3, Codex App | High — remote execution | Variable — network latency | Zero local | Yes — runs in cloud |
+| **None (single workspace)** | VibeCanvas | Low — shared workspace | Fastest | Lowest | None |
+
+The key insight: **git worktrees protect your code but not your credentials**. When an agent runs in a worktree, it still has access to `~/.ssh/id_rsa`, `~/.aws/credentials`, `~/.npmrc`, and every environment variable on your machine. The agent can read your private keys, your API tokens, your database connection strings.
+
+Only two approaches solve this: **sandboxed VMs** (SuperHQ) and **cloud containers** (Cursor 3, Codex App). The cloud approach has the additional benefit of running on more powerful hardware, but the tradeoff is network latency and the requirement to send your code to someone else's server.
+
+SuperHQ's auth gateway pattern is the most elegant local solution: the agent never sees real credentials. It gets a session token that only works through a reverse proxy. The proxy intercepts API calls and injects the real credentials. If the agent is compromised, the attacker gets a useless token.
+
+## The CLI Wrapper Trap
+
+Omnara's pivot deserves its own section because it illuminates the fundamental fragility of the orchestrator tier.
+
+Here's the problem: most orchestrators (Conductor, Superconductor, Graft) work by spawning Claude Code or Codex as a subprocess. They parse the CLI's stdout to understand what the agent is doing. They inject input through stdin. They're building a control plane on top of a text interface.
+
+This works until it doesn't. When Claude Code ships a new version that changes its output format — different spinner characters, restructured progress messages, new interactive prompts — every wrapper breaks. When Codex adds a new authentication flow, every wrapper needs to update. The orchestrator is coupled to implementation details of a tool it doesn't control.
+
+Omnara hit this wall with 2,600 stars of momentum and chose to rebuild from scratch on the Claude Agent SDK. The SDK provides:
+
+- **Structured events**: typed objects instead of stdout text
+- **Stable API surface**: versioned, documented, backward-compatible
+- **Direct model access**: no subprocess overhead
+- **Programmatic control**: start, stop, redirect agents via code, not keystrokes
+
+The lesson: **if your orchestrator's value proposition depends on parsing another tool's stdout, you're building on sand**. The winners in this category will be those building on Agent SDKs (Omnara), providing their own models (Cursor 3, Codex App), or wrapping at the git level rather than the CLI level (Polyscope's CoW clones).
+
+## Trust and Credential Security
+
+For tools that run autonomous agents inside your codebase, trust isn't optional. Here's how each tool handles the three dimensions of trust: permissions, analytics, and privacy.
+
+| Tool | GitHub Permissions | Analytics | Privacy Policy | Open Source |
+|------|-------------------|-----------|----------------|-------------|
+| **Cursor 3** | Standard (repo scope) | Internal | Yes (comprehensive) | No |
+| **Codex App** | Standard (repo scope) | Internal | Yes (OpenAI policy) | No |
+| **Conductor** | Full R/W (all repos) | Unknown | Yes (permits ad sharing) | No |
+| **Polyscope** | Standard | Fathom (privacy-first) | Yes | No |
+| **Superconductor** | Standard | PostHog | Unknown | No |
+| **Omnara** | Standard | Unknown | Yes | Pivoted (was Apache 2.0) |
+| **SuperHQ** | None (auth gateway) | None | N/A (open source) | Yes (UPL) |
+| **VibeCanvas** | None | None | N/A (open source) | Yes (MIT) |
+| **Graft** | Standard | Google Analytics + Ads | None published | No |
+
+Three findings stand out:
+
+1. **Conductor's full R/W GitHub permissions** are the most aggressive in the category. The tool needs to create branches and worktrees, but requesting write access to *all* repositories — including ones unrelated to the current project — goes beyond what's required. Combined with a privacy policy that permits ad network sharing, this is a meaningful trust deficit for a YC-backed company.
+
+2. **Graft has no published privacy policy** while running Google Analytics and Google Ads tracking inside a code editor. This is the most concerning combination in the evaluation. Your coding behavior is being tracked by Google's ad infrastructure with no documented constraints on how that data is used.
+
+3. **SuperHQ and VibeCanvas are the only tools where you don't have to trust anyone.** They're open source, run locally, collect no analytics, and (in SuperHQ's case) actively prevent credential exposure through architectural design rather than policy promises.
+
+## The Full Evaluation Matrix
+
+| | Cursor 3 | Codex App | Conductor | Polyscope | Superconductor | Omnara | SuperHQ | VibeCanvas | Graft |
+|---|---|---|---|---|---|---|---|---|---|
+| **Tier** | Platform | Platform | Orchestrator | Orchestrator | Orchestrator | Orchestrator | Experiment | Experiment | Experiment |
+| **License** | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | UPL | MIT | Proprietary |
+| **Primary Language** | Unknown | Unknown | Unknown | Unknown | Rust | Unknown | Rust (98.6%) | TypeScript | Unknown |
+| **Stage** | GA | GA | Production | Production | Alpha | Production | Alpha | Alpha | Alpha |
+| **Funding** | $2B ARR | OpenAI | $22M (YC S24) | Bootstrapped | Unknown | YC S25 | None | None | None |
+| **Isolation** | Cloud containers | Cloud containers + worktrees | Git worktrees | CoW clones | Git worktrees | Cloud | Sandboxed VMs | None | Git worktrees |
+| **Model Support** | Cursor models (proprietary) | OpenAI only | Claude Code + Codex | Any CLI agent | Any CLI agent | Claude (Agent SDK) | Any CLI agent | Any CLI agent | 8 providers |
+| **Platform** | macOS, Windows, Linux | macOS | macOS | macOS, Linux, remote | macOS | iOS, Android, watchOS, web | macOS (Apple Silicon) | Cross-platform | macOS |
+| **Mobile Access** | No | No | No | Yes (remote mode) | No | Yes (native apps) | No | No | No |
+| **Pricing** | $0-200/mo | $20/mo (Plus) | Free (BYOK) | Freemium | Free (alpha) | Free | Free (OSS) | Free (OSS) | Free (alpha) |
+| **Analytics** | Internal | Internal | Unknown | Fathom | PostHog | Unknown | None | None | GA + Ads |
+| **Enterprise** | SOC2/SSO/SCIM | Via OpenAI | No | No | No | No | No | No | No |
+| **Credential Security** | Cloud-isolated | Cloud-isolated | Host-exposed | Host-exposed | Host-exposed | Cloud-isolated | Auth gateway | Host-exposed | Host-exposed |
+| **Standout Feature** | Design Mode | Skills + Automations | Checkpoints | CoW + preview browser | Rust + Metal perf | Voice + mobile | VM sandbox + auth gateway | Infinite canvas + CRDT | 8 model providers |
+
+## What Wins Long-Term?
+
+The agent cockpit category will consolidate. Nine tools is too many for a market that most developers haven't discovered yet. Here's what I think determines the survivors:
+
+**1. Agent SDK integration over CLI wrapping.** Every tool that spawns `claude` or `codex` as a subprocess is building on a fragile interface. Omnara learned this. The others will too. The winning architecture is direct SDK integration (Omnara, Cursor 3) or platform-level control (Codex App).
+
+**2. Isolation must be first-class, not optional.** Git worktrees are the minimum viable isolation — they protect code but not credentials. The next wave will need VM-level or container-level isolation as the default. SuperHQ's auth gateway pattern should be standard.
+
+**3. Credential security is the sleeper differentiator.** Right now, most developers don't think about the fact that their Claude Code agent has access to `~/.ssh/id_rsa`. They will, the first time an agent exfiltrates a key in a code snippet it posts to a PR. The tools that solve this proactively (SuperHQ, cloud platforms) will have a trust advantage.
+
+**4. Mobile and remote access is the next frontier.** Polyscope and Omnara are the only tools offering remote/mobile control. As agents become more autonomous — running for hours on background tasks — the ability to monitor and redirect them from your phone becomes essential. The tools that treat this as a nice-to-have will lose to those that treat it as core.
+
+**5. Open source builds trust faster.** SuperHQ and VibeCanvas can't compete on features with Cursor 3 or Conductor. But they can compete on trust. When your tool runs inside someone's codebase, "read the source" is the strongest possible privacy policy.
+
+## The Bottom Line
+
+If you're choosing today:
+
+- **For teams**: Cursor 3 (if you want a platform) or Conductor (if you want orchestration with your own models). Accept the tradeoffs on permissions and lock-in.
+- **For solo developers**: Polyscope (best UX, remote mode, privacy-respecting) or Codex App (if you're already on ChatGPT Plus and want automations).
+- **For security-conscious work**: SuperHQ (if you can tolerate alpha quality) or Cursor 3 (cloud isolation with enterprise compliance).
+- **For experimentation**: VibeCanvas (if the infinite canvas metaphor matches how you think) or Graft (if you want to try 8 different model providers).
+- **For mobile-first**: Omnara is the only real option.
+
+The category is three months old. Half of these tools will pivot, merge, or shut down within a year. But the architectural pattern — an editor built around agents, not agents added to an editor — is permanent. The agent cockpit is the new IDE.
+
+---
+
+*Disclosure: I have no financial relationship with any of the tools evaluated. All testing was conducted on publicly available versions. Links go to the official websites — no affiliate tracking.*
+
+*Last updated: April 10, 2026*
