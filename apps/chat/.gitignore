@@ -60,3 +60,6 @@ public/search-index.json
 .lago/
 .lake/
 .env*.local
+
+# Redis runtime dump
+dump.rdb
