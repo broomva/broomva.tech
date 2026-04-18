@@ -4,8 +4,9 @@
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
-    "prebuild": "bun run generate:search-index && bun run check-env",
+    "prebuild": "bun run generate:search-index && bun run generate:agent-knowledge && bun run check-env",
     "generate:search-index": "bun scripts/generate-search-index.ts",
+    "generate:agent-knowledge": "bun scripts/generate-agent-knowledge.ts",
     "dev": "bun run check-env && bash scripts/with-db.sh next dev --webpack --port 3001",
     "dev:arcan": "bun run check-env && bash scripts/with-arcan.sh bash scripts/with-db.sh next dev --webpack --port 3001",
     "dev:inspect": "bash scripts/with-db.sh next dev --webpack --port 3001 --inspect",
