@@ -44,6 +44,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/graph/public",
   "/api/relay",
   "/api/install",
+  "/api/debug",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
