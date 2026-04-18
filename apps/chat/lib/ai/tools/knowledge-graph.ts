@@ -10,6 +10,11 @@ import {
 import { LagoVaultBackend } from "../vault/lago-backend";
 import { signLagoJWT } from "../vault/jwt";
 import type { ToolSession } from "./types";
+import {
+  searchSiteContent as searchAgentSiteContent,
+  readSiteNote,
+  traverseFrom,
+} from "@/lib/ai/knowledge/site-content";
 
 const log = createModuleLogger("tools/knowledge-graph");
 
@@ -45,75 +50,6 @@ async function getUserLagoBackend(
     return new LagoVaultBackend(lagoUrl, token);
   } catch {
     return null;
-  }
-}
-
-/**
- * Search the site-content session in Lago (public, unauthenticated).
- * This tier contains all published .mdx content from broomva.tech.
- */
-async function searchSiteContent(
-  query: string,
-  maxResults: number
-): Promise<
-  Array<{
-    name: string;
-    path: string;
-    frontmatter: Record<string, unknown>;
-    excerpts: string[];
-    outgoingLinks: string[];
-    score: number;
-    source: string;
-  }>
-> {
-  const lagoUrl = process.env.LAGO_URL;
-  if (!lagoUrl) return [];
-
-  try {
-    // Site content uses a public session — search via the session API
-    const res = await fetch(
-      `${lagoUrl}/v1/sessions/site-content:public/manifest?branch=main`
-    );
-    if (!res.ok) return [];
-
-    const data = (await res.json()) as {
-      entries: Array<{ path: string; blob_hash: string }>;
-    };
-
-    // Simple client-side search over manifest paths
-    const queryLower = query.toLowerCase();
-    const terms = queryLower.split(/\s+/).filter(Boolean);
-
-    const matches = data.entries
-      .filter((entry) => entry.path.endsWith(".md") || entry.path.endsWith(".mdx"))
-      .map((entry) => {
-        const name = entry.path.split("/").pop()?.replace(/\.(md|mdx)$/, "") ?? "";
-        const pathLower = entry.path.toLowerCase();
-        const nameLower = name.toLowerCase();
-
-        let score = 0;
-        for (const term of terms) {
-          if (nameLower.includes(term)) score += 3;
-          else if (pathLower.includes(term)) score += 1;
-        }
-        return { entry, name, score };
-      })
-      .filter((m) => m.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, maxResults);
-
-    return matches.map((m) => ({
-      name: m.name,
-      path: m.entry.path,
-      frontmatter: {},
-      excerpts: [],
-      outgoingLinks: [],
-      score: m.score,
-      source: "site",
-    }));
-  } catch (error) {
-    log.error({ err: error, query }, "Site content search error");
-    return [];
   }
 }
 
@@ -252,10 +188,20 @@ Returns matching notes with frontmatter metadata, relevant excerpts, and outgoin
         }
       }
 
-      // 3. Site content (lagod — public session, unauthenticated)
+      // 3. Site content (in-repo knowledge graph from public/agent-knowledge.json)
       try {
-        const siteResults = await searchSiteContent(query, maxResults);
-        allResults.push(...siteResults);
+        const siteResults = await searchAgentSiteContent(query, { maxResults });
+        for (const r of siteResults) {
+          allResults.push({
+            name: r.title,
+            path: r.url,
+            frontmatter: { kind: r.kind, tags: r.tags },
+            excerpts: r.excerpts,
+            outgoingLinks: r.wikilinks,
+            score: r.score,
+            source: "site",
+          });
+        }
       } catch (error) {
         log.error({ err: error, query }, "Site content search error");
       }
@@ -350,6 +296,39 @@ Returns the full note content with frontmatter and outgoing wikilinks.`,
       name: string;
       includeLinkedNotes: boolean;
     }) => {
+      // Try site-content (public knowledge graph, always available in production)
+      try {
+        const siteNote = await readSiteNote(name);
+        if (siteNote) {
+          return {
+            name: siteNote.title,
+            path: siteNote.url,
+            frontmatter: siteNote.frontmatter,
+            content: truncateBody(siteNote.body, 6000),
+            outgoingLinks: siteNote.wikilinks,
+            source: "site",
+            ...(includeLinkedNotes && siteNote.wikilinks.length > 0
+              ? {
+                  linkedNotes: await Promise.all(
+                    siteNote.wikilinks.slice(0, 10).map(async (wl) => {
+                      const linked = await readSiteNote(wl);
+                      return linked
+                        ? {
+                            name: linked.title,
+                            path: linked.url,
+                            excerpt: truncateBody(linked.body, 300),
+                          }
+                        : null;
+                    }),
+                  ).then((arr) => arr.filter((n): n is NonNullable<typeof n> => n !== null)),
+                }
+              : {}),
+          };
+        }
+      } catch (error) {
+        log.error({ err: error, name }, "Site-content read error");
+      }
+
       // Try server vault first
       const vaultPath = getVaultPath();
       if (vaultPath) {
@@ -439,10 +418,95 @@ Returns the full note content with frontmatter and outgoing wikilinks.`,
   });
 }
 
+/**
+ * Factory: traverseKnowledge tool.
+ *
+ * Walks the public agent knowledge graph (wikilinks, tags, `related:`) from a
+ * seed node. Answers "what connects to X" and "what's in the neighborhood of Y"
+ * questions without repeated searches.
+ */
+export function traverseKnowledgeTool(_: { session: ToolSession }) {
+  return tool({
+    description: `Traverse the public Broomva knowledge graph from a seed node. Follows wikilink, tag, and related-frontmatter edges.
+
+Use when the user asks:
+- "what's connected to X?"
+- "how does X relate to Y?"
+- "what else is in the X neighborhood?"
+- "show me everything tagged X"
+
+Prefer this over repeated searchKnowledge calls for graph-shape questions. The seed can be a document id (e.g. "writing/agent-native-architecture"), a slug, a title, or a tag name (e.g. "agent-os" resolves to "tag:agent-os").`,
+    inputSchema: z.object({
+      seed: z
+        .string()
+        .describe(
+          'Seed node — document id ("writing/foo"), slug, title, or tag name.',
+        ),
+      edgeTypes: z
+        .array(z.enum(["wikilink", "reference", "tag"]))
+        .default(["wikilink", "reference", "tag"])
+        .describe(
+          "Which edge types to follow. Default follows all three.",
+        ),
+      depth: z
+        .union([z.literal(1), z.literal(2)])
+        .default(1)
+        .describe("1 for immediate neighbors, 2 for neighbors-of-neighbors"),
+      maxNeighbors: z
+        .number()
+        .int()
+        .min(1)
+        .max(30)
+        .default(10)
+        .describe("Maximum neighbors to return"),
+    }),
+    execute: async ({
+      seed,
+      edgeTypes,
+      depth,
+      maxNeighbors,
+    }: {
+      seed: string;
+      edgeTypes: ("wikilink" | "reference" | "tag")[];
+      depth: 1 | 2;
+      maxNeighbors: number;
+    }) => {
+      const result = await traverseFrom(seed, { edgeTypes, depth, maxNeighbors });
+      if (!result.seed) {
+        return {
+          error: `Seed "${seed}" not found in the public knowledge graph.`,
+        };
+      }
+      return {
+        seed: {
+          id: result.seed.id,
+          label: result.seed.label,
+          type: result.seed.type,
+          url: result.seed.url,
+          tags: result.seed.tags,
+        },
+        neighbors: result.neighbors.map((n) => ({
+          id: n.node.id,
+          label: n.node.label,
+          type: n.node.type,
+          url: n.node.url,
+          summary: n.node.summary,
+          tags: n.node.tags,
+          edgeType: n.edgeType,
+          hops: n.hops,
+        })),
+      };
+    },
+  });
+}
+
 // Backward-compatible exports for cases where tools.ts imports directly
 export const searchKnowledge = searchKnowledgeTool({
   session: { user: undefined },
 });
 export const readKnowledgeNote = readKnowledgeNoteTool({
+  session: { user: undefined },
+});
+export const traverseKnowledge = traverseKnowledgeTool({
   session: { user: undefined },
 });
