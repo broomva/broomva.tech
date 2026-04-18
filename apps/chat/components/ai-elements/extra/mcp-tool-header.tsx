@@ -33,7 +33,7 @@ export const McpToolHeader = ({
     <div className="flex items-center gap-2">
       {icon ?? <WrenchIcon className="size-4 text-muted-foreground" />}
       <span className="font-medium text-sm">
-        {title ?? type.split("-").slice(1).join("-")}
+        {title ?? (typeof type === "string" ? type.split("-").slice(1).join("-") : "")}
       </span>
       {getStatusBadge(state)}
     </div>
