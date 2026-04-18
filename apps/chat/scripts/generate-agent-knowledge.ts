@@ -49,15 +49,31 @@ function extractHeadings(markdown: string): Array<{ depth: number; text: string 
   return headings;
 }
 
-/** Strip MDX JSX to plain text; keep markdown prose. */
+/**
+ * Strip MDX JSX to plain text; keep markdown prose AND code fences intact.
+ * The JSX strip patterns are applied only to non-fenced segments so that
+ * Python `import`, HTML-looking snippets in docs, etc. are preserved.
+ */
 function stripJsx(md: string): string {
-  return md
-    // Strip JSX import/export lines
-    .replace(/^(import|export)\s[^\n]*$/gm, "")
-    // Strip self-closing JSX tags: <Foo bar="x" />
-    .replace(/<[A-Z][\w.]*[^>]*\/>/g, "")
-    // Strip paired JSX: <Foo>...</Foo>
-    .replace(/<([A-Z][\w.]*)[^>]*>[\s\S]*?<\/\1>/g, "")
+  // Split on triple-backtick fences. Capturing group preserves them.
+  // Indices: 0 = outside, 1 = fence content (including fences), 2 = outside, ...
+  const parts = md.split(/(```[\s\S]*?```)/g);
+
+  for (let i = 0; i < parts.length; i++) {
+    // Only transform non-fence segments (even indices after split with capture)
+    if (i % 2 === 1) continue; // this is a fence block — leave as-is
+
+    parts[i] = parts[i]
+      // Strip JSX import/export lines (top-level only — fences are protected above)
+      .replace(/^(import|export)\s[^\n]*$/gm, "")
+      // Strip self-closing JSX tags: <Foo bar="x" />
+      .replace(/<[A-Z][\w.]*[^>]*\/>/g, "")
+      // Strip paired JSX: <Foo>...</Foo>
+      .replace(/<([A-Z][\w.]*)[^>]*>[\s\S]*?<\/\1>/g, "");
+  }
+
+  return parts
+    .join("")
     // Collapse excess blank lines
     .replace(/\n{3,}/g, "\n\n")
     .trim();
