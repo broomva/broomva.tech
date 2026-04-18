@@ -24,7 +24,7 @@ import {
   generateFollowupSuggestions,
   streamFollowupSuggestions,
 } from "@/lib/ai/followup-suggestions";
-import { systemPrompt } from "@/lib/ai/prompts";
+import { buildSystemPrompt } from "@/lib/ai/prompts";
 import { calculateMessagesTokens } from "@/lib/ai/token-utils";
 import { allTools } from "@/lib/ai/tools/tools-definitions";
 import type { ChatMessage, ToolName } from "@/lib/ai/types";
@@ -427,17 +427,23 @@ function determineAllowedTools({
 async function getSystemPrompt({
   isAnonymous,
   chatId,
+  userName,
 }: {
   isAnonymous: boolean;
   chatId: string;
+  userName?: string | null;
 }): Promise<string> {
-  let system = systemPrompt();
+  let system = await buildSystemPrompt({
+    isAnonymous,
+    userName,
+    memoryVaultAvailable: config.features.memoryVault && !isAnonymous,
+  });
   if (!isAnonymous) {
     const currentChat = await getChatById({ id: chatId });
     if (currentChat?.projectId) {
       const project = await getProjectById({ id: currentChat.projectId });
       if (project?.instructions) {
-        system = `${system}\n\nProject instructions:\n${project.instructions}`;
+        system = `${system}\n\n---\n\n## Project instructions\n\n${project.instructions}`;
       }
     }
   }
@@ -460,6 +466,7 @@ async function createChatStream({
   timeoutId,
   mcpConnectors,
   streamId,
+  userName,
   onChunk,
 }: {
   messageId: string;
@@ -477,10 +484,15 @@ async function createChatStream({
   timeoutId: NodeJS.Timeout;
   mcpConnectors: McpConnector[];
   streamId: string;
+  userName?: string | null;
   onChunk?: () => void;
 }) {
   const log = createModuleLogger("api:chat:stream");
-  const system = await getSystemPrompt({ isAnonymous, chatId });
+  const system = await getSystemPrompt({
+    isAnonymous,
+    chatId,
+    userName: isAnonymous ? null : userName ?? null,
+  });
 
   // Create cost accumulator to track all LLM and API costs
   const costAccumulator = new CostAccumulator();
@@ -625,6 +637,7 @@ async function executeChatRequest({
   abortController,
   timeoutId,
   mcpConnectors,
+  userName,
 }: {
   chatId: string;
   userMessage: ChatMessage;
@@ -639,6 +652,7 @@ async function executeChatRequest({
   abortController: AbortController;
   timeoutId: NodeJS.Timeout;
   mcpConnectors: McpConnector[];
+  userName?: string | null;
 }): Promise<Response> {
   const log = createModuleLogger("api:chat:execute");
   const messageId = generateUUID();
@@ -692,6 +706,7 @@ async function executeChatRequest({
     timeoutId,
     mcpConnectors,
     streamId,
+    userName,
     onChunk,
   });
 
@@ -738,6 +753,7 @@ type SessionSetupResult =
   | {
       success: true;
       userId: string | null;
+      userName: string | null;
       isAnonymous: boolean;
       anonymousSession: AnonymousSession | null;
       modelDefinition: AppModelDefinition;
@@ -797,6 +813,7 @@ async function validateAndSetupSession({
   return {
     success: true,
     userId,
+    userName: session?.user?.name ?? null,
     isAnonymous,
     anonymousSession,
     modelDefinition,
@@ -1030,7 +1047,7 @@ export async function POST(request: NextRequest) {
       return sessionSetup.error;
     }
 
-    const { userId, isAnonymous, anonymousSession, modelDefinition } =
+    const { userId, userName, isAnonymous, anonymousSession, modelDefinition } =
       sessionSetup;
 
     // ---- Tier-based model & credit gate (authenticated users only) ----
@@ -1316,6 +1333,7 @@ export async function POST(request: NextRequest) {
       abortController,
       timeoutId,
       mcpConnectors,
+      userName: isAnonymous ? null : userName,
     });
   } catch (error) {
     log.error(
