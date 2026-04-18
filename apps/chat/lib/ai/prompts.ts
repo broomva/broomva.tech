@@ -10,9 +10,8 @@
  *   4. Tool protocol    — baked rules for when/how to call tools
  *   5. User context     — per request, auth-gated
  *
- * The previous `systemPrompt()` export is kept as a deprecated thin wrapper
- * that calls `buildSystemPrompt({})` so any stray callers keep working. It
- * can be removed in a follow-up commit once nothing references it.
+ * `buildSystemPrompt` is the single public export — call it with isAnonymous,
+ * userName, and memoryVaultAvailable as needed.
  */
 
 import { readFileSync } from "node:fs";
@@ -209,10 +208,4 @@ export async function buildSystemPrompt(
   ];
 
   return sections.join("\n\n---\n\n");
-}
-
-/** @deprecated Use {@link buildSystemPrompt} — scheduled for removal once no caller depends on the old signature. */
-export function systemPrompt(): string {
-  log.warn("Legacy systemPrompt() called — use buildSystemPrompt() instead");
-  return `${getIdentity()}\n\n${NAVIGATION_HINTS}\n\n${TOOL_PROTOCOL}`;
 }
