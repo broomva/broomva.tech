@@ -35,8 +35,36 @@ let _warned = false;
 
 let _sourcePath: string | null = null;
 
-function defaultSourcePath(): string {
-  return path.join(process.cwd(), "public", "agent-knowledge.json");
+/**
+ * Candidate filesystem paths to try (in order), to be robust across:
+ *   • local dev (CWD = apps/chat)
+ *   • monorepo dev (CWD = repo root)
+ *   • Vercel serverless runtime (CWD = /var/task, with outputFileTracingIncludes)
+ */
+function candidateFilesystemPaths(): string[] {
+  return [
+    path.join(process.cwd(), "public", "agent-knowledge.json"),
+    path.join(process.cwd(), "apps", "chat", "public", "agent-knowledge.json"),
+    // Module-relative fallback (webpack will rewrite __dirname at build)
+    path.join(__dirname, "..", "..", "..", "public", "agent-knowledge.json"),
+  ];
+}
+
+/** Resolve the self-origin URL for fetch-based loading (production fallback). */
+function selfOriginUrl(): string | null {
+  // Explicit override (set in env or future build-time config)
+  const explicit = process.env.AGENT_KNOWLEDGE_URL;
+  if (explicit) return explicit;
+
+  // Vercel sets VERCEL_URL to the deployment's own domain (without protocol)
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl}/agent-knowledge.json`;
+
+  // Production site URL if exposed
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+  if (siteUrl) return `${siteUrl.replace(/\/$/, "")}/agent-knowledge.json`;
+
+  return null;
 }
 
 /** Test-only: override the JSON path for fixture-based unit tests. */
@@ -52,25 +80,79 @@ export function resetKnowledgeCacheForTests(): void {
 
 // ── Loader ───────────────────────────────────────────────────────────────────
 
+async function readFromFilesystem(paths: string[]): Promise<{ raw: string; path: string } | null> {
+  for (const p of paths) {
+    try {
+      const raw = await fs.readFile(p, "utf8");
+      return { raw, path: p };
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
+}
+
+async function readFromFetch(url: string): Promise<{ raw: string; path: string } | null> {
+  try {
+    const res = await fetch(url, { cache: "force-cache" });
+    if (!res.ok) return null;
+    const raw = await res.text();
+    return { raw, path: url };
+  } catch {
+    return null;
+  }
+}
+
 export async function loadAgentKnowledge(): Promise<AgentKnowledge> {
   if (_cache) return _cache;
 
-  const source = _sourcePath ?? defaultSourcePath();
-  try {
-    const raw = await fs.readFile(source, "utf8");
-    _cache = JSON.parse(raw) as AgentKnowledge;
-    return _cache;
-  } catch (err) {
-    if (!_warned) {
-      log.warn(
-        { err, source },
-        "agent-knowledge.json missing or unparseable — falling back to empty knowledge",
-      );
-      _warned = true;
+  // Test override: a single explicit path, no fallbacks.
+  if (_sourcePath) {
+    try {
+      const raw = await fs.readFile(_sourcePath, "utf8");
+      _cache = JSON.parse(raw) as AgentKnowledge;
+      return _cache;
+    } catch (err) {
+      if (!_warned) {
+        log.warn({ err, source: _sourcePath }, "test source unreadable");
+        _warned = true;
+      }
+      _cache = EMPTY_KNOWLEDGE;
+      return _cache;
     }
-    _cache = EMPTY_KNOWLEDGE;
-    return _cache;
   }
+
+  // Production/dev: try filesystem candidates first, then fall back to fetch.
+  const fsPaths = candidateFilesystemPaths();
+  let loaded = await readFromFilesystem(fsPaths);
+
+  if (!loaded) {
+    const url = selfOriginUrl();
+    if (url) loaded = await readFromFetch(url);
+  }
+
+  if (loaded) {
+    try {
+      _cache = JSON.parse(loaded.raw) as AgentKnowledge;
+      log.debug({ source: loaded.path, docs: _cache.documents.length }, "agent-knowledge loaded");
+      return _cache;
+    } catch (err) {
+      if (!_warned) {
+        log.warn({ err, source: loaded.path }, "agent-knowledge parse failed");
+        _warned = true;
+      }
+    }
+  }
+
+  if (!_warned) {
+    log.warn(
+      { cwd: process.cwd(), fsPaths, fetchUrl: selfOriginUrl() },
+      "agent-knowledge.json unreachable via filesystem or fetch — falling back to empty knowledge",
+    );
+    _warned = true;
+  }
+  _cache = EMPTY_KNOWLEDGE;
+  return _cache;
 }
 
 // ── Search ───────────────────────────────────────────────────────────────────

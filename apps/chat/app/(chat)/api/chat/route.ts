@@ -321,7 +321,7 @@ const FLAG_GATED_TOOLS: Partial<Record<FeatureFlag, ToolName[]>> = {
   image_generation: ["generateImage"],
   web_search: ["webSearch"],
   url_retrieval: ["retrieveUrl"],
-  knowledge_graph: ["searchKnowledge", "readKnowledgeNote"],
+  knowledge_graph: ["searchKnowledge", "readKnowledgeNote", "traverseKnowledge"],
 };
 
 /** The feature flags that gate premium chat tools. */
@@ -376,6 +376,8 @@ function getToolGateUpgradeMessage(toolName: ToolName): string {
       "Knowledge graph search requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
     readKnowledgeNote:
       "Knowledge graph access requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
+    traverseKnowledge:
+      "Knowledge graph traversal requires a Pro plan or higher. Upgrade at /pricing to unlock this feature.",
   };
   return (
     messages[toolName] ??
