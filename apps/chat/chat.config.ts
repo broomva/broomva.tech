@@ -136,7 +136,12 @@ const config = {
   },
   anonymous: {
     credits: isProd ? 10 : 1000,
-    availableTools: [],
+    // The Arcan agent's whole purpose on broomva.tech is to surface the open
+    // knowledge graph to anyone who interacts with it, signed in or not.
+    // These three tools read public data (public/agent-knowledge.json generated
+    // at build time) and never write state or cost external APIs, so they're
+    // safe to expose anonymously.
+    availableTools: ["searchKnowledge", "readKnowledgeNote", "traverseKnowledge"],
     rateLimit: {
       requestsPerMinute: isProd ? 5 : 60,
       requestsPerMonth: isProd ? 10 : 1000,
