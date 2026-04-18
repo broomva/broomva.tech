@@ -135,7 +135,9 @@ const config = {
     },
   },
   anonymous: {
-    credits: isProd ? 10 : 1000,
+    // Enough for a meaningful conversation on the public agent — visitors
+    // shouldn't hit the credit wall mid-discussion. Each message costs 1.
+    credits: isProd ? 50 : 1000,
     // The Arcan agent's whole purpose on broomva.tech is to surface the open
     // knowledge graph to anyone who interacts with it, signed in or not.
     // These three tools read public data (public/agent-knowledge.json generated
@@ -144,7 +146,7 @@ const config = {
     availableTools: ["searchKnowledge", "readKnowledgeNote", "traverseKnowledge"],
     rateLimit: {
       requestsPerMinute: isProd ? 5 : 60,
-      requestsPerMonth: isProd ? 10 : 1000,
+      requestsPerMonth: isProd ? 50 : 1000,
     },
   },
   authenticated: {
