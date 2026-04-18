@@ -15,6 +15,7 @@ import { readDocument } from "@/lib/ai/tools/read-document";
 import {
   searchKnowledgeTool,
   readKnowledgeNoteTool,
+  traverseKnowledgeTool,
 } from "@/lib/ai/tools/knowledge-graph";
 import { retrieveUrl } from "@/lib/ai/tools/retrieve-url";
 import { tavilyWebSearch } from "@/lib/ai/tools/web-search";
@@ -111,6 +112,7 @@ export function getTools({
       ? {
           searchKnowledge: searchKnowledgeTool({ session }),
           readKnowledgeNote: readKnowledgeNoteTool({ session }),
+          traverseKnowledge: traverseKnowledgeTool({ session }),
         }
       : {}),
     listPrompts: listPromptsTool({ session }),

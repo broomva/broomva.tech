@@ -13,6 +13,7 @@ import type { readDocument } from "@/lib/ai/tools/read-document";
 import type {
   searchKnowledge,
   readKnowledgeNote,
+  traverseKnowledge,
 } from "@/lib/ai/tools/knowledge-graph";
 import type {
   listPromptsTool,
@@ -47,6 +48,7 @@ export const toolNameSchema = z.enum([
   "deepResearch",
   "searchKnowledge",
   "readKnowledgeNote",
+  "traverseKnowledge",
   "listPrompts",
   "getPrompt",
   "savePrompt",
@@ -112,6 +114,7 @@ type codeExecutionTool = InferUITool<ReturnType<typeof codeExecution>>;
 type retrieveUrlTool = InferUITool<typeof retrieveUrl>;
 type searchKnowledgeTool = InferUITool<typeof searchKnowledge>;
 type readKnowledgeNoteTool = InferUITool<typeof readKnowledgeNote>;
+type traverseKnowledgeTool = InferUITool<typeof traverseKnowledge>;
 type listPromptsToolType = InferUITool<ReturnType<typeof listPromptsTool>>;
 type getPromptToolType = InferUITool<ReturnType<typeof getPromptTool>>;
 type savePromptToolType = InferUITool<ReturnType<typeof savePromptTool>>;
@@ -133,6 +136,7 @@ export type ChatTools = {
   retrieveUrl: retrieveUrlTool;
   searchKnowledge: searchKnowledgeTool;
   readKnowledgeNote: readKnowledgeNoteTool;
+  traverseKnowledge: traverseKnowledgeTool;
   listPrompts: listPromptsToolType;
   getPrompt: getPromptToolType;
   savePrompt: savePromptToolType;

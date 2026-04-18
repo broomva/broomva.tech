@@ -78,6 +78,11 @@ export const toolsDefinitions: Record<ToolName, ToolDefinition> = {
     description: "Read a note from the knowledge graph",
     cost: 0, // filesystem only
   },
+  traverseKnowledge: {
+    name: "traverseKnowledge",
+    description: "Traverse the knowledge graph via wikilink/tag/related edges",
+    cost: 0, // filesystem only
+  },
   listPrompts: {
     name: "listPrompts",
     description: "List saved prompt templates",
