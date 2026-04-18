@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "bun install",
-  "buildCommand": "bun run generate:search-index && bun run vercel-build",
+  "buildCommand": "bun run generate:search-index && bun run generate:agent-knowledge && bun run vercel-build",
   "ignoreCommand": "npx turbo-ignore",
   "crons": [
     {
