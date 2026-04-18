@@ -10,9 +10,9 @@
  * Wired:  prebuild hook + vercel.json buildCommand.
  */
 
+import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execSync } from "node:child_process";
 import matter from "gray-matter";
 import type {
   AgentDocument,
@@ -39,7 +39,9 @@ function extractWikilinks(markdown: string): string[] {
   return matches.map((m) => m[1].trim().toLowerCase().replace(/\s+/g, "-"));
 }
 
-function extractHeadings(markdown: string): Array<{ depth: number; text: string }> {
+function extractHeadings(
+  markdown: string,
+): Array<{ depth: number; text: string }> {
   const lines = markdown.split("\n");
   const headings: Array<{ depth: number; text: string }> = [];
   for (const line of lines) {
@@ -72,15 +74,20 @@ function stripJsx(md: string): string {
       .replace(/<([A-Z][\w.]*)[^>]*>[\s\S]*?<\/\1>/g, "");
   }
 
-  return parts
-    .join("")
-    // Collapse excess blank lines
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return (
+    parts
+      .join("")
+      // Collapse excess blank lines
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 function wordCount(text: string): number {
-  const words = text.replace(/[^\p{L}\p{N}\s]/gu, " ").trim().split(/\s+/);
+  const words = text
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .trim()
+    .split(/\s+/);
   return words.filter(Boolean).length;
 }
 
@@ -104,13 +111,19 @@ async function readKind(kind: ContentKind): Promise<AgentDocument[]> {
     if (parsed.data.published === false) continue;
 
     const tags: string[] = Array.isArray(parsed.data.tags)
-      ? parsed.data.tags.filter((t: unknown): t is string => typeof t === "string")
+      ? parsed.data.tags.filter(
+          (t: unknown): t is string => typeof t === "string",
+        )
       : [];
     const related: string[] = Array.isArray(parsed.data.related)
       ? parsed.data.related
           .filter((r: unknown): r is string => typeof r === "string")
           .map((r) =>
-            r.replace(/^\[\[|\]\]$/g, "").trim().toLowerCase().replace(/\s+/g, "-"),
+            r
+              .replace(/^\[\[|\]\]$/g, "")
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, "-"),
           )
       : [];
 
@@ -121,7 +134,8 @@ async function readKind(kind: ContentKind): Promise<AgentDocument[]> {
       kind,
       slug,
       title: typeof parsed.data.title === "string" ? parsed.data.title : slug,
-      summary: typeof parsed.data.summary === "string" ? parsed.data.summary : "",
+      summary:
+        typeof parsed.data.summary === "string" ? parsed.data.summary : "",
       url: `${KIND_ROUTES[kind]}/${slug}`,
       tags,
       frontmatter: parsed.data,
@@ -137,7 +151,10 @@ async function readKind(kind: ContentKind): Promise<AgentDocument[]> {
 
 // ── Graph builder ────────────────────────────────────────────────────────────
 
-function buildGraph(docs: AgentDocument[]): { nodes: AgentGraphNode[]; links: AgentGraphEdge[] } {
+function buildGraph(docs: AgentDocument[]): {
+  nodes: AgentGraphNode[];
+  links: AgentGraphEdge[];
+} {
   const nodes: AgentGraphNode[] = [];
   const links: AgentGraphEdge[] = [];
   const slugToId = new Map<string, string>();
@@ -162,11 +179,21 @@ function buildGraph(docs: AgentDocument[]): { nodes: AgentGraphNode[]; links: Ag
   }
 
   for (const [tag, count] of tagUsage) {
-    nodes.push({ id: `tag:${tag}`, label: tag, type: "tag", tags: [], val: count });
+    nodes.push({
+      id: `tag:${tag}`,
+      label: tag,
+      type: "tag",
+      tags: [],
+      val: count,
+    });
   }
 
   const seen = new Set<string>();
-  const addEdge = (source: string, target: string, type: AgentGraphEdgeType) => {
+  const addEdge = (
+    source: string,
+    target: string,
+    type: AgentGraphEdgeType,
+  ) => {
     const key = [source, target, type].sort().join("|");
     if (seen.has(key)) return;
     seen.add(key);
@@ -199,17 +226,73 @@ function buildGraph(docs: AgentDocument[]): { nodes: AgentGraphNode[]; links: Ag
 // ── Inverted index ───────────────────────────────────────────────────────────
 
 const STOP_WORDS = new Set([
-  "the","a","an","and","or","but","of","to","in","on","at","for","is","are",
-  "was","were","be","been","being","this","that","these","those","it","its",
-  "i","you","he","she","we","they","as","by","with","from","up","about",
-  "into","over","after","not","no","so","if","then","than","can","will","would",
-  "should","could","may","might","must","do","does","did","have","has","had",
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "but",
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "for",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "this",
+  "that",
+  "these",
+  "those",
+  "it",
+  "its",
+  "i",
+  "you",
+  "he",
+  "she",
+  "we",
+  "they",
+  "as",
+  "by",
+  "with",
+  "from",
+  "up",
+  "about",
+  "into",
+  "over",
+  "after",
+  "not",
+  "no",
+  "so",
+  "if",
+  "then",
+  "than",
+  "can",
+  "will",
+  "would",
+  "should",
+  "could",
+  "may",
+  "might",
+  "must",
+  "do",
+  "does",
+  "did",
+  "have",
+  "has",
+  "had",
 ]);
 
 function buildInvertedIndex(docs: AgentDocument[]): Record<string, string[]> {
   const index: Record<string, Set<string>> = {};
   for (const doc of docs) {
-    const haystack = `${doc.title} ${doc.summary} ${doc.body} ${doc.tags.join(" ")}`.toLowerCase();
+    const haystack =
+      `${doc.title} ${doc.summary} ${doc.body} ${doc.tags.join(" ")}`.toLowerCase();
     const terms = haystack.match(/[\p{L}\p{N}]{3,}/gu) ?? [];
     for (const term of terms) {
       if (STOP_WORDS.has(term)) continue;
@@ -235,7 +318,9 @@ async function main() {
 
   let commit = "unknown";
   try {
-    commit = execSync("git rev-parse HEAD", { cwd: process.cwd() }).toString().trim();
+    commit = execSync("git rev-parse HEAD", { cwd: process.cwd() })
+      .toString()
+      .trim();
   } catch {
     // not a git checkout — keep "unknown"
   }

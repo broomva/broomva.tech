@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import path from "node:path";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   __setKnowledgeSourceForTests,
   loadAgentKnowledge,
-  searchSiteContent,
   readSiteNote,
-  traverseFrom,
   resetKnowledgeCacheForTests,
+  searchSiteContent,
+  traverseFrom,
 } from "./site-content";
 
 const FIXTURE = path.join(
@@ -111,20 +111,28 @@ describe("traverseFrom", () => {
   });
 
   it("filters by edge type", async () => {
-    const { neighbors } = await traverseFrom("writing/agent-native-architecture", {
-      edgeTypes: ["reference"],
-      depth: 1,
-      maxNeighbors: 10,
-    });
-    expect(neighbors.map((n) => n.node.id)).not.toContain("projects/life-agent-os");
+    const { neighbors } = await traverseFrom(
+      "writing/agent-native-architecture",
+      {
+        edgeTypes: ["reference"],
+        depth: 1,
+        maxNeighbors: 10,
+      },
+    );
+    expect(neighbors.map((n) => n.node.id)).not.toContain(
+      "projects/life-agent-os",
+    );
   });
 
   it("includes tag neighbors when tag edge type requested", async () => {
-    const { neighbors } = await traverseFrom("writing/agent-native-architecture", {
-      edgeTypes: ["tag"],
-      depth: 1,
-      maxNeighbors: 10,
-    });
+    const { neighbors } = await traverseFrom(
+      "writing/agent-native-architecture",
+      {
+        edgeTypes: ["tag"],
+        depth: 1,
+        maxNeighbors: 10,
+      },
+    );
     const ids = neighbors.map((n) => n.node.id);
     expect(ids).toContain("tag:agent-os");
     expect(ids).toContain("tag:architecture");

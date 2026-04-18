@@ -10,7 +10,10 @@
       "summary": "Systems designed for agents, not humans.",
       "url": "/writing/agent-native-architecture",
       "tags": ["agent-os", "architecture"],
-      "frontmatter": { "title": "Agent-Native Architecture", "tags": ["agent-os", "architecture"] },
+      "frontmatter": {
+        "title": "Agent-Native Architecture",
+        "tags": ["agent-os", "architecture"]
+      },
       "body": "Agent-native architecture means building control planes where the primary operator is an agent. See [[life-agent-os]] for the reference implementation.",
       "wikilinks": ["life-agent-os"],
       "related": [],
@@ -35,19 +38,71 @@
   ],
   "graph": {
     "nodes": [
-      { "id": "writing/agent-native-architecture", "label": "Agent-Native Architecture", "type": "writing", "url": "/writing/agent-native-architecture", "summary": "Systems designed for agents, not humans.", "tags": ["agent-os", "architecture"], "val": 3 },
-      { "id": "projects/life-agent-os", "label": "Life Agent OS", "type": "projects", "url": "/projects/life-agent-os", "summary": "The unified Rust monorepo for the Broomva Agent OS.", "tags": ["agent-os", "rust"], "val": 3 },
-      { "id": "tag:agent-os", "label": "agent-os", "type": "tag", "tags": [], "val": 2 },
-      { "id": "tag:architecture", "label": "architecture", "type": "tag", "tags": [], "val": 1 },
+      {
+        "id": "writing/agent-native-architecture",
+        "label": "Agent-Native Architecture",
+        "type": "writing",
+        "url": "/writing/agent-native-architecture",
+        "summary": "Systems designed for agents, not humans.",
+        "tags": ["agent-os", "architecture"],
+        "val": 3
+      },
+      {
+        "id": "projects/life-agent-os",
+        "label": "Life Agent OS",
+        "type": "projects",
+        "url": "/projects/life-agent-os",
+        "summary": "The unified Rust monorepo for the Broomva Agent OS.",
+        "tags": ["agent-os", "rust"],
+        "val": 3
+      },
+      {
+        "id": "tag:agent-os",
+        "label": "agent-os",
+        "type": "tag",
+        "tags": [],
+        "val": 2
+      },
+      {
+        "id": "tag:architecture",
+        "label": "architecture",
+        "type": "tag",
+        "tags": [],
+        "val": 1
+      },
       { "id": "tag:rust", "label": "rust", "type": "tag", "tags": [], "val": 1 }
     ],
     "links": [
-      { "source": "writing/agent-native-architecture", "target": "projects/life-agent-os", "type": "wikilink" },
-      { "source": "writing/agent-native-architecture", "target": "tag:agent-os", "type": "tag" },
-      { "source": "writing/agent-native-architecture", "target": "tag:architecture", "type": "tag" },
-      { "source": "projects/life-agent-os", "target": "writing/agent-native-architecture", "type": "reference" },
-      { "source": "projects/life-agent-os", "target": "tag:agent-os", "type": "tag" },
-      { "source": "projects/life-agent-os", "target": "tag:rust", "type": "tag" }
+      {
+        "source": "writing/agent-native-architecture",
+        "target": "projects/life-agent-os",
+        "type": "wikilink"
+      },
+      {
+        "source": "writing/agent-native-architecture",
+        "target": "tag:agent-os",
+        "type": "tag"
+      },
+      {
+        "source": "writing/agent-native-architecture",
+        "target": "tag:architecture",
+        "type": "tag"
+      },
+      {
+        "source": "projects/life-agent-os",
+        "target": "writing/agent-native-architecture",
+        "type": "reference"
+      },
+      {
+        "source": "projects/life-agent-os",
+        "target": "tag:agent-os",
+        "type": "tag"
+      },
+      {
+        "source": "projects/life-agent-os",
+        "target": "tag:rust",
+        "type": "tag"
+      }
     ]
   },
   "invertedIndex": {

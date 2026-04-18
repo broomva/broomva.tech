@@ -29,10 +29,7 @@ export interface AgentDocument {
   wordCount: number;
 }
 
-export type GraphNodeType =
-  | ContentKind
-  | "tag"
-  | "skill";
+export type GraphNodeType = ContentKind | "tag" | "skill";
 
 export interface AgentGraphNode {
   id: string;

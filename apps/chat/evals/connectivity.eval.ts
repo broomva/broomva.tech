@@ -46,7 +46,8 @@ evalite("KG Connectivity Eval", {
   scorers: [
     {
       name: "HasEnoughLinks",
-      description: "Response must include at least minLinkCount markdown links.",
+      description:
+        "Response must include at least minLinkCount markdown links.",
       scorer: ({ output, expected }) => {
         const exp = expected as { minLinkCount: number; mustContain: string };
         const links = [...output.matchAll(/\]\((\/[^)]+)\)/g)].map((m) => m[1]);

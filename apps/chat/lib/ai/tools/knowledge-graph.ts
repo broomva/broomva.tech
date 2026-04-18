@@ -1,20 +1,20 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { createModuleLogger } from "@/lib/logger";
+import {
+  readSiteNote,
+  searchSiteContent as searchAgentSiteContent,
+  traverseFrom,
+} from "@/lib/ai/knowledge/site-content";
 import { config } from "@/lib/config";
+import { createModuleLogger } from "@/lib/logger";
+import { signLagoJWT } from "../vault/jwt";
+import { LagoVaultBackend } from "../vault/lago-backend";
 import {
   extractWikilinks,
   resolveWikilink,
   searchVault,
 } from "../vault/reader";
-import { LagoVaultBackend } from "../vault/lago-backend";
-import { signLagoJWT } from "../vault/jwt";
 import type { ToolSession } from "./types";
-import {
-  searchSiteContent as searchAgentSiteContent,
-  readSiteNote,
-  traverseFrom,
-} from "@/lib/ai/knowledge/site-content";
 
 const log = createModuleLogger("tools/knowledge-graph");
 
@@ -34,7 +34,7 @@ function truncateBody(body: string, maxChars = 3000): string {
 
 /** Get a LagoVaultBackend for the authenticated user, if configured. */
 async function getUserLagoBackend(
-  session: ToolSession
+  session: ToolSession,
 ): Promise<LagoVaultBackend | null> {
   if (!config.features.memoryVault) return null;
 
@@ -64,7 +64,7 @@ function mergeAndRank(
     score: number;
     source: string;
   }>,
-  maxResults: number
+  maxResults: number,
 ): typeof results {
   const seen = new Set<string>();
   const deduped: typeof results = [];
@@ -108,13 +108,13 @@ Returns matching notes with frontmatter metadata, relevant excerpts, and outgoin
       query: z
         .string()
         .describe(
-          "Search query — keywords, project names, concepts, or note titles"
+          "Search query — keywords, project names, concepts, or note titles",
         ),
       followLinks: z
         .boolean()
         .default(false)
         .describe(
-          "If true, follow wikilinks from top results to include connected notes (graph traversal, 1 hop)"
+          "If true, follow wikilinks from top results to include connected notes (graph traversal, 1 hop)",
         ),
       maxResults: z
         .number()
@@ -223,7 +223,7 @@ Returns matching notes with frontmatter metadata, relevant excerpts, and outgoin
       const merged = mergeAndRank(allResults, maxResults);
 
       // Optionally follow wikilinks (server vault only — Lago handles this server-side)
-      let linkedNotes: {
+      const linkedNotes: {
         name: string;
         relativePath: string;
         frontmatter: Record<string, unknown>;
@@ -236,7 +236,7 @@ Returns matching notes with frontmatter metadata, relevant excerpts, and outgoin
           .filter((r) => r.source === "server")
           .flatMap((r) => r.outgoingLinks);
         const uniqueTargets = [...new Set(allLinkedTargets)].filter(
-          (t) => !seenPaths.has(t)
+          (t) => !seenPaths.has(t),
         );
 
         for (const target of uniqueTargets.slice(0, 10)) {
@@ -280,13 +280,13 @@ Returns the full note content with frontmatter and outgoing wikilinks.`,
       name: z
         .string()
         .describe(
-          'Note name or relative path — e.g. "Consciousness", "00-Index/Projects", "02-Symphony/Symphony Index"'
+          'Note name or relative path — e.g. "Consciousness", "00-Index/Projects", "02-Symphony/Symphony Index"',
         ),
       includeLinkedNotes: z
         .boolean()
         .default(false)
         .describe(
-          "If true, also return summaries of notes linked via wikilinks (1 hop)"
+          "If true, also return summaries of notes linked via wikilinks (1 hop)",
         ),
     }),
     execute: async ({
@@ -320,7 +320,9 @@ Returns the full note content with frontmatter and outgoing wikilinks.`,
                           }
                         : null;
                     }),
-                  ).then((arr) => arr.filter((n): n is NonNullable<typeof n> => n !== null)),
+                  ).then((arr) =>
+                    arr.filter((n): n is NonNullable<typeof n> => n !== null),
+                  ),
                 }
               : {}),
           };
@@ -336,7 +338,7 @@ Returns the full note content with frontmatter and outgoing wikilinks.`,
           const note = resolveWikilink(name, vaultPath);
           if (note) {
             const links = extractWikilinks(note.body);
-            let linkedSummaries: {
+            const linkedSummaries: {
               name: string;
               path: string;
               excerpt: string;
@@ -445,9 +447,7 @@ Prefer this over repeated searchKnowledge calls for graph-shape questions. The s
       edgeTypes: z
         .array(z.enum(["wikilink", "reference", "tag"]))
         .default(["wikilink", "reference", "tag"])
-        .describe(
-          "Which edge types to follow. Default follows all three.",
-        ),
+        .describe("Which edge types to follow. Default follows all three."),
       depth: z
         .union([z.literal(1), z.literal(2)])
         .default(1)
@@ -471,7 +471,11 @@ Prefer this over repeated searchKnowledge calls for graph-shape questions. The s
       depth: 1 | 2;
       maxNeighbors: number;
     }) => {
-      const result = await traverseFrom(seed, { edgeTypes, depth, maxNeighbors });
+      const result = await traverseFrom(seed, {
+        edgeTypes,
+        depth,
+        maxNeighbors,
+      });
       if (!result.seed) {
         return {
           error: `Seed "${seed}" not found in the public knowledge graph.`,

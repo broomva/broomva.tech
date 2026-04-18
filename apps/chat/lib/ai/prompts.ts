@@ -94,7 +94,9 @@ function formatLiveIndex(idx: LiveIndex, today: string): string {
   if (idx.pinnedProjects.length > 0) {
     parts.push(
       `\n## Pinned projects (right now)\n${idx.pinnedProjects
-        .map((p) => `- **${p.title}** — ${p.summary || "no summary"} · ${p.url}`)
+        .map(
+          (p) => `- **${p.title}** — ${p.summary || "no summary"} · ${p.url}`,
+        )
         .join("\n")}`,
     );
   }

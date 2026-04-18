@@ -38,10 +38,7 @@ evalite("KG Retrieval Eval", {
       userMessage: userMessage(input),
       previousMessages: [],
       selectedModelId: MODEL,
-      activeTools: [
-        "searchKnowledge",
-        "readKnowledgeNote",
-      ] as ToolName[],
+      activeTools: ["searchKnowledge", "readKnowledgeNote"] as ToolName[],
     });
     return result.finalText;
   },
@@ -50,7 +47,9 @@ evalite("KG Retrieval Eval", {
       name: "CitesExpectedURL",
       description: "Response must include the expected URL substring.",
       scorer: ({ output, expected }) => {
-        const needle = (expected as { urlSubstring: string }).urlSubstring.toLowerCase();
+        const needle = (
+          expected as { urlSubstring: string }
+        ).urlSubstring.toLowerCase();
         return output.toLowerCase().includes(needle) ? 1 : 0;
       },
     },

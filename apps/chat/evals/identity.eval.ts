@@ -50,7 +50,9 @@ evalite("Arcan Identity Eval", {
       scorer: ({ output, expected }) => {
         const lower = output.toLowerCase();
         const terms = expected as string[];
-        const hits = terms.filter((t) => lower.includes(t.toLowerCase())).length;
+        const hits = terms.filter((t) =>
+          lower.includes(t.toLowerCase()),
+        ).length;
         return hits === terms.length ? 1 : hits / terms.length;
       },
     },

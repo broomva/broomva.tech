@@ -186,7 +186,9 @@ function normalizeKey(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-export async function readSiteNote(nameOrIdOrSlug: string): Promise<SiteNote | null> {
+export async function readSiteNote(
+  nameOrIdOrSlug: string,
+): Promise<SiteNote | null> {
   const knowledge = await loadAgentKnowledge();
   if (knowledge.documents.length === 0) return null;
 
@@ -199,7 +201,9 @@ export async function readSiteNote(nameOrIdOrSlug: string): Promise<SiteNote | n
   if (bySlug) return toSiteNote(bySlug);
 
   const byTitle = knowledge.documents.find(
-    (d) => normalizeKey(d.title) === key || d.title.toLowerCase() === nameOrIdOrSlug.toLowerCase(),
+    (d) =>
+      normalizeKey(d.title) === key ||
+      d.title.toLowerCase() === nameOrIdOrSlug.toLowerCase(),
   );
   if (byTitle) return toSiteNote(byTitle);
 
@@ -263,7 +267,9 @@ export async function traverseFrom(
     knowledge.graph.nodes.find(
       (n) => n.label.toLowerCase() === seedKey.toLowerCase(),
     ) ??
-    knowledge.graph.nodes.find((n) => n.id.endsWith(`/${normalizeKey(seedKey)}`)) ??
+    knowledge.graph.nodes.find((n) =>
+      n.id.endsWith(`/${normalizeKey(seedKey)}`),
+    ) ??
     null;
 
   if (!seed) return { seed: null, neighbors: [] };
@@ -281,7 +287,11 @@ export async function traverseFrom(
     }
     // For tag edges also follow target → source (tags fan out from content nodes
     // to tag nodes, so traversal from a tag node must go "backwards").
-    if (link.type === "tag" && link.target === seed.id && !visited.has(link.source)) {
+    if (
+      link.type === "tag" &&
+      link.target === seed.id &&
+      !visited.has(link.source)
+    ) {
       hop1.push({ id: link.source, type: link.type });
     }
   }
@@ -306,7 +316,12 @@ export async function traverseFrom(
           nextId = link.target;
         }
         // For tag edges also follow target → source.
-        if (!nextId && link.type === "tag" && link.target === parentId && !visited.has(link.source)) {
+        if (
+          !nextId &&
+          link.type === "tag" &&
+          link.target === parentId &&
+          !visited.has(link.source)
+        ) {
           nextId = link.source;
         }
         if (!nextId) continue;
