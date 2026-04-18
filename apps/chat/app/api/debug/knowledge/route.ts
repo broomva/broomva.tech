@@ -1,16 +1,12 @@
 /**
- * Diagnostic endpoint for the agent-knowledge loader.
+ * Diagnostic endpoint for the agent-knowledge loader + tool helpers.
  *
- * GET /api/debug/knowledge — returns the runtime state of the knowledge
- * loader so that missing-file / misrouted-path issues in production can be
- * diagnosed without SSH access.
+ * GET /api/debug/knowledge              — loader state
+ * GET /api/debug/knowledge?q=<term>     — test searchSiteContent()
+ * GET /api/debug/knowledge?note=<slug>  — test readSiteNote()
+ * GET /api/debug/knowledge?traverse=<node>  — test traverseFrom()
  *
- * Returns:
- *   • counts (documents, nodes, edges, terms) — non-zero iff load succeeded
- *   • the runtime context (cwd, __dirname when available, relevant env)
- *   • which candidate path resolved (if any), measured via statSync attempts
- *
- * No secrets, no PII, no content bodies. Safe to keep public.
+ * No secrets, no PII, no content bodies (truncated if any).
  */
 
 import fs from "node:fs";
@@ -18,7 +14,10 @@ import path from "node:path";
 import type { NextRequest } from "next/server";
 import {
   loadAgentKnowledge,
+  readSiteNote,
   resetKnowledgeCacheForTests,
+  searchSiteContent,
+  traverseFrom,
 } from "@/lib/ai/knowledge/site-content";
 
 function candidatePaths(): string[] {
@@ -42,9 +41,70 @@ function probeFs(paths: string[]): Array<{ path: string; exists: boolean; size?:
   });
 }
 
-export async function GET(_req: NextRequest) {
+function truncate(s: string | undefined, n = 160): string | undefined {
+  if (!s) return s;
+  return s.length > n ? `${s.slice(0, n)}…` : s;
+}
+
+export async function GET(req: NextRequest) {
   resetKnowledgeCacheForTests();
   const knowledge = await loadAgentKnowledge();
+
+  const url = new URL(req.url);
+  const q = url.searchParams.get("q");
+  const noteName = url.searchParams.get("note");
+  const traverseSeed = url.searchParams.get("traverse");
+
+  const probes: Record<string, unknown> = {};
+
+  if (q) {
+    const results = await searchSiteContent(q, { maxResults: 5 });
+    probes.searchSiteContent = {
+      query: q,
+      resultCount: results.length,
+      top: results.slice(0, 5).map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        url: r.url,
+        score: r.score,
+        titleSnippet: truncate(r.title),
+      })),
+    };
+  }
+
+  if (noteName) {
+    const note = await readSiteNote(noteName);
+    probes.readSiteNote = note
+      ? {
+          query: noteName,
+          found: true,
+          id: note.id,
+          slug: note.slug,
+          url: note.url,
+          title: note.title,
+          bodyPreview: truncate(note.body, 200),
+        }
+      : { query: noteName, found: false };
+  }
+
+  if (traverseSeed) {
+    const { seed, neighbors } = await traverseFrom(traverseSeed, {
+      edgeTypes: ["wikilink", "reference", "tag"],
+      depth: 1,
+      maxNeighbors: 10,
+    });
+    probes.traverseFrom = {
+      query: traverseSeed,
+      seed: seed ? { id: seed.id, type: seed.type, label: seed.label } : null,
+      neighborCount: neighbors.length,
+      neighbors: neighbors.slice(0, 5).map((n) => ({
+        id: n.node.id,
+        type: n.node.type,
+        edgeType: n.edgeType,
+        hops: n.hops,
+      })),
+    };
+  }
 
   const fsCandidates = probeFs(candidatePaths());
 
@@ -81,5 +141,6 @@ export async function GET(_req: NextRequest) {
     },
     env,
     fsCandidates,
+    probes,
   });
 }
