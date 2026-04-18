@@ -3,7 +3,7 @@ import type { AppModelId } from "@/lib/ai/app-models";
 import { createCoreChatAgent } from "@/lib/ai/core-chat-agent";
 import { determineExplicitlyRequestedTools } from "@/lib/ai/determine-explicitly-requested-tools";
 import { generateFollowupSuggestions } from "@/lib/ai/followup-suggestions";
-import { systemPrompt } from "@/lib/ai/prompts";
+import { buildSystemPrompt } from "@/lib/ai/prompts";
 import type { ChatMessage, StreamWriter, ToolName } from "@/lib/ai/types";
 import { CostAccumulator } from "@/lib/credits/cost-accumulator";
 import { generateUUID } from "@/lib/utils";
@@ -63,7 +63,7 @@ async function executeAgentAndGetOutput({
   const noOpStreamWriter = createNoOpStreamWriter();
 
   const { result, contextForLLM } = await createCoreChatAgent({
-    system: systemPrompt(),
+    system: await buildSystemPrompt({ isAnonymous: true }),
     userMessage,
     previousMessages,
     selectedModelId,

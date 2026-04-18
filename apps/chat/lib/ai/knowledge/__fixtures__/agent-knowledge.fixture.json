@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-04-17T00:00:00.000Z",
+  "commit": "abc1234",
+  "documents": [
+    {
+      "id": "writing/agent-native-architecture",
+      "kind": "writing",
+      "slug": "agent-native-architecture",
+      "title": "Agent-Native Architecture",
+      "summary": "Systems designed for agents, not humans.",
+      "url": "/writing/agent-native-architecture",
+      "tags": ["agent-os", "architecture"],
+      "frontmatter": {
+        "title": "Agent-Native Architecture",
+        "tags": ["agent-os", "architecture"]
+      },
+      "body": "Agent-native architecture means building control planes where the primary operator is an agent. See [[life-agent-os]] for the reference implementation.",
+      "wikilinks": ["life-agent-os"],
+      "related": [],
+      "headings": [{ "depth": 1, "text": "Agent-Native Architecture" }],
+      "wordCount": 22
+    },
+    {
+      "id": "projects/life-agent-os",
+      "kind": "projects",
+      "slug": "life-agent-os",
+      "title": "Life Agent OS",
+      "summary": "The unified Rust monorepo for the Broomva Agent OS.",
+      "url": "/projects/life-agent-os",
+      "tags": ["agent-os", "rust"],
+      "frontmatter": { "title": "Life Agent OS", "pinned": true },
+      "body": "Life is the Rust monorepo implementing Arcan, Lago, Vigil, Praxis, Haima, Spaces, Anima, Autonomic, and aiOS.",
+      "wikilinks": [],
+      "related": ["agent-native-architecture"],
+      "headings": [{ "depth": 1, "text": "Life Agent OS" }],
+      "wordCount": 18
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "writing/agent-native-architecture",
+        "label": "Agent-Native Architecture",
+        "type": "writing",
+        "url": "/writing/agent-native-architecture",
+        "summary": "Systems designed for agents, not humans.",
+        "tags": ["agent-os", "architecture"],
+        "val": 3
+      },
+      {
+        "id": "projects/life-agent-os",
+        "label": "Life Agent OS",
+        "type": "projects",
+        "url": "/projects/life-agent-os",
+        "summary": "The unified Rust monorepo for the Broomva Agent OS.",
+        "tags": ["agent-os", "rust"],
+        "val": 3
+      },
+      {
+        "id": "tag:agent-os",
+        "label": "agent-os",
+        "type": "tag",
+        "tags": [],
+        "val": 2
+      },
+      {
+        "id": "tag:architecture",
+        "label": "architecture",
+        "type": "tag",
+        "tags": [],
+        "val": 1
+      },
+      { "id": "tag:rust", "label": "rust", "type": "tag", "tags": [], "val": 1 }
+    ],
+    "links": [
+      {
+        "source": "writing/agent-native-architecture",
+        "target": "projects/life-agent-os",
+        "type": "wikilink"
+      },
+      {
+        "source": "writing/agent-native-architecture",
+        "target": "tag:agent-os",
+        "type": "tag"
+      },
+      {
+        "source": "writing/agent-native-architecture",
+        "target": "tag:architecture",
+        "type": "tag"
+      },
+      {
+        "source": "projects/life-agent-os",
+        "target": "writing/agent-native-architecture",
+        "type": "reference"
+      },
+      {
+        "source": "projects/life-agent-os",
+        "target": "tag:agent-os",
+        "type": "tag"
+      },
+      {
+        "source": "projects/life-agent-os",
+        "target": "tag:rust",
+        "type": "tag"
+      }
+    ]
+  },
+  "invertedIndex": {
+    "agent": ["writing/agent-native-architecture", "projects/life-agent-os"],
+    "native": ["writing/agent-native-architecture"],
+    "architecture": ["writing/agent-native-architecture"],
+    "life": ["projects/life-agent-os"],
+    "rust": ["projects/life-agent-os"]
+  }
+}

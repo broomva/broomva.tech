@@ -55,6 +55,7 @@
 .devtools
 .vercel
 public/search-index.json
+public/agent-knowledge.json
 
 # Lago/aiOS lakebase state
 .lago/

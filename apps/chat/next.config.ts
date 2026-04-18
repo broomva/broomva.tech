@@ -82,6 +82,10 @@ const nextConfig: NextConfig = {
       "./public/images/**",
     ],
   },
+  outputFileTracingIncludes: {
+    "/api/chat": ["./public/agent-knowledge.json"],
+    "/api/chat/[id]/**": ["./public/agent-knowledge.json"],
+  },
   experimental: {
     optimizePackageImports: [
       "react-tweet",
