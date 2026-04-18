@@ -42,9 +42,6 @@ function probeFs(paths: string[]): Array<{ path: string; exists: boolean; size?:
   });
 }
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 export async function GET(_req: NextRequest) {
   resetKnowledgeCacheForTests();
   const knowledge = await loadAgentKnowledge();
