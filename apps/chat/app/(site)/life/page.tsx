@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PROJECTS } from "./_lib/project-map";
+import { PROJECTS, type ProjectChipColor } from "./_lib/project-map";
+
+const CHIP_LABELS: Record<ProjectChipColor, string> = {
+  emerald: "live",
+  amber: "research",
+  violet: "paid",
+};
 
 export const metadata: Metadata = {
   title: "Life · Agent Workspace",
@@ -31,7 +37,7 @@ export default function LifeLandingPage() {
               <span
                 className={`life-landing__chip life-landing__chip--${project.chipColor}`}
               >
-                {project.chipColor === "emerald" ? "live" : "research"}
+                {CHIP_LABELS[project.chipColor]}
               </span>
               <div className="life-landing__card-eyebrow">{project.eyebrow}</div>
               <div className="life-landing__card-title">{project.displayName}</div>

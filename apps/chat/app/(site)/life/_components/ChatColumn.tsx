@@ -13,6 +13,12 @@ interface Props {
   running: boolean;
   toolHighlight: string | null;
   setToolHighlight: (id: string | null) => void;
+  /** When present, Composer is a real send button that routes to /api/life/run. */
+  onSendMessage?: (text: string) => void;
+  /** Label for the "mock | live" chip in the column header. */
+  sourceLabel?: "mock" | "live";
+  /** Model identifier to display in the Composer footer. */
+  modelLabel?: string;
 }
 
 export function ChatColumn({
@@ -21,6 +27,9 @@ export function ChatColumn({
   running,
   toolHighlight,
   setToolHighlight,
+  onSendMessage,
+  sourceLabel = "mock",
+  modelLabel,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,7 +64,11 @@ export function ChatColumn({
       <div className="col__header">
         <div className="row" style={{ gap: 10 }}>
           <span className="eyebrow">Chat · Arcan</span>
-          <span className="pill">mock</span>
+          <span
+            className={`pill ${sourceLabel === "live" ? "pill--accent" : ""}`}
+          >
+            {sourceLabel}
+          </span>
         </div>
         <div className="row" style={{ gap: 4 }}>
           <button
@@ -117,7 +130,7 @@ export function ChatColumn({
         ))}
       </div>
       <AgentStatus running={running} state={state} />
-      <ChatComposer />
+      <ChatComposer onSend={onSendMessage} modelLabel={modelLabel} />
     </div>
   );
 }

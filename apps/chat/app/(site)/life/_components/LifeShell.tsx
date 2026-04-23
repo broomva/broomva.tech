@@ -10,6 +10,7 @@ import {
 import type { ScenarioId, TweaksState } from "../_lib/types";
 import { useReplay } from "../_lib/use-replay";
 import { useLiveRun } from "../_lib/use-live-run";
+import { PaymentRequiredBanner } from "./PaymentRequiredBanner";
 import { AnimaPopover } from "./AnimaPopover";
 import { ChatColumn } from "./ChatColumn";
 import { Dock } from "./Dock";
@@ -104,7 +105,13 @@ export function LifeShell({
   // reads { state, setState }.
   const state = liveEnabled ? liveState : replayState;
   const setState = liveEnabled ? setLiveState : setReplayState;
-  void liveMeta; // status surface wires into the agent-status stripe in a follow-up
+
+  // Paywall overlay — shows when the live runner returns 402 and we have
+  // a quote. Approving triggers a retry with X-PAYMENT; cancel dismisses.
+  const showPaymentBanner =
+    liveEnabled &&
+    liveMeta.status === "payment-required" &&
+    !!liveMeta.paymentQuote;
 
   // Cross-link highlight between chat tool calls and journal rows.
   const [toolHighlight, setToolHighlight] = useState<string | null>(null);
@@ -182,6 +189,9 @@ export function LifeShell({
               running={running}
               setToolHighlight={setToolHighlight}
               toolHighlight={toolHighlight}
+              onSendMessage={liveEnabled ? liveMeta.sendMessage : undefined}
+              sourceLabel={liveEnabled ? "live" : "mock"}
+              modelLabel={liveEnabled ? "openai/gpt-5-mini" : undefined}
             />
             <MiddleColumn
               mode={tweaks.middleMode}
@@ -197,6 +207,7 @@ export function LifeShell({
               mode={tweaks.rightMode}
               setMode={setRightMode}
               state={state}
+              liveMeta={liveEnabled ? liveMeta : undefined}
             />
           </>
         ) : (
@@ -215,6 +226,15 @@ export function LifeShell({
       </div>
 
       {animaOpen && <AnimaPopover onClose={() => setAnimaOpen(false)} />}
+
+      {showPaymentBanner && liveMeta.paymentQuote && (
+        <PaymentRequiredBanner
+          quote={liveMeta.paymentQuote}
+          projectSlug={projectSlug}
+          onApprove={(header) => liveMeta.retryWithPayment?.(header)}
+          onCancel={() => liveMeta.dismiss?.()}
+        />
+      )}
 
       <TweaksPanel
         tweaks={tweaks}

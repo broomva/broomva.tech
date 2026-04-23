@@ -32,7 +32,9 @@ import {
   createRun,
   finishRun,
   getCurrentRulesVersion,
+  getOrCreateSession,
   getProjectBySlug,
+  getSessionHistory,
 } from "@/lib/life-runtime/queries";
 import {
   pickPaymentMode,
@@ -40,6 +42,7 @@ import {
   userHasCreditsFor,
 } from "@/lib/life-runtime/billing";
 import { getRunner } from "@/lib/life-runtime/runner-dispatch";
+import { RealAgentRunner } from "@/lib/life-runtime/real-runner";
 import { RunRequestSchema, type ConsumerIdentity } from "@/lib/life-runtime/types";
 
 // nextConfig.cacheComponents blocks the usual `export const runtime` pattern.
@@ -217,7 +220,10 @@ async function handlePost(
   }
   // `input` column is JSONB NOT NULL — default to {} so the "start a demo
   // without structured input" path (e.g. /life/sentinel landing) still works.
-  const { input = {}, byokKeyId } = parsedBody.data;
+  const { input = {}, byokKeyId, sessionId, message } = parsedBody.data;
+  // If a chat message is provided, the run is "real" — attach a session.
+  // Otherwise we're in demo-start mode and stream a scripted scenario.
+  const userMessage = typeof message === "string" ? message.trim() : "";
 
   // 4. Billing decision
   const decision = pickPaymentMode({ project, consumer, byokKeyId });
@@ -249,11 +255,29 @@ async function handlePost(
     }
   }
 
-  // 5. Create run row
+  // 5. Resolve session (real chat only; demo-start mode skips this)
+  const isLiveTurn = userMessage.length > 0;
+  const sessionConsumerKind: "user" | "anon" =
+    consumer.kind === "user" ? "user" : "anon";
+  const session =
+    isLiveTurn && consumer.kind !== "agent"
+      ? await getOrCreateSession({
+          projectId: project.id,
+          sessionId,
+          consumerKind: sessionConsumerKind,
+          consumerId: consumer.id,
+          organizationId: consumer.organizationId,
+        })
+      : null;
+  const history = session ? await getSessionHistory(session.id) : [];
+
+  // 6. Create run row
   const rulesVersion = await getCurrentRulesVersion(project);
   const run = await createRun({
     projectId: project.id,
     rulesVersionId: rulesVersion?.id ?? null,
+    sessionId: session?.id,
+    inputText: isLiveTurn ? userMessage : undefined,
     consumerKind: consumer.kind,
     consumerId: consumer.id,
     organizationId: consumer.organizationId,
@@ -261,11 +285,30 @@ async function handlePost(
     paymentMode: decision.mode,
   });
 
-  // 6. Dispatch runner; stream over SSE.
-  const runner = getRunner(project.moduleTypeId);
+  // 7. Dispatch runner; stream over SSE.
+  // Scenario replay is kept for the landing auto-play — when the UI opens
+  // /life/<slug> without sending a message, we run the scripted demo. When
+  // the user types into the composer, we switch to the RealAgentRunner.
+  const runner = isLiveTurn
+    ? new RealAgentRunner({
+        projectSlug: slug,
+        moduleTypeId: project.moduleTypeId,
+        input,
+        maxCostCents: decision.maxCostCents,
+        project,
+        history,
+        userMessage,
+        paymentMode: decision.mode,
+      })
+    : getRunner(project.moduleTypeId);
+
   let finalCostCents = 0;
   let model: string | undefined;
   let provider: string | undefined;
+  // For the real runner we also want to persist the assistant text into
+  // LifeRun.output so history reload works on subsequent turns. Accumulate
+  // from text_delta events as they flow.
+  let assistantTextAccum = "";
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -289,31 +332,56 @@ async function handlePost(
           type: "run_metadata",
           payload: {
             runId: run.id,
+            sessionId: session?.id ?? null,
             projectSlug: slug,
             moduleTypeId: project.moduleTypeId,
             paymentMode: decision.mode,
             quotedCents: decision.quotedCents,
             displayName: project.displayName,
+            isLiveTurn,
           },
         });
 
-        for await (const ev of runner.run({
-          projectSlug: slug,
-          moduleTypeId: project.moduleTypeId,
-          input,
-          maxCostCents: decision.maxCostCents,
-          onFinish: (cost) => {
+        // The real runner carries its own context; the legacy scenario
+        // runner wants the RunnerContext at call time. Dispatch accordingly.
+        const stream = isLiveTurn
+          ? (runner as RealAgentRunner).run()
+          : runner.run({
+              projectSlug: slug,
+              moduleTypeId: project.moduleTypeId,
+              input,
+              maxCostCents: decision.maxCostCents,
+              onFinish: (cost) => {
+                finalCostCents = cost.llmCents;
+                model = cost.model;
+                provider = cost.provider;
+              },
+            });
+
+        // Wire onFinish for the real runner through a captured side channel;
+        // RealAgentRunner calls onFinish via its internal options.
+        if (isLiveTurn) {
+          (runner as RealAgentRunner)["opts"].onFinish = (cost) => {
             finalCostCents = cost.llmCents;
             model = cost.model;
             provider = cost.provider;
-          },
-        })) {
+          };
+        }
+
+        for await (const ev of stream) {
+          // Accumulate assistant text so we can persist the full response
+          // to LifeRun.output at run-completion for history reload.
+          if (ev.type === "text_delta") {
+            const t = (ev.payload as { text?: string }).text ?? "";
+            assistantTextAccum += t;
+          }
           await emit(ev);
         }
 
         await finishRun({
           runId: run.id,
           status: "succeeded",
+          output: assistantTextAccum ? { text: assistantTextAccum } : undefined,
           llmCostCents: finalCostCents,
           consumerPaidCents: decision.quotedCents,
           model,

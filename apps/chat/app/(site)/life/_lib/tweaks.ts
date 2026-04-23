@@ -39,7 +39,7 @@ const RIGHT: RightMode[] = [
 ];
 const FS: FsStyle[] = ["finder", "shimmer", "heartbeat", "ticker"];
 const DENSITY: MetricsDensity[] = ["minimal", "medium", "rich"];
-const SCENARIOS: ScenarioId[] = ["refactor", "ingest", "research"];
+const SCENARIOS: ScenarioId[] = ["refactor", "ingest", "research", "materiales"];
 
 function pick<T>(allowed: readonly T[], v: unknown, fallback: T): T {
   return allowed.includes(v as T) ? (v as T) : fallback;
