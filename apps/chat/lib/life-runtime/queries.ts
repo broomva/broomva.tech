@@ -84,6 +84,10 @@ export async function createRun(params: CreateRunParams): Promise<LifeRun> {
   const effectiveRulesVersionId = params.rulesVersionId
     ?? (await ensureInitialRulesVersion(params.projectId, params.consumerId));
 
+  // LifeRun.input is JSONB NOT NULL — coerce nullish callers to an empty
+  // object so "start a run with no structured input" is always legal.
+  const inputValue = (params.input ?? {}) as object;
+
   const [row] = await db
     .insert(lifeRun)
     .values({
@@ -92,7 +96,7 @@ export async function createRun(params: CreateRunParams): Promise<LifeRun> {
       consumerKind: params.consumerKind,
       consumerId: params.consumerId,
       organizationId: params.organizationId ?? null,
-      input: params.input as object,
+      input: inputValue,
       status: "streaming",
       paymentMode: params.paymentMode,
       startedAt: new Date(),

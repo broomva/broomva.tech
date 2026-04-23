@@ -165,14 +165,13 @@ export async function POST(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[life/run] uncaught handler error:", err);
-    const stack = err instanceof Error ? err.stack : undefined;
     return NextResponse.json(
       {
         error: "Internal error while starting run.",
-        // Temporary — Phase 2 QA. Surface message + stack in prod until the
-        // live-run path is fully debugged. No secrets in these strings.
-        detail: message,
-        stack: stack ? stack.split("\n").slice(0, 6) : undefined,
+        detail:
+          process.env.VERCEL_ENV === "production"
+            ? "See function logs for trace."
+            : message,
       },
       { status: 500 },
     );
@@ -216,7 +215,9 @@ async function handlePost(
   if (!parsedBody.success) {
     return jsonError(400, "Invalid body.", { issues: parsedBody.error.issues });
   }
-  const { input = null, byokKeyId } = parsedBody.data;
+  // `input` column is JSONB NOT NULL — default to {} so the "start a demo
+  // without structured input" path (e.g. /life/sentinel landing) still works.
+  const { input = {}, byokKeyId } = parsedBody.data;
 
   // 4. Billing decision
   const decision = pickPaymentMode({ project, consumer, byokKeyId });
