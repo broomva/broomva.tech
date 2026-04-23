@@ -27,11 +27,14 @@ interface Props {
   eyebrow: string;
   /**
    * When true, the shell reads events from /api/life/run/<slug> over SSE
-   * instead of replaying the local scenario clock. Phase 2 enables it for
-   * Sentinel; Materiales stays on local replay until the live pipeline with
-   * web_search lands in a follow-up PR.
+   * instead of replaying the local scenario clock. Live projects start
+   * with an empty chat; the user's first message begins the first run.
    */
   liveStream?: boolean;
+  /** Empty-state title for the chat column (project-aware copy). */
+  emptyTitle?: string;
+  emptyHint?: string;
+  suggestions?: Array<{ label: string; prompt: string }>;
 }
 
 function usePersistedTweaks(initialScenario: ScenarioId): {
@@ -71,6 +74,9 @@ export function LifeShell({
   displayName,
   eyebrow,
   liveStream = false,
+  emptyTitle,
+  emptyHint,
+  suggestions,
 }: Props) {
   const { tweaks, setTweaks } = usePersistedTweaks(scenarioId);
   const [tweaksOpen, setTweaksOpen] = useState(false);
@@ -96,9 +102,14 @@ export function LifeShell({
   // fall back to the local replay clock so the Tweaks panel keeps working.
   const liveEnabled =
     liveStream && playing && tweaks.scenario === scenarioId;
+  // Live projects start EMPTY — the user's first message is the first run.
+  // No server-side scenario auto-play (that was a Phase 2 / early-Phase-3
+  // crutch that made the UI look scripted). The empty state now invites
+  // the user to type; sendMessage() kicks off the first real turn.
   const [liveState, setLiveState, liveMeta] = useLiveRun({
     projectSlug,
     enabled: liveEnabled,
+    autoStart: false,
   });
 
   // The downstream UI is agnostic to which source drove state — it only
@@ -192,6 +203,9 @@ export function LifeShell({
               onSendMessage={liveEnabled ? liveMeta.sendMessage : undefined}
               sourceLabel={liveEnabled ? "live" : "mock"}
               modelLabel={liveEnabled ? "openai/gpt-5-mini" : undefined}
+              emptyStateTitle={emptyTitle}
+              emptyStateHint={emptyHint}
+              suggestions={suggestions}
             />
             <MiddleColumn
               mode={tweaks.middleMode}

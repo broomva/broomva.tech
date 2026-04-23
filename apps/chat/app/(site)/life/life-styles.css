@@ -11,7 +11,10 @@
   color: var(--ag-text-primary);
   font-family: var(--ag-font-body);
   overflow: hidden;
-  z-index: 0;
+  /* Sit above any site chrome that slipped through the layout filter, so the
+     composer is always reachable. The `.ag-payment-overlay` at z:80 and the
+     Tweaks panel at z:70 stack above the shell via their own rules. */
+  z-index: 50;
 }
 
 .life-shell-root.life-shell-root--orbs {

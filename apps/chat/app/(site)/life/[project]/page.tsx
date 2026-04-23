@@ -37,6 +37,9 @@ export default async function LifeProjectPage({
       displayName={info.displayName}
       eyebrow={info.eyebrow}
       liveStream={info.liveStream}
+      emptyTitle={info.emptyTitle}
+      emptyHint={info.emptyHint}
+      suggestions={info.suggestions}
     />
   );
 }

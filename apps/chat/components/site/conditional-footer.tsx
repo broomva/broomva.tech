@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { FlickeringFooter } from "@/components/ui/flickering-footer";
 
-const FOOTER_HIDDEN_PATHS = ["/graph"];
+const FOOTER_HIDDEN_PATHS = ["/graph", "/life"];
 
 export function ConditionalFooter() {
   const pathname = usePathname();
