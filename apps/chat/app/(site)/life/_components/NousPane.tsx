@@ -1,19 +1,36 @@
 "use client";
 
-import { LIFE_JUDGES } from "../_lib/mock-workspace";
 import type { ReplayState } from "../_lib/types";
-import type { LiveRunMeta } from "../_lib/use-live-run";
+import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
 interface Props {
   state: ReplayState;
-  /** Present on live-streaming projects. */
-  liveMeta?: LiveRunMeta;
+  /** Live Prosopon run meta (unused today — reserved for Nous-crate per-axis scores). */
+  liveMeta?: ProsoponRunMeta;
 }
 
-export function NousPane({ state, liveMeta }: Props) {
-  const judges = LIFE_JUDGES;
+export function NousPane({ state }: Props) {
   const agg = state.nous;
-  const isLive = !!liveMeta;
+
+  if (!agg) {
+    return (
+      <div className="right-pane">
+        <div className="eyebrow" style={{ marginBottom: 10 }}>
+          Nous · metacognition
+        </div>
+        <div className="pane-empty">
+          <div className="pane-empty__title">Waiting for turn to close</div>
+          <div className="pane-empty__body">
+            When the agent finishes a turn it emits a composite Nous score
+            (novelty + relevance + specificity) plus a short note. That score
+            appears here and feeds the autonomic controller.
+          </div>
+          <div className="pane-empty__meta">source · Nous crate</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="right-pane">
       <div
@@ -21,13 +38,11 @@ export function NousPane({ state, liveMeta }: Props) {
         style={{ justifyContent: "space-between", marginBottom: 8 }}
       >
         <div className="eyebrow">Nous · metacognition</div>
-        {agg && (
-          <span
-            className={`pill ${agg.band === "good" ? "pill--accent" : ""}`}
-          >
-            live · {agg.score.toFixed(2)}
-          </span>
-        )}
+        <span
+          className={`pill ${agg.band === "good" ? "pill--accent" : ""}`}
+        >
+          live · {agg.score.toFixed(2)}
+        </span>
       </div>
       <div className="gauge">
         <div className="gauge__label">Composite score</div>
@@ -35,78 +50,32 @@ export function NousPane({ state, liveMeta }: Props) {
           className="gauge__value"
           style={{
             color:
-              agg?.band === "good"
+              agg.band === "good"
                 ? "oklch(0.78 0.15 155)"
-                : agg?.band === "warn"
+                : agg.band === "warn"
                   ? "oklch(0.87 0.18 85)"
                   : "var(--ag-text-primary)",
           }}
         >
-          {agg ? agg.score.toFixed(2) : "—"}
+          {agg.score.toFixed(2)}
         </div>
-        <div className="gauge__sub">
-          {agg?.note || "Waiting for turn to close."}
-        </div>
+        <div className="gauge__sub">{agg.note || "No note provided."}</div>
         <div className="bar">
           <div
             className={`bar__fill ${
-              agg?.band === "good" ? "bar__fill--good" : "bar__fill--warn"
+              agg.band === "good" ? "bar__fill--good" : "bar__fill--warn"
             }`}
-            style={{ width: `${(agg?.score || 0) * 100}%` }}
+            style={{ width: `${agg.score * 100}%` }}
           />
         </div>
       </div>
-      <div className="section">
-        Per-axis judges{" "}
-        {isLive && (
-          <span
-            className="pill"
-            style={{
-              marginLeft: "auto",
-              fontSize: 9.5,
-              padding: "1px 6px",
-            }}
-          >
-            demo
-          </span>
-        )}
+      <div className="section">Per-axis judges</div>
+      <div className="pane-empty pane-empty--inline">
+        <div className="pane-empty__body">
+          Per-axis breakdown (novelty / relevance / specificity) lands here
+          once the Nous crate is wired into the Life runtime.
+        </div>
       </div>
-      {isLive && (
-        <div
-          style={{
-            fontSize: 11.5,
-            color: "var(--ag-text-muted)",
-            lineHeight: 1.55,
-            padding: "6px 10px 10px",
-          }}
-        >
-          Per-axis judges come from the Nous crate. Until it's wired into
-          the Life runtime, the composite score above is live (from the
-          runner's end-of-turn self-eval); per-axis cards below are design
-          placeholders.
-        </div>
-      )}
-      {judges.map((j) => (
-        <div className="judge-card" key={j.axis}>
-          <div className="judge-card__head">
-            <div style={{ fontFamily: "var(--ag-font-heading)", fontSize: 13 }}>
-              {j.axis}
-            </div>
-            <div className={`judge-card__score judge-card__score--${j.band}`}>
-              {j.score.toFixed(2)}
-            </div>
-          </div>
-          <div className="bar">
-            <div
-              className={`bar__fill bar__fill--${
-                j.band === "good" ? "good" : "warn"
-              }`}
-              style={{ width: `${j.score * 100}%` }}
-            />
-          </div>
-          <div className="judge-card__body">{j.note}</div>
-        </div>
-      ))}
     </div>
   );
 }

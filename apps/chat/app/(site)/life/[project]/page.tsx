@@ -59,10 +59,8 @@ export default async function LifeProjectPage({
   return (
     <LifeShell
       projectSlug={project}
-      scenarioId={info.scenarioId}
       displayName={info.displayName}
       eyebrow={info.eyebrow}
-      liveStream={info.liveStream}
       emptyTitle={info.emptyTitle}
       emptyHint={info.emptyHint}
       suggestions={info.suggestions}

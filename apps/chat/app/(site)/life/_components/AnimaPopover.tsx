@@ -1,13 +1,16 @@
 "use client";
 
-import { LIFE_ANIMA } from "../_lib/mock-workspace";
-
 interface Props {
   onClose: () => void;
 }
 
+/**
+ * Brief identity popover. Renders a static Anima card — the AnimaPane on the
+ * right column is the full, live-data view. This popover exists purely so
+ * the top-left Anima badge has a lightweight overlay for quick reference
+ * without changing the user's right-pane selection.
+ */
 export function AnimaPopover({ onClose }: Props) {
-  const a = LIFE_ANIMA;
   return (
     <>
       <button
@@ -28,7 +31,8 @@ export function AnimaPopover({ onClose }: Props) {
           position: "fixed",
           top: 58,
           left: 16,
-          width: 360,
+          width: 340,
+          maxWidth: "calc(100vw - 32px)",
           zIndex: 51,
           padding: 16,
           border: "1px solid var(--ag-border-default)",
@@ -42,43 +46,19 @@ export function AnimaPopover({ onClose }: Props) {
       >
         <div className="row" style={{ gap: 12, marginBottom: 12 }}>
           <div className="anima-avatar" style={{ width: 46, height: 46 }} />
-          <div>
-            <div style={{ fontFamily: "var(--ag-font-heading)", fontSize: 16 }}>
-              {a.name}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{ fontFamily: "var(--ag-font-heading)", fontSize: 16 }}
+            >
+              Anima
             </div>
             <div
               className="mono"
               style={{ fontSize: 10.5, color: "var(--ag-text-muted)" }}
             >
-              {a.soul}
+              Identity substrate
             </div>
           </div>
-          <span className="pill pill--accent" style={{ marginLeft: "auto" }}>
-            {a.tier}
-          </span>
-        </div>
-        <div
-          className="mono"
-          style={{
-            fontSize: 11,
-            color: "var(--ag-text-secondary)",
-            marginBottom: 8,
-          }}
-        >
-          {a.did}
-        </div>
-        <div
-          className="mono"
-          style={{
-            fontSize: 10.5,
-            color: "var(--ag-text-muted)",
-            marginBottom: 12,
-          }}
-        >
-          session · {a.session}
-        </div>
-        <div className="eyebrow" style={{ marginBottom: 6 }}>
-          Beliefs
         </div>
         <div
           style={{
@@ -87,11 +67,9 @@ export function AnimaPopover({ onClose }: Props) {
             color: "var(--ag-text-secondary)",
           }}
         >
-          {a.beliefs.slice(0, 3).map((b) => (
-            <div key={b} style={{ padding: "4px 0" }}>
-              · {b}
-            </div>
-          ))}
+          Anima holds the session soul: your identity, tier, DID, beliefs,
+          and trust vector. Open the <strong>Anima</strong> tab in the right
+          column for the full view with live session data.
         </div>
       </div>
     </>

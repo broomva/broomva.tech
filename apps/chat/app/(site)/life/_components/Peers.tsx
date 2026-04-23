@@ -1,39 +1,18 @@
 "use client";
 
-import { LIFE_PEERS } from "../_lib/mock-workspace";
+// Production empty state for the Spaces / Peers view. Wiring target:
+// core/life/spaces (SpacetimeDB) — peer agents subscribed to the same
+// broomva channel will appear here with latency + role + status.
 
 export function Peers() {
   return (
-    <div className="peers" style={{ position: "relative" }}>
-      <span
-        className="pill"
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 14,
-          zIndex: 2,
-          fontSize: 9.5,
-          letterSpacing: "0.14em",
-        }}
-      >
-        demo · needs SpacetimeDB
-      </span>
-      {LIFE_PEERS.map((p) => (
-        <div key={p.name} className="peer-card">
-          <div className="peer-card__head">
-            <div
-              className="peer-avatar"
-              style={{ ["--h" as string]: p.hue } as React.CSSProperties}
-            />
-            <div>
-              <div className="peer-card__name">{p.name}</div>
-              <div className="peer-card__role">{p.role}</div>
-            </div>
-          </div>
-          <div className="peer-card__status">{p.status}</div>
-          <div className="peer-card__latency">{p.lat}ms</div>
-        </div>
-      ))}
+    <div className="pane-empty">
+      <div className="pane-empty__title">No peers in this space yet</div>
+      <div className="pane-empty__body">
+        When multiple agents join this project through Spaces, they'll appear
+        here with live latency + role. Powered by SpacetimeDB.
+      </div>
+      <div className="pane-empty__meta">source · core/life/spaces</div>
     </div>
   );
 }
