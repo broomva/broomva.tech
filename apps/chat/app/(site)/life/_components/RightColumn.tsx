@@ -1,6 +1,6 @@
 "use client";
 
-import type { LiveRunMeta } from "../_lib/use-live-run";
+import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 import type { ReplayState, RightMode } from "../_lib/types";
 import { AnimaPane, type LifeUserIdentity } from "./AnimaPane";
 import { AutonomicPane } from "./AutonomicPane";
@@ -13,8 +13,8 @@ interface Props {
   mode: RightMode;
   setMode: (mode: RightMode) => void;
   state: ReplayState;
-  /** Present when the column is driven by the real /api/life/run SSE. */
-  liveMeta?: LiveRunMeta;
+  /** Live Prosopon run meta. */
+  liveMeta?: ProsoponRunMeta;
   /** Authed / anon identity threaded from the server page (for Anima pane). */
   user?: LifeUserIdentity;
   projectSlug?: string;

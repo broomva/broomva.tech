@@ -1,29 +1,23 @@
 "use client";
 
-import type { TweaksState } from "../_lib/types";
 import type { LifeUserIdentity } from "./AnimaPane";
 
 interface Props {
   setAnimaOpen: (next: (v: boolean) => boolean) => void;
-  tweaks: TweaksState;
-  setTweaks: (patch: Partial<TweaksState>) => void;
-  playing: boolean;
-  setPlaying: (next: boolean | ((p: boolean) => boolean)) => void;
-  crumb: { brand: string; project: string; scenarioLabel: string };
+  crumb: { brand: string; project: string };
   /** Authed / anon identity — drives the badge's name + soul. */
   user?: LifeUserIdentity;
   projectSlug?: string;
+  /** Mobile-only: open the pane tweaks sheet from the header. */
+  onOpenPreferences?: () => void;
 }
 
 export function Topbar({
   setAnimaOpen,
-  tweaks,
-  setTweaks,
-  playing,
-  setPlaying,
   crumb,
   user,
   projectSlug,
+  onOpenPreferences,
 }: Props) {
   const badgeName = user?.name ?? "Arcan";
   const badgeHandle = user?.handle ?? user?.email?.split("@")[0] ?? "arcan";
@@ -48,69 +42,21 @@ export function Topbar({
           <span className="sep">/</span>
           life
           <span className="sep">/</span>
-          {crumb.project}
-          <span className="sep">·</span>
-          {crumb.scenarioLabel}
+          <span className="topbar__crumb-project">{crumb.project}</span>
         </div>
       </div>
       <div className="topbar__right">
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setTweaks({ scenario: "refactor" })}
-          style={{ opacity: tweaks.scenario === "refactor" ? 1 : 0.6 }}
-        >
-          Refactor
-        </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setTweaks({ scenario: "ingest" })}
-          style={{ opacity: tweaks.scenario === "ingest" ? 1 : 0.6 }}
-        >
-          Ingest
-        </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setTweaks({ scenario: "research" })}
-          style={{ opacity: tweaks.scenario === "research" ? 1 : 0.6 }}
-        >
-          Research
-        </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setTweaks({ scenario: "materiales" })}
-          style={{ opacity: tweaks.scenario === "materiales" ? 1 : 0.6 }}
-        >
-          Materiales
-        </button>
-        <span
-          style={{
-            width: 1,
-            height: 20,
-            background: "var(--ag-border-subtle)",
-          }}
-        />
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setPlaying((p) => !p)}
-        >
-          {playing ? "❚❚ Pause" : "▶ Play"}
-        </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() =>
-            setTweaks({
-              layout: tweaks.layout === "classic" ? "experimental" : "classic",
-            })
-          }
-        >
-          {tweaks.layout === "classic" ? "Experimental" : "Classic"}
-        </button>
+        {onOpenPreferences && (
+          <button
+            type="button"
+            className="btn btn--ghost btn--icon topbar__prefs-btn"
+            onClick={onOpenPreferences}
+            aria-label="Pane preferences"
+            title="Pane preferences"
+          >
+            ⚙
+          </button>
+        )}
       </div>
     </div>
   );

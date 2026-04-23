@@ -1,8 +1,7 @@
 "use client";
 
-import { LIFE_HOMEO } from "../_lib/mock-workspace";
 import type { ReplayState } from "../_lib/types";
-import type { LiveRunMeta } from "../_lib/use-live-run";
+import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
 interface ArcProps {
   label: string;
@@ -77,30 +76,20 @@ function HomeoArc({ label, value, target, sub }: ArcProps) {
   );
 }
 
-const SETPOINTS = [
-  { k: "pass_at_1", v: "1.00", t: "≥ 0.90", good: true },
-  { k: "shield_intervention_rate", v: "0.03", t: "≤ 0.10", good: true },
-  { k: "retry_rate", v: "0.08", t: "≤ 0.30", good: true },
-  { k: "revert_rate", v: "0.02", t: "≤ 0.08", good: true },
-  { k: "human_intervention_rate", v: "0.18", t: "≤ 0.35", good: true },
-];
-
 interface AutoProps {
   state?: ReplayState;
-  liveMeta?: LiveRunMeta;
+  liveMeta?: ProsoponRunMeta;
 }
 
 const ECONOMIC_BUDGET_CENTS = 80; // matches Haima pane ceiling
 
 /**
  * Derive three-pillar homeostasis from the live run state.
- * - Operational: ratio of tools that returned `ok` vs total tools invoked
- * - Cognitive:  proxy from conversation length (turns + active streams)
- * - Economic:   session spend / session budget (Haima surface)
- *
- * Falls back to LIFE_HOMEO on the mock-replay path (materiales).
+ * - Operational: ratio of tools that returned `ok` vs total tools invoked.
+ * - Cognitive:  proxy from conversation length (turns + active streams).
+ * - Economic:   session spend / session budget (Haima surface).
  */
-function derivePillars(state: ReplayState, liveMeta: LiveRunMeta) {
+function derivePillars(state: ReplayState, liveMeta: ProsoponRunMeta) {
   const allTools = state.messages.flatMap((m) => m.tools ?? []);
   const okTools = allTools.filter((t) => t.status === "ok").length;
   const operational =
@@ -133,9 +122,28 @@ function derivePillars(state: ReplayState, liveMeta: LiveRunMeta) {
 }
 
 export function AutonomicPane({ state, liveMeta }: AutoProps) {
-  const h =
-    state && liveMeta ? derivePillars(state, liveMeta) : LIFE_HOMEO;
-  const isLive = !!liveMeta && !!state;
+  if (!state || !liveMeta) {
+    return (
+      <div className="right-pane">
+        <div className="eyebrow" style={{ marginBottom: 10 }}>
+          Autonomic · three pillars
+        </div>
+        <div className="pane-empty">
+          <div className="pane-empty__title">Waiting for first turn</div>
+          <div className="pane-empty__body">
+            Homeostasis arcs (operational / cognitive / economic) hydrate
+            once a turn has executed. They rebalance in real time as the
+            agent runs.
+          </div>
+          <div className="pane-empty__meta">source · Autonomic crate</div>
+        </div>
+      </div>
+    );
+  }
+
+  const h = derivePillars(state, liveMeta);
+  const hasData = state.messages.length > 0 || liveMeta.totalCostCents > 0;
+
   return (
     <div className="right-pane">
       <div
@@ -143,8 +151,8 @@ export function AutonomicPane({ state, liveMeta }: AutoProps) {
         style={{ justifyContent: "space-between", marginBottom: 8 }}
       >
         <div className="eyebrow">Autonomic · three pillars</div>
-        <span className={`pill ${isLive ? "pill--accent" : ""}`}>
-          {isLive ? "live · Autonomous" : "demo · Autonomous"}
+        <span className="pill pill--accent">
+          live · {hasData ? "regulating" : "idle"}
         </span>
       </div>
       <div className="gauge-grid gauge-grid--3" style={{ padding: 6 }}>
@@ -152,57 +160,73 @@ export function AutonomicPane({ state, liveMeta }: AutoProps) {
         <HomeoArc label="Cognitive" {...h.cognitive} />
         <HomeoArc label="Economic" {...h.economic} />
       </div>
-      <div className="section">
-        Setpoints{" "}
-        {isLive && (
-          <span
-            className="pill"
-            style={{
-              marginLeft: "auto",
-              fontSize: 9.5,
-              padding: "1px 6px",
-            }}
-          >
-            demo
-          </span>
-        )}
-      </div>
-      {SETPOINTS.map((r) => (
-        <div className="judge-card" key={r.k} style={{ marginTop: 6 }}>
-          <div className="judge-card__head">
-            <div
-              style={{
-                fontFamily: "var(--ag-font-mono)",
-                fontSize: 11.5,
-                color: "var(--ag-text-secondary)",
-              }}
-            >
-              {r.k}
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--ag-font-heading)",
-                fontSize: 14,
-                color: r.good
-                  ? "oklch(0.78 0.15 155)"
-                  : "oklch(0.87 0.18 85)",
-              }}
-            >
-              {r.v}
-            </div>
-          </div>
+      <div className="section">Live signals</div>
+      <div className="judge-card" style={{ marginTop: 6 }}>
+        <div className="judge-card__head">
           <div
             style={{
               fontFamily: "var(--ag-font-mono)",
-              fontSize: 10,
-              color: "var(--ag-text-muted)",
-              marginTop: 2,
+              fontSize: 11.5,
+              color: "var(--ag-text-secondary)",
             }}
           >
-            target {r.t}
+            messages
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--ag-font-heading)",
+              fontSize: 14,
+              color: "oklch(0.78 0.15 155)",
+            }}
+          >
+            {state.messages.length}
           </div>
         </div>
-      ))}
+      </div>
+      <div className="judge-card" style={{ marginTop: 6 }}>
+        <div className="judge-card__head">
+          <div
+            style={{
+              fontFamily: "var(--ag-font-mono)",
+              fontSize: 11.5,
+              color: "var(--ag-text-secondary)",
+            }}
+          >
+            fs_ops
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--ag-font-heading)",
+              fontSize: 14,
+              color: "oklch(0.78 0.15 155)",
+            }}
+          >
+            {state.fsOps.length}
+          </div>
+        </div>
+      </div>
+      <div className="judge-card" style={{ marginTop: 6 }}>
+        <div className="judge-card__head">
+          <div
+            style={{
+              fontFamily: "var(--ag-font-mono)",
+              fontSize: 11.5,
+              color: "var(--ag-text-secondary)",
+            }}
+          >
+            autonomic.pillars
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--ag-font-heading)",
+              fontSize: 14,
+              color: "oklch(0.78 0.15 155)",
+            }}
+          >
+            {state.autonomic.length}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

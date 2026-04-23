@@ -1,36 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LIFE_FS } from "../_lib/mock-workspace";
-import type { FsStyle, LifeFsNode, LifeFsOp } from "../_lib/types";
+import type { LifeFsNode, LifeFsOp } from "../_lib/types";
 
 /**
- * Given the base mock tree + a list of fs_op paths the agent actually
- * touched this session, produce a merged tree so newly-created workspace
- * paths (/workspace/notes/<slug>.md etc.) show up as real nodes instead of
- * just floating badges with no tree home.
+ * Build a directory tree exclusively from the paths the agent has touched
+ * this session. Replaces the earlier hybrid that merged a static mock tree
+ * with live ops — the production surface shows only what actually happened.
  */
-function mergeDynamicPaths(
-  base: LifeFsNode[],
-  opsPaths: string[],
-): LifeFsNode[] {
-  const out: LifeFsNode[] = base.map((n) => ({
-    ...n,
-    children: n.children ? [...n.children] : undefined,
-  }));
+function buildTree(opsPaths: string[]): LifeFsNode[] {
+  const root: LifeFsNode[] = [];
   const known = new Set<string>();
-  const indexKnown = (ns: LifeFsNode[]) => {
-    for (const n of ns) {
-      known.add(n.path);
-      if (n.children) indexKnown(n.children);
-    }
-  };
-  indexKnown(out);
 
-  for (const path of opsPaths) {
-    if (known.has(path)) continue;
+  const ensurePath = (path: string): void => {
+    if (known.has(path)) return;
     const parts = path.split("/").filter(Boolean);
-    let siblings: LifeFsNode[] = out;
+    let siblings: LifeFsNode[] = root;
     let curPath = "";
     for (let i = 0; i < parts.length; i++) {
       curPath = curPath ? `${curPath}/${parts[i]}` : (parts[i] ?? "");
@@ -43,22 +28,23 @@ function mergeDynamicPaths(
           children: isLeaf ? undefined : [],
         };
         siblings.push(node);
-        known.add(curPath);
       } else if (!node.children && i < parts.length - 1) {
         node.children = [];
       }
+      known.add(curPath);
       if (node.type === "dir") {
         if (!node.children) node.children = [];
         siblings = node.children;
       }
     }
-  }
-  return out;
+  };
+
+  for (const p of opsPaths) ensurePath(p);
+  return root;
 }
 
 interface Props {
   fsOps: LifeFsOp[];
-  fsStyle: FsStyle;
   lastOpTs: number;
 }
 
@@ -94,7 +80,7 @@ function flattenTree(
   return out;
 }
 
-export function FileTree({ fsOps, fsStyle, lastOpTs }: Props) {
+export function FileTree({ fsOps, lastOpTs }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const opsByPath = useMemo(() => {
@@ -127,13 +113,8 @@ export function FileTree({ fsOps, fsStyle, lastOpTs }: Props) {
     });
   }, [fsOps]);
 
-  // Merge any paths the agent touched into the base tree before flattening,
-  // so live fs_ops against /workspace/... render as real tree nodes.
-  const mergedTree = useMemo(
-    () => mergeDynamicPaths(LIFE_FS.tree, fsOps.map((o) => o.path)),
-    [fsOps],
-  );
-  const rows = flattenTree(mergedTree, opsByPath, expanded);
+  const tree = useMemo(() => buildTree(fsOps.map((o) => o.path)), [fsOps]);
+  const rows = flattenTree(tree, opsByPath, expanded);
   const toggle = (p: string) =>
     setExpanded((e) => ({ ...e, [p]: e[p] === false ? true : false }));
 
@@ -141,32 +122,32 @@ export function FileTree({ fsOps, fsStyle, lastOpTs }: Props) {
   const isRecent = (path: string) =>
     !!lastOp && lastOp.path === path && Date.now() - lastOpTs < 1400;
 
-  const writingPaths = fsOps
-    .filter((o) => o.op === "write" || o.op === "create")
-    .slice(-1)
-    .map((o) => o.path);
+  if (rows.length === 0) {
+    return (
+      <div className="pane-empty">
+        <div className="pane-empty__title">No files touched yet</div>
+        <div className="pane-empty__body">
+          File reads and writes performed by the agent during this session
+          will appear here as a live tree.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="filetree">
-      <div className="filetree__sect">Workspace · /workspace</div>
+      <div className="filetree__sect">Session · /workspace</div>
       {rows.map((row) => {
         const badge = row.op && !row.op.childOnly ? row.op.op : null;
-        const writing =
-          (fsStyle === "heartbeat" || fsStyle === "shimmer") &&
-          writingPaths.includes(row.path) &&
-          row.type === "file";
-        const pulsing =
-          (fsStyle === "heartbeat" || fsStyle === "finder") &&
-          isRecent(row.path) &&
-          row.type === "file";
+        const pulsing = isRecent(row.path) && row.type === "file";
         const isActive =
           row.op?.op === "write" || row.op?.op === "create";
         return (
           <div
             key={row.path}
             className={`fnode ${isActive ? "is-active" : ""} ${
-              writing && fsStyle === "shimmer" ? "is-writing" : ""
-            } ${pulsing ? "is-pulsing" : ""}`}
+              pulsing ? "is-pulsing" : ""
+            }`}
             style={{ paddingLeft: 10 + row.depth * 14 }}
             onClick={() => row.type === "dir" && toggle(row.path)}
             onKeyDown={(e) => {
@@ -203,34 +184,6 @@ export function FileTree({ fsOps, fsStyle, lastOpTs }: Props) {
           </div>
         );
       })}
-      {fsStyle === "ticker" && (
-        <>
-          <div className="filetree__sect" style={{ marginTop: 16 }}>
-            Recent ops
-          </div>
-          {fsOps
-            .slice(-8)
-            .reverse()
-            .map((o) => (
-              <div
-                key={o.id}
-                className="fnode"
-                style={{ fontSize: 11 }}
-              >
-                <span
-                  className={`fnode__badge fnode__badge--${
-                    o.op === "read" ? "read" : o.op === "create" ? "add" : "mod"
-                  }`}
-                >
-                  {o.op}
-                </span>
-                <span style={{ color: "var(--ag-text-secondary)" }}>
-                  {o.path}
-                </span>
-              </div>
-            ))}
-        </>
-      )}
     </div>
   );
 }

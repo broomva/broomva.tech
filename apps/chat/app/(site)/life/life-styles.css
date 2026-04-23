@@ -892,3 +892,257 @@
   border: 1px solid oklch(0.70 0.15 300 / 0.4);
   background: oklch(0.70 0.15 300 / 0.08);
 }
+
+/* ============================================================================
+   Production empty state — reused by every pane when live data hasn't landed
+   ============================================================================ */
+.pane-empty {
+  margin: 16px;
+  padding: 28px 20px;
+  border: 1px dashed var(--ag-border-subtle);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--ag-bg-elevated) 30%, transparent);
+  text-align: center;
+}
+.pane-empty--inline {
+  margin: 10px;
+  padding: 16px 14px;
+}
+.pane-empty__title {
+  font-family: var(--ag-font-heading);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--ag-text-primary);
+  margin-bottom: 8px;
+}
+.pane-empty__body {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ag-text-secondary);
+}
+.pane-empty__meta {
+  font-family: var(--ag-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ag-text-muted);
+  margin-top: 12px;
+}
+.pane-empty code {
+  font-family: var(--ag-font-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--ag-bg-elevated) 60%, transparent);
+  color: var(--ag-text-primary);
+}
+
+/* ============================================================================
+   Responsive reflow — 3 breakpoints
+     ≥ 1280px  desktop  · three-column grid (default rules above)
+     768-1279  tablet   · two-column (chat + right pane); middle hidden
+     < 768px   mobile   · single-column; bottom tab bar switches which
+                            logical column is foreground
+   ============================================================================ */
+
+/* Mobile tab bar — hidden on desktop + tablet. */
+.life-shell-root .life-mobile-tabs { display: none; }
+
+/* Topbar preferences button — visible on every breakpoint. On desktop it
+   lives in the topbar right side; on mobile it's the only way in because
+   the floating gear is hidden. (⌘. hotkey works on any breakpoint.) */
+.life-shell-root .topbar__prefs-btn {
+  font-size: 14px;
+  color: var(--ag-text-muted);
+}
+.life-shell-root .topbar__prefs-btn:hover {
+  color: var(--ag-text-primary);
+}
+
+/* ---- Tablet ---- */
+@media (max-width: 1279px) and (min-width: 768px) {
+  .life-shell-root .shell {
+    grid-template-columns: 1fr 380px;
+    grid-template-areas:
+      "top top"
+      "chat right"
+      "dock dock";
+  }
+  .life-shell-root .col--middle { display: none; }
+}
+
+/* ---- Mobile ---- */
+@media (max-width: 767px) {
+  .life-shell-root .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: 52px 1fr 44px;
+    grid-template-areas:
+      "top"
+      "chat"
+      "dock";
+  }
+
+  /* By default only chat column is foreground. Middle + right hidden unless
+     the corresponding mobile-tab is selected. */
+  .life-shell-root .col--middle,
+  .life-shell-root .col--right {
+    display: none;
+  }
+  .life-shell-root[data-mobile-tab="workspace"] .col--chat { display: none; }
+  .life-shell-root[data-mobile-tab="workspace"] .col--middle {
+    display: flex;
+    grid-area: chat;
+    border-right: 0;
+  }
+  .life-shell-root[data-mobile-tab="inspector"] .col--chat { display: none; }
+  .life-shell-root[data-mobile-tab="inspector"] .col--right {
+    display: flex;
+    grid-area: chat;
+  }
+
+  /* Topbar compacts — hide brand + path, show project name only. */
+  .life-shell-root .topbar {
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .life-shell-root .topbar__left {
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .life-shell-root .topbar__crumb strong,
+  .life-shell-root .topbar__crumb .sep,
+  .life-shell-root .topbar__crumb > :not(.topbar__crumb-project) {
+    display: none;
+  }
+  .life-shell-root .topbar__crumb {
+    font-size: 10px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+  }
+  .life-shell-root .topbar__crumb-project {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--ag-text-primary);
+  }
+  .life-shell-root .anima-badge {
+    padding: 3px 8px 3px 3px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .life-shell-root .anima-name {
+    font-size: 12px;
+  }
+  .life-shell-root .anima-soul {
+    display: none;
+  }
+  .life-shell-root .topbar__prefs-btn {
+    flex-shrink: 0;
+  }
+
+  /* Right column tabs — 6 pills, overflow horizontally rather than wrap. */
+  .life-shell-root .col--right .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+  .life-shell-root .col--right .tabs::-webkit-scrollbar { display: none; }
+
+  /* Middle column tabs — same horizontal scroll treatment. */
+  .life-shell-root .col--middle .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+  .life-shell-root .col--middle .tabs::-webkit-scrollbar { display: none; }
+
+  /* Mobile tab bar — fixed to the bottom under the Dock. */
+  .life-shell-root .life-mobile-tabs {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    background: color-mix(in oklab, var(--ag-bg-deep) 85%, transparent);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border-top: 1px solid var(--ag-border-subtle);
+    z-index: 45;
+  }
+  .life-mobile-tabs__btn {
+    flex: 1;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--ag-text-muted);
+    font-family: var(--ag-font-body);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+    padding: 10px 8px;
+    cursor: pointer;
+    position: relative;
+    transition: color var(--ag-transition-fast);
+  }
+  .life-mobile-tabs__btn:hover {
+    color: var(--ag-text-secondary);
+  }
+  .life-mobile-tabs__btn.is-active {
+    color: var(--ag-text-primary);
+  }
+  .life-mobile-tabs__btn.is-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 22%;
+    right: 22%;
+    height: 2px;
+    background: var(--ag-ai-blue);
+    box-shadow: 0 0 8px var(--ag-ai-blue);
+  }
+
+  /* Dock bumps up to sit above the mobile tab bar. */
+  .life-shell-root .dock {
+    bottom: 56px;
+  }
+
+  /* Tweaks panel — slides up as a bottom sheet, sized to fit above the
+     mobile tab bar. Original rule positioned it top-right as a desktop
+     popover; we override here. */
+  .life-shell-root .tweaks {
+    right: 0;
+    left: 0;
+    bottom: 56px;
+    width: auto;
+    max-height: 72vh;
+    overflow-y: auto;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    padding: 18px 16px;
+  }
+
+  /* Hide the floating gear — mobile users open prefs from the topbar btn. */
+  body > button[aria-label="Open tweaks panel"] {
+    display: none;
+  }
+
+  /* Chat column padding + composer tighter on mobile. */
+  .life-shell-root .chat-scroll {
+    padding: 14px 14px 16px;
+  }
+
+  /* Right + middle pane body padding tightens. */
+  .life-shell-root .right-pane {
+    padding: 14px 14px 20px;
+  }
+}
+

@@ -1,26 +1,31 @@
 "use client";
 
-import { LIFE_TRACES } from "../_lib/mock-workspace";
-import type { LifeTraceSpan, ReplayState } from "../_lib/types";
-import type { LiveRunMeta } from "../_lib/use-live-run";
 import { formatCents } from "../_lib/autonomy";
+import type { ReplayState } from "../_lib/types";
+import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
 interface Props {
   state: ReplayState;
-  /** Present on live-streaming projects — used to derive live cost. */
-  liveMeta?: LiveRunMeta;
+  /** Live Prosopon run meta — drives cost + tokens + duration. */
+  liveMeta?: ProsoponRunMeta;
+}
+
+interface Span {
+  name: string;
+  start: number;
+  dur: number;
+  kind: "tool" | "root";
 }
 
 /**
  * Synthesize OTel-like spans from the tool_call / tool_result timing stored
  * on `state.messages[].tools`. Each completed tool gets a span keyed by the
- * tool's name; running tools get a span that extends to `state.t`.
- *
- * This is a best-effort derivation until a real Vigil OTel collector is
- * wired — but it's all live data from the current run.
+ * tool's name; running tools get a span that extends to `state.t`. Adds a
+ * root span (`arcan.tick`) so the pane isn't empty while a turn is in flight
+ * before the first tool lands.
  */
-function deriveSpansFromState(state: ReplayState): LifeTraceSpan[] {
-  const spans: LifeTraceSpan[] = [];
+function deriveSpans(state: ReplayState): Span[] {
+  const spans: Span[] = [];
   const now = state.t;
   for (const m of state.messages) {
     for (const t of m.tools ?? []) {
@@ -30,30 +35,23 @@ function deriveSpansFromState(state: ReplayState): LifeTraceSpan[] {
         kind: "tool",
         start: t.t,
         dur: Math.max(1, end - t.t),
-        color: "tool",
       });
     }
   }
-  // Add a root span for the whole run so the pane is never empty while a
-  // turn is in flight (even before the first tool lands).
   if (state.t > 0) {
     spans.unshift({
       name: "arcan.tick",
       kind: "root",
       start: 0,
       dur: state.t,
-      color: "llm",
     });
   }
   return spans;
 }
 
 export function VigilPane({ state, liveMeta }: Props) {
-  // Prefer real derived spans when a live run is present; fall back to the
-  // design-reference mock spans for the scenario replay path.
-  const isLive = !!liveMeta;
-  const spans = isLive ? deriveSpansFromState(state) : LIFE_TRACES;
-  const cur = state.t || (isLive ? 1000 : 17100);
+  const spans = deriveSpans(state);
+  const cur = state.t || 0;
   const total = Math.max(cur, 1000);
   const visibleSpans = spans.filter((s) => s.start <= cur);
   const toolCount = state.messages.reduce(
@@ -61,6 +59,27 @@ export function VigilPane({ state, liveMeta }: Props) {
     0,
   );
   const costCents = liveMeta?.totalCostCents ?? 0;
+  const tokensIn = liveMeta?.tokensIn ?? 0;
+  const tokensOut = liveMeta?.tokensOut ?? 0;
+  const durationMs = liveMeta?.durationMs ?? cur;
+
+  if (!liveMeta) {
+    return (
+      <div className="right-pane">
+        <div className="eyebrow" style={{ marginBottom: 10 }}>
+          Vigil · spans · this tick
+        </div>
+        <div className="pane-empty">
+          <div className="pane-empty__title">No run in flight</div>
+          <div className="pane-empty__body">
+            Send a message to start a run. Spans, tokens, cost, and duration
+            appear here live as the agent works.
+          </div>
+          <div className="pane-empty__meta">source · Vigil OTel collector</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="right-pane">
@@ -69,9 +88,8 @@ export function VigilPane({ state, liveMeta }: Props) {
         style={{ justifyContent: "space-between", marginBottom: 8 }}
       >
         <div className="eyebrow">Vigil · spans · this tick</div>
-        <span className={`pill ${isLive ? "pill--accent" : ""}`}>
-          {isLive ? "live · " : "demo · "}
-          {visibleSpans.length} spans
+        <span className="pill pill--accent">
+          live · {visibleSpans.length} span{visibleSpans.length === 1 ? "" : "s"}
         </span>
       </div>
       <div className="preview-frame" style={{ padding: "10px 12px" }}>
@@ -91,11 +109,9 @@ export function VigilPane({ state, liveMeta }: Props) {
           const leftPct = (sp.start / total) * 100;
           const widthPct = Math.max(1, (visibleDur / total) * 100);
           const cls =
-            sp.color === "llm"
+            sp.kind === "root"
               ? "trace-row__fill--llm"
-              : sp.color === "tool"
-                ? "trace-row__fill--tool"
-                : "";
+              : "trace-row__fill--tool";
           return (
             <div className="trace-row" key={`${sp.name}-${sp.start}`}>
               <span className="trace-row__name" title={sp.name}>
@@ -124,10 +140,8 @@ export function VigilPane({ state, liveMeta }: Props) {
         </div>
         <div className="gauge">
           <div className="gauge__label">run.cost</div>
-          <div className="gauge__value">
-            {isLive ? formatCents(costCents) : "$0.14"}
-          </div>
-          <div className="gauge__sub">{isLive ? "live haima" : "demo"}</div>
+          <div className="gauge__value">{formatCents(costCents)}</div>
+          <div className="gauge__sub">via haima</div>
         </div>
         <div className="gauge">
           <div className="gauge__label">run.status</div>
@@ -135,23 +149,31 @@ export function VigilPane({ state, liveMeta }: Props) {
             className="gauge__value"
             style={{ fontSize: 14, color: "oklch(0.78 0.15 155)" }}
           >
-            {isLive ? (liveMeta?.status ?? "idle") : "ok"}
+            {liveMeta.status}
           </div>
           <div className="gauge__sub">
-            {isLive && liveMeta?.runId
-              ? `run ${liveMeta.runId.slice(0, 8)}…`
-              : "—"}
+            {liveMeta.runId ? `run ${liveMeta.runId.slice(0, 8)}…` : "—"}
           </div>
         </div>
         <div className="gauge">
-          <div className="gauge__label">gen_ai.model</div>
+          <div className="gauge__label">gen_ai.tokens</div>
           <div
             className="gauge__value"
             style={{ fontSize: 13, fontFamily: "var(--ag-font-mono)" }}
           >
-            {isLive ? "gpt-5-mini" : "demo"}
+            {tokensIn.toLocaleString()} → {tokensOut.toLocaleString()}
           </div>
-          <div className="gauge__sub">via gateway</div>
+          <div className="gauge__sub">in → out</div>
+        </div>
+        <div className="gauge">
+          <div className="gauge__label">run.duration</div>
+          <div
+            className="gauge__value"
+            style={{ fontSize: 13, fontFamily: "var(--ag-font-mono)" }}
+          >
+            {(durationMs / 1000).toFixed(2)}s
+          </div>
+          <div className="gauge__sub">server-measured</div>
         </div>
       </div>
     </div>

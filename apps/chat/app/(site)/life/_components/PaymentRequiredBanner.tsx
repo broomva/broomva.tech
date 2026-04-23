@@ -15,7 +15,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { PaymentQuote } from "../_lib/use-live-run";
+import type { PaymentQuote } from "../_lib/use-prosopon-run";
 import {
   DEFAULT_AUTONOMY,
   formatCents,

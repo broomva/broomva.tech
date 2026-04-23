@@ -28,7 +28,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Envelope } from "@broomva/prosopon";
 import type { ReplayEvent, ReplayState } from "./types";
-import { EMPTY_REPLAY_STATE, applyReplayEvent } from "./use-replay";
+import { EMPTY_REPLAY_STATE, applyReplayEvent } from "./reducer";
 import { EnvelopeAdapter, type AdapterMetaEvent } from "./envelope-adapter";
 
 // ---------------------------------------------------------------------------

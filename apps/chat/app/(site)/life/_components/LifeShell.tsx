@@ -1,41 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SCENARIO_LABELS, SCENARIOS } from "../_lib/scenarios";
 import {
   DEFAULT_TWEAKS,
   readTweaks,
   writeTweaks,
 } from "../_lib/tweaks";
-import type { ScenarioId, TweaksState } from "../_lib/types";
-import { useReplay } from "../_lib/use-replay";
-// Prosopon-native live runner. Swapped in PR C — see
-// docs/superpowers/specs/2026-04-23-life-prosopon-wiring.md. `useLiveRun`
-// (legacy wire) is retained until PR D decommissions the non-/prosopon
-// endpoint; anything relying on it directly should migrate here.
+import type { MobileTab, TweaksState } from "../_lib/types";
 import { useProsoponRun } from "../_lib/use-prosopon-run";
-import { PaymentRequiredBanner } from "./PaymentRequiredBanner";
 import type { LifeUserIdentity } from "./AnimaPane";
 import { AnimaPopover } from "./AnimaPopover";
 import { ChatColumn } from "./ChatColumn";
 import { Dock } from "./Dock";
-import { ExperimentalCanvas } from "./ExperimentalCanvas";
 import { MiddleColumn } from "./MiddleColumn";
+import { PaymentRequiredBanner } from "./PaymentRequiredBanner";
 import { RightColumn } from "./RightColumn";
 import { Topbar } from "./Topbar";
 import { TweaksPanel } from "./TweaksPanel";
 
 interface Props {
   projectSlug: string;
-  scenarioId: ScenarioId;
   displayName: string;
   eyebrow: string;
-  /**
-   * When true, the shell reads events from /api/life/run/<slug> over SSE
-   * instead of replaying the local scenario clock. Live projects start
-   * with an empty chat; the user's first message begins the first run.
-   */
-  liveStream?: boolean;
   /** Empty-state title for the chat column (project-aware copy). */
   emptyTitle?: string;
   emptyHint?: string;
@@ -44,24 +30,17 @@ interface Props {
   user?: LifeUserIdentity;
 }
 
-function usePersistedTweaks(initialScenario: ScenarioId): {
+function usePersistedTweaks(): {
   tweaks: TweaksState;
   setTweaks: (patch: Partial<TweaksState>) => void;
 } {
-  // Default the in-memory tweaks to the project's scenario; localStorage,
-  // if present, overrides — but we hydrate on mount so the SSR snapshot
-  // matches DEFAULT_TWEAKS for the first render.
-  const [tweaks, setTweaksState] = useState<TweaksState>({
-    ...DEFAULT_TWEAKS,
-    scenario: initialScenario,
-  });
+  // Default to the in-memory DEFAULTS; hydrate from localStorage on mount so
+  // the SSR snapshot always matches DEFAULT_TWEAKS for the first render and
+  // no layout shift happens.
+  const [tweaks, setTweaksState] = useState<TweaksState>(DEFAULT_TWEAKS);
 
   useEffect(() => {
-    const stored = readTweaks();
-    setTweaksState({ ...stored, scenario: initialScenario });
-    // Only run once on mount per project — if the user changes projects the
-    // dynamic route remounts the shell.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setTweaksState(readTweaks());
   }, []);
 
   const setTweaks = useCallback((patch: Partial<TweaksState>) => {
@@ -77,60 +56,29 @@ function usePersistedTweaks(initialScenario: ScenarioId): {
 
 export function LifeShell({
   projectSlug,
-  scenarioId,
   displayName,
   eyebrow,
-  liveStream = false,
   emptyTitle,
   emptyHint,
   suggestions,
   user,
 }: Props) {
-  const { tweaks, setTweaks } = usePersistedTweaks(scenarioId);
+  const { tweaks, setTweaks } = usePersistedTweaks();
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const [animaOpen, setAnimaOpen] = useState(false);
+  // Mobile tab bar — which of the three logical columns is foreground on a
+  // narrow viewport. Ignored on desktop (≥1280px) where all three are shown.
+  const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
 
-  const script = useMemo(
-    () => SCENARIOS[tweaks.scenario] ?? SCENARIOS.refactor,
-    [tweaks.scenario],
-  );
-
-  const [playing, setPlaying] = useState<boolean>(tweaks.autoplay);
-  // When the user changes scenario in tweaks, restart the clock.
-  useEffect(() => {
-    setPlaying(tweaks.autoplay);
-  }, [tweaks.scenario, tweaks.autoplay]);
-
-  // Replay state (local scenario clock) — used when liveStream is false OR
-  // when the user has paused / switched scenarios in the Tweaks panel.
-  const [replayState, setReplayState] = useReplay(script, playing && !liveStream);
-
-  // Live SSE state — used only when the project is wired for live streaming
-  // AND the user hasn't overridden the scenario via Tweaks. If they do, we
-  // fall back to the local replay clock so the Tweaks panel keeps working.
-  const liveEnabled =
-    liveStream && playing && tweaks.scenario === scenarioId;
-  // Live projects start EMPTY — the user's first message is the first run.
-  // No server-side scenario auto-play (that was a Phase 2 / early-Phase-3
-  // crutch that made the UI look scripted). The empty state now invites
-  // the user to type; sendMessage() kicks off the first real turn.
-  const [liveState, setLiveState, liveMeta] = useProsoponRun({
+  // Live-only run state. The user's first message begins the first turn.
+  const [state, setState, liveMeta] = useProsoponRun({
     projectSlug,
-    enabled: liveEnabled,
+    enabled: true,
     autoStart: false,
   });
 
-  // The downstream UI is agnostic to which source drove state — it only
-  // reads { state, setState }.
-  const state = liveEnabled ? liveState : replayState;
-  const setState = liveEnabled ? setLiveState : setReplayState;
-
-  // Paywall overlay — shows when the live runner returns 402 and we have
-  // a quote. Approving triggers a retry with X-PAYMENT; cancel dismisses.
   const showPaymentBanner =
-    liveEnabled &&
-    liveMeta.status === "payment-required" &&
-    !!liveMeta.paymentQuote;
+    liveMeta.status === "payment-required" && !!liveMeta.paymentQuote;
 
   // Cross-link highlight between chat tool calls and journal rows.
   const [toolHighlight, setToolHighlight] = useState<string | null>(null);
@@ -140,23 +88,25 @@ export function LifeShell({
     return () => clearTimeout(t);
   }, [toolHighlight]);
 
-  // Track last fs op timestamp for pulse animations.
+  // Track last fs op timestamp for pulse animations on FileTree.
   const [lastOpTs, setLastOpTs] = useState(0);
   useEffect(() => {
     if (state.fsOps.length) setLastOpTs(Date.now());
   }, [state.fsOps.length]);
 
-  const running =
-    playing &&
-    state.messages.length > 0 &&
-    state.messages.some(
-      (m) =>
-        m.streamingText ||
-        m.streamingThinking ||
-        (m.tools || []).some((t) => t.status === "running"),
-    );
+  const running = useMemo(
+    () =>
+      state.messages.length > 0 &&
+      state.messages.some(
+        (m) =>
+          m.streamingText ||
+          m.streamingThinking ||
+          (m.tools || []).some((t) => t.status === "running"),
+      ),
+    [state.messages],
+  );
 
-  // Hotkey: ⌘. or Ctrl+. toggles tweaks panel.
+  // Hotkey: ⌘. or Ctrl+. toggles the preferences panel.
   const tweaksHotkeyRef = useRef(setTweaksOpen);
   tweaksHotkeyRef.current = setTweaksOpen;
   useEffect(() => {
@@ -182,74 +132,81 @@ export function LifeShell({
   const crumb = {
     brand: "broomva.tech",
     project: `${projectSlug} — ${displayName.split(" — ")[1] ?? displayName}`,
-    scenarioLabel: SCENARIO_LABELS[tweaks.scenario],
   };
 
-  const rootClass = `life-shell-root ${tweaks.orbs ? "life-shell-root--orbs" : ""}`;
-
   return (
-    <div className={rootClass} data-project={projectSlug} data-eyebrow={eyebrow}>
-      <div
-        className={`shell ${tweaks.layout === "experimental" ? "shell--experimental" : ""}`}
-      >
+    <div
+      className="life-shell-root"
+      data-project={projectSlug}
+      data-eyebrow={eyebrow}
+      data-mobile-tab={mobileTab}
+    >
+      <div className="shell">
         <Topbar
           setAnimaOpen={(fn) => setAnimaOpen(fn(animaOpen))}
-          tweaks={tweaks}
-          setTweaks={setTweaks}
-          playing={playing}
-          setPlaying={setPlaying}
           crumb={crumb}
           user={user}
           projectSlug={projectSlug}
+          onOpenPreferences={() => setTweaksOpen(true)}
         />
-        {tweaks.layout === "classic" ? (
-          <>
-            <ChatColumn
-              state={state}
-              setState={setState}
-              running={running}
-              setToolHighlight={setToolHighlight}
-              toolHighlight={toolHighlight}
-              onSendMessage={liveEnabled ? liveMeta.sendMessage : undefined}
-              sourceLabel={liveEnabled ? "live" : "mock"}
-              modelLabel={liveEnabled ? "openai/gpt-5-mini" : undefined}
-              emptyStateTitle={emptyTitle}
-              emptyStateHint={emptyHint}
-              suggestions={suggestions}
-            />
-            <MiddleColumn
-              mode={tweaks.middleMode}
-              setMode={setMiddleMode}
-              state={state}
-              toolHighlight={toolHighlight}
-              setToolHighlight={setToolHighlight}
-              fsStyle={tweaks.fsStyle}
-              journalRich={tweaks.journalRich}
-              lastOpTs={lastOpTs}
-            />
-            <RightColumn
-              mode={tweaks.rightMode}
-              setMode={setRightMode}
-              state={state}
-              liveMeta={liveEnabled ? liveMeta : undefined}
-              user={user}
-              projectSlug={projectSlug}
-            />
-          </>
-        ) : (
-          <ExperimentalCanvas
-            state={state}
-            setState={setState}
-            running={running}
-            tweaks={tweaks}
-            setTweaks={setTweaks}
-            toolHighlight={toolHighlight}
-            setToolHighlight={setToolHighlight}
-            lastOpTs={lastOpTs}
-          />
-        )}
+        <ChatColumn
+          state={state}
+          setState={setState}
+          running={running}
+          setToolHighlight={setToolHighlight}
+          toolHighlight={toolHighlight}
+          onSendMessage={liveMeta.sendMessage}
+          modelLabel="openai/gpt-5-mini"
+          emptyStateTitle={emptyTitle}
+          emptyStateHint={emptyHint}
+          suggestions={suggestions}
+        />
+        <MiddleColumn
+          mode={tweaks.middleMode}
+          setMode={setMiddleMode}
+          state={state}
+          toolHighlight={toolHighlight}
+          setToolHighlight={setToolHighlight}
+          lastOpTs={lastOpTs}
+        />
+        <RightColumn
+          mode={tweaks.rightMode}
+          setMode={setRightMode}
+          state={state}
+          liveMeta={liveMeta}
+          user={user}
+          projectSlug={projectSlug}
+        />
         <Dock state={state} />
       </div>
+
+      {/* Mobile-only bottom tab bar — CSS hides it above 768px. */}
+      <nav
+        className="life-mobile-tabs"
+        aria-label="Workspace view"
+        role="tablist"
+      >
+        {(
+          [
+            ["chat", "Chat"],
+            ["workspace", "Workspace"],
+            ["inspector", "Inspector"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            type="button"
+            key={id}
+            role="tab"
+            aria-selected={mobileTab === id}
+            className={`life-mobile-tabs__btn ${
+              mobileTab === id ? "is-active" : ""
+            }`}
+            onClick={() => setMobileTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
 
       {animaOpen && <AnimaPopover onClose={() => setAnimaOpen(false)} />}
 
@@ -267,36 +224,7 @@ export function LifeShell({
         setTweaks={setTweaks}
         open={tweaksOpen}
         onClose={() => setTweaksOpen(false)}
-        playing={playing}
-        setPlaying={setPlaying}
       />
-
-      {/* Floating button to open tweaks (replaces the prototype's edit-mode
-          activation via window.parent.postMessage). */}
-      <button
-        type="button"
-        aria-label="Open tweaks panel"
-        onClick={() => setTweaksOpen((v) => !v)}
-        style={{
-          position: "fixed",
-          right: 18,
-          bottom: 18,
-          zIndex: 70,
-          width: 36,
-          height: 36,
-          borderRadius: 9999,
-          border: "1px solid var(--ag-border-default)",
-          background: "color-mix(in oklab, var(--ag-bg-surface) 80%, transparent)",
-          backdropFilter: "blur(20px) saturate(1.4) brightness(1.05)",
-          color: "var(--ag-text-primary)",
-          fontFamily: "var(--ag-font-mono)",
-          fontSize: 14,
-          cursor: "pointer",
-          boxShadow: "var(--ag-shadow-lg)",
-        }}
-      >
-        ⚙
-      </button>
     </div>
   );
 }
