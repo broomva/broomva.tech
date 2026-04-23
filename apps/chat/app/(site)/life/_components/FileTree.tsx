@@ -4,6 +4,58 @@ import { useEffect, useMemo, useState } from "react";
 import { LIFE_FS } from "../_lib/mock-workspace";
 import type { FsStyle, LifeFsNode, LifeFsOp } from "../_lib/types";
 
+/**
+ * Given the base mock tree + a list of fs_op paths the agent actually
+ * touched this session, produce a merged tree so newly-created workspace
+ * paths (/workspace/notes/<slug>.md etc.) show up as real nodes instead of
+ * just floating badges with no tree home.
+ */
+function mergeDynamicPaths(
+  base: LifeFsNode[],
+  opsPaths: string[],
+): LifeFsNode[] {
+  const out: LifeFsNode[] = base.map((n) => ({
+    ...n,
+    children: n.children ? [...n.children] : undefined,
+  }));
+  const known = new Set<string>();
+  const indexKnown = (ns: LifeFsNode[]) => {
+    for (const n of ns) {
+      known.add(n.path);
+      if (n.children) indexKnown(n.children);
+    }
+  };
+  indexKnown(out);
+
+  for (const path of opsPaths) {
+    if (known.has(path)) continue;
+    const parts = path.split("/").filter(Boolean);
+    let siblings: LifeFsNode[] = out;
+    let curPath = "";
+    for (let i = 0; i < parts.length; i++) {
+      curPath = curPath ? `${curPath}/${parts[i]}` : (parts[i] ?? "");
+      let node = siblings.find((n) => n.path === curPath);
+      if (!node) {
+        const isLeaf = i === parts.length - 1;
+        node = {
+          path: curPath,
+          type: isLeaf ? "file" : "dir",
+          children: isLeaf ? undefined : [],
+        };
+        siblings.push(node);
+        known.add(curPath);
+      } else if (!node.children && i < parts.length - 1) {
+        node.children = [];
+      }
+      if (node.type === "dir") {
+        if (!node.children) node.children = [];
+        siblings = node.children;
+      }
+    }
+  }
+  return out;
+}
+
 interface Props {
   fsOps: LifeFsOp[];
   fsStyle: FsStyle;
@@ -75,7 +127,13 @@ export function FileTree({ fsOps, fsStyle, lastOpTs }: Props) {
     });
   }, [fsOps]);
 
-  const rows = flattenTree(LIFE_FS.tree, opsByPath, expanded);
+  // Merge any paths the agent touched into the base tree before flattening,
+  // so live fs_ops against /workspace/... render as real tree nodes.
+  const mergedTree = useMemo(
+    () => mergeDynamicPaths(LIFE_FS.tree, fsOps.map((o) => o.path)),
+    [fsOps],
+  );
+  const rows = flattenTree(mergedTree, opsByPath, expanded);
   const toggle = (p: string) =>
     setExpanded((e) => ({ ...e, [p]: e[p] === false ? true : false }));
 

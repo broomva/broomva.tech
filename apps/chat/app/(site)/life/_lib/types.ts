@@ -54,7 +54,15 @@ export type ReplayEvent =
       journalKind?: JournalKind;
     }
   | { t: number; kind: "tool-result"; id: string; result: string }
-  | { t: number; kind: "fs-op"; path: string; op: FsOpKind }
+  | {
+      t: number;
+      kind: "fs-op";
+      path: string;
+      op: FsOpKind;
+      content?: string;
+      title?: string;
+      bytes?: number;
+    }
   | {
       t: number;
       kind: "nous-score";
@@ -81,6 +89,8 @@ export interface LifeTool {
   result: string | null;
   status: "running" | "ok";
   t: number;
+  /** Timestamp (ms since start) when tool_result landed. Used by Vigil pane. */
+  endT?: number;
 }
 
 export interface LifeMessage {
@@ -100,6 +110,11 @@ export interface LifeFsOp {
   path: string;
   op: FsOpKind;
   t: number;
+  /** Optional payload for the file — when the agent writes a note, the
+   *  body lands here so the Preview pane can render the real content. */
+  content?: string;
+  title?: string;
+  bytes?: number;
 }
 
 export interface LifeJournalEntry {

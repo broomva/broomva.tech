@@ -2,14 +2,18 @@
 
 import { LIFE_JUDGES } from "../_lib/mock-workspace";
 import type { ReplayState } from "../_lib/types";
+import type { LiveRunMeta } from "../_lib/use-live-run";
 
 interface Props {
   state: ReplayState;
+  /** Present on live-streaming projects. */
+  liveMeta?: LiveRunMeta;
 }
 
-export function NousPane({ state }: Props) {
+export function NousPane({ state, liveMeta }: Props) {
   const judges = LIFE_JUDGES;
   const agg = state.nous;
+  const isLive = !!liveMeta;
   return (
     <div className="right-pane">
       <div
@@ -52,7 +56,36 @@ export function NousPane({ state }: Props) {
           />
         </div>
       </div>
-      <div className="section">Per-axis judges</div>
+      <div className="section">
+        Per-axis judges{" "}
+        {isLive && (
+          <span
+            className="pill"
+            style={{
+              marginLeft: "auto",
+              fontSize: 9.5,
+              padding: "1px 6px",
+            }}
+          >
+            demo
+          </span>
+        )}
+      </div>
+      {isLive && (
+        <div
+          style={{
+            fontSize: 11.5,
+            color: "var(--ag-text-muted)",
+            lineHeight: 1.55,
+            padding: "6px 10px 10px",
+          }}
+        >
+          Per-axis judges come from the Nous crate. Until it's wired into
+          the Life runtime, the composite score above is live (from the
+          runner's end-of-turn self-eval); per-axis cards below are design
+          placeholders.
+        </div>
+      )}
       {judges.map((j) => (
         <div className="judge-card" key={j.axis}>
           <div className="judge-card__head">

@@ -304,17 +304,32 @@ export class RealAgentRunner implements Runner {
             at: now(),
           };
           // For `note` results, emit a corresponding fs_op so the file-tree
-          // pane reacts — the workspace only exists in-memory for now.
+          // pane reacts — the workspace only exists in-memory for now. We
+          // thread the note body + title through the fs_op payload so the
+          // Preview pane can render the real content (not a static diff).
           if (
             part.toolName === "note" &&
             typeof part.output === "object" &&
             part.output !== null &&
             "path" in (part.output as Record<string, unknown>)
           ) {
-            const path = (part.output as { path: string }).path;
+            const out = part.output as {
+              path: string;
+              title?: string;
+              bytesWritten?: number;
+              preview?: string;
+            };
+            // Recover the full body from the tool input (already sent by Claude).
+            const body = (part.input as { body?: string })?.body ?? out.preview ?? "";
             yield {
               type: "fs_op",
-              payload: { path, op: "create" },
+              payload: {
+                path: out.path,
+                op: "create",
+                content: body,
+                title: out.title,
+                bytes: out.bytesWritten,
+              },
               at: now(),
             };
           }

@@ -11,6 +11,7 @@ import type { ScenarioId, TweaksState } from "../_lib/types";
 import { useReplay } from "../_lib/use-replay";
 import { useLiveRun } from "../_lib/use-live-run";
 import { PaymentRequiredBanner } from "./PaymentRequiredBanner";
+import type { LifeUserIdentity } from "./AnimaPane";
 import { AnimaPopover } from "./AnimaPopover";
 import { ChatColumn } from "./ChatColumn";
 import { Dock } from "./Dock";
@@ -35,6 +36,8 @@ interface Props {
   emptyTitle?: string;
   emptyHint?: string;
   suggestions?: Array<{ label: string; prompt: string }>;
+  /** Authed / anon identity threaded from the server page for Anima. */
+  user?: LifeUserIdentity;
 }
 
 function usePersistedTweaks(initialScenario: ScenarioId): {
@@ -77,6 +80,7 @@ export function LifeShell({
   emptyTitle,
   emptyHint,
   suggestions,
+  user,
 }: Props) {
   const { tweaks, setTweaks } = usePersistedTweaks(scenarioId);
   const [tweaksOpen, setTweaksOpen] = useState(false);
@@ -191,6 +195,8 @@ export function LifeShell({
           playing={playing}
           setPlaying={setPlaying}
           crumb={crumb}
+          user={user}
+          projectSlug={projectSlug}
         />
         {tweaks.layout === "classic" ? (
           <>
@@ -222,6 +228,8 @@ export function LifeShell({
               setMode={setRightMode}
               state={state}
               liveMeta={liveEnabled ? liveMeta : undefined}
+              user={user}
+              projectSlug={projectSlug}
             />
           </>
         ) : (

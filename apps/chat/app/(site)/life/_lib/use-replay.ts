@@ -7,6 +7,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useRef, useState } from "react";
 import type {
+  LifeFsOp,
   LifeJournalEntry,
   LifeMessage,
   LifeTool,
@@ -153,7 +154,9 @@ export function applyReplayEvent(s: ReplayState, ev: ReplayEvent): ReplayState {
       const messages = s.messages.map((m) => ({
         ...m,
         tools: (m.tools || []).map((t) =>
-          t.id === ev.id ? { ...t, result: ev.result, status: "ok" as const } : t,
+          t.id === ev.id
+            ? { ...t, result: ev.result, status: "ok" as const, endT: ev.t }
+            : t,
         ),
       }));
       const firstLine = ev.result.split("\n")[0] ?? ev.result;
@@ -170,11 +173,14 @@ export function applyReplayEvent(s: ReplayState, ev: ReplayEvent): ReplayState {
       return { ...s, messages, journal: [...s.journal, journal] };
     }
     case "fs-op": {
-      const fsOp = {
+      const fsOp: LifeFsOp = {
         id: `fs-${ev.t}-${ev.path}`,
         path: ev.path,
         op: ev.op,
         t: ev.t,
+        content: ev.content,
+        title: ev.title,
+        bytes: ev.bytes,
       };
       const journal: LifeJournalEntry = {
         id: `j-${ev.t}-fs`,
