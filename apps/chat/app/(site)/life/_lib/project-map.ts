@@ -4,7 +4,7 @@
 
 import type { ScenarioId } from "./types";
 
-export type ProjectChipColor = "emerald" | "amber";
+export type ProjectChipColor = "emerald" | "amber" | "violet";
 
 export interface LifeProjectInfo {
   scenarioId: ScenarioId;
@@ -34,6 +34,13 @@ export const PROJECTS: Record<string, LifeProjectInfo> = {
     eyebrow: "materiales-intel · _pending-constructora",
     chipColor: "amber",
     liveStream: false,
+  },
+  "sentinel-paid": {
+    scenarioId: "refactor",
+    displayName: "Sentinel Pro — paid demo",
+    eyebrow: "sentinel-property-ops · x402 @ $0.50/run",
+    chipColor: "violet",
+    liveStream: true,
   },
 };
 

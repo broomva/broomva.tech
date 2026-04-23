@@ -100,5 +100,9 @@ export const RunRequestSchema = z.object({
   mode: z.enum(["mock", "live"]).optional(),
   /** When provided, run uses this BYOK key id (must belong to caller). */
   byokKeyId: z.string().uuid().optional(),
+  /** Conversation session to continue; new session is created if absent. */
+  sessionId: z.string().uuid().optional(),
+  /** User chat message for this turn. Empty/missing = demo landing run. */
+  message: z.string().max(4000).optional(),
 });
 export type RunRequest = z.infer<typeof RunRequestSchema>;

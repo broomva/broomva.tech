@@ -1,7 +1,7 @@
 // Typed contracts for the /life UI surface.
 // Layer 2 / 3 / 4 follow-up notes live in the project-map.ts and PR description.
 
-export type ScenarioId = "refactor" | "ingest" | "research";
+export type ScenarioId = "refactor" | "ingest" | "research" | "materiales";
 
 export type LayoutMode = "classic" | "experimental";
 export type MiddleMode = "files" | "journal" | "timeline" | "graph" | "spaces";

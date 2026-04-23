@@ -1649,6 +1649,49 @@ export const lifeByokKey = pgTable(
 export type LifeByokKey = InferSelectModel<typeof lifeByokKey>;
 
 /**
+ * A conversation thread attached to a Life project. Groups one or more
+ * LifeRuns (user-turns) so multi-turn agent sessions have history.
+ * Anon sessions key by cookie id; authed sessions by userId.
+ */
+export const lifeSession = pgTable(
+  "LifeSession",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    projectId: uuid("projectId")
+      .notNull()
+      .references(() => lifeProject.id, { onDelete: "cascade" }),
+    /** 'user' | 'anon' */
+    consumerKind: varchar("consumerKind", {
+      length: 16,
+      enum: ["user", "anon"],
+    }).notNull(),
+    consumerId: varchar("consumerId", { length: 256 }).notNull(),
+    /** Optional org context for authed sessions. */
+    organizationId: uuid("organizationId").references(() => organization.id, {
+      onDelete: "set null",
+    }),
+    title: varchar("title", { length: 256 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    LifeSession_project_idx: index("LifeSession_project_idx").on(
+      t.projectId,
+      t.updatedAt,
+    ),
+    LifeSession_consumer_idx: index("LifeSession_consumer_idx").on(
+      t.consumerKind,
+      t.consumerId,
+    ),
+  }),
+);
+
+export type LifeSession = InferSelectModel<typeof lifeSession>;
+
+/**
  * One row per execution. Cost columns are all in USD cents.
  * paymentMode: 'credits' | 'x402' | 'haima_balance' | 'byok' | 'free_tier'.
  */
@@ -1659,6 +1702,12 @@ export const lifeRun = pgTable(
     projectId: uuid("projectId")
       .notNull()
       .references(() => lifeProject.id, { onDelete: "restrict" }),
+    /** Groups turns into a conversation. Nullable for back-compat. */
+    sessionId: uuid("sessionId").references(() => lifeSession.id, {
+      onDelete: "cascade",
+    }),
+    /** Shorthand text of the user message that started this turn. */
+    inputText: text("inputText"),
     rulesVersionId: uuid("rulesVersionId")
       .notNull()
       .references(() => lifeRulesVersion.id),

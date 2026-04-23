@@ -4,7 +4,7 @@
  */
 
 import "server-only";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   lifeProject,
@@ -12,9 +12,11 @@ import {
   lifeRulesVersion,
   lifeRun,
   lifeRunEvent,
+  lifeSession,
   type LifeProject,
   type LifeRulesVersion,
   type LifeRun,
+  type LifeSession,
 } from "@/lib/db/schema";
 import type { ConsumerKind, PaymentMode } from "./types";
 
@@ -64,11 +66,94 @@ export interface CreateRunParams {
   projectId: string;
   /** May be null when project has no rulesVersion yet (generic-runner smoke). */
   rulesVersionId: string | null;
+  sessionId?: string;
+  inputText?: string;
   consumerKind: ConsumerKind;
   consumerId: string;
   organizationId?: string;
   input: unknown;
   paymentMode: PaymentMode;
+}
+
+// ---------- sessions ----------
+
+export interface GetOrCreateSessionParams {
+  projectId: string;
+  sessionId?: string; // if provided, must belong to (consumerKind, consumerId)
+  consumerKind: "user" | "anon";
+  consumerId: string;
+  organizationId?: string;
+}
+
+/**
+ * Resolve a session — reuse `sessionId` if it belongs to the caller and
+ * project; otherwise create a fresh one.
+ */
+export async function getOrCreateSession(
+  p: GetOrCreateSessionParams,
+): Promise<LifeSession> {
+  if (p.sessionId) {
+    const rows = await db
+      .select()
+      .from(lifeSession)
+      .where(eq(lifeSession.id, p.sessionId))
+      .limit(1);
+    const row = rows[0];
+    if (
+      row &&
+      row.projectId === p.projectId &&
+      row.consumerKind === p.consumerKind &&
+      row.consumerId === p.consumerId
+    ) {
+      return row;
+    }
+  }
+  const [row] = await db
+    .insert(lifeSession)
+    .values({
+      projectId: p.projectId,
+      consumerKind: p.consumerKind,
+      consumerId: p.consumerId,
+      organizationId: p.organizationId ?? null,
+    })
+    .returning();
+  if (!row) throw new Error("getOrCreateSession: insert returned no row");
+  return row;
+}
+
+/**
+ * Load recent turns of a session as a conversation history — { role, content }.
+ * Skips turns whose input is non-text JSON (no inputText set).
+ */
+export async function getSessionHistory(
+  sessionId: string,
+  limit = 20,
+): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
+  const rows = await db
+    .select({
+      id: lifeRun.id,
+      inputText: lifeRun.inputText,
+      output: lifeRun.output,
+      status: lifeRun.status,
+    })
+    .from(lifeRun)
+    .where(eq(lifeRun.sessionId, sessionId))
+    .orderBy(desc(lifeRun.createdAt))
+    .limit(limit);
+
+  // Reverse to chronological order; emit user + assistant pairs.
+  const history: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const row of rows.reverse()) {
+    if (row.inputText) {
+      history.push({ role: "user", content: row.inputText });
+    }
+    // Assistant output — use the text if stored as { text: string }, else skip.
+    if (row.status === "succeeded" && row.output) {
+      const output = row.output as { text?: string } | null;
+      if (output?.text) history.push({ role: "assistant", content: output.text });
+    }
+  }
+  return history;
 }
 
 /**
@@ -92,6 +177,8 @@ export async function createRun(params: CreateRunParams): Promise<LifeRun> {
     .insert(lifeRun)
     .values({
       projectId: params.projectId,
+      sessionId: params.sessionId ?? null,
+      inputText: params.inputText ?? null,
       rulesVersionId: effectiveRulesVersionId,
       consumerKind: params.consumerKind,
       consumerId: params.consumerId,

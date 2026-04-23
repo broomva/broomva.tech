@@ -1,6 +1,6 @@
 {
-  "id": "3b1237a5-2f13-4244-a27a-3f367a8c844f",
-  "prevId": "af89b5bb-d778-4a1c-8020-380fe07ad640",
+  "id": "5716420b-537a-460e-a357-4ad8580a8333",
+  "prevId": "b6b56d85-b93d-4cd6-835d-6c81b014ce38",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1957,6 +1957,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "sessionId": {
+          "name": "sessionId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "inputText": {
+          "name": "inputText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "rulesVersionId": {
           "name": "rulesVersionId",
           "type": "uuid",
@@ -2179,6 +2191,19 @@
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
+        "LifeRun_sessionId_LifeSession_id_fk": {
+          "name": "LifeRun_sessionId_LifeSession_id_fk",
+          "tableFrom": "LifeRun",
+          "tableTo": "LifeSession",
+          "columnsFrom": [
+            "sessionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "LifeRun_rulesVersionId_LifeRulesVersion_id_fk": {
           "name": "LifeRun_rulesVersionId_LifeRulesVersion_id_fk",
           "tableFrom": "LifeRun",
@@ -2314,6 +2339,140 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.LifeSession": {
+      "name": "LifeSession",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumerKind": {
+          "name": "consumerKind",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumerId": {
+          "name": "consumerId",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organizationId": {
+          "name": "organizationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "LifeSession_project_idx": {
+          "name": "LifeSession_project_idx",
+          "columns": [
+            {
+              "expression": "projectId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "updatedAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "LifeSession_consumer_idx": {
+          "name": "LifeSession_consumer_idx",
+          "columns": [
+            {
+              "expression": "consumerKind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "consumerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "LifeSession_projectId_LifeProject_id_fk": {
+          "name": "LifeSession_projectId_LifeProject_id_fk",
+          "tableFrom": "LifeSession",
+          "tableTo": "LifeProject",
+          "columnsFrom": [
+            "projectId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "LifeSession_organizationId_Organization_id_fk": {
+          "name": "LifeSession_organizationId_Organization_id_fk",
+          "tableFrom": "LifeSession",
+          "tableTo": "Organization",
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

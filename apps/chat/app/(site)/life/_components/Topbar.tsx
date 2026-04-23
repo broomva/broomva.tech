@@ -69,6 +69,14 @@ export function Topbar({
         >
           Research
         </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setTweaks({ scenario: "materiales" })}
+          style={{ opacity: tweaks.scenario === "materiales" ? 1 : 0.6 }}
+        >
+          Materiales
+        </button>
         <span
           style={{
             width: 1,

@@ -140,6 +140,7 @@ export function TweaksPanel({
           ["refactor", "Refactor"],
           ["ingest", "Ingest"],
           ["research", "Research"],
+          ["materiales", "Materiales"],
         ]}
         onChange={(v) => setTweaks({ scenario: v })}
       />

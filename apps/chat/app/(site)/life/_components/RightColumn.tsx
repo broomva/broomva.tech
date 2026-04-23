@@ -1,5 +1,6 @@
 "use client";
 
+import type { LiveRunMeta } from "../_lib/use-live-run";
 import type { ReplayState, RightMode } from "../_lib/types";
 import { AnimaPane } from "./AnimaPane";
 import { AutonomicPane } from "./AutonomicPane";
@@ -12,6 +13,8 @@ interface Props {
   mode: RightMode;
   setMode: (mode: RightMode) => void;
   state: ReplayState;
+  /** Present when the column is driven by the real /api/life/run SSE. */
+  liveMeta?: LiveRunMeta;
 }
 
 const TABS: { id: RightMode; label: string }[] = [
@@ -23,7 +26,7 @@ const TABS: { id: RightMode; label: string }[] = [
   { id: "anima", label: "Anima" },
 ];
 
-export function RightColumn({ mode, setMode, state }: Props) {
+export function RightColumn({ mode, setMode, state, liveMeta }: Props) {
   return (
     <div className="col col--right">
       <div className="col__header">
@@ -51,7 +54,7 @@ export function RightColumn({ mode, setMode, state }: Props) {
         {mode === "vigil" && <VigilPane state={state} />}
         {mode === "nous" && <NousPane state={state} />}
         {mode === "autonomic" && <AutonomicPane />}
-        {mode === "haima" && <HaimaPane />}
+        {mode === "haima" && <HaimaPane liveMeta={liveMeta} />}
         {mode === "anima" && <AnimaPane />}
       </div>
     </div>

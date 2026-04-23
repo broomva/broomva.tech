@@ -360,14 +360,193 @@ const researchScript: ReplayEvent[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Materiales — live unit-price research for a CO constructora director.
+// Real prices captured from Homecenter / Easy / Sodimac.co on 2026-04-23
+// (Homecenter varilla G60 1/2" × 6m = $26,550; Cemex 50kg = $32,900; Corona
+// porcelanato West/Aura 60×60 dynamic per location). Tenant: _pending-constructora.
+// ---------------------------------------------------------------------------
+const materialesScript: ReplayEvent[] = [
+  {
+    t: 0,
+    kind: "user",
+    text:
+      "Necesito precio unitario de varilla corrugada #4 (1/2 pulg) x 6m, 3 toneladas para losa. Obra en Bogotá. Proveedores preferidos: Homecenter, Sodimac, Easy.",
+  },
+  {
+    t: 600,
+    kind: "autonomic-event",
+    pillar: "economic",
+    text: "Modo rápido admitido · presupuesto 1 crédito · COP 2.000.",
+  },
+  { t: 1100, kind: "agent-thinking-start", id: "m1" },
+  {
+    t: 1200,
+    kind: "thinking",
+    id: "m1",
+    text:
+      "Plan:\n1. Verificar caché Lago — tenant _pending-constructora, material=hierro-1/2-#4\n2. Si no hay hit fresco (<24h), lanzar web_search paralelo sobre supplier whitelist: Homecenter, Sodimac, Easy\n3. Normalizar cada resultado a PriceObservation (precio, unidad, fuente, confianza)\n4. Quality gate Nous: ≥2 fuentes corroborando + banda de cordura tenant\n5. Persistir al índice bi-temporal + responder estructurado",
+  },
+  { t: 3200, kind: "agent-thinking-end", id: "m1" },
+  {
+    t: 3400,
+    kind: "agent-text-start",
+    id: "m1",
+    text:
+      "Entendido. Revisando caché primero, luego búsqueda en vivo sobre tus proveedores preferidos.",
+  },
+  {
+    t: 4200,
+    kind: "tool-call",
+    id: "t1",
+    name: "cache.lago",
+    target: "hierro-corrugada-1/2-6m · tenant=_pending-constructora",
+    args:
+      '{ "material_key": "hierro-corrugada-1/2-6m", "ttl_hours": 24, "tenant": "_pending-constructora" }',
+    journalKind: "tool",
+  },
+  {
+    t: 5000,
+    kind: "tool-result",
+    id: "t1",
+    result:
+      "MISS · tenant cache tiene 0 observaciones para este material (tenant nuevo). Ejecutando búsqueda en vivo.",
+  },
+  {
+    t: 5200,
+    kind: "agent-text-append",
+    id: "m1",
+    text: " Caché vacío — tenant nuevo. Lanzando 3 búsquedas en paralelo.",
+  },
+  {
+    t: 5800,
+    kind: "tool-call",
+    id: "t2",
+    name: "web-search.anthropic",
+    target: "homecenter.com.co · varilla corrugada 1/2 #4 6m",
+    args:
+      '{ "query": "varilla corrugada G60 1/2 pulg 6m precio", "domains": ["homecenter.com.co"] }',
+    journalKind: "tool",
+  },
+  {
+    t: 5900,
+    kind: "tool-call",
+    id: "t3",
+    name: "web-search.anthropic",
+    target: "sodimac.com.co · varilla hierro 1/2 6m",
+    args:
+      '{ "query": "varilla hierro 1/2 pulgada 6 metros precio Bogota", "domains": ["sodimac.com.co"] }',
+    journalKind: "tool",
+  },
+  {
+    t: 6000,
+    kind: "tool-call",
+    id: "t4",
+    name: "web-search.anthropic",
+    target: "easy.com.co · hierros varilla 1/2",
+    args:
+      '{ "query": "varilla corrugada 1/2 pulg 6m precio", "domains": ["easy.com.co"] }',
+    journalKind: "tool",
+  },
+  {
+    t: 7800,
+    kind: "autonomic-event",
+    pillar: "cognitive",
+    text: "3 búsquedas en vuelo · monitor de costo activo · escudo deep USD $2.50 vigente.",
+  },
+  {
+    t: 8900,
+    kind: "tool-result",
+    id: "t2",
+    result:
+      'Homecenter — Varilla Corrugada G60 W #4 (1/2 Pulg) X 6M · $26.550 COP/UND · precio original $30.780 · fabricantes: Sidoc, Paz del Rio, Gerdau Diaco, Ternium · URL producto/73637 · NTC 2289 / Decreto 1513',
+  },
+  {
+    t: 9400,
+    kind: "tool-result",
+    id: "t3",
+    result:
+      "Sodimac — Varilla 1/2 pulg x 6m G60 · precio dinámico por ubicación · resultado estimado COP $27.200 ± $500 (rango histórico Sodimac Bogotá) · requiere carrito para precio exacto",
+  },
+  {
+    t: 9800,
+    kind: "tool-result",
+    id: "t4",
+    result:
+      "Easy Colombia — Varilla 1/2 pulg 6m · catálogo activo (/ferreteria/fijaciones/varillas) · precio carrito Bogotá COP $26.900 · stock disponible",
+  },
+  {
+    t: 10400,
+    kind: "tool-call",
+    id: "t5",
+    name: "nous.score",
+    target: "PriceObservation[] · 3 fuentes",
+    args:
+      '{ "criterion": "supplier_corroboration", "sanity_band": {"family": "hierro", "multiplier": 1.5} }',
+    journalKind: "nous",
+  },
+  {
+    t: 11600,
+    kind: "nous-score",
+    score: 0.91,
+    band: "good",
+    note:
+      "3 fuentes independientes · todas dentro de banda (mediana $26.900, spread ±2.4%) · citaciones directas con URL de producto · confianza ALTA.",
+  },
+  {
+    t: 12200,
+    kind: "tool-call",
+    id: "t6",
+    name: "haima.debit_stage",
+    target: "stage=S4-S5 · run=mat-q1 · fast mode",
+    args: '{ "stage": "retrieve+evaluate", "cost_usd": 0.0032, "credits": 1 }',
+    journalKind: "haima",
+  },
+  {
+    t: 12700,
+    kind: "tool-result",
+    id: "t6",
+    result:
+      "Debitado · 1 crédito · COP 2.000 · balance 4.998 créditos restantes este ciclo · factura DIAN cierre mensual.",
+  },
+  {
+    t: 13100,
+    kind: "fs-op",
+    path: "/lago/tenants/_pending-constructora/price-index/hierro-1-2-6m/2026-04-23.json",
+    op: "create",
+  },
+  {
+    t: 13400,
+    kind: "autonomic-event",
+    pillar: "operational",
+    text: "3 PriceObservations persistidos al índice bi-temporal del tenant · valid_time=hoy.",
+  },
+  {
+    t: 13900,
+    kind: "agent-text-append",
+    id: "m1",
+    text:
+      "\n\n**Varilla corrugada G60 #4 (1/2\") × 6m — Bogotá, 2026-04-23**\n\n| Proveedor | Precio/und | Para 210 und (~3 ton) | Notas |\n|---|---|---|---|\n| **Homecenter** | **$26.550** | $5.575.500 | mejor precio · descuento internet (~14%) · stock · NTC 2289 |\n| Easy | $26.900 | $5.649.000 | stock Bogotá confirmado |\n| Sodimac | ~$27.200 | $5.712.000 | precio requiere carrito · rango histórico |\n\n**Recomendación:** Homecenter. Ahorro vs. Sodimac ≈ **$136.500** en 210 unidades. Para 3 ton exactas, cotizar con el proveedor por volumen (descuento paq×50).\n\nBotón activo → [Cotizar con Homecenter](https://www.homecenter.com.co/homecenter-co/product/73637/).",
+  },
+  {
+    t: 15800,
+    kind: "nous-score",
+    score: 0.91,
+    band: "good",
+    note: "Respuesta entregada · 3/3 proveedores · citas directas · tenant histórico inicializado.",
+  },
+];
+
 export const SCENARIOS: Record<ScenarioId, ReplayEvent[]> = {
   refactor: refactorScript,
   ingest: ingestScript,
   research: researchScript,
+  materiales: materialesScript,
 };
 
 export const SCENARIO_LABELS: Record<ScenarioId, string> = {
   refactor: "Refactor · arcan/stream",
   ingest: "Ingest · constitutional-ai.pdf",
   research: "Research · OSS agent shortlist",
+  materiales: "Materiales · precio unitario Bogotá",
 };
