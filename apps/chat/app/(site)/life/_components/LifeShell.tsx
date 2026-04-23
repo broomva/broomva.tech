@@ -9,7 +9,11 @@ import {
 } from "../_lib/tweaks";
 import type { ScenarioId, TweaksState } from "../_lib/types";
 import { useReplay } from "../_lib/use-replay";
-import { useLiveRun } from "../_lib/use-live-run";
+// Prosopon-native live runner. Swapped in PR C — see
+// docs/superpowers/specs/2026-04-23-life-prosopon-wiring.md. `useLiveRun`
+// (legacy wire) is retained until PR D decommissions the non-/prosopon
+// endpoint; anything relying on it directly should migrate here.
+import { useProsoponRun } from "../_lib/use-prosopon-run";
 import { PaymentRequiredBanner } from "./PaymentRequiredBanner";
 import type { LifeUserIdentity } from "./AnimaPane";
 import { AnimaPopover } from "./AnimaPopover";
@@ -110,7 +114,7 @@ export function LifeShell({
   // No server-side scenario auto-play (that was a Phase 2 / early-Phase-3
   // crutch that made the UI look scripted). The empty state now invites
   // the user to type; sendMessage() kicks off the first real turn.
-  const [liveState, setLiveState, liveMeta] = useLiveRun({
+  const [liveState, setLiveState, liveMeta] = useProsoponRun({
     projectSlug,
     enabled: liveEnabled,
     autoStart: false,
