@@ -388,13 +388,20 @@ async function handlePost(
           provider,
         });
         if (decision.mode === "credits" && consumer.kind === "user") {
+          // Credits debit failure is critical — let it bubble.
           await settleCreditsDebit({
             userId: consumer.id,
             mode: decision.mode,
             amountCents: decision.quotedCents,
           });
         }
-        await bumpProjectStats(project.id, finalCostCents);
+        // Stats bump is a denormalized counter — failure here shouldn't
+        // poison the run or the UI's success state. Best-effort, logged.
+        try {
+          await bumpProjectStats(project.id, finalCostCents);
+        } catch (statsErr) {
+          console.warn("[life/run] bumpProjectStats failed (non-fatal):", statsErr);
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         await emit({ type: "error", payload: { message: msg } });

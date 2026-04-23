@@ -303,30 +303,36 @@ export async function getRunEvents(runId: string): Promise<
 }
 
 /**
- * Bump the project's denormalized stats after a run finishes. Uses jsonb
- * set-at-path + increment so no schema migration is needed to add new
- * stats keys — just write them from the app layer.
+ * Bump the project's denormalized stats after a run finishes.
+ *
+ * Read-modify-write in TS instead of an SQL jsonb_set expression — simpler,
+ * one round trip, and avoids Drizzle/Postgres idiosyncrasies around column
+ * references on the RHS of an UPDATE ... SET clause with jsonb functions.
+ * Race condition on concurrent finishes is acceptable for a denormalized
+ * counter (the authoritative run data lives in LifeRun).
  */
 export async function bumpProjectStats(
   projectId: string,
   costCents: number,
 ): Promise<void> {
+  const rows = await db
+    .select({ stats: lifeProject.stats })
+    .from(lifeProject)
+    .where(eq(lifeProject.id, projectId))
+    .limit(1);
+  const current = (rows[0]?.stats as Record<string, unknown> | null) ?? {};
+  const prevTotal =
+    typeof current.totalRuns === "number" ? current.totalRuns : 0;
+  const prevCostTotal =
+    typeof current.totalCostCents === "number" ? current.totalCostCents : 0;
+  const next = {
+    ...current,
+    totalRuns: prevTotal + 1,
+    lastRunAt: new Date().toISOString(),
+    totalCostCents: prevCostTotal + (costCents || 0),
+  };
   await db
     .update(lifeProject)
-    .set({
-      stats: sql`
-        jsonb_set(
-          jsonb_set(
-            COALESCE(${lifeProject.stats}, '{}'::jsonb),
-            '{totalRuns}',
-            to_jsonb(
-              (COALESCE((${lifeProject.stats} ->> 'totalRuns')::int, 0) + 1)
-            )
-          ),
-          '{lastRunAt}',
-          to_jsonb(NOW()::text)
-        )
-      `,
-    })
+    .set({ stats: next })
     .where(eq(lifeProject.id, projectId));
 }
