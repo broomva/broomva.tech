@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.68.0",
+    "@anthropic-ai/sdk": "^0.90.0",
     "liquidjs": "^10.21.1",
     "yaml": "^2.8.1",
     "zod": "^3.25.76"
