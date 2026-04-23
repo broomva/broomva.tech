@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { LifeShell } from "../_components/LifeShell";
 import { isProjectSlug, PROJECTS } from "../_lib/project-map";
 
 export async function generateStaticParams() {
@@ -29,17 +30,12 @@ export default async function LifeProjectPage({
   if (!isProjectSlug(project)) notFound();
   const info = PROJECTS[project];
 
-  // LifeShell mounts in a follow-up commit.
   return (
-    <div className="life-landing">
-      <div className="life-landing__inner">
-        <div className="life-landing__eyebrow">{info.eyebrow}</div>
-        <h1 className="life-landing__title">{info.displayName}</h1>
-        <p className="life-landing__sub">
-          The full three-column workspace mounts in the next commit. This stub
-          confirms the dynamic route + project map are wired correctly.
-        </p>
-      </div>
-    </div>
+    <LifeShell
+      projectSlug={project}
+      scenarioId={info.scenarioId}
+      displayName={info.displayName}
+      eyebrow={info.eyebrow}
+    />
   );
 }
