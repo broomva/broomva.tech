@@ -165,16 +165,14 @@ export async function POST(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[life/run] uncaught handler error:", err);
+    const stack = err instanceof Error ? err.stack : undefined;
     return NextResponse.json(
       {
         error: "Internal error while starting run.",
-        // Only surface the message in non-prod OR when the caller opts in.
-        // Production deploys keep the message out of the response body;
-        // full details land in Vercel function logs via console.error above.
-        detail:
-          process.env.VERCEL_ENV !== "production"
-            ? message
-            : "See function logs for trace.",
+        // Temporary — Phase 2 QA. Surface message + stack in prod until the
+        // live-run path is fully debugged. No secrets in these strings.
+        detail: message,
+        stack: stack ? stack.split("\n").slice(0, 6) : undefined,
       },
       { status: 500 },
     );
