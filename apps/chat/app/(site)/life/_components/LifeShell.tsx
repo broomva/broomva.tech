@@ -9,6 +9,7 @@ import {
 } from "../_lib/tweaks";
 import type { ScenarioId, TweaksState } from "../_lib/types";
 import { useReplay } from "../_lib/use-replay";
+import { useLiveRun } from "../_lib/use-live-run";
 import { AnimaPopover } from "./AnimaPopover";
 import { ChatColumn } from "./ChatColumn";
 import { Dock } from "./Dock";
@@ -23,6 +24,13 @@ interface Props {
   scenarioId: ScenarioId;
   displayName: string;
   eyebrow: string;
+  /**
+   * When true, the shell reads events from /api/life/run/<slug> over SSE
+   * instead of replaying the local scenario clock. Phase 2 enables it for
+   * Sentinel; Materiales stays on local replay until the live pipeline with
+   * web_search lands in a follow-up PR.
+   */
+  liveStream?: boolean;
 }
 
 function usePersistedTweaks(initialScenario: ScenarioId): {
@@ -61,6 +69,7 @@ export function LifeShell({
   scenarioId,
   displayName,
   eyebrow,
+  liveStream = false,
 }: Props) {
   const { tweaks, setTweaks } = usePersistedTweaks(scenarioId);
   const [tweaksOpen, setTweaksOpen] = useState(false);
@@ -77,7 +86,25 @@ export function LifeShell({
     setPlaying(tweaks.autoplay);
   }, [tweaks.scenario, tweaks.autoplay]);
 
-  const [state, setState] = useReplay(script, playing);
+  // Replay state (local scenario clock) — used when liveStream is false OR
+  // when the user has paused / switched scenarios in the Tweaks panel.
+  const [replayState, setReplayState] = useReplay(script, playing && !liveStream);
+
+  // Live SSE state — used only when the project is wired for live streaming
+  // AND the user hasn't overridden the scenario via Tweaks. If they do, we
+  // fall back to the local replay clock so the Tweaks panel keeps working.
+  const liveEnabled =
+    liveStream && playing && tweaks.scenario === scenarioId;
+  const [liveState, setLiveState, liveMeta] = useLiveRun({
+    projectSlug,
+    enabled: liveEnabled,
+  });
+
+  // The downstream UI is agnostic to which source drove state — it only
+  // reads { state, setState }.
+  const state = liveEnabled ? liveState : replayState;
+  const setState = liveEnabled ? setLiveState : setReplayState;
+  void liveMeta; // status surface wires into the agent-status stripe in a follow-up
 
   // Cross-link highlight between chat tool calls and journal rows.
   const [toolHighlight, setToolHighlight] = useState<string | null>(null);

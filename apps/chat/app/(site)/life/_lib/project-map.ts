@@ -11,6 +11,13 @@ export interface LifeProjectInfo {
   displayName: string;
   eyebrow: string;
   chipColor: ProjectChipColor;
+  /**
+   * When true, the shell hits /api/life/run/<slug> over SSE instead of
+   * running the in-browser scenario replay clock. Phase 2 flips this on for
+   * Sentinel (mock-replay server-side — no Claude cost); Materiales stays
+   * client-replay until the OAuth shim migration lands in the next PR.
+   */
+  liveStream: boolean;
 }
 
 export const PROJECTS: Record<string, LifeProjectInfo> = {
@@ -19,12 +26,14 @@ export const PROJECTS: Record<string, LifeProjectInfo> = {
     displayName: "Sentinel — property-ops WO audit",
     eyebrow: "sentinel-property-ops · exclusive-rentals",
     chipColor: "emerald",
+    liveStream: true,
   },
   materiales: {
     scenarioId: "research",
     displayName: "Materiales Intel — precio unitario en vivo",
     eyebrow: "materiales-intel · _pending-constructora",
     chipColor: "amber",
+    liveStream: false,
   },
 };
 

@@ -14,7 +14,7 @@ import type {
   ReplayState,
 } from "./types";
 
-const EMPTY_STATE: ReplayState = {
+export const EMPTY_REPLAY_STATE: ReplayState = {
   messages: [],
   fsOps: [],
   journal: [],
@@ -22,6 +22,9 @@ const EMPTY_STATE: ReplayState = {
   autonomic: [],
   t: 0,
 };
+
+// Back-compat alias (keep EMPTY_STATE used by the hook body below).
+const EMPTY_STATE = EMPTY_REPLAY_STATE;
 
 function formatTime(ms: number): string {
   const total = Math.floor(ms / 1000);
@@ -31,7 +34,7 @@ function formatTime(ms: number): string {
   return `${m}:${s}.${mm}`;
 }
 
-function applyEvent(s: ReplayState, ev: ReplayEvent): ReplayState {
+export function applyReplayEvent(s: ReplayState, ev: ReplayEvent): ReplayState {
   const nowIso = formatTime(ev.t);
   switch (ev.kind) {
     case "user": {
@@ -270,7 +273,7 @@ export function useReplay(
           script[idxRef.current]!.t <= elapsed
         ) {
           const ev = script[idxRef.current++]!;
-          next = applyEvent(next, ev);
+          next = applyReplayEvent(next, ev);
           didUpdate = true;
         }
         return didUpdate || next.t !== s.t ? next : s;

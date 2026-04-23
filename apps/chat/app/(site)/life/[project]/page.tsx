@@ -36,6 +36,7 @@ export default async function LifeProjectPage({
       scenarioId={info.scenarioId}
       displayName={info.displayName}
       eyebrow={info.eyebrow}
+      liveStream={info.liveStream}
     />
   );
 }
