@@ -19,6 +19,11 @@ interface Props {
   sourceLabel?: "mock" | "live";
   /** Model identifier to display in the Composer footer. */
   modelLabel?: string;
+  /** Hint lines for the empty state — swapped per project. */
+  emptyStateTitle?: string;
+  emptyStateHint?: string;
+  /** Suggested first-turn prompts shown below the empty-state title. */
+  suggestions?: Array<{ label: string; prompt: string }>;
 }
 
 export function ChatColumn({
@@ -30,6 +35,9 @@ export function ChatColumn({
   onSendMessage,
   sourceLabel = "mock",
   modelLabel,
+  emptyStateTitle,
+  emptyStateHint,
+  suggestions,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -91,7 +99,7 @@ export function ChatColumn({
         {state.messages.length === 0 && (
           <div
             style={{
-              padding: "80px 12px",
+              padding: "60px 20px",
               textAlign: "center",
               color: "var(--ag-text-muted)",
               fontSize: 12,
@@ -104,18 +112,47 @@ export function ChatColumn({
             <div
               style={{
                 fontFamily: "var(--ag-font-heading)",
-                fontSize: 18,
+                fontSize: 20,
                 color: "var(--ag-text-primary)",
                 letterSpacing: "-0.01em",
                 marginBottom: 10,
               }}
             >
-              What are we making today?
+              {emptyStateTitle ?? "What are we making today?"}
             </div>
-            <div>
-              Arcan is wired to your workspace — filesystem, Lago journal, Nous,
-              Autonomic, Haima.
+            <div style={{ marginBottom: 18 }}>
+              {emptyStateHint ??
+                "Arcan is wired to your workspace — filesystem, Lago journal, Nous, Autonomic, Haima."}
             </div>
+            {suggestions && suggestions.length > 0 && onSendMessage && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  maxWidth: 320,
+                  margin: "0 auto",
+                  textAlign: "left",
+                }}
+              >
+                {suggestions.map((s) => (
+                  <button
+                    key={s.prompt}
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => onSendMessage(s.prompt)}
+                    style={{
+                      justifyContent: "flex-start",
+                      fontSize: 12,
+                      padding: "10px 12px",
+                      border: "1px solid var(--ag-border-subtle)",
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {state.messages.map((m) => (
