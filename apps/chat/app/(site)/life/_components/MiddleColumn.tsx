@@ -53,6 +53,7 @@ export function MiddleColumn({
               type="button"
               key={t.id}
               className="tab"
+              role="tab"
               aria-selected={mode === t.id}
               onClick={() => setMode(t.id)}
             >

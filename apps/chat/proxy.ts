@@ -22,6 +22,7 @@ const PUBLIC_PAGE_PREFIXES = [
   "/graph",
   "/links",
   "/ingest",
+  "/life",
   "/.well-known",
 ] as const;
 
