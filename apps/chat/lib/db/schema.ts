@@ -1438,4 +1438,318 @@ export const relaySession = pgTable(
 
 export type RelaySession = InferSelectModel<typeof relaySession>;
 
+// ---------------------------------------------------------------------------
+// LIFE RUNTIME PLATFORM (BRO-846)
+// ---------------------------------------------------------------------------
+// User-facing /life/[project] surface. Every Life project (Broomva-owned,
+// user-owned, or org-owned) is a row in LifeProject. Rules packages live
+// in LifeRulesVersion (git-style parent pointer). Runs in LifeRun + its
+// event log in LifeRunEvent. Module types are a registry in LifeModuleType.
+// BYOK provider keys in LifeByokKey (encrypted at rest via encryptedText).
+// ---------------------------------------------------------------------------
+
+/** Registry of runner implementations. Each LifeProject references one. */
+export const lifeModuleType = pgTable("LifeModuleType", {
+  /** e.g. 'sentinel-property-ops', 'materiales-intel', 'generic-rules-runner', 'module-builder' */
+  id: varchar("id", { length: 128 }).primaryKey().notNull(),
+  version: varchar("version", { length: 32 }).notNull(),
+  displayName: varchar("displayName", { length: 256 }).notNull(),
+  description: text("description"),
+  /** npm package name where the runner implementation lives */
+  runnerRef: varchar("runnerRef", { length: 128 }).notNull(),
+  /** JSON Schema for the input shape */
+  inputSchema: json("inputSchema").notNull(),
+  /** JSON Schema for the output shape */
+  outputSchema: json("outputSchema").notNull(),
+  /** Array of tool names the runner requires (['web_search'], etc.) */
+  requiredTools: json("requiredTools").notNull().default(sql`'[]'::jsonb`),
+  defaultUi: varchar("defaultUi", { length: 128 })
+    .notNull()
+    .default("life-interface-classic"),
+  /** { avgCents, p95Cents } */
+  costEstimateCents: json("costEstimateCents")
+    .notNull()
+    .default(sql`'{"avg":10,"p95":30}'::jsonb`),
+  status: varchar("status", {
+    length: 32,
+    enum: ["active", "deprecated"],
+  })
+    .notNull()
+    .default("active"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type LifeModuleType = InferSelectModel<typeof lifeModuleType>;
+
+/** Platform-reserved slugs, blocks user claims on /life/<slug>. */
+export const lifeReservedSlug = pgTable("LifeReservedSlug", {
+  slug: varchar("slug", { length: 64 }).primaryKey().notNull(),
+  reason: varchar("reason", { length: 128 })
+    .notNull()
+    .default("platform-reserved"),
+});
+
+export type LifeReservedSlug = InferSelectModel<typeof lifeReservedSlug>;
+
+/**
+ * One row per Life project.
+ * Slug is global; `@handle/slug` URL form is app-layer convention.
+ * ownerKind='platform' + ownerId='platform' marks Broomva-owned projects (sentinel, materiales).
+ */
+export const lifeProject = pgTable(
+  "LifeProject",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    slug: varchar("slug", { length: 128 }).notNull().unique(),
+    displayName: varchar("displayName", { length: 256 }).notNull(),
+    description: text("description"),
+    /** 'user' | 'org' | 'platform' */
+    ownerKind: varchar("ownerKind", {
+      length: 16,
+      enum: ["user", "org", "platform"],
+    }).notNull(),
+    /** userId | orgId | 'platform' */
+    ownerId: varchar("ownerId", { length: 256 }).notNull(),
+    moduleTypeId: varchar("moduleTypeId", { length: 128 })
+      .notNull()
+      .references(() => lifeModuleType.id),
+    /** Pointer to the HEAD of the rules version tree. Nullable while draft. */
+    currentRulesVersionId: uuid("currentRulesVersionId"),
+    visibility: varchar("visibility", {
+      length: 32,
+      enum: ["private", "unlisted", "public"],
+    })
+      .notNull()
+      .default("private"),
+    /**
+     * Pricing config. null = free. Shape:
+     * { model: 'per_run'|'per_token'|'tiered'|'free', rail, consumerPriceCents,
+     *   maxCostCents, creatorSharePct, platformFeePct, creatorSubsidyCents,
+     *   freeRunsPerMonthPerConsumer, currency }
+     */
+    pricing: json("pricing"),
+    /** 'platform' | 'creator_byok' | 'consumer_byok' */
+    secretsMode: varchar("secretsMode", {
+      length: 32,
+      enum: ["platform", "creator_byok", "consumer_byok"],
+    })
+      .notNull()
+      .default("platform"),
+    status: varchar("status", {
+      length: 32,
+      enum: ["draft", "active", "suspended", "archived"],
+    })
+      .notNull()
+      .default("draft"),
+    safetyFlags: json("safetyFlags").notNull().default(sql`'{}'::jsonb`),
+    /** Denormalized counters: { totalRuns, lastRunAt, avgCostCents } */
+    stats: json("stats").notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    LifeProject_owner_idx: index("LifeProject_owner_idx").on(
+      t.ownerKind,
+      t.ownerId,
+    ),
+    LifeProject_visibility_idx: index("LifeProject_visibility_idx").on(
+      t.visibility,
+      t.status,
+    ),
+    LifeProject_module_idx: index("LifeProject_module_idx").on(t.moduleTypeId),
+  }),
+);
+
+export type LifeProject = InferSelectModel<typeof lifeProject>;
+
+/** Versioned rules payload. Parent pointer supports revert/branch. */
+export const lifeRulesVersion = pgTable(
+  "LifeRulesVersion",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    projectId: uuid("projectId")
+      .notNull()
+      .references(() => lifeProject.id, { onDelete: "cascade" }),
+    /** Full RulesPackage JSON (taxonomy, sources, rules, prompts, policy, schemas) */
+    rulesJson: json("rulesJson").notNull(),
+    semver: varchar("semver", { length: 32 }).notNull(),
+    parentId: uuid("parentId"),
+    createdByUserId: text("createdByUserId"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    LifeRulesVersion_project_idx: index("LifeRulesVersion_project_idx").on(
+      t.projectId,
+      t.createdAt,
+    ),
+    LifeRulesVersion_parent_fk: foreignKey({
+      columns: [t.parentId],
+      foreignColumns: [t.id],
+      name: "LifeRulesVersion_parentId_fk",
+    }),
+  }),
+);
+
+export type LifeRulesVersion = InferSelectModel<typeof lifeRulesVersion>;
+
+/** BYOK provider keys, encrypted at rest. Runtime decrypts via KMS. */
+export const lifeByokKey = pgTable(
+  "LifeByokKey",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    ownerKind: varchar("ownerKind", {
+      length: 16,
+      enum: ["user", "org"],
+    }).notNull(),
+    ownerId: varchar("ownerId", { length: 256 }).notNull(),
+    provider: varchar("provider", {
+      length: 32,
+      enum: ["anthropic", "openai", "google", "vercel-gateway"],
+    }).notNull(),
+    label: varchar("label", { length: 128 }).notNull(),
+    /** Ciphertext. Decrypt via platform KMS. */
+    encryptedPayload: encryptedText("encryptedPayload").notNull(),
+    /** Last 4 chars of raw key for UI identification */
+    keyHint: varchar("keyHint", { length: 16 }),
+    /**
+     * 'internal' = creator uses this in their own projects only.
+     * 'public' = exposed to consumers when project.secretsMode='creator_byok'.
+     */
+    scope: varchar("scope", {
+      length: 32,
+      enum: ["internal", "public"],
+    })
+      .notNull()
+      .default("internal"),
+    status: varchar("status", {
+      length: 32,
+      enum: ["active", "revoked", "invalid"],
+    })
+      .notNull()
+      .default("active"),
+    lastUsedAt: timestamp("lastUsedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    LifeByokKey_owner_idx: index("LifeByokKey_owner_idx").on(
+      t.ownerKind,
+      t.ownerId,
+      t.status,
+    ),
+  }),
+);
+
+export type LifeByokKey = InferSelectModel<typeof lifeByokKey>;
+
+/**
+ * One row per execution. Cost columns are all in USD cents.
+ * paymentMode: 'credits' | 'x402' | 'haima_balance' | 'byok' | 'free_tier'.
+ */
+export const lifeRun = pgTable(
+  "LifeRun",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    projectId: uuid("projectId")
+      .notNull()
+      .references(() => lifeProject.id, { onDelete: "restrict" }),
+    rulesVersionId: uuid("rulesVersionId")
+      .notNull()
+      .references(() => lifeRulesVersion.id),
+    /** 'user' | 'anon' | 'agent' */
+    consumerKind: varchar("consumerKind", {
+      length: 16,
+      enum: ["user", "anon", "agent"],
+    }).notNull(),
+    /** userId | anon session id | wallet address */
+    consumerId: varchar("consumerId", { length: 256 }).notNull(),
+    /** Null for anon/agent; present for credits-debit path */
+    organizationId: uuid("organizationId").references(() => organization.id, {
+      onDelete: "set null",
+    }),
+    input: json("input").notNull(),
+    output: json("output"),
+    status: varchar("status", {
+      length: 32,
+      enum: [
+        "queued",
+        "streaming",
+        "succeeded",
+        "failed",
+        "refunded",
+        "cancelled",
+      ],
+    })
+      .notNull()
+      .default("queued"),
+    errorReason: text("errorReason"),
+    // cost accounting (USD cents)
+    llmCostCents: integer("llmCostCents").notNull().default(0),
+    platformFeeCents: integer("platformFeeCents").notNull().default(0),
+    creatorFeeCents: integer("creatorFeeCents").notNull().default(0),
+    consumerPaidCents: integer("consumerPaidCents").notNull().default(0),
+    // payment source
+    paymentMode: varchar("paymentMode", {
+      length: 32,
+      enum: ["credits", "x402", "haima_balance", "byok", "free_tier"],
+    })
+      .notNull()
+      .default("credits"),
+    paymentRail: varchar("paymentRail", { length: 32 }),
+    paymentTxId: varchar("paymentTxId", { length: 256 }),
+    // model identity
+    model: varchar("model", { length: 128 }),
+    provider: varchar("provider", { length: 32 }),
+    byokKeyId: uuid("byokKeyId").references(() => lifeByokKey.id),
+    // timing
+    startedAt: timestamp("startedAt"),
+    finishedAt: timestamp("finishedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    LifeRun_project_idx: index("LifeRun_project_idx").on(
+      t.projectId,
+      t.createdAt,
+    ),
+    LifeRun_consumer_idx: index("LifeRun_consumer_idx").on(
+      t.consumerKind,
+      t.consumerId,
+    ),
+    LifeRun_status_idx: index("LifeRun_status_idx").on(t.status),
+    LifeRun_org_idx: index("LifeRun_org_idx").on(t.organizationId),
+  }),
+);
+
+export type LifeRun = InferSelectModel<typeof lifeRun>;
+
+/** Append-only event log per run. Feeds SSE streaming + replay. */
+export const lifeRunEvent = pgTable(
+  "LifeRunEvent",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    runId: uuid("runId")
+      .notNull()
+      .references(() => lifeRun.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    /** 'thinking_start' | 'thinking_delta' | 'tool_call' | 'tool_result' | 'output_delta' | 'fs_op' | 'nous_score' | 'error' | 'done' | ... */
+    type: varchar("type", { length: 64 }).notNull(),
+    payload: json("payload").notNull().default(sql`'{}'::jsonb`),
+    at: timestamp("at").notNull().defaultNow(),
+  },
+  (t) => ({
+    LifeRunEvent_run_seq_uq: uniqueIndex("LifeRunEvent_run_seq_uq").on(
+      t.runId,
+      t.seq,
+    ),
+  }),
+);
+
+export type LifeRunEvent = InferSelectModel<typeof lifeRunEvent>;
+
 export const schema = { user, session, account, verification };
