@@ -115,8 +115,10 @@ export function FileTree({ fsOps, lastOpTs }: Props) {
 
   const tree = useMemo(() => buildTree(fsOps.map((o) => o.path)), [fsOps]);
   const rows = flattenTree(tree, opsByPath, expanded);
+  // Click on a directory toggles its expansion. `undefined` (never clicked)
+  // and `true` (explicitly expanded) both collapse on click; `false` expands.
   const toggle = (p: string) =>
-    setExpanded((e) => ({ ...e, [p]: e[p] === false ? true : false }));
+    setExpanded((e) => ({ ...e, [p]: e[p] === false }));
 
   const lastOp = fsOps[fsOps.length - 1];
   const isRecent = (path: string) =>

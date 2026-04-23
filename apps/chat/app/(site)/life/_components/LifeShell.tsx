@@ -180,8 +180,10 @@ export function LifeShell({
         <Dock state={state} />
       </div>
 
-      {/* Mobile-only bottom tab bar — CSS hides it above 768px. */}
-      <nav
+      {/* Mobile-only bottom tab bar — CSS hides it above 768px. Uses
+          a <div role="tablist"> rather than <nav> so the WAI-ARIA
+          tablist semantics aren't double-wrapped inside a landmark. */}
+      <div
         className="life-mobile-tabs"
         aria-label="Workspace view"
         role="tablist"
@@ -206,7 +208,7 @@ export function LifeShell({
             {label}
           </button>
         ))}
-      </nav>
+      </div>
 
       {animaOpen && <AnimaPopover onClose={() => setAnimaOpen(false)} />}
 
