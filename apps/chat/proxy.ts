@@ -46,6 +46,11 @@ const PUBLIC_API_PREFIXES = [
   "/api/relay",
   "/api/install",
   "/api/debug",
+  // Life Runtime: the /api/life/run/[project] route does its own consumer
+  // resolution (session | anon | x402) inside the handler and responds
+  // with 402 Payment Required when payment is needed. Middleware must let
+  // the request through so the handler can pick the right path.
+  "/api/life",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
