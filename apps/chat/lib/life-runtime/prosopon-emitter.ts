@@ -379,6 +379,15 @@ export class ProsoponEmitter {
           } as unknown as Record<string, unknown>,
           ts: nowIso(),
         } as ProsoponEvent);
+        const note = payloadString(event, "note");
+        if (typeof note === "string" && note.length > 0) {
+          yield this.session.emit({
+            type: "signal_changed",
+            topic: "nous.note",
+            value: { Scalar: note } as unknown as Record<string, unknown>,
+            ts: nowIso(),
+          } as ProsoponEvent);
+        }
         return;
       }
 
