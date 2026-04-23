@@ -182,7 +182,8 @@
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
     "zod": "^4.3.6",
-    "zustand": "^5.0.6"
+    "zustand": "^5.0.6",
+    "@broomva/prosopon": "workspace:*"
   },
   "overrides": {
     "commander": "^14.0.0",
