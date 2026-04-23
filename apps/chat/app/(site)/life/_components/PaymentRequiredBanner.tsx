@@ -119,10 +119,18 @@ export function PaymentRequiredBanner({
           </div>
         </div>
         <div className="ag-payment-actions">
-          <button className="btn btn--primary" onClick={approveManually}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={approveManually}
+          >
             Approve {formatCents(quote.amount)}
           </button>
-          <button className="btn btn--ghost" onClick={onCancel}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onCancel}
+          >
             Cancel
           </button>
         </div>
