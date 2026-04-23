@@ -15,7 +15,20 @@ export function KnowledgeGraph() {
   }, [nodes]);
 
   return (
-    <div className="graph-wrap">
+    <div className="graph-wrap" style={{ position: "relative" }}>
+      <span
+        className="pill"
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 14,
+          zIndex: 2,
+          fontSize: 9.5,
+          letterSpacing: "0.14em",
+        }}
+      >
+        demo · needs Lago
+      </span>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
         <title>Lago knowledge graph</title>
         <defs>

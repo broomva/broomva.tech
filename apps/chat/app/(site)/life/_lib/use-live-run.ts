@@ -93,6 +93,9 @@ function toReplayEvent(server: ServerEvent, t: number): ReplayEvent | null {
         kind: "fs-op",
         path: String(p.path ?? ""),
         op: (p.op as "read" | "write" | "create" | "delete") ?? "read",
+        content: typeof p.content === "string" ? p.content : undefined,
+        title: typeof p.title === "string" ? p.title : undefined,
+        bytes: typeof p.bytes === "number" ? p.bytes : undefined,
       };
     case "nous_score":
       return {

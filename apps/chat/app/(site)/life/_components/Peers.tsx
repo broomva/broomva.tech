@@ -4,7 +4,20 @@ import { LIFE_PEERS } from "../_lib/mock-workspace";
 
 export function Peers() {
   return (
-    <div className="peers">
+    <div className="peers" style={{ position: "relative" }}>
+      <span
+        className="pill"
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 14,
+          zIndex: 2,
+          fontSize: 9.5,
+          letterSpacing: "0.14em",
+        }}
+      >
+        demo · needs SpacetimeDB
+      </span>
       {LIFE_PEERS.map((p) => (
         <div key={p.name} className="peer-card">
           <div className="peer-card__head">

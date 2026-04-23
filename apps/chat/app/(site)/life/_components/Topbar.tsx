@@ -1,6 +1,7 @@
 "use client";
 
 import type { TweaksState } from "../_lib/types";
+import type { LifeUserIdentity } from "./AnimaPane";
 
 interface Props {
   setAnimaOpen: (next: (v: boolean) => boolean) => void;
@@ -9,6 +10,9 @@ interface Props {
   playing: boolean;
   setPlaying: (next: boolean | ((p: boolean) => boolean)) => void;
   crumb: { brand: string; project: string; scenarioLabel: string };
+  /** Authed / anon identity — drives the badge's name + soul. */
+  user?: LifeUserIdentity;
+  projectSlug?: string;
 }
 
 export function Topbar({
@@ -18,7 +22,12 @@ export function Topbar({
   playing,
   setPlaying,
   crumb,
+  user,
+  projectSlug,
 }: Props) {
+  const badgeName = user?.name ?? "Arcan";
+  const badgeHandle = user?.handle ?? user?.email?.split("@")[0] ?? "arcan";
+  const badgeSoul = `soul:life.${badgeHandle}.${projectSlug ?? "broomva"}`;
   return (
     <div className="topbar">
       <div className="topbar__left">
@@ -30,8 +39,8 @@ export function Topbar({
         >
           <div className="anima-avatar" />
           <div>
-            <div className="anima-name">Arcan</div>
-            <div className="anima-soul">soul:life.arcan.broomva</div>
+            <div className="anima-name">{badgeName}</div>
+            <div className="anima-soul">{badgeSoul}</div>
           </div>
         </button>
         <div className="topbar__crumb">

@@ -2,7 +2,7 @@
 
 import type { LiveRunMeta } from "../_lib/use-live-run";
 import type { ReplayState, RightMode } from "../_lib/types";
-import { AnimaPane } from "./AnimaPane";
+import { AnimaPane, type LifeUserIdentity } from "./AnimaPane";
 import { AutonomicPane } from "./AutonomicPane";
 import { HaimaPane } from "./HaimaPane";
 import { NousPane } from "./NousPane";
@@ -15,6 +15,9 @@ interface Props {
   state: ReplayState;
   /** Present when the column is driven by the real /api/life/run SSE. */
   liveMeta?: LiveRunMeta;
+  /** Authed / anon identity threaded from the server page (for Anima pane). */
+  user?: LifeUserIdentity;
+  projectSlug?: string;
 }
 
 const TABS: { id: RightMode; label: string }[] = [
@@ -26,7 +29,14 @@ const TABS: { id: RightMode; label: string }[] = [
   { id: "anima", label: "Anima" },
 ];
 
-export function RightColumn({ mode, setMode, state, liveMeta }: Props) {
+export function RightColumn({
+  mode,
+  setMode,
+  state,
+  liveMeta,
+  user,
+  projectSlug,
+}: Props) {
   return (
     <div className="col col--right">
       <div className="col__header">
@@ -51,11 +61,19 @@ export function RightColumn({ mode, setMode, state, liveMeta }: Props) {
       </div>
       <div className="col__body">
         {mode === "preview" && <PreviewPane state={state} />}
-        {mode === "vigil" && <VigilPane state={state} />}
-        {mode === "nous" && <NousPane state={state} />}
-        {mode === "autonomic" && <AutonomicPane />}
+        {mode === "vigil" && <VigilPane state={state} liveMeta={liveMeta} />}
+        {mode === "nous" && <NousPane state={state} liveMeta={liveMeta} />}
+        {mode === "autonomic" && (
+          <AutonomicPane state={state} liveMeta={liveMeta} />
+        )}
         {mode === "haima" && <HaimaPane liveMeta={liveMeta} />}
-        {mode === "anima" && <AnimaPane />}
+        {mode === "anima" && (
+          <AnimaPane
+            user={user}
+            projectSlug={projectSlug}
+            liveMeta={liveMeta}
+          />
+        )}
       </div>
     </div>
   );
