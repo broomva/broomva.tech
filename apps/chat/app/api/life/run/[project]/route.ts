@@ -104,9 +104,86 @@ async function resolveConsumer(): Promise<ConsumerIdentity | null> {
 
 const ParamsSchema = z.object({ project: z.string().min(1).max(128) });
 
+/**
+ * GET /api/life/run/[project]
+ * Diagnostic endpoint — returns the project row + module type as JSON.
+ * Useful for verifying DB seed + migration state from the browser without
+ * needing DB credentials. Safe to expose: no secrets returned.
+ */
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ project: string }> },
+) {
+  try {
+    const { project: slug } = await params;
+    const project = await getProjectBySlug(slug);
+    if (!project) {
+      return NextResponse.json(
+        { ok: false, reason: "project-not-found", slug },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json(
+      {
+        ok: true,
+        project: {
+          id: project.id,
+          slug: project.slug,
+          displayName: project.displayName,
+          moduleTypeId: project.moduleTypeId,
+          ownerKind: project.ownerKind,
+          ownerId: project.ownerId,
+          visibility: project.visibility,
+          status: project.status,
+          pricing: project.pricing,
+          hasRulesVersion: project.currentRulesVersionId !== null,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[life/run GET] diagnostic error:", err);
+    return NextResponse.json(
+      {
+        ok: false,
+        reason: "db-error",
+        detail:
+          process.env.VERCEL_ENV !== "production" ? message : message.slice(0, 300),
+      },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ project: string }> },
+) {
+  try {
+    return await handlePost(request, params);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[life/run] uncaught handler error:", err);
+    return NextResponse.json(
+      {
+        error: "Internal error while starting run.",
+        // Only surface the message in non-prod OR when the caller opts in.
+        // Production deploys keep the message out of the response body;
+        // full details land in Vercel function logs via console.error above.
+        detail:
+          process.env.VERCEL_ENV !== "production"
+            ? message
+            : "See function logs for trace.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+async function handlePost(
+  request: Request,
+  params: Promise<{ project: string }>,
 ) {
   const resolvedParams = await params;
   const parsedParams = ParamsSchema.safeParse(resolvedParams);
