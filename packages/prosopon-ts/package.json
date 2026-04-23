@@ -1,0 +1,27 @@
+{
+  "name": "@broomva/prosopon",
+  "version": "0.1.0",
+  "description": "TypeScript bindings for Prosopon (the Life Agent OS display server). IR types auto-generated from prosopon-core's JSON schemas; runtime helpers (codecs, reducer, WS/SSE client) hand-written. Wire-compatible with prosopon-protocol v1.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./codec": "./src/codec.ts",
+    "./apply-event": "./src/apply-event.ts",
+    "./client": "./src/client.ts",
+    "./session": "./src/session.ts",
+    "./ids": "./src/ids.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "bun run scripts/generate-types.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "json-schema-to-typescript": "^15.0.4",
+    "typescript": "^5.8.0"
+  }
+}
