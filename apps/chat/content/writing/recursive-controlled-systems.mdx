@@ -1,0 +1,141 @@
+---
+title: "Recursive Controlled Systems: A Formal Foundation for Autonomous AI Agents"
+summary: "Modern agentic AI treats stability as something you engineer. Control theory treats it as something you prove. RCS is the framework that bridges them — a 7-tuple type signature whose controller is itself an RCS at the next level, with a composite exponential stability theorem at arbitrary finite depth."
+date: 2026-04-24
+published: true
+tags:
+  - rcs
+  - control-theory
+  - agents
+  - ai-systems
+  - stability
+  - formalization
+  - life-agent-os
+  - autonomous-agents
+  - research
+links:
+  - label: "Paper (P0, working draft PDF)"
+    url: "https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main.pdf"
+  - label: "Paper (IEEE format)"
+    url: "https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main-ieee.pdf"
+  - label: "Paper (EPUB, reflowable for phones)"
+    url: "https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main.epub"
+  - label: "RCS research repo"
+    url: "https://github.com/broomva/rcs"
+  - label: "Life Agent OS (executable witness)"
+    url: "https://github.com/broomva/life"
+---
+
+# Recursive Controlled Systems
+
+Modern agentic AI treats stability as something you engineer. Classical control theory treats it as something you prove. The gap between those two stances is where most of the operational risk in autonomous agents currently lives — every framework has a sandbox, a rate limit, a token budget, a replanner, a deadman switch, and no theorem saying any of it converges.
+
+This post introduces **Recursive Controlled Systems (RCS)**, a control-theoretic formalization that closes that gap. RCS is a type signature. The same 7-tuple definition is applied at every level of a nested hierarchy, and the main result is an exponential stability theorem that composes across arbitrary finite depth under a time-scale-separation bound. It works whether the controller is an LQR regulator, a Dreamer-style latent world model, a V-JEPA-2 predictor, an LLM policy, or a flow-matching vision-language-action model — each enters the framework by discharging the same per-level hypotheses on its own state space.
+
+The full paper is Paper 0 of a planned series. The research repo is open ([github.com/broomva/rcs](https://github.com/broomva/rcs)), the proofs are mechanized in Python, and the formalism runs as actual Rust code in the Life Agent OS daemon. This is what I mean when I say the formalism is executable: a failing stability assertion at runtime is the same object as a failing theorem in the paper.
+
+## The problem: agents have internal state and nobody is regulating it
+
+An autonomous AI agent is a dynamical system whether its designers admit it or not. It has a plant — the external world it acts on. It has sensors, actuators, a policy. These are the visible surfaces of a control problem that AI engineering has largely pretended to be an engineering problem.
+
+But the agent itself also has internal state that evolves: memory that accumulates, context that drifts, token budgets that deplete, tool-call quotas that regenerate on a cycle, architecture configurations that mutate across sessions. These are not features. They are dynamics. And they are regulated — badly, through a patchwork of rate limits, guard prompts, retry loops, and manual tuning — because we lack a framework that treats the agent itself as a plant that some higher-order controller is trying to stabilize.
+
+The closest published articulation is Yann LeCun's path-to-AGI position paper, which sketches a six-module autonomous architecture with an intrinsic cost module whose stability is *assumed* rather than derived, and a two-level hierarchical JEPA whose composite stability is not stated as a theorem. Eslami & Yu (2026) take a different cut at the same problem for single-level agents and derive a stability budget
+
+```
+λ = γ − L_θ·ρ − L_d·η − β·τ̄ − (ln ν)/τ_a
+```
+
+where γ is the nominal decay rate, and each subtracted term accounts for adaptation cost, design-evolution cost, delay cost, and mode-switching cost. As long as λ > 0, the agent's homeostatic drive decays exponentially.
+
+That result is exactly the right kind of answer — it is a *budget* that trades competing dynamics against each other rather than a point estimate — but it is stated for one level only. Real agents have multiple levels: the outer control loop, the meta-controller that chooses when to replan, the governance layer that decides which tools are even in the action set. RCS is what you get when you extend Eslami & Yu's budget to a hierarchy by induction on depth.
+
+## The RCS type signature
+
+A Recursive Controlled System is the 7-tuple
+
+```
+Σ = (X, Y, U, f, h, S, Π)
+```
+
+where `X` is the state space, `Y` the observation space, `U` the control input space, `f : X × U → X` the dynamics, `h : X → Y` the observation map, `S : X × U → {0,1}` the safety shield, and `Π : Y × M → U` the controller over memory `M`.
+
+The self-similarity is the critical move: **Π is itself an RCS at the next hierarchical level**. The controller that regulates your LLM agent is, formally, a plant in its own right — with state, dynamics, a shield, and its own controller one level higher. You get a finite-depth tower:
+
+| Level | Plant | Controller | System example |
+|---|---|---|---|
+| L₀ | External world | Agent loop | `arcand`'s shell.rs — the Arcan agent process |
+| L₁ | Agent internal state | Autonomic regulator | `autonomic-core` — homeostatic gates, hysteresis |
+| L₂ | Autonomic regulator | Meta-control | EGRI — Evaluator-Governed Recursive Improvement |
+| L₃ | Meta-controller | Governance | Policy files + this repo's metalayer |
+
+Each level has its own 7-tuple, its own stability budget `λ_i`, and its own time-scale `τ_{a,i}`. The structure is the same at every level.
+
+## The stability theorem
+
+The main theoretical result is that if the per-level stability budget is positive at every level and a time-scale-separation bound holds, the composite system decays exponentially at a rate equal to the *minimum* over all level-wise rates.
+
+Formally: given per-level assumptions (H1)–(H5) and the time-scale-separation bound `τ_{a,i+1} ≥ c · τ_{a,i}` for some `c > 1`, the composite Lyapunov function across all `N` levels satisfies
+
+```
+V_composite(t) ≤ V_composite(0) · exp(−ω_N · t)
+```
+
+with
+
+```
+ω_N = min_i λ_i
+```
+
+Proof is by induction on depth, base case from Eslami & Yu (2026). The full derivation is Theorem 1 of Paper 0, with step-by-step discharge of the coupling terms in Appendix A via an LQR worked example through Σ₀ and the Σ₀ ∘ Σ₁ composition.
+
+The corollary matters more than the theorem. Composite stability is bounded by the *worst* level. If your L₁ autonomic regulator has `λ₁ = 0.41` but your L₃ governance layer has `λ₃ = 0.006`, your composite decay rate is 0.006. Every level above the narrowest is paying a tax on its own stability budget that it can't collect on. This is where the engineering discipline bites: you cannot "fix" stability at L₀ by making the agent faster or smarter. The only lever is the narrowest level — and in practice, for agent systems built over the last two years, that narrowest level has been governance.
+
+## Five instantiations
+
+The framework is architecture-agnostic. The Instantiation Catalogue in Paper 0 shows five concrete controller classes each discharging (H1)–(H7) on their own state space:
+
+| Controller class | State space | Per-level decay witness |
+|---|---|---|
+| **LQR regulator** | Linear `ℝⁿ` | Quadratic Lyapunov from the Riccati solution |
+| **Dreamer-style world model** | Latent stochastic dynamics | Hafner et al. 2025 bounds + sandwich lemma |
+| **V-JEPA-2 predictor** | Joint embedding space | Assran et al. 2025 contraction in the predictor |
+| **LLM-as-controller** | Token sequence + meaning-space quotient | Bhargava attention-block Lipschitz × Soatto meaning-space quotient |
+| **Flow-matching VLA (π₀-family)** | Proprio vector + vision/text tokens | Action-chunk bound × **knowledge insulation** (stop-gradient + FAST-tokenised substitute signal, Driess et al. 2025) |
+
+The last row is the one that surprised me most during the drafting. Physical Intelligence's π₀ family — the flow-matching VLA used in their commercial robotics deployments — actually needed an explicit training-time separation mechanism between the action expert (fast level) and the VLM backbone (slow level) to generalize. When they trained with gradients propagating freely between the two, the backbone's web-scale representations degraded and downstream performance dropped. When they introduced stop-gradient plus a discrete FAST-tokenised substitute signal, they recovered generalization.
+
+That is *exactly* the time-scale separation bound of the RCS stability theorem, happening at training time instead of inference time. A 3-billion-parameter production model, built without reference to control-theoretic composite stability, converged on the same principle by trial and error. The paper flags this as the strongest current external empirical validation of the level-separation principle underpinning (H6)–(H7).
+
+## Executable witness
+
+A theorem that does not run is a theorem you cannot trust. The RCS repo ships three independent representations of the same object:
+
+1. **The paper** — `papers/p0-foundations/main.tex`, with Appendix A working LQR end-to-end through Σ₀ and the Σ₀ ∘ Σ₁ composition.
+2. **The proofs** — `tests/test_stability_budget.py` and `tests/test_lyapunov_simulation.py`, 9 algebraic + 4 RK4-simulated proofs of the per-level budget, composition bound, EGRI mutation cap, and monotone drive decrease.
+3. **The runtime witness** — `crates/autonomic/autonomic-core/src/rcs_budget.rs` in the Life Agent OS. The composite budget is computed at every tick; if any level's `λ_i` drops below zero the daemon emits a `BudgetViolation` event and the homeostatic gate closes. A single `data/parameters.toml` file is the canonical source of truth for all three representations, with a CI drift check enforcing that they stay in sync bit-for-bit.
+
+This is not a paper with supplementary code. The paper, the test suite, and the daemon are three projections of the same parameter file. If any one disagrees with the others, CI fails.
+
+## Priority claim
+
+Priority on RCS is established by the public commit history of [github.com/broomva/rcs](https://github.com/broomva/rcs). Every theorem, every revision, every Instantiation Catalogue row has a timestamped, cryptographically signed commit. The paper's 12 merged PRs — the D2 architecture-agnostic reframe, the D2.1 CodeRabbit fixes, the D2.2 prop:triple regime conditions, the Appendix A LQR worked example, the π₀-family instantiation added today — form a referenceable ledger.
+
+A Zenodo DOI snapshot is in preparation so every paper version will be citable from peer-reviewed venues without waiting for formal publication. arXiv submission is in flight pending first-time endorsement in `cs.SY` / `cs.AI` / `cs.LG`.
+
+None of those channels are required to read, critique, or build on the work. The repo is open. The code passes CI. Every equation is traceable to a commit.
+
+## What's next
+
+This is the foundations paper. The planned follow-ups already have scaffolding in the same repo:
+
+- **P1 Stability** — empirical validation of the budget against a running Life Agent OS deployment (PROTOCOL and Makefile targets landed via PR #14).
+- **P2 EGRI as Σ₂** — the evaluator-governed recursive improvement loop recast as an RCS at the meta-control level.
+- **P3 Self-referential observers** — what happens when an RCS observes itself.
+- **P4 Fleet cooperative resilience** — extension of Chacon-Chamorro et al. (2025) to recursive multi-agent systems.
+- **P6 Horizontal composition** — the depth-0→depth-1 case that was identified as the most pressing research gap.
+- **P7 Thermodynamic limits + depth-Kardashev isomorphism** — the outer boundary condition.
+
+If any of this is wrong, I'd rather find out soon. If any of it is useful, the repo is open. The paper's references section lists twelve live research communities I expect this to touch — control theory, population dynamics, active inference, JEPA-family predictive learning, LLM interpretability, flow-matching policy learning, agentic AI, multi-agent systems, and hybrid systems theory — and I'd like to hear from any of them.
+
+Paper 0: [PDF](https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main.pdf) · [IEEE format](https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main-ieee.pdf) · [EPUB](https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main.epub) · [Repo](https://github.com/broomva/rcs) · [Runtime implementation](https://github.com/broomva/life)
