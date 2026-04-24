@@ -40,7 +40,12 @@ export function Topbar({
         <div className="topbar__crumb">
           <strong>{crumb.brand}</strong>
           <span className="sep">/</span>
-          life
+          {/* Wrap the literal "life" segment in a span so the mobile hide-
+              rule in life-styles.css (`.topbar__crumb > :not(.topbar__crumb-project)`)
+              can actually target it. CSS selectors don't match text nodes,
+              so without this wrapper the word stays visible at <768px and
+              visually collides with the Anima badge. */}
+          <span className="topbar__crumb-fixed">life</span>
           <span className="sep">/</span>
           <span className="topbar__crumb-project">{crumb.project}</span>
         </div>
