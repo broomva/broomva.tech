@@ -12,8 +12,8 @@
  * 2. Journal idx values are contiguous (no gaps).
  * 3. Every journal entry references an existing .sql file.
  */
-import { readFileSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -42,12 +42,21 @@ function loadJournal(): Journal {
 /**
  * SQL files that exist on disk but are legitimately not in the journal.
  * These are historical alternative drafts that were superseded by another
- * migration with the same numeric prefix (e.g. 0001_sparkling_blue_marvel
- * replaced 0001_add_refresh_token_table before the journal was committed).
+ * migration that actually creates the same tables (e.g.
+ * `0001_sparkling_blue_marvel` replaced `0001_add_refresh_token_table`
+ * before the journal was committed, and `0056_equal_maginty` contains the
+ * `SandboxInstance` + `SandboxSnapshot` CREATE TABLE statements that were
+ * originally drafted in `0055_add_sandbox_tables`).
+ *
+ * The tables exist in production and are exercised by the app; the draft
+ * SQL file is kept as historical record only and must stay in the
+ * allowlist so the "every file is journaled" invariant continues to catch
+ * genuinely-missing drizzle-generated migrations.
  */
 const KNOWN_ORPHANED_MIGRATIONS = new Set([
   "0001_add_refresh_token_table",
   "0047_cooing_gressill",
+  "0055_add_sandbox_tables",
 ]);
 
 function getSqlFiles(): string[] {

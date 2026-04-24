@@ -26,13 +26,9 @@
 
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { LifeProject } from "@/lib/db/schema";
 import { deductCredits, getCredits } from "@/lib/db/credits";
-import type {
-  BillingDecision,
-  ConsumerIdentity,
-  PaymentMode,
-} from "./types";
+import type { LifeProject } from "@/lib/db/schema";
+import type { BillingDecision, ConsumerIdentity, PaymentMode } from "./types";
 
 /**
  * Pricing config shape (matches projects.pricing JSONB column).
@@ -68,7 +64,8 @@ export function pickPaymentMode(args: {
 }): BillingDecision {
   const { project, consumer, byokKeyId } = args;
   const pricing = (project.pricing as PricingConfig | null) ?? null;
-  const isPaid = pricing && pricing.model !== "free" && pricing.consumerPriceCents > 0;
+  const isPaid =
+    pricing && pricing.model !== "free" && pricing.consumerPriceCents > 0;
 
   // BYOK overrides everything — consumer provides the LLM billing rail.
   if (byokKeyId) {
@@ -76,7 +73,8 @@ export function pickPaymentMode(args: {
       mode: "byok",
       quotedCents: 0,
       maxCostCents: pricing?.maxCostCents ?? DEFAULT_FREE_TIER.maxCostCents,
-      rationale: "BYOK key supplied — LLM cost billed to consumer's own provider.",
+      rationale:
+        "BYOK key supplied — LLM cost billed to consumer's own provider.",
     };
   }
 
@@ -90,7 +88,8 @@ export function pickPaymentMode(args: {
       mode: "credits",
       quotedCents: pricing?.consumerPriceCents ?? 1, // nominal 1c for self-runs
       maxCostCents: pricing?.maxCostCents ?? DEFAULT_FREE_TIER.maxCostCents,
-      rationale: "Project owner running own agent — debited from subscription credits.",
+      rationale:
+        "Project owner running own agent — debited from subscription credits.",
     };
   }
 

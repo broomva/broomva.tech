@@ -47,7 +47,9 @@ export function readAutonomy(): AutonomyPrefs {
       autoApproveMaxCents: Number(
         parsed.autoApproveMaxCents ?? DEFAULT_AUTONOMY.autoApproveMaxCents,
       ),
-      sessionMaxCents: Number(parsed.sessionMaxCents ?? DEFAULT_AUTONOMY.sessionMaxCents),
+      sessionMaxCents: Number(
+        parsed.sessionMaxCents ?? DEFAULT_AUTONOMY.sessionMaxCents,
+      ),
       sessionSpentCents: Number(
         parsed.sessionSpentCents ?? DEFAULT_AUTONOMY.sessionSpentCents,
       ),
@@ -76,7 +78,8 @@ export function shouldAutoApprove(
 ): boolean {
   if (prefs.mode !== "auto") return false;
   if (quotedCents > prefs.autoApproveMaxCents) return false;
-  if (prefs.sessionSpentCents + quotedCents > prefs.sessionMaxCents) return false;
+  if (prefs.sessionSpentCents + quotedCents > prefs.sessionMaxCents)
+    return false;
   return true;
 }
 

@@ -11,7 +11,13 @@ export const DEFAULT_TWEAKS: TweaksState = {
   rightMode: "vigil",
 };
 
-const MIDDLE: MiddleMode[] = ["files", "journal", "timeline", "graph", "spaces"];
+const MIDDLE: MiddleMode[] = [
+  "files",
+  "journal",
+  "timeline",
+  "graph",
+  "spaces",
+];
 const RIGHT: RightMode[] = [
   "preview",
   "vigil",

@@ -105,10 +105,12 @@ export interface AdapterOutput {
   reset: boolean;
 }
 
-const EMPTY: AdapterOutput = { replay: [], meta: [], reset: false };
-
 /**
  * Build an empty `AdapterOutput` (useful for adapter misses).
+ *
+ * Returned as a fresh object each call so callers who spread into it
+ * (`{ ...emptyOutput(), replay: [...] }`) can't accidentally mutate a
+ * shared sentinel.
  */
 function emptyOutput(): AdapterOutput {
   return { replay: [], meta: [], reset: false };
