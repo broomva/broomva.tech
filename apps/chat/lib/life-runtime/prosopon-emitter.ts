@@ -337,27 +337,62 @@ export class ProsoponEmitter {
       }
 
       case "fs_op": {
+        // RFC-0004: emit typed `Intent::FileRead` / `Intent::FileWrite` nodes
+        // instead of `Custom { kind: "fs.op" }`. The EnvelopeAdapter on the
+        // client side branches on the typed variant directly, but also keeps
+        // a Custom-path branch for back-compat with any producer on <0.2.0.
         const path = payloadString(event, "path") ?? "";
-        const op = payloadString(event, "op") ?? "write";
+        const rawOp = payloadString(event, "op") ?? "write";
         const content = payloadString(event, "content") ?? "";
         const title = payloadString(event, "title") ?? "";
         const bytes = payloadNumber(event, "bytes") ?? content.length;
+        const hasContent = content.length > 0;
+
         const id = `fs-${++this.fsNodeCounter}`;
-        const fsNode = freshNode(id, {
-          type: "custom",
-          kind: "fs.op",
-          payload: {
+
+        if (rawOp === "read") {
+          const readNode = freshNode(id, {
+            type: "file_read",
             path,
-            op,
-            content,
-            title,
-            bytes,
-          } as Record<string, unknown>,
+            content: hasContent ? content : undefined,
+            bytes: hasContent ? bytes : undefined,
+          });
+          yield this.session.emit({
+            type: "node_added",
+            parent: WORKSPACE_NODE_ID,
+            node: readNode,
+          });
+          return;
+        }
+
+        // Everything else is a FileWrite — narrow to the FileWriteKind enum.
+        // Unknown op strings fall back to `write` with a warning so the
+        // emitter stays forward-compatible with server-side RunEvent evolution.
+        let writeKind: "create" | "write" | "append" | "delete";
+        switch (rawOp) {
+          case "create":
+          case "write":
+          case "append":
+          case "delete":
+            writeKind = rawOp;
+            break;
+          default:
+            writeKind = "write";
+            break;
+        }
+
+        const writeNode = freshNode(id, {
+          type: "file_write",
+          path,
+          op: writeKind,
+          content: writeKind === "delete" ? undefined : hasContent ? content : undefined,
+          bytes: writeKind === "delete" ? undefined : hasContent ? bytes : undefined,
+          title: title ? title : undefined,
         });
         yield this.session.emit({
           type: "node_added",
           parent: WORKSPACE_NODE_ID,
-          node: fsNode,
+          node: writeNode,
         });
         return;
       }

@@ -34,7 +34,12 @@ export type JournalKind =
   | "autonomic"
   | "haima";
 
-export type FsOpKind = "read" | "write" | "create" | "delete";
+/**
+ * The filesystem ops the reducer + panes model. Aligned with RFC-0004's
+ * `FileWriteKind` plus the read variant (`FileRead`). Adapter narrows the
+ * Prosopon `op` into this shape.
+ */
+export type FsOpKind = "read" | "write" | "create" | "append" | "delete";
 
 /**
  * Replay events feed the `applyReplayEvent` reducer. On the live wire they

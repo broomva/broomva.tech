@@ -354,6 +354,39 @@
         "spacious"
       ]
     },
+    "FileWriteKind": {
+      "description": "What kind of filesystem write a `FileWrite` intent represents.\n\n`#[non_exhaustive]` so future variants (e.g. `Patch` for diff-based writes) land additively.",
+      "oneOf": [
+        {
+          "description": "New file at `path`. The write MUST fail if the file already exists.",
+          "type": "string",
+          "enum": [
+            "create"
+          ]
+        },
+        {
+          "description": "Overwrite an existing file at `path`. Compositors MAY render as a `mod`/`modified` badge.",
+          "type": "string",
+          "enum": [
+            "write"
+          ]
+        },
+        {
+          "description": "Append content to the end of an existing file.",
+          "type": "string",
+          "enum": [
+            "append"
+          ]
+        },
+        {
+          "description": "Remove the file at `path`. `content` SHOULD be absent.",
+          "type": "string",
+          "enum": [
+            "delete"
+          ]
+        }
+      ]
+    },
     "FormationKind": {
       "description": "A coherent grouping of agents — renders as a cluster, swarm, or quorum.",
       "oneOf": [
@@ -867,6 +900,108 @@
           }
         },
         {
+          "description": "A filesystem read. The `content` slot fills in when the read completes.\n\nLifecycle — mirrors the `ToolCall` pattern: - `NodeAdded` with `content: None` when the agent decides to read. Paired lifecycle status `pending`. - `NodeUpdated { patch: { intent: FileRead { content: Some(...) } } }` when the content lands. Lifecycle moves to `resolved`.\n\nFor very large reads the agent MAY pair this with a sibling `Stream` intent and populate `content` only on `StreamChunk { final_: true }`.",
+          "type": "object",
+          "required": [
+            "path",
+            "type"
+          ],
+          "properties": {
+            "bytes": {
+              "description": "Byte count. Compositors may compute from `content.len()` if the emitter doesn't supply it; supplying it authoritatively is preferred for multi-byte encodings.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "content": {
+              "description": "File content once the read completes. Absent while in-flight.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "mime": {
+              "description": "MIME type hint — enables syntax highlighting and preview-mode switching. Compositors SHOULD assume `text/plain` when absent.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "description": "Absolute or workspace-relative path. Compositors MAY render it as a clickable target. No scheme is implied; the emitter decides.",
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "file_read"
+              ]
+            }
+          }
+        },
+        {
+          "description": "A filesystem write. `op` narrows the kind of write (create / write / append / delete); `content` slots in when the write completes.\n\nLifecycle: 1. `NodeAdded` with `content: None` and `op` set. Lifecycle `pending`. 2. `NodeUpdated` patching `content` (and `bytes` if the emitter knows them) when the write resolves. Lifecycle `resolved` on success, `failed` on error.\n\nFor streamed writes, pair with a sibling `Stream` intent and patch `content` on stream completion.",
+          "type": "object",
+          "required": [
+            "op",
+            "path",
+            "type"
+          ],
+          "properties": {
+            "bytes": {
+              "description": "Byte count — authoritative when supplied, else derive from `content.len()`.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "content": {
+              "description": "The full body written. Absent until the write resolves. SHOULD be absent for `FileWriteKind::Delete`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "mime": {
+              "description": "MIME type hint, as in `FileRead`.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "op": {
+              "description": "The kind of write. Constrained via `FileWriteKind`.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/FileWriteKind"
+                }
+              ]
+            },
+            "path": {
+              "description": "Target path — see `FileRead::path`.",
+              "type": "string"
+            },
+            "title": {
+              "description": "Optional human-readable title the agent chose for this artifact. Useful when `path` is a synthetic workspace path and `title` is the user-facing name the compositor should surface.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "file_write"
+              ]
+            }
+          }
+        },
+        {
           "description": "A container whose `GroupKind` tells the compositor how to lay out children.",
           "type": "object",
           "required": [
@@ -1240,7 +1375,7 @@
         },
         "lifecycle": {
           "default": {
-            "created_at": "2026-04-23T20:28:10.200826Z",
+            "created_at": "2026-04-24T00:29:59.387121Z",
             "priority": "normal",
             "status": {
               "kind": "active"
