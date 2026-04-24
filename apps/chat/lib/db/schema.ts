@@ -1692,6 +1692,20 @@ export const lifeSession = pgTable(
     chatId: uuid("chatId").references(() => chat.id, {
       onDelete: "set null",
     }),
+    /**
+     * Serialised `VmHandle` for this session's kernel VM (see
+     * `lib/life-runtime/kernel/types.ts::VmHandle`). Nullable because existing
+     * sessions predate kernel-client integration; populated on the first turn
+     * that dispatches through `KernelClient.createVm` and reused on subsequent
+     * turns. Stored as `jsonb` so indexing by backend / status is available
+     * without a schema migration if needed later.
+     *
+     * Today (Phase A/B with `InProcessKernelClient`) this is a free-form record
+     * of the VM identity — no backend resources are held across turns. When
+     * `LifedHttpKernelClient` ships (Phase D), this handle is how we reattach
+     * to a long-running `lifed` VM across Vercel function cold starts.
+     */
+    kernelVmHandleJson: json("kernelVmHandleJson"),
     title: varchar("title", { length: 256 }),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt")

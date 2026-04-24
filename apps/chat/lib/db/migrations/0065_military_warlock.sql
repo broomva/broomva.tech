@@ -1,0 +1,1 @@
+ALTER TABLE "LifeSession" ADD COLUMN "kernelVmHandleJson" json;
