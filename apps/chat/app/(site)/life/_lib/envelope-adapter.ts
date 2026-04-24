@@ -23,7 +23,7 @@ import type {
   SceneNode,
   SignalValue,
 } from "@broomva/prosopon";
-import type { JournalKind, ReplayEvent } from "./types";
+import type { FsOpKind, JournalKind, ReplayEvent } from "./types";
 
 // ---------------------------------------------------------------------------
 // Wire-level shapes we care about
@@ -223,8 +223,63 @@ export class EnvelopeAdapter {
           ],
         };
       }
+      case "file_read": {
+        // RFC-0004 — typed filesystem read. Maps straight to the existing
+        // `fs-op` ReplayEvent with `op: "read"` so the reducer / panes need
+        // no change (rewriting panes to consume Scene selectors directly is
+        // PR C.2).
+        const raw = intent as Record<string, unknown>;
+        const path = typeof raw.path === "string" ? raw.path : "";
+        const content = raw.content;
+        const bytes = raw.bytes;
+        return {
+          ...emptyOutput(),
+          replay: [
+            {
+              t: tMs,
+              kind: "fs-op",
+              path,
+              op: "read",
+              content: typeof content === "string" ? content : undefined,
+              bytes: typeof bytes === "number" ? bytes : undefined,
+            },
+          ],
+        };
+      }
+      case "file_write": {
+        // RFC-0004 — typed filesystem write. The `op` field narrows to a
+        // FileWriteKind; we pass it straight through to the reducer's fs-op
+        // shape.
+        const raw = intent as Record<string, unknown>;
+        const path = typeof raw.path === "string" ? raw.path : "";
+        const op = raw.op;
+        const content = raw.content;
+        const bytes = raw.bytes;
+        const title = raw.title;
+        const narrowedOp: FsOpKind =
+          op === "create" || op === "append" || op === "delete" || op === "write"
+            ? op
+            : "write";
+        return {
+          ...emptyOutput(),
+          replay: [
+            {
+              t: tMs,
+              kind: "fs-op",
+              path,
+              op: narrowedOp,
+              content: typeof content === "string" ? content : undefined,
+              title: typeof title === "string" ? title : undefined,
+              bytes: typeof bytes === "number" ? bytes : undefined,
+            },
+          ],
+        };
+      }
       case "custom": {
-        // Only `fs.op` today — the workspace / filesystem view.
+        // Back-compat fallback: producers still emitting
+        // `Custom { kind: "fs.op", payload }` before adopting RFC-0004
+        // typed variants continue to work through this branch. New emitters
+        // should use Intent::FileRead / Intent::FileWrite directly.
         if ((intent as { kind?: string }).kind !== "fs.op") return emptyOutput();
         const payload = ((intent as { payload?: unknown }).payload ?? {}) as Record<
           string,

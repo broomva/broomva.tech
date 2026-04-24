@@ -4,7 +4,7 @@
  * Source of truth: core/prosopon/crates/prosopon-core (Rust).
  * Regenerate with `bun run generate` from packages/prosopon-ts/.
  *
- * Generated on: 2026-04-23T20:31:02.253Z
+ * Generated on: 2026-04-24T00:30:22.749Z
  */
 /* eslint-disable */
 /* biome-ignore-all */
@@ -188,6 +188,52 @@ export type Intent =
       type: "progress";
     }
   | {
+      /**
+       * Byte count. Compositors may compute from `content.len()` if the emitter doesn't supply it; supplying it authoritatively is preferred for multi-byte encodings.
+       */
+      bytes?: number | null;
+      /**
+       * File content once the read completes. Absent while in-flight.
+       */
+      content?: string | null;
+      /**
+       * MIME type hint — enables syntax highlighting and preview-mode switching. Compositors SHOULD assume `text/plain` when absent.
+       */
+      mime?: string | null;
+      /**
+       * Absolute or workspace-relative path. Compositors MAY render it as a clickable target. No scheme is implied; the emitter decides.
+       */
+      path: string;
+      type: "file_read";
+    }
+  | {
+      /**
+       * Byte count — authoritative when supplied, else derive from `content.len()`.
+       */
+      bytes?: number | null;
+      /**
+       * The full body written. Absent until the write resolves. SHOULD be absent for `FileWriteKind::Delete`.
+       */
+      content?: string | null;
+      /**
+       * MIME type hint, as in `FileRead`.
+       */
+      mime?: string | null;
+      /**
+       * The kind of write. Constrained via `FileWriteKind`.
+       */
+      op: FileWriteKind;
+      /**
+       * Target path — see `FileRead::path`.
+       */
+      path: string;
+      /**
+       * Optional human-readable title the agent chose for this artifact. Useful when `path` is a synthetic workspace path and `title` is the user-facing name the compositor should surface.
+       */
+      title?: string | null;
+      type: "file_write";
+    }
+  | {
       layout: GroupKind;
       type: "group";
     }
@@ -276,6 +322,12 @@ export type InputKind =
   | {
       kind: "json";
     };
+/**
+ * What kind of filesystem write a `FileWrite` intent represents.
+ *
+ * `#[non_exhaustive]` so future variants (e.g. `Patch` for diff-based writes) land additively.
+ */
+export type FileWriteKind = "create" | "write" | "append" | "delete";
 /**
  * How a `Group` lays out its children.
  */

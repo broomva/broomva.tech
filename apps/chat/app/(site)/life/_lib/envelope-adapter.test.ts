@@ -186,7 +186,164 @@ describe("EnvelopeAdapter", () => {
     ]);
   });
 
-  it("Custom{kind:fs.op} node → fs-op event with content/path/bytes", () => {
+  it("Intent::FileWrite node → fs-op event (RFC-0004 typed variant)", () => {
+    const a = new EnvelopeAdapter();
+    const out = a.feed(
+      env({
+        type: "node_added",
+        parent: "workspace",
+        node: {
+          id: "fs-1",
+          intent: {
+            type: "file_write",
+            path: "notes/audit.md",
+            op: "create",
+            content: "# Audit\n\nfindings go here\n",
+            title: "Audit report",
+            bytes: 26,
+            mime: "text/markdown",
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      125,
+    );
+    expect(out.replay).toEqual([
+      {
+        t: 125,
+        kind: "fs-op",
+        path: "notes/audit.md",
+        op: "create",
+        content: "# Audit\n\nfindings go here\n",
+        title: "Audit report",
+        bytes: 26,
+      },
+    ]);
+  });
+
+  it("Intent::FileWrite with op=append → fs-op op=append", () => {
+    const a = new EnvelopeAdapter();
+    const out = a.feed(
+      env({
+        type: "node_added",
+        parent: "workspace",
+        node: {
+          id: "fs-append-1",
+          intent: {
+            type: "file_write",
+            path: "log.txt",
+            op: "append",
+            content: "entry\n",
+            bytes: 6,
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      130,
+    );
+    expect(out.replay[0]).toMatchObject({ op: "append", path: "log.txt" });
+  });
+
+  it("Intent::FileWrite with unknown op falls back to write", () => {
+    const a = new EnvelopeAdapter();
+    const out = a.feed(
+      env({
+        type: "node_added",
+        parent: "workspace",
+        node: {
+          id: "fs-weird-1",
+          intent: {
+            type: "file_write",
+            path: "x",
+            op: "patch", // future / unknown
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      140,
+    );
+    // Forward-compat: unknown op narrows to "write" so the pane still renders.
+    expect(out.replay[0]).toMatchObject({ op: "write", path: "x" });
+  });
+
+  it("Intent::FileRead pending → fs-op op=read without content", () => {
+    const a = new EnvelopeAdapter();
+    const out = a.feed(
+      env({
+        type: "node_added",
+        parent: "workspace",
+        node: {
+          id: "fs-read-1",
+          intent: {
+            type: "file_read",
+            path: "/workspace/input.md",
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      150,
+    );
+    expect(out.replay).toEqual([
+      {
+        t: 150,
+        kind: "fs-op",
+        path: "/workspace/input.md",
+        op: "read",
+        content: undefined,
+        bytes: undefined,
+      },
+    ]);
+  });
+
+  it("Intent::FileRead resolved → fs-op op=read with content + bytes", () => {
+    const a = new EnvelopeAdapter();
+    const out = a.feed(
+      env({
+        type: "node_added",
+        parent: "workspace",
+        node: {
+          id: "fs-read-2",
+          intent: {
+            type: "file_read",
+            path: "notes/context.md",
+            content: "# Context\n",
+            bytes: 10,
+            mime: "text/markdown",
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      155,
+    );
+    expect(out.replay[0]).toMatchObject({
+      op: "read",
+      path: "notes/context.md",
+      content: "# Context\n",
+      bytes: 10,
+    });
+  });
+
+  it("Custom{kind:fs.op} node → fs-op event with content/path/bytes (back-compat)", () => {
     const a = new EnvelopeAdapter();
     const out = a.feed(
       env({
