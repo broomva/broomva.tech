@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
+import { getActiveGateway } from "@/lib/ai/active-gateway";
 import { db } from "@/lib/db/client";
 import type { LifeHealth, LifeService } from "@/lib/life-runtime/health";
 import { staticHealthSnapshot } from "@/lib/life-runtime/health";
@@ -60,29 +61,24 @@ async function maybeProbe(service: LifeService): Promise<LifeService> {
 }
 
 function probeAiGateway(service: LifeService): LifeService {
-  // We don't want to actually hit the LLM just to check a dot color.
-  // "Live" means the gateway is configured for this deploy — any of the
-  // following authentication paths is sufficient:
-  //
-  // - `VERCEL_OIDC_TOKEN` — auto-issued on Vercel deploys, lets the
-  //   AI Gateway identify the caller without a static key. This is how
-  //   the production broomva.tech setup authenticates.
-  // - `AI_GATEWAY_API_KEY` — explicit gateway key (local dev, non-Vercel).
-  // - `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` — direct provider keys that
-  //   the AI SDK also accepts when the gateway isn't in the path.
-  const hasCreds =
-    Boolean(process.env.VERCEL_OIDC_TOKEN) ||
-    Boolean(process.env.AI_GATEWAY_API_KEY) ||
-    Boolean(process.env.OPENAI_API_KEY) ||
-    Boolean(process.env.ANTHROPIC_API_KEY);
-  if (!hasCreds) {
+  // Env-var-presence probing is fragile across gateway types (Vercel OIDC,
+  // static keys, direct providers). Instead, exercise the same provider
+  // factory the real agent runner uses — `getActiveGateway()` is pure
+  // config-resolution (no network call), so successful construction
+  // proves the gateway is wired for this deploy. Throws → misconfigured.
+  try {
+    const gateway = getActiveGateway();
+    return {
+      ...service,
+      detail: `${service.detail} · via ${gateway.type}`,
+    };
+  } catch (err) {
     return {
       ...service,
       status: "down",
-      detail: "no gateway credentials configured",
+      detail: `gateway resolution failed: ${(err as Error).message.slice(0, 60)}`,
     };
   }
-  return service;
 }
 
 async function probePostgres(service: LifeService): Promise<LifeService> {
