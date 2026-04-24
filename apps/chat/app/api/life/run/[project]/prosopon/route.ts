@@ -15,10 +15,6 @@
  * process SSE is sufficient and CDN-friendly.
  */
 
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { headers } from "next/headers";
-
 import {
   type Envelope,
   encode as encodeEnvelope,
@@ -26,32 +22,38 @@ import {
   type ProsoponEvent,
   ProsoponSession,
 } from "@broomva/prosopon";
-import { getSafeSession } from "@/lib/auth";
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { generateTitleFromUserMessage } from "@/app/(chat)/actions";
 import { getAnonymousSession } from "@/lib/anonymous-session-server";
+import { getSafeSession } from "@/lib/auth";
+import {
+  pickPaymentMode,
+  settleCreditsDebit,
+  userHasCreditsFor,
+} from "@/lib/life-runtime/billing";
+import {
+  makeInitialScene,
+  ProsoponEmitter,
+  SCENE_ROOT_ID,
+} from "@/lib/life-runtime/prosopon-emitter";
 import {
   appendRunEvent,
   bumpProjectStats,
   createRun,
   finishRun,
   getCurrentRulesVersion,
+  getOrCreateChatForLifeSession,
   getOrCreateSession,
   getProjectBySlug,
   getSessionHistory,
+  maybeSetChatTitle,
 } from "@/lib/life-runtime/queries";
-import {
-  pickPaymentMode,
-  settleCreditsDebit,
-  userHasCreditsFor,
-} from "@/lib/life-runtime/billing";
 import { RealAgentRunner } from "@/lib/life-runtime/real-runner";
 import {
-  ProsoponEmitter,
-  makeInitialScene,
-  SCENE_ROOT_ID,
-} from "@/lib/life-runtime/prosopon-emitter";
-import {
-  RunRequestSchema,
   type ConsumerIdentity,
+  RunRequestSchema,
 } from "@/lib/life-runtime/types";
 
 // ---------------------------------------------------------------------------
@@ -90,10 +92,7 @@ async function resolveConsumer(): Promise<ConsumerIdentity | null> {
   }
   const anon = await getAnonymousSession();
   if (anon) return { kind: "anon", id: anon.id };
-  if (
-    hdrs.get("x-payment") ||
-    hdrs.get("authorization")?.startsWith("x402 ")
-  ) {
+  if (hdrs.get("x-payment") || hdrs.get("authorization")?.startsWith("x402 ")) {
     return {
       kind: "agent",
       id: hdrs.get("x-payment-sender") ?? "unknown-wallet",
@@ -250,6 +249,31 @@ async function handlePost(
     );
   }
 
+  // Tier-1: for logged-in users, ensure a Chat row exists + link it to this
+  // LifeSession so the thread shows up in the existing sidebar history UI.
+  // Best-effort — a Chat insert failure must NOT block the turn (e.g., FK
+  // misalignment on a stale user row). We log + continue; persistence still
+  // works without the linkage.
+  const placeholderChatTitle = `${project.displayName} — new session`;
+  let linkedChatId: string | null = null;
+  let linkedChatCreated = false;
+  if (consumer.kind === "user" && lifeSession) {
+    try {
+      const linked = await getOrCreateChatForLifeSession({
+        lifeSessionId: lifeSession.id,
+        userId: consumer.id,
+        fallbackTitle: placeholderChatTitle,
+      });
+      linkedChatId = linked.chatId;
+      linkedChatCreated = linked.created;
+    } catch (err) {
+      console.warn(
+        "[life/run/prosopon] getOrCreateChatForLifeSession failed (non-fatal):",
+        err,
+      );
+    }
+  }
+
   const runner = new RealAgentRunner({
     projectSlug: slug,
     moduleTypeId: project.moduleTypeId,
@@ -294,6 +318,15 @@ async function handlePost(
           await write(env);
         }
 
+        // Envelope N+1: user's turn-starting message. Persisting this to
+        // LifeRunEvent closes the hydration gap where replay could reconstruct
+        // the agent half of the conversation but not the user's own bubble.
+        // `run.id` is a stable per-turn identifier; the envelope node id
+        // (`user-<run.id>`) lets diffing / retries stay deterministic.
+        await write(
+          emitter.userTurnStarted({ text: userMessage, turnId: run.id }),
+        );
+
         // Attach the onFinish hook so we capture llm cost + model.
         runner["opts"].onFinish = (cost) => {
           finalCostCents = cost.llmCents;
@@ -334,6 +367,41 @@ async function handlePost(
             "[life/run/prosopon] bumpProjectStats failed (non-fatal):",
             statsErr,
           );
+        }
+
+        // Auto-title: fire-and-forget a title-generation LLM call for the
+        // newly-created Chat row. Only runs on the first turn (when the Chat
+        // row was just created with the placeholder title). `maybeSetChatTitle`
+        // is guarded with a WHERE clause against the placeholder so turn 2+
+        // or a user-initiated rename won't be clobbered by a late-arriving
+        // auto-title. All failures are logged and swallowed — title generation
+        // is cosmetic and must never fail a turn.
+        if (linkedChatId && linkedChatCreated) {
+          const chatIdForTitle = linkedChatId;
+          void (async () => {
+            try {
+              const title = await generateTitleFromUserMessage({
+                message: {
+                  id: `life-${run.id}`,
+                  role: "user",
+                  parts: [{ type: "text", text: userMessage }],
+                  metadata: {},
+                } as unknown as Parameters<
+                  typeof generateTitleFromUserMessage
+                >[0]["message"],
+              });
+              await maybeSetChatTitle({
+                chatId: chatIdForTitle,
+                placeholderTitle: placeholderChatTitle,
+                newTitle: title.slice(0, 256),
+              });
+            } catch (titleErr) {
+              console.warn(
+                "[life/run/prosopon] auto-title failed (non-fatal):",
+                titleErr,
+              );
+            }
+          })();
         }
 
         // Final heartbeat so clients flush timers.

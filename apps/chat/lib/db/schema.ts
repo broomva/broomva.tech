@@ -1157,10 +1157,9 @@ export const organizationArcanRole = pgTable(
   },
   (t) => ({
     OrgArcanRole_org_idx: index("OrgArcanRole_org_idx").on(t.organizationId),
-    OrgArcanRole_org_role_unique: uniqueIndex("OrgArcanRole_org_role_unique").on(
-      t.organizationId,
-      t.roleName,
-    ),
+    OrgArcanRole_org_role_unique: uniqueIndex(
+      "OrgArcanRole_org_role_unique",
+    ).on(t.organizationId, t.roleName),
   }),
 );
 
@@ -1199,7 +1198,9 @@ export const organizationCustomSkill = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => ({
-    OrgCustomSkill_org_idx: index("OrgCustomSkill_org_idx").on(t.organizationId),
+    OrgCustomSkill_org_idx: index("OrgCustomSkill_org_idx").on(
+      t.organizationId,
+    ),
     OrgCustomSkill_org_name_unique: uniqueIndex(
       "OrgCustomSkill_org_name_unique",
     ).on(t.organizationId, t.name),
@@ -1244,10 +1245,9 @@ export const organizationMcpServer = pgTable(
   },
   (t) => ({
     OrgMcpServer_org_idx: index("OrgMcpServer_org_idx").on(t.organizationId),
-    OrgMcpServer_org_name_unique: uniqueIndex("OrgMcpServer_org_name_unique").on(
-      t.organizationId,
-      t.name,
-    ),
+    OrgMcpServer_org_name_unique: uniqueIndex(
+      "OrgMcpServer_org_name_unique",
+    ).on(t.organizationId, t.name),
   }),
 );
 
@@ -1308,9 +1308,7 @@ export const sandboxInstance = pgTable(
     SandboxInstance_org_idx: index("SandboxInstance_org_idx").on(
       t.organizationId,
     ),
-    SandboxInstance_agent_idx: index("SandboxInstance_agent_idx").on(
-      t.agentId,
-    ),
+    SandboxInstance_agent_idx: index("SandboxInstance_agent_idx").on(t.agentId),
     SandboxInstance_status_idx: index("SandboxInstance_status_idx").on(
       t.status,
     ),
@@ -1680,6 +1678,20 @@ export const lifeSession = pgTable(
     organizationId: uuid("organizationId").references(() => organization.id, {
       onDelete: "set null",
     }),
+    /**
+     * Optional link to a `Chat` row. Populated only for `consumerKind === 'user'`
+     * (Chat.userId is NOT NULL + FKs to `user(id)`, so anon/agent consumers can't
+     * have one). When present, the Chat row carries thread-level metadata
+     * (title, pinning, visibility, sharing) and surfaces the Life session in the
+     * existing chat sidebar. When absent, the session is still fully persisted
+     * via `LifeRunEvent` and rehydratable via the localStorage cursor.
+     *
+     * ON DELETE SET NULL: deleting a Chat must never cascade-delete the Life run
+     * history. Chat is metadata; `LifeRunEvent` is the source of truth.
+     */
+    chatId: uuid("chatId").references(() => chat.id, {
+      onDelete: "set null",
+    }),
     title: varchar("title", { length: 256 }),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt")
@@ -1696,6 +1708,7 @@ export const lifeSession = pgTable(
       t.consumerKind,
       t.consumerId,
     ),
+    LifeSession_chat_idx: index("LifeSession_chat_idx").on(t.chatId),
   }),
 );
 
@@ -1884,9 +1897,9 @@ export const lifeProjectFile = pgTable(
     LifeProjectFile_project_path_uq: uniqueIndex(
       "LifeProjectFile_project_path_uq",
     ).on(t.projectId, t.path),
-    LifeProjectFile_written_by_idx: index(
-      "LifeProjectFile_written_by_idx",
-    ).on(t.writtenBy),
+    LifeProjectFile_written_by_idx: index("LifeProjectFile_written_by_idx").on(
+      t.writtenBy,
+    ),
   }),
 );
 

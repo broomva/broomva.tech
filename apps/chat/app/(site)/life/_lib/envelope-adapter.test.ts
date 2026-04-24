@@ -6,8 +6,8 @@
 // (`lib/life-runtime/prosopon-emitter.ts`) changes its wire format, this
 // file is where the round-trip contract breaks first.
 
-import { describe, expect, it } from "vitest";
 import type { Envelope } from "@broomva/prosopon";
+import { describe, expect, it } from "vitest";
 
 import { EnvelopeAdapter, TOPICS } from "./envelope-adapter";
 
@@ -384,6 +384,67 @@ describe("EnvelopeAdapter", () => {
     ]);
   });
 
+  it("Custom{kind:user.message} node → user replay event (Tier-0 hydration closure)", () => {
+    // Locks in the contract between `ProsoponEmitter.userTurnStarted` (server)
+    // and the client-side reducer: the server-emitted user envelope round-trips
+    // into the same `{ kind: "user", text }` ReplayEvent the client hook
+    // synthesizes locally on Send. Without this, hydration reconstructs the
+    // agent half of a conversation but leaves the user bubble missing.
+    const a = new EnvelopeAdapter();
+    const out = a.feed(
+      env({
+        type: "node_added",
+        parent: "chat",
+        node: {
+          id: "user-run-abc",
+          intent: {
+            type: "custom",
+            kind: "user.message",
+            payload: { text: "Hello world" },
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      42,
+    );
+    expect(out.replay).toEqual([{ t: 42, kind: "user", text: "Hello world" }]);
+    expect(out.meta).toHaveLength(0);
+    expect(out.reset).toBe(false);
+  });
+
+  it("Custom{kind:user.message} with empty text → noop (defensive)", () => {
+    // Guard against a malformed producer emitting a user.message envelope
+    // with no text. Rather than inject a blank user bubble into the replay
+    // stream, skip silently. A real producer always has a non-empty body
+    // because the /prosopon route rejects empty-message turns with 400.
+    const a = new EnvelopeAdapter();
+    const out = a.feed(
+      env({
+        type: "node_added",
+        parent: "chat",
+        node: {
+          id: "user-empty",
+          intent: {
+            type: "custom",
+            kind: "user.message",
+            payload: { text: "" },
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      0,
+    );
+    expect(out.replay).toHaveLength(0);
+  });
+
   it("nous.composite + nous.band + nous.note collapse into one nous-score", () => {
     const a = new EnvelopeAdapter();
     const comp = a.feed(
@@ -517,9 +578,7 @@ describe("EnvelopeAdapter", () => {
    * docs/superpowers/specs/2026-04-24-life-session-persistence.md).
    */
   it("hydration replay: feeding a full turn sequence reconstructs state", async () => {
-    const { applyReplayEvent, EMPTY_REPLAY_STATE } = await import(
-      "./reducer"
-    );
+    const { applyReplayEvent, EMPTY_REPLAY_STATE } = await import("./reducer");
     const adapter = new EnvelopeAdapter();
     let state = EMPTY_REPLAY_STATE;
 
@@ -541,6 +600,27 @@ describe("EnvelopeAdapter", () => {
           },
           signals: {},
           hints: {},
+        },
+      }),
+      // User turn envelope — the Tier-0 addition. Emitted by
+      // `ProsoponEmitter.userTurnStarted` right after scene_reset so the
+      // user's message is part of the persisted LifeRunEvent log and
+      // round-trips through hydration just like the agent's response.
+      env({
+        type: "node_added",
+        parent: "chat",
+        node: {
+          id: "user-run-0001",
+          intent: {
+            type: "custom",
+            kind: "user.message",
+            payload: { text: "Run the audit on unit 4B." },
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
         },
       }),
       env({
@@ -640,10 +720,14 @@ describe("EnvelopeAdapter", () => {
     }
 
     // Verify the reconstructed state matches what a live-stream user
-    // would have seen after the turn completed:
-    expect(state.messages.length).toBe(1);
-    expect(state.messages[0]?.id).toBe("a1");
-    expect(state.messages[0]?.text).toBe("Checklist landing.");
+    // would have seen after the turn completed — both halves of the
+    // conversation (user prompt + agent response) must be present.
+    expect(state.messages.length).toBe(2);
+    expect(state.messages[0]?.role).toBe("user");
+    expect(state.messages[0]?.text).toBe("Run the audit on unit 4B.");
+    expect(state.messages[1]?.role).toBe("agent");
+    expect(state.messages[1]?.id).toBe("a1");
+    expect(state.messages[1]?.text).toBe("Checklist landing.");
     expect(state.fsOps.length).toBe(1);
     expect(state.fsOps[0]?.path).toBe("notes/audit.md");
     expect(state.fsOps[0]?.op).toBe("create");
@@ -662,9 +746,7 @@ describe("EnvelopeAdapter", () => {
    * state when the replay re-runs.
    */
   it("hydration replay: re-feeding same envelopes produces same state", async () => {
-    const { applyReplayEvent, EMPTY_REPLAY_STATE } = await import(
-      "./reducer"
-    );
+    const { applyReplayEvent, EMPTY_REPLAY_STATE } = await import("./reducer");
 
     const fold = (envelopes: Envelope[]) => {
       const adapter = new EnvelopeAdapter();
