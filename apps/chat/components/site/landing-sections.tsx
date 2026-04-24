@@ -100,6 +100,8 @@ const stack = [
     description:
       "Arcan runtime, Lago persistence, Vigil observability, Praxis tool execution, Haima finance, and Spaces networking — unified in one Cargo workspace.",
     href: "/projects/life",
+    demoHref: "/life",
+    demoLabel: "Try the live demo →",
   },
   {
     name: "Autoany",
@@ -514,23 +516,33 @@ function StackSection() {
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {stack.map((item, i) => (
               <ScrollReveal key={item.name} delay={i * 0.1} direction="left">
-                <Link
-                  href={item.href as Route}
-                  className="group glass-card block h-full transition hover:border-ai-blue/40"
-                >
-                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ai-blue/50">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <p className="mt-2 font-display text-xl text-text-primary transition group-hover:text-ai-blue">
-                    {item.name}
-                  </p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.15em] text-text-muted">
-                    {item.role}
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-                    {item.description}
-                  </p>
-                </Link>
+                <div className="flex h-full flex-col gap-2">
+                  <Link
+                    href={item.href as Route}
+                    className="group glass-card block h-full transition hover:border-ai-blue/40"
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ai-blue/50">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <p className="mt-2 font-display text-xl text-text-primary transition group-hover:text-ai-blue">
+                      {item.name}
+                    </p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.15em] text-text-muted">
+                      {item.role}
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-text-secondary">
+                      {item.description}
+                    </p>
+                  </Link>
+                  {item.demoHref && (
+                    <Link
+                      href={item.demoHref as Route}
+                      className="inline-flex items-center gap-1.5 self-start rounded-full border border-ai-blue/25 bg-ai-blue/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ai-blue/80 transition hover:border-ai-blue/60 hover:bg-ai-blue/10 hover:text-ai-blue"
+                    >
+                      {item.demoLabel ?? "Live demo →"}
+                    </Link>
+                  )}
+                </div>
               </ScrollReveal>
             ))}
           </div>

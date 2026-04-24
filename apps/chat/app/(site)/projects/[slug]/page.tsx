@@ -1,9 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContentArticle } from "@/components/site/content-article";
 import { PageHero } from "@/components/site/page-hero";
 import { formatDate } from "@/lib/date";
 import { getAllSlugs, getContentBySlug, estimateReadingTime } from "@/lib/content";
+
+/**
+ * A frontmatter link is "internal" when its url is a site-relative path.
+ * Internal links route via Next.js <Link> (SPA nav, no new tab); external
+ * links stay `<a target="_blank" rel="noopener noreferrer">`.
+ */
+function isInternalUrl(url: string): boolean {
+  return url.startsWith("/") && !url.startsWith("//");
+}
 
 export async function generateStaticParams() {
   const slugs = await getAllSlugs("projects");
@@ -56,17 +66,32 @@ export default async function ProjectPage({
 
       {project.links.length ? (
         <div className="mt-6 flex flex-wrap gap-3">
-          {project.links.map((link) => (
-            <a
-              key={link.url}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-border px-4 py-2 text-sm transition hover:border-ai-blue/40 hover:text-ai-blue"
-            >
-              {link.label}
-            </a>
-          ))}
+          {project.links.map((link) => {
+            const className =
+              "rounded-full border border-border px-4 py-2 text-sm transition hover:border-ai-blue/40 hover:text-ai-blue";
+            return isInternalUrl(link.url) ? (
+              // Frontmatter link — typed as free-form `string`, so cast to
+              // Next.js's typed Route helper. Runtime value is validated by
+              // isInternalUrl() above.
+              <Link
+                key={link.url}
+                href={link.url as Route}
+                className={className}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={className}
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </div>
       ) : null}
 
