@@ -442,6 +442,13 @@
       "when": 1776958618685,
       "tag": "0062_chief_otto_octavius",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1777016612575,
+      "tag": "0063_legal_ogun",
+      "breakpoints": true
     }
   ]
 }

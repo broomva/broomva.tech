@@ -85,6 +85,18 @@ export interface UseProsoponRunOptions {
    * so this is only honoured when there's a valid user message pending.
    */
   autoStart?: boolean;
+  /**
+   * When set, the hook fetches the session's persisted envelope history
+   * from `/api/life/run/<project>/session/<id>/state` on mount and
+   * folds them through the adapter + reducer before accepting new turns.
+   * The user sees their prior chat / file writes / signals restored.
+   *
+   * See `docs/superpowers/specs/2026-04-24-life-session-persistence.md`
+   * (Phase 2) for the full architecture — this is the client side.
+   *
+   * Leaving undefined preserves the original fresh-session behavior.
+   */
+  hydrateSessionId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +107,7 @@ export function useProsoponRun({
   projectSlug,
   enabled,
   autoStart = false,
+  hydrateSessionId,
 }: UseProsoponRunOptions): ProsoponRunHookResult {
   const [state, setState] = useState<ReplayState>(EMPTY_REPLAY_STATE);
   const [status, setStatus] = useState<ProsoponRunStatus>("idle");
@@ -312,6 +325,107 @@ export function useProsoponRun({
     setStatus("idle");
     adapterRef.current = new EnvelopeAdapter();
   }, [projectSlug]);
+
+  // Mount-time hydration from the persistence endpoint. Runs at most
+  // once per (projectSlug, hydrateSessionId) pair. Failures fall back
+  // to the fresh-session flow silently — a 404 just means the session
+  // is new or the caller doesn't own it.
+  //
+  // Why one-shot (not reactive to state changes): hydration replays
+  // historical envelopes; once folded in, subsequent re-renders must
+  // not re-apply them. We guard with a ref keyed by session id.
+  const hydratedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    if (!hydrateSessionId) return;
+    const key = `${projectSlug}::${hydrateSessionId}`;
+    if (hydratedKeyRef.current === key) return;
+    hydratedKeyRef.current = key;
+
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const resp = await fetch(
+          `/api/life/run/${projectSlug}/session/${hydrateSessionId}/state`,
+          {
+            method: "GET",
+            signal: controller.signal,
+            headers: { Accept: "application/json" },
+          },
+        );
+        if (!resp.ok) {
+          // 404 (not found / not ours) or any other failure: leave the
+          // state fresh. The user sees an empty chat and starts a new
+          // thread normally.
+          return;
+        }
+        const data = (await resp.json()) as {
+          session: {
+            id: string;
+            totalCostCents: number;
+            turnCount: number;
+          };
+          tail: Array<{
+            version: number;
+            session_id: string;
+            seq: number;
+            ts: string;
+            event: { type: string; [k: string]: unknown };
+          }>;
+        };
+
+        // Seed session id so subsequent sendMessage() continues the
+        // thread rather than minting a new session server-side.
+        setSessionId(data.session.id);
+        setTotalCostCents(data.session.totalCostCents);
+
+        // Reset adapter + empty state, then fold each envelope. t=0
+        // for every event — timing is purely for cosmetics (animation
+        // clocks), not for correctness, and historical envelopes
+        // don't carry enough info to reconstruct original timing.
+        adapterRef.current = new EnvelopeAdapter();
+        setState(EMPTY_REPLAY_STATE);
+        let acc: ReplayState = EMPTY_REPLAY_STATE;
+        for (const envelope of data.tail) {
+          const out = adapterRef.current.feed(envelope as never, 0);
+          if (out.reset) {
+            acc = EMPTY_REPLAY_STATE;
+          }
+          for (const ev of out.replay) {
+            acc = applyReplayEvent(acc, ev);
+          }
+          // Meta events during hydration set display-only counters.
+          for (const m of out.meta) {
+            switch (m.kind) {
+              case "cost-total":
+                setTotalCostCents(Number(m.value));
+                break;
+              case "cost-turn":
+                setLastTurnCostCents(Number(m.value));
+                break;
+              case "tokens-in":
+                setTokensIn(Number(m.value));
+                break;
+              case "tokens-out":
+                setTokensOut(Number(m.value));
+                break;
+              case "duration-ms":
+                setDurationMs(Number(m.value));
+                break;
+              case "payment-mode":
+                setPaymentMode(String(m.value));
+                break;
+            }
+          }
+        }
+        setState(acc);
+      } catch {
+        // Network errors = degrade silently to fresh-session behavior.
+      }
+    })();
+
+    return () => controller.abort();
+  }, [enabled, projectSlug, hydrateSessionId]);
 
   const dismiss = useCallback(() => {
     setPaymentQuote(undefined);
