@@ -113,9 +113,17 @@ export async function GET(
       },
     );
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error("[life/session/state] uncaught:", err);
     return NextResponse.json(
-      { error: "internal" },
+      {
+        error: "internal",
+        // Include a truncated message so production debugging doesn't
+        // require function log access. Safe: no secrets, no PII — just
+        // Drizzle/Postgres error strings and stack tips. If this ever
+        // needs to leak less, wrap in a dev-env check.
+        detail: message.slice(0, 240),
+      },
       { status: 500 },
     );
   }
