@@ -31,9 +31,13 @@ export const EMPTY_REPLAY_STATE: ReplayState = {
 
 function formatTime(ms: number): string {
   const total = Math.floor(ms / 1000);
-  const m = Math.floor(total / 60).toString().padStart(2, "0");
+  const m = Math.floor(total / 60)
+    .toString()
+    .padStart(2, "0");
   const s = (total % 60).toString().padStart(2, "0");
-  const mm = Math.floor((ms % 1000) / 10).toString().padStart(2, "0");
+  const mm = Math.floor((ms % 1000) / 10)
+    .toString()
+    .padStart(2, "0");
   return `${m}:${s}.${mm}`;
 }
 
@@ -127,7 +131,9 @@ export function applyReplayEvent(s: ReplayState, ev: ReplayEvent): ReplayState {
       };
     }
     case "tool-call": {
-      const lastAgent = [...s.messages].reverse().find((m) => m.role === "agent");
+      const lastAgent = [...s.messages]
+        .reverse()
+        .find((m) => m.role === "agent");
       const tool: LifeTool = {
         id: ev.id,
         name: ev.name,
@@ -227,7 +233,10 @@ export function applyReplayEvent(s: ReplayState, ev: ReplayEvent): ReplayState {
       };
       return {
         ...s,
-        autonomic: [...s.autonomic, { t: ev.t, pillar: ev.pillar, text: ev.text }],
+        autonomic: [
+          ...s.autonomic,
+          { t: ev.t, pillar: ev.pillar, text: ev.text },
+        ],
         journal: [...s.journal, journal],
       };
     }

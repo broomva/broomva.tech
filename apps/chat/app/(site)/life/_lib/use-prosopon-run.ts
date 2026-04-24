@@ -24,12 +24,12 @@
 
 "use client";
 
+import type { Envelope } from "@broomva/prosopon";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Envelope } from "@broomva/prosopon";
+import { type AdapterMetaEvent, EnvelopeAdapter } from "./envelope-adapter";
+import { applyReplayEvent, EMPTY_REPLAY_STATE } from "./reducer";
 import type { ReplayEvent, ReplayState } from "./types";
-import { EMPTY_REPLAY_STATE, applyReplayEvent } from "./reducer";
-import { EnvelopeAdapter, type AdapterMetaEvent } from "./envelope-adapter";
 
 // ---------------------------------------------------------------------------
 // Public surface — identical to `useLiveRun` so the hook is a drop-in.
@@ -137,6 +137,12 @@ export function useProsoponRun({
   // diff tracking), and we want each turn to be a fresh scene reset.
   const adapterRef = useRef<EnvelopeAdapter>(new EnvelopeAdapter());
 
+  // Intentional trigger-via-counter pattern. The effect MUST only re-fire
+  // on explicit turn submission (`turnCounter` bump) or project change —
+  // NOT on every `pendingMessage` / `autoStart` / `sessionId` prop change,
+  // which would spam requests. Those values are captured by closure at
+  // schedule time and read fresh via the setter when needed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     if (!enabled) {
       abortRef.current?.abort();
@@ -183,15 +189,12 @@ export function useProsoponRun({
         if (sessionId) reqBody.sessionId = sessionId;
         if (sendingMessage) reqBody.message = sendingMessage;
 
-        const resp = await fetch(
-          `/api/life/run/${projectSlug}/prosopon`,
-          {
-            method: "POST",
-            signal: controller.signal,
-            headers: reqHeaders,
-            body: JSON.stringify(reqBody),
-          },
-        );
+        const resp = await fetch(`/api/life/run/${projectSlug}/prosopon`, {
+          method: "POST",
+          signal: controller.signal,
+          headers: reqHeaders,
+          body: JSON.stringify(reqBody),
+        });
 
         if (resp.status === 402) {
           const body = await resp.json().catch(() => ({ quote: undefined }));
@@ -308,10 +311,14 @@ export function useProsoponRun({
     }
 
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, projectSlug, turnCounter]);
 
-  // Reset conversation-wide state when the project changes.
+  // Intentional "trigger only on projectSlug change" effect. The setters
+  // inside never reference `projectSlug` — it's in the deps solely to
+  // schedule a reset when the user switches projects. Removing it (as
+  // Biome's autofix suggests) would collapse this into an on-mount-only
+  // reset, breaking multi-project navigation.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     setSessionId(undefined);
     setRunId(undefined);

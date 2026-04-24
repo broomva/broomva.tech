@@ -17,10 +17,8 @@
 
 import {
   type Envelope,
-  encode as encodeEnvelope,
   makeEnvelope,
   type ProsoponEvent,
-  ProsoponSession,
 } from "@broomva/prosopon";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -274,6 +272,16 @@ async function handlePost(
     }
   }
 
+  let finalCostCents = 0;
+  let model: string | undefined;
+  let provider: string | undefined;
+  let assistantTextAccum = "";
+
+  // `onFinish` is threaded via the constructor (not post-construction
+  // assignment) so the runner's `opts` can stay private. It's the terminal
+  // cost-attribution hook — captures LLM cents + model identity so the
+  // downstream `finishRun` / `settleCreditsDebit` calls have the real
+  // numbers rather than a quote.
   const runner = new RealAgentRunner({
     projectSlug: slug,
     moduleTypeId: project.moduleTypeId,
@@ -283,12 +291,12 @@ async function handlePost(
     history,
     userMessage,
     paymentMode: decision.mode,
+    onFinish: (cost) => {
+      finalCostCents = cost.llmCents;
+      model = cost.model;
+      provider = cost.provider;
+    },
   });
-
-  let finalCostCents = 0;
-  let model: string | undefined;
-  let provider: string | undefined;
-  let assistantTextAccum = "";
 
   const emitter = new ProsoponEmitter({
     sessionId: prosoponSessionId,
@@ -326,13 +334,6 @@ async function handlePost(
         await write(
           emitter.userTurnStarted({ text: userMessage, turnId: run.id }),
         );
-
-        // Attach the onFinish hook so we capture llm cost + model.
-        runner["opts"].onFinish = (cost) => {
-          finalCostCents = cost.llmCents;
-          model = cost.model;
-          provider = cost.provider;
-        };
 
         for await (const yielded of runner.run()) {
           // Accumulate the assistant's final text by peeking at AI SDK

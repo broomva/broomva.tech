@@ -33,7 +33,8 @@ export const PROJECTS: Record<string, LifeProjectInfo> = {
       },
       {
         label: "List 3 signs of follow-up risk",
-        prompt: "List 3 signs of follow-up risk on a closed work order. Be brief.",
+        prompt:
+          "List 3 signs of follow-up risk on a closed work order. Be brief.",
       },
       {
         label: "Draft an audit checklist",
