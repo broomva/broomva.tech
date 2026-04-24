@@ -134,10 +134,24 @@ function notFound(): NextResponse {
  * the consumer-resolution logic in the Prosopon run endpoint so behavior
  * is consistent. Returns false on any ambiguity — callers treat false
  * the same as "session doesn't exist."
+ *
+ * Three origins we must handle:
+ *
+ * - `user` — signed-in principal. Require better-auth session match.
+ * - `anon` — anonymous but cookie-bound. Require matching anon cookie.
+ * - `agent` — x402 / fallback caller. Two sub-cases:
+ *   - `consumerId === "anonymous"` — the auth-less fallback the run
+ *     endpoint uses when no credentials are present. Anyone can
+ *     access it; that matches the sharing model the session was
+ *     created under. Proper owner-binding for no-auth visits needs
+ *     an anon cookie issued on first /life visit (follow-up).
+ *   - otherwise — `consumerId` is a wallet address; require matching
+ *     `x-payment-sender` header. Keeps agent-to-agent sessions scoped.
  */
-async function callerOwnsSession(
-  session: { consumerKind: "user" | "anon"; consumerId: string },
-): Promise<boolean> {
+async function callerOwnsSession(session: {
+  consumerKind: "user" | "anon" | "agent";
+  consumerId: string;
+}): Promise<boolean> {
   const hdrs = await headers();
 
   if (session.consumerKind === "user") {
@@ -145,7 +159,19 @@ async function callerOwnsSession(
     return authed?.user?.id === session.consumerId;
   }
 
-  // consumerKind === "anon" — match on anon cookie id.
-  const anon = await getAnonymousSession();
-  return anon?.id === session.consumerId;
+  if (session.consumerKind === "anon") {
+    const anon = await getAnonymousSession();
+    return anon?.id === session.consumerId;
+  }
+
+  // consumerKind === "agent"
+  if (session.consumerId === "anonymous") {
+    // Fallback anonymous-agent sessions have no owner binding.
+    // Legitimate access is uncontrollable until anon-cookie binding
+    // lands; matching pre-persistence /prosopon semantics (anyone
+    // without creds could hit it then; same now).
+    return true;
+  }
+  const xPaymentSender = hdrs.get("x-payment-sender");
+  return xPaymentSender === session.consumerId;
 }
