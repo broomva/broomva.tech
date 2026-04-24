@@ -61,9 +61,17 @@ async function maybeProbe(service: LifeService): Promise<LifeService> {
 
 function probeAiGateway(service: LifeService): LifeService {
   // We don't want to actually hit the LLM just to check a dot color.
-  // "Live" means the gateway is configured for this deploy — the env
-  // var presence is a necessary condition and a cheap signal.
+  // "Live" means the gateway is configured for this deploy — any of the
+  // following authentication paths is sufficient:
+  //
+  // - `VERCEL_OIDC_TOKEN` — auto-issued on Vercel deploys, lets the
+  //   AI Gateway identify the caller without a static key. This is how
+  //   the production broomva.tech setup authenticates.
+  // - `AI_GATEWAY_API_KEY` — explicit gateway key (local dev, non-Vercel).
+  // - `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` — direct provider keys that
+  //   the AI SDK also accepts when the gateway isn't in the path.
   const hasCreds =
+    Boolean(process.env.VERCEL_OIDC_TOKEN) ||
     Boolean(process.env.AI_GATEWAY_API_KEY) ||
     Boolean(process.env.OPENAI_API_KEY) ||
     Boolean(process.env.ANTHROPIC_API_KEY);
