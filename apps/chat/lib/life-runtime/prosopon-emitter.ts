@@ -1,6 +1,20 @@
 /**
- * Prosopon emitter — translates the `RealAgentRunner`'s internal `RunEvent`
- * stream into Prosopon envelopes. Server-only.
+ * Prosopon emitter — translates the `RealAgentRunner`'s output stream into
+ * Prosopon envelopes. Server-only.
+ *
+ * The runner yields `RunnerYield` values discriminated on `kind`:
+ *
+ *   - `{ kind: "llm",    part: LLMStreamPart }` — AI SDK v6 `fullStream`
+ *     parts passed through verbatim. We branch on `part.type` here; the
+ *     full typed surface (toolCallId, providerMetadata, source/file/raw
+ *     parts, etc.) is available with zero fidelity loss.
+ *
+ *   - `{ kind: "domain", event: DomainEvent }` — runtime-level events our
+ *     agent emits on top of the LLM stream (fs_op, nous_score, autonomic_event,
+ *     done, error). Small, stable, ours.
+ *
+ * The split replaces the earlier `RunEvent` union that re-encoded both
+ * concerns; see `docs/superpowers/specs/2026-04-24-life-runner-aisdk-passthrough.md`.
  *
  * Scene scaffold on run start:
  *
@@ -33,13 +47,12 @@
 import "server-only";
 import {
   type Envelope,
-  makeEnvelope,
   type ProsoponEvent,
   ProsoponSession,
   type Scene,
   type SceneNode,
 } from "@broomva/prosopon";
-import type { RunEvent } from "./types";
+import type { DomainEvent, LLMStreamPart, RunnerYield } from "./types";
 
 // Stable node ids so downstream patches and callers can reference them.
 export const SCENE_ROOT_ID = "root";
@@ -117,7 +130,6 @@ export interface EmitterOptions {
 export class ProsoponEmitter {
   readonly session: ProsoponSession;
   readonly opts: EmitterOptions;
-  private currentMessageId: string | null = null;
   private streamSeqByMessage = new Map<string, number>();
   private toolNodeIdByCallId = new Map<string, string>();
   private fsNodeCounter = 0;
@@ -204,19 +216,36 @@ export class ProsoponEmitter {
   }
 
   /**
-   * Translate one RunEvent into one-or-more Envelopes. Yields envelopes in
-   * the order they should hit the wire.
+   * Translate one RunnerYield into one-or-more Envelopes. Branches on the
+   * discriminator: LLM stream parts go through `translateLLMPart` (typed
+   * switch over AI SDK's `TextStreamPart` union, no re-encoding); runtime
+   * domain events go through `translateDomain`.
    */
-  *translate(event: RunEvent): Generator<Envelope> {
-    switch (event.type) {
-      case "run_started":
-        // Internal; scene reset already emitted.
-        return;
+  *translate(y: RunnerYield): Generator<Envelope> {
+    if (y.kind === "llm") {
+      yield* this.translateLLMPart(y.part);
+      return;
+    }
+    yield* this.translateDomain(y.event);
+  }
 
-      case "thinking_start": {
-        const id = payloadString(event, "id") ?? this.nextMessageId();
-        this.currentMessageId = id;
-        const msgNode = freshNode(`msg-${id}`, {
+  /**
+   * Translate one AI SDK `fullStream` part into Prosopon envelopes.
+   *
+   * Reads `part` fields directly — no string fallbacks, no unknown casts.
+   * Anything AI SDK emits has a typed path here, including `toolCallId`
+   * (for correct parallel-call correlation), `providerMetadata` (for
+   * Claude thinking signatures), and first-class `source` / `file` / `raw`
+   * variants that used to be silently dropped when they had no `RunEvent`
+   * counterpart.
+   */
+  private *translateLLMPart(part: LLMStreamPart): Generator<Envelope> {
+    switch (part.type) {
+      case "reasoning-start": {
+        // AI SDK gives us a stable `id` per reasoning block (multiple may
+        // interleave in future thinking models). Node id `msg-<id>` lets
+        // the client EnvelopeAdapter fold updates into the right bubble.
+        const msgNode = freshNode(`msg-${part.id}`, {
           type: "section",
           title: "Reasoning",
           collapsible: true,
@@ -233,25 +262,19 @@ export class ProsoponEmitter {
         return;
       }
 
-      case "thinking_delta": {
-        const id = payloadString(event, "id");
-        if (!id) return;
+      case "reasoning-delta": {
         yield this.session.emit({
           type: "node_updated",
-          id: `msg-${id}`,
-          patch: {
-            attrs: { thinking: payloadString(event, "text") ?? "" },
-          },
+          id: `msg-${part.id}`,
+          patch: { attrs: { thinking: part.text } },
         });
         return;
       }
 
-      case "thinking_end": {
-        const id = payloadString(event, "id");
-        if (!id) return;
+      case "reasoning-end": {
         yield this.session.emit({
           type: "node_updated",
-          id: `msg-${id}`,
+          id: `msg-${part.id}`,
           patch: {
             lifecycle: {
               created_at: nowIso(),
@@ -262,10 +285,8 @@ export class ProsoponEmitter {
         return;
       }
 
-      case "text_start": {
-        const id = payloadString(event, "id") ?? this.nextMessageId();
-        this.currentMessageId = id;
-        const streamNodeId = `stream-${id}`;
+      case "text-start": {
+        const streamNodeId = `stream-${part.id}`;
         const streamNode = freshNode(streamNodeId, {
           type: "stream",
           id: streamNodeId,
@@ -276,36 +297,32 @@ export class ProsoponEmitter {
           parent: CHAT_NODE_ID,
           node: streamNode,
         });
-        this.streamSeqByMessage.set(id, 0);
+        this.streamSeqByMessage.set(part.id, 0);
         return;
       }
 
-      case "text_delta": {
-        const id = payloadString(event, "id");
-        const text = payloadString(event, "text") ?? "";
-        if (!id) return;
-        const seq = (this.streamSeqByMessage.get(id) ?? 0) + 1;
-        this.streamSeqByMessage.set(id, seq);
+      case "text-delta": {
+        if (!part.text) return;
+        const seq = (this.streamSeqByMessage.get(part.id) ?? 0) + 1;
+        this.streamSeqByMessage.set(part.id, seq);
         yield this.session.emit({
           type: "stream_chunk",
-          id: `stream-${id}`,
+          id: `stream-${part.id}`,
           chunk: {
             seq,
-            payload: { encoding: "text", text },
+            payload: { encoding: "text", text: part.text },
             final_: false,
           },
         });
         return;
       }
 
-      case "text_end": {
-        const id = payloadString(event, "id");
-        if (!id) return;
-        const seq = (this.streamSeqByMessage.get(id) ?? 0) + 1;
-        this.streamSeqByMessage.set(id, seq);
+      case "text-end": {
+        const seq = (this.streamSeqByMessage.get(part.id) ?? 0) + 1;
+        this.streamSeqByMessage.set(part.id, seq);
         yield this.session.emit({
           type: "stream_chunk",
-          id: `stream-${id}`,
+          id: `stream-${part.id}`,
           chunk: {
             seq,
             payload: { encoding: "text", text: "" },
@@ -315,22 +332,25 @@ export class ProsoponEmitter {
         return;
       }
 
-      case "tool_call": {
-        const callId = payloadString(event, "id") ?? `tc-${Date.now()}`;
-        const name = payloadString(event, "name") ?? "unknown";
-        const target = payloadString(event, "target") ?? "";
+      case "tool-call": {
+        // AI SDK v6 gives a stable `toolCallId` on both `tool-call` and
+        // `tool-result` parts. We use it directly — no counter-based
+        // correlation, which fixes parallel tool calls.
+        const callId = part.toolCallId;
         const nodeId = `tool-${callId}`;
         this.toolNodeIdByCallId.set(callId, nodeId);
-        let parsedArgs: unknown;
-        try {
-          parsedArgs = JSON.parse(payloadString(event, "args") ?? "{}");
-        } catch {
-          parsedArgs = { raw: payloadString(event, "args") ?? "" };
-        }
+        const input = (part.input ?? {}) as Record<string, unknown>;
+        const target =
+          part.toolName === "note" && typeof input.slug === "string"
+            ? input.slug
+            : "";
+        const displayName = target
+          ? `praxis.${part.toolName}:${target}`
+          : `praxis.${part.toolName}`;
         const toolNode = freshNode(nodeId, {
           type: "tool_call",
-          name: target ? `${name}:${target}` : name,
-          args: parsedArgs as Record<string, unknown>,
+          name: displayName,
+          args: input,
         });
         toolNode.lifecycle = {
           created_at: nowIso(),
@@ -344,11 +364,13 @@ export class ProsoponEmitter {
         return;
       }
 
-      case "tool_result": {
-        const callId = payloadString(event, "id") ?? "";
-        const nodeId = this.toolNodeIdByCallId.get(callId);
+      case "tool-result": {
+        const nodeId = this.toolNodeIdByCallId.get(part.toolCallId);
         if (!nodeId) return;
-        const result = payloadString(event, "result") ?? "";
+        const resultText =
+          typeof part.output === "string"
+            ? part.output
+            : JSON.stringify(part.output);
         yield this.session.emit({
           type: "node_updated",
           id: nodeId,
@@ -356,7 +378,10 @@ export class ProsoponEmitter {
             intent: {
               type: "tool_result",
               success: true,
-              payload: { text: result } as Record<string, unknown>,
+              payload: { text: resultText.slice(0, 800) } as Record<
+                string,
+                unknown
+              >,
             },
             lifecycle: {
               created_at: nowIso(),
@@ -366,6 +391,87 @@ export class ProsoponEmitter {
         });
         return;
       }
+
+      case "tool-error": {
+        // Mark the pending tool node as failed. The client Journal pane
+        // renders this as a failed tool entry.
+        const nodeId = this.toolNodeIdByCallId.get(part.toolCallId);
+        if (!nodeId) return;
+        const errMsg =
+          part.error instanceof Error
+            ? part.error.message
+            : typeof part.error === "string"
+              ? part.error
+              : JSON.stringify(part.error);
+        yield this.session.emit({
+          type: "node_updated",
+          id: nodeId,
+          patch: {
+            intent: {
+              type: "tool_result",
+              success: false,
+              payload: { text: errMsg } as Record<string, unknown>,
+            },
+            lifecycle: {
+              created_at: nowIso(),
+              status: { kind: "resolved" },
+            },
+          },
+        });
+        return;
+      }
+
+      case "error": {
+        // Stream-level error from AI SDK (distinct from `tool-error`).
+        const msg =
+          part.error instanceof Error
+            ? part.error.message
+            : typeof part.error === "string"
+              ? part.error
+              : JSON.stringify(part.error);
+        yield this.emitErrorNode(msg);
+        return;
+      }
+
+      // -----------------------------------------------------------------
+      // Intentional no-op parts. Tracked explicitly so future producers
+      // don't fall through an untyped default and silently drop data we
+      // later want to surface.
+      // -----------------------------------------------------------------
+      case "start":
+      case "start-step":
+      case "finish":
+      case "finish-step":
+      case "tool-input-start":
+      case "tool-input-delta":
+      case "tool-input-end":
+      case "source":
+      case "file":
+      case "tool-approval-request":
+      case "tool-output-denied":
+      case "abort":
+      case "raw":
+        return;
+
+      default: {
+        // Forward-compat: unknown part type. Do nothing but keep the
+        // exhaustiveness check disabled so AI SDK can add variants
+        // without breaking our build.
+        return;
+      }
+    }
+  }
+
+  /**
+   * Translate one runtime-level `DomainEvent` into envelopes. These are
+   * emitted by the runner *on top of* the AI SDK stream (workspace file
+   * operations, Nous / Autonomic / cost aggregates) — not by the LLM.
+   */
+  private *translateDomain(event: DomainEvent): Generator<Envelope> {
+    switch (event.type) {
+      case "run_started":
+        // Metadata-only; scene reset already emitted by emitter.runStarted().
+        return;
 
       case "fs_op": {
         // RFC-0004: emit typed `Intent::FileRead` / `Intent::FileWrite` nodes
@@ -515,26 +621,34 @@ export class ProsoponEmitter {
       }
 
       case "error": {
-        // Surface as a Confirm intent with danger severity under chat —
-        // compositors decide whether to render a toast, modal, inline block.
-        const message = payloadString(event, "message") ?? "unknown error";
-        const errNode = freshNode(`err-${Date.now().toString(36)}`, {
-          type: "confirm",
-          message,
-          severity: "danger",
-        });
-        yield this.session.emit({
-          type: "node_added",
-          parent: CHAT_NODE_ID,
-          node: errNode,
-        });
+        yield this.emitErrorNode(
+          payloadString(event, "message") ?? "unknown error",
+        );
         return;
       }
 
       default:
-        // Unknown RunEvent — ignore (forward-compat).
+        // Unknown DomainEvent — ignore (forward-compat).
         return;
     }
+  }
+
+  /**
+   * Emit a danger-severity Confirm node under chat. Shared between the
+   * AI-SDK `error` part handler and the `DomainEvent.error` handler so the
+   * on-screen error surface is identical regardless of which layer raised it.
+   */
+  private emitErrorNode(message: string): Envelope {
+    const errNode = freshNode(`err-${Date.now().toString(36)}`, {
+      type: "confirm",
+      message,
+      severity: "danger",
+    });
+    return this.session.emit({
+      type: "node_added",
+      parent: CHAT_NODE_ID,
+      node: errNode,
+    });
   }
 
   /** Emit a heartbeat. Callers may send every ~5s to indicate liveness. */
@@ -544,22 +658,21 @@ export class ProsoponEmitter {
       ts: nowIso(),
     });
   }
-
-  private nextMessageId(): string {
-    return `m-${Date.now().toString(36)}`;
-  }
 }
 
 // ---------------------------------------------------------------------------
-// Internal helpers
+// Internal helpers — narrow `DomainEvent.payload` (an opaque JSON record) to
+// the string/number fields used by the translator. `DomainEvent` values flow
+// through the runner → emitter wire as untyped-but-conventional blobs; these
+// helpers keep the call sites readable without scattering `unknown` casts.
 // ---------------------------------------------------------------------------
 
-function payloadString(ev: RunEvent, key: string): string | undefined {
+function payloadString(ev: DomainEvent, key: string): string | undefined {
   const v = (ev.payload as Record<string, unknown> | undefined)?.[key];
   return typeof v === "string" ? v : undefined;
 }
 
-function payloadNumber(ev: RunEvent, key: string): number | undefined {
+function payloadNumber(ev: DomainEvent, key: string): number | undefined {
   const v = (ev.payload as Record<string, unknown> | undefined)?.[key];
   return typeof v === "number" ? v : undefined;
 }

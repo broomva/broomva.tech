@@ -26,12 +26,12 @@
  */
 
 import "server-only";
-import { streamText, stepCountIs, tool } from "ai";
+import { stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
-import { getLanguageModel } from "@/lib/ai/providers";
 import type { AppModelId } from "@/lib/ai/app-model-id";
+import { getLanguageModel } from "@/lib/ai/providers";
 import type { LifeProject } from "@/lib/db/schema";
-import type { ModuleTypeId, RunEvent } from "./types";
+import type { DomainEvent, ModuleTypeId, RunnerYield } from "./types";
 
 // ---------------------------------------------------------------------------
 // Runner interface (previously exported from runner-dispatch.ts). Kept inline
@@ -56,7 +56,7 @@ export interface RunnerContext {
 
 export interface Runner {
   id: ModuleTypeId;
-  run(ctx: RunnerContext): AsyncIterable<RunEvent>;
+  run(ctx: RunnerContext): AsyncIterable<RunnerYield>;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,10 +118,7 @@ export interface LifeConversationMessage {
 
 const DEFAULT_LIFE_MODEL: AppModelId = "openai/gpt-5-mini" as AppModelId;
 
-function modelIdFor(
-  project: LifeProject,
-  paymentMode: string,
-): AppModelId {
+function modelIdFor(project: LifeProject, paymentMode: string): AppModelId {
   // Paid projects can upgrade; free-tier stays on cheap models.
   if (paymentMode === "credits" || paymentMode === "haima_balance") {
     return "openai/gpt-5-mini" as AppModelId;
@@ -135,7 +132,10 @@ function modelIdFor(
 // approximation that keeps the Haima pane honest during Phase 3.
 // ---------------------------------------------------------------------------
 
-const TOKEN_PRICE_USD_PER_1K: Record<string, { input: number; output: number }> = {
+const TOKEN_PRICE_USD_PER_1K: Record<
+  string,
+  { input: number; output: number }
+> = {
   "openai/gpt-5-mini": { input: 0.00015, output: 0.0006 },
   "openai/gpt-5-nano": { input: 0.00005, output: 0.0002 },
   "anthropic/claude-haiku-4-5": { input: 0.0008, output: 0.004 },
@@ -175,30 +175,31 @@ export class RealAgentRunner implements Runner {
     this.opts = opts;
   }
 
-  async *run(): AsyncIterable<RunEvent> {
+  async *run(): AsyncIterable<RunnerYield> {
     const now = () => new Date().toISOString();
     const { project, history, userMessage, paymentMode, onFinish } = this.opts;
     const modelId = modelIdFor(project, paymentMode);
     const system = systemFor(project);
-
-    // The UI protocol uses a single agent-message id per turn; we generate
-    // one here and reuse it across every streamed text/thinking delta so
-    // the reducer folds into the same message object.
-    const msgId = `m-${Date.now().toString(36)}`;
-    let textEmitted = false;
-    let toolCallIds = 0;
-    const toolStartTs: Record<string, number> = {};
     const runStartTs = Date.now();
 
-    yield {
+    const domain = (event: DomainEvent): RunnerYield => ({
+      kind: "domain",
+      event,
+    });
+
+    // Domain event 1: metadata-only announcement. The Prosopon scene_reset
+    // is emitted separately by `emitter.runStarted()` before the runner
+    // starts, so this event is informational (future: carries model
+    // warm-up metrics, caller identity, etc.).
+    yield domain({
       type: "run_started",
       payload: { model: modelId, project: project.slug },
       at: now(),
-    };
+    });
 
     // Tool set — kept small on purpose. `note` appends to the run's
-    // virtual workspace (a thin wrapper that emits fs_op events so the
-    // file-tree pane lights up as findings land).
+    // virtual workspace; we bridge its result into a `fs_op` domain event
+    // right after the LLM `tool-result` part so the Workspace pane reacts.
     const tools = {
       note: tool({
         description:
@@ -228,156 +229,74 @@ export class RealAgentRunner implements Runner {
     ];
 
     const model = await getLanguageModel(modelId);
+
+    // `experimental_telemetry` wires AI SDK's OTel hooks so model calls
+    // show up in Vercel / Sentry traces out of the box. `functionId` is the
+    // span attribute grouping spans by call-site; metadata is arbitrary
+    // per-span enrichment (we use it to correlate to the project slug).
+    // Identical pattern to `generateTitleFromUserMessage` in /chat actions.
     const result = streamText({
       model,
       system,
       messages,
       tools,
       stopWhen: [stepCountIs(4)],
+      experimental_telemetry: {
+        isEnabled: true,
+        functionId: "life.run.prosopon",
+        metadata: {
+          projectSlug: project.slug,
+          moduleTypeId: project.moduleTypeId,
+          paymentMode,
+        },
+      },
     });
 
-    // The AI SDK full-stream is a typed union of parts. We fan it out to
-    // the Life protocol.
+    // Pass-through of AI SDK `fullStream` parts. Zero re-encoding — the
+    // emitter handles the typed switch on `part.type` directly and has
+    // access to every field AI SDK emits (including `toolCallId`,
+    // `providerMetadata`, signatures, source/file/raw parts). When AI SDK
+    // evolves, we update the emitter's switch; no 4-file surgery.
     for await (const part of result.fullStream) {
-      switch (part.type) {
-        case "text-start":
-          yield {
-            type: "text_start",
-            payload: { id: msgId, role: "agent", text: "" },
-            at: now(),
-          };
-          textEmitted = true;
-          break;
-        case "text-delta": {
-          const text =
-            (part as unknown as { text?: string; delta?: string }).text ??
-            (part as unknown as { delta?: string }).delta ??
-            "";
-          if (!textEmitted) {
-            yield {
-              type: "text_start",
-              payload: { id: msgId, role: "agent", text: "" },
-              at: now(),
-            };
-            textEmitted = true;
-          }
-          yield {
-            type: "text_delta",
-            payload: { id: msgId, text },
-            at: now(),
-          };
-          break;
-        }
-        case "reasoning-start":
-          yield {
-            type: "thinking_start",
-            payload: { id: msgId },
-            at: now(),
-          };
-          break;
-        case "reasoning-delta": {
-          const text =
-            (part as unknown as { text?: string; delta?: string }).text ??
-            (part as unknown as { delta?: string }).delta ??
-            "";
-          yield {
-            type: "thinking_delta",
-            payload: { id: msgId, text },
-            at: now(),
-          };
-          break;
-        }
-        case "reasoning-end":
-          yield {
-            type: "thinking_end",
-            payload: { id: msgId },
-            at: now(),
-          };
-          break;
-        case "tool-call": {
-          toolCallIds += 1;
-          const toolCallId = `tc-${toolCallIds}`;
-          toolStartTs[toolCallId] = Date.now();
-          yield {
-            type: "tool_call",
-            payload: {
-              id: toolCallId,
-              name: `praxis.${part.toolName}`,
-              target:
-                part.toolName === "note"
-                  ? ((part.input as { slug?: string })?.slug ?? "")
-                  : "",
-              args: JSON.stringify(part.input).slice(0, 600),
-              journalKind: "tool",
-            },
-            at: now(),
-          };
-          break;
-        }
-        case "tool-result": {
-          // Infer id from order; the AI SDK doesn't expose a stable toolCallId on result parts.
-          const toolCallId = `tc-${toolCallIds}`;
-          const dur = Date.now() - (toolStartTs[toolCallId] ?? Date.now());
-          void dur; // consumed in Vigil pane derivation downstream
-          const resText =
-            typeof part.output === "string"
-              ? part.output
-              : JSON.stringify(part.output);
-          yield {
-            type: "tool_result",
-            payload: { id: toolCallId, result: resText.slice(0, 800) },
-            at: now(),
-          };
-          // For `note` results, emit a corresponding fs_op so the file-tree
-          // pane reacts — the workspace only exists in-memory for now. We
-          // thread the note body + title through the fs_op payload so the
-          // Preview pane can render the real content (not a static diff).
-          if (
-            part.toolName === "note" &&
-            typeof part.output === "object" &&
-            part.output !== null &&
-            "path" in (part.output as Record<string, unknown>)
-          ) {
-            const out = part.output as {
-              path: string;
-              title?: string;
-              bytesWritten?: number;
-              preview?: string;
-            };
-            // Recover the full body from the tool input (already sent by Claude).
-            const body = (part.input as { body?: string })?.body ?? out.preview ?? "";
-            yield {
-              type: "fs_op",
-              payload: {
-                path: out.path,
-                op: "create",
-                content: body,
-                title: out.title,
-                bytes: out.bytesWritten,
-              },
-              at: now(),
-            };
-          }
-          break;
-        }
-        case "finish": {
-          // stream-level finish — final usage is on the result promise.
-          break;
-        }
-        case "error": {
-          const err =
-            (part as unknown as { error?: unknown }).error ?? "unknown error";
-          const msg = err instanceof Error ? err.message : String(err);
-          yield { type: "error", payload: { message: msg }, at: now() };
-          break;
-        }
-        // Text-end / finish-step etc. — no-op for protocol.
-        default:
-          break;
+      yield { kind: "llm", part, at: now() };
+
+      // Domain-event side effect: when the `note` tool resolves, emit a
+      // workspace `fs_op` event so the file-tree pane reacts. We read the
+      // full body back from `part.input` (already structured by AI SDK).
+      if (
+        part.type === "tool-result" &&
+        part.toolName === "note" &&
+        typeof part.output === "object" &&
+        part.output !== null &&
+        "path" in (part.output as Record<string, unknown>)
+      ) {
+        const out = part.output as {
+          path: string;
+          title?: string;
+          bytesWritten?: number;
+          preview?: string;
+        };
+        const body =
+          (part.input as { body?: string })?.body ?? out.preview ?? "";
+        yield domain({
+          type: "fs_op",
+          payload: {
+            path: out.path,
+            op: "create",
+            content: body,
+            title: out.title,
+            bytes: out.bytesWritten,
+          },
+          at: now(),
+        });
       }
     }
 
-    // Final usage & cost
+    // Final usage & cost — AI SDK v6 makes totals available via both the
+    // `finish` part in the stream and the `result.usage` / `result.finishReason`
+    // promises. We use the promise form here for simplicity; the stream
+    // variant would let us surface `done` a tick earlier but the wire gain
+    // is noise-level (<1 RTT).
     const usage = await result.usage;
     const finishReason = await result.finishReason;
     const costCents = computeCostCents(modelId, {
@@ -390,7 +309,7 @@ export class RealAgentRunner implements Runner {
     // Real implementation is the Nous crate; this stays honest by scoring
     // "high" only on clean stops.
     const nousScore = finishReason === "stop" ? 0.85 : 0.6;
-    yield {
+    yield domain({
       type: "nous_score",
       payload: {
         score: nousScore,
@@ -401,20 +320,20 @@ export class RealAgentRunner implements Runner {
             : `Finished with reason "${finishReason}".`,
       },
       at: now(),
-    };
+    });
 
     // Autonomic — report economic-pillar spend.
-    yield {
+    yield domain({
       type: "autonomic_event",
       payload: {
         pillar: "economic",
         text: `Run cost: ${(costCents / 100).toFixed(4)} USD across ${usage.inputTokens ?? 0} in / ${usage.outputTokens ?? 0} out tokens (${elapsedMs}ms).`,
       },
       at: now(),
-    };
+    });
 
     onFinish?.({ llmCents: costCents, model: modelId, provider: "gateway" });
-    yield {
+    yield domain({
       type: "done",
       payload: {
         costCents,
@@ -424,6 +343,6 @@ export class RealAgentRunner implements Runner {
         finishReason,
       },
       at: now(),
-    };
+    });
   }
 }

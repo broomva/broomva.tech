@@ -334,12 +334,15 @@ async function handlePost(
           provider = cost.provider;
         };
 
-        for await (const ev of runner.run()) {
-          if (ev.type === "text_delta") {
-            const t = (ev.payload as { text?: string }).text ?? "";
-            assistantTextAccum += t;
+        for await (const yielded of runner.run()) {
+          // Accumulate the assistant's final text by peeking at AI SDK
+          // `text-delta` parts before they're translated. Previously this
+          // branched on our internal `RunEvent.type === "text_delta"`; the
+          // runner now yields the AI SDK part directly, so we read `part.text`.
+          if (yielded.kind === "llm" && yielded.part.type === "text-delta") {
+            assistantTextAccum += yielded.part.text;
           }
-          for (const env of emitter.translate(ev)) {
+          for (const env of emitter.translate(yielded)) {
             await write(env);
           }
         }
