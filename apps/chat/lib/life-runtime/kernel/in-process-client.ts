@@ -14,10 +14,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import {
-  type KernelClient,
-  KernelNotImplementedError,
-} from "./kernel-client";
+import { type KernelClient, KernelNotImplementedError } from "./kernel-client";
 import type {
   BackendId,
   ForkSpec,

@@ -120,6 +120,12 @@ export interface EmitterOptions {
   paymentMode: string;
   /** Cumulative cost at turn-start, so we can emit live deltas on top. */
   priorCostCents?: number;
+  /**
+   * KernelClient backend identifier ("in-process" today). Broadcast once as
+   * a `kernel.backend` signal on `runStarted()` so inspector panes know
+   * which backend is producing the `vigil.dispatch.*` numbers.
+   */
+  kernelBackendId?: string;
 }
 
 /**
@@ -176,6 +182,18 @@ export class ProsoponEmitter {
         type: "signal_changed",
         topic: "haima.spend.cents",
         value: { Scalar: this.opts.priorCostCents } as unknown as Record<
+          string,
+          unknown
+        >,
+        ts: nowIso(),
+      } as ProsoponEvent);
+    }
+
+    if (this.opts.kernelBackendId) {
+      yield this.session.emit({
+        type: "signal_changed",
+        topic: "kernel.backend",
+        value: { Scalar: this.opts.kernelBackendId } as unknown as Record<
           string,
           unknown
         >,
@@ -581,6 +599,59 @@ export class ProsoponEmitter {
         return;
       }
 
+      case "kernel.dispatch.started": {
+        // Fires right after the AI SDK `tool-call` part. Broadcasts which
+        // tool the kernel is about to run so the Vigil pane can show "tool
+        // in flight" state without waiting for the dispatch to complete.
+        const toolName = payloadString(event, "toolName") ?? "";
+        if (toolName) {
+          yield this.session.emit({
+            type: "signal_changed",
+            topic: "kernel.dispatch.tool",
+            value: { Scalar: toolName } as unknown as Record<string, unknown>,
+            ts: nowIso(),
+          } as ProsoponEvent);
+        }
+        return;
+      }
+
+      case "kernel.dispatch.completed": {
+        // Fires right after the AI SDK `tool-result` / `tool-error` part,
+        // carrying the `ResourceUsage` populated by the kernel client.
+        // Spec §4.3 defines these four topics; inspector panes subscribe.
+        const usage = extractUsage(event);
+        if (usage) {
+          yield this.session.emit({
+            type: "signal_changed",
+            topic: "vigil.dispatch.duration_ms",
+            value: { Scalar: usage.durationMs } as unknown as Record<
+              string,
+              unknown
+            >,
+            ts: nowIso(),
+          } as ProsoponEvent);
+          yield this.session.emit({
+            type: "signal_changed",
+            topic: "vigil.dispatch.egress_bytes",
+            value: { Scalar: usage.egressBytes } as unknown as Record<
+              string,
+              unknown
+            >,
+            ts: nowIso(),
+          } as ProsoponEvent);
+          yield this.session.emit({
+            type: "signal_changed",
+            topic: "vigil.dispatch.confidence",
+            value: { Scalar: usage.confidence } as unknown as Record<
+              string,
+              unknown
+            >,
+            ts: nowIso(),
+          } as ProsoponEvent);
+        }
+        return;
+      }
+
       case "done": {
         const costCents = payloadNumber(event, "costCents") ?? 0;
         const inputTokens = payloadNumber(event, "inputTokens") ?? 0;
@@ -675,4 +746,26 @@ function payloadString(ev: DomainEvent, key: string): string | undefined {
 function payloadNumber(ev: DomainEvent, key: string): number | undefined {
   const v = (ev.payload as Record<string, unknown> | undefined)?.[key];
   return typeof v === "number" ? v : undefined;
+}
+
+/**
+ * Narrow the opaque `kernel.dispatch.completed` payload to the
+ * `ResourceUsage` shape. Returns undefined on missing/malformed data so the
+ * emitter falls through to `kernel.dispatch.tool`-only signaling.
+ */
+interface ExtractedUsage {
+  durationMs: number;
+  egressBytes: number;
+  confidence: string;
+}
+
+function extractUsage(ev: DomainEvent): ExtractedUsage | undefined {
+  const raw = (ev.payload as Record<string, unknown> | undefined)?.usage;
+  if (!raw || typeof raw !== "object") return undefined;
+  const u = raw as Record<string, unknown>;
+  const durationMs = typeof u.durationMs === "number" ? u.durationMs : 0;
+  const egressBytes = typeof u.egressBytes === "number" ? u.egressBytes : 0;
+  const confidence =
+    typeof u.confidence === "string" ? u.confidence : "unknown";
+  return { durationMs, egressBytes, confidence };
 }

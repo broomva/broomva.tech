@@ -32,6 +32,11 @@ import {
   userHasCreditsFor,
 } from "@/lib/life-runtime/billing";
 import {
+  createKernelClient,
+  type KernelContext,
+  type VmHandle,
+} from "@/lib/life-runtime/kernel";
+import {
   makeInitialScene,
   ProsoponEmitter,
   SCENE_ROOT_ID,
@@ -47,8 +52,12 @@ import {
   getProjectBySlug,
   getSessionHistory,
   maybeSetChatTitle,
+  setLifeSessionKernelVmHandle,
 } from "@/lib/life-runtime/queries";
-import { RealAgentRunner } from "@/lib/life-runtime/real-runner";
+import {
+  makeLifeToolHandlers,
+  RealAgentRunner,
+} from "@/lib/life-runtime/real-runner";
 import {
   type ConsumerIdentity,
   RunRequestSchema,
@@ -277,6 +286,61 @@ async function handlePost(
   let provider: string | undefined;
   let assistantTextAccum = "";
 
+  // KernelClient — every tool call is dispatched through this surface so
+  // attribution + ResourceUsage land on a uniform contract. Today we only
+  // ship `InProcessKernelClient`; the `LIFED_GATEWAY_URL` env var picks
+  // `LifedHttpKernelClient` when Phase D lands.
+  const kernelClient = createKernelClient({
+    tools: makeLifeToolHandlers(project),
+  });
+
+  const kernelCtx: KernelContext = {
+    sessionId: lifeSession?.id ?? run.id,
+    agentId: consumer.kind === "agent" ? consumer.id : `user:${consumer.id}`,
+  };
+
+  // VmHandle: reuse the persisted handle when the LifeSession has one
+  // (subsequent turns of the same session); otherwise create a fresh VM
+  // and persist its handle. For `InProcessKernelClient` the handle is just
+  // an identity record — no backend resources to reattach to. For
+  // `LifedHttpKernelClient` (Phase D) this is how a Vercel function cold
+  // start reattaches to the long-running lifed VM.
+  let vm: VmHandle;
+  const persistedHandle = lifeSession?.kernelVmHandleJson;
+  if (
+    persistedHandle &&
+    typeof persistedHandle === "object" &&
+    !Array.isArray(persistedHandle) &&
+    typeof (persistedHandle as VmHandle).vmId === "string"
+  ) {
+    vm = persistedHandle as VmHandle;
+  } else {
+    vm = await kernelClient.createVm(
+      {
+        backendHint: kernelClient.backendId,
+        toolAllowlist: Object.keys(makeLifeToolHandlers(project)),
+        metadataJson: JSON.stringify({
+          projectSlug: slug,
+          moduleTypeId: project.moduleTypeId,
+        }),
+      },
+      kernelCtx,
+    );
+    if (lifeSession) {
+      try {
+        await setLifeSessionKernelVmHandle({
+          lifeSessionId: lifeSession.id,
+          vmHandle: vm as unknown as Record<string, unknown>,
+        });
+      } catch (err) {
+        console.warn(
+          "[life/run/prosopon] setLifeSessionKernelVmHandle failed (non-fatal):",
+          err,
+        );
+      }
+    }
+  }
+
   // `onFinish` is threaded via the constructor (not post-construction
   // assignment) so the runner's `opts` can stay private. It's the terminal
   // cost-attribution hook — captures LLM cents + model identity so the
@@ -291,6 +355,11 @@ async function handlePost(
     history,
     userMessage,
     paymentMode: decision.mode,
+    kernelClient,
+    vm,
+    kernelCtx,
+    turnId: run.id,
+    lifeSessionId: lifeSession?.id,
     onFinish: (cost) => {
       finalCostCents = cost.llmCents;
       model = cost.model;
@@ -304,6 +373,7 @@ async function handlePost(
     displayName: project.displayName,
     paymentMode: decision.mode,
     priorCostCents: 0,
+    kernelBackendId: kernelClient.backendId,
   });
 
   const stream = new ReadableStream<Uint8Array>({

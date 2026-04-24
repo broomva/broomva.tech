@@ -296,4 +296,115 @@ describe("ProsoponEmitter — DomainEvent translation", () => {
     );
     expect(out).toHaveLength(0);
   });
+
+  it("kernel.dispatch.started DomainEvent emits kernel.dispatch.tool signal", () => {
+    const e = makeEmitter();
+    const out = collect(
+      e.translate({
+        kind: "domain",
+        event: {
+          type: "kernel.dispatch.started",
+          payload: {
+            callId: "call_abc",
+            toolName: "note",
+            backend: "in-process",
+          },
+          at: "2026-04-24T00:00:00Z",
+        },
+      }),
+    ) as Array<{
+      event: {
+        type: string;
+        topic: string;
+        value: { Scalar: string };
+      };
+    }>;
+    expect(out).toHaveLength(1);
+    expect(out[0]!.event.type).toBe("signal_changed");
+    expect(out[0]!.event.topic).toBe("kernel.dispatch.tool");
+    expect(out[0]!.event.value.Scalar).toBe("note");
+  });
+
+  it("kernel.dispatch.completed DomainEvent emits Vigil dispatch signals", () => {
+    const e = makeEmitter();
+    const out = collect(
+      e.translate({
+        kind: "domain",
+        event: {
+          type: "kernel.dispatch.completed",
+          payload: {
+            callId: "call_abc",
+            toolName: "note",
+            isError: false,
+            usage: {
+              cpuMs: 0,
+              memPeakKb: 0,
+              egressBytes: 0,
+              durationMs: 42,
+              syscallCount: 0,
+              confidence: "estimated",
+            },
+          },
+          at: "2026-04-24T00:00:00Z",
+        },
+      }),
+    ) as Array<{ event: { type: string; topic: string } }>;
+    const topics = out.map((e) => e.event.topic);
+    expect(topics).toEqual([
+      "vigil.dispatch.duration_ms",
+      "vigil.dispatch.egress_bytes",
+      "vigil.dispatch.confidence",
+    ]);
+  });
+
+  it("kernel.dispatch.completed without usage emits no signals (forward-compat)", () => {
+    const e = makeEmitter();
+    const out = collect(
+      e.translate({
+        kind: "domain",
+        event: {
+          type: "kernel.dispatch.completed",
+          payload: { callId: "c", toolName: "note", isError: false },
+          at: "2026-04-24T00:00:00Z",
+        },
+      }),
+    );
+    expect(out).toHaveLength(0);
+  });
+});
+
+describe("ProsoponEmitter — runStarted kernel backend signal", () => {
+  it("broadcasts kernel.backend signal when kernelBackendId is set", () => {
+    const e = new ProsoponEmitter({
+      sessionId: "sess-test",
+      projectSlug: "sentinel",
+      displayName: "Sentinel",
+      paymentMode: "credits",
+      priorCostCents: 0,
+      kernelBackendId: "in-process",
+    });
+    const envs = Array.from(e.runStarted()) as Array<{
+      event: { type: string; topic?: string; value?: { Scalar: string } };
+    }>;
+    const kernelSignal = envs.find(
+      (env) =>
+        env.event.type === "signal_changed" &&
+        env.event.topic === "kernel.backend",
+    );
+    expect(kernelSignal).toBeDefined();
+    expect(kernelSignal?.event.value?.Scalar).toBe("in-process");
+  });
+
+  it("omits kernel.backend signal when kernelBackendId is unset (back-compat)", () => {
+    const e = makeEmitter();
+    const envs = Array.from(e.runStarted()) as Array<{
+      event: { type: string; topic?: string };
+    }>;
+    const kernelSignal = envs.find(
+      (env) =>
+        env.event.type === "signal_changed" &&
+        env.event.topic === "kernel.backend",
+    );
+    expect(kernelSignal).toBeUndefined();
+  });
 });
