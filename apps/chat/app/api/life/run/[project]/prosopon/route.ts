@@ -203,19 +203,23 @@ async function handlePost(
   }
 
   // Sessions (LifeSession on our side, separate from ProsoponSession id).
+  //
+  // Every live turn gets a LifeSession, including agent-kind callers.
+  // Previously agents skipped the session table, which meant the Prosopon
+  // session id fell through to `run.id` and the /state endpoint couldn't
+  // find anything to rehydrate. Now all three consumer kinds produce a
+  // proper session row — see schema.ts, LifeSession.consumerKind is the
+  // widened 'user' | 'anon' | 'agent' enum.
   const isLiveTurn = userMessage.length > 0;
-  const sessionConsumerKind: "user" | "anon" =
-    consumer.kind === "user" ? "user" : "anon";
-  const lifeSession =
-    isLiveTurn && consumer.kind !== "agent"
-      ? await getOrCreateSession({
-          projectId: project.id,
-          sessionId: lifeSessionIdHint,
-          consumerKind: sessionConsumerKind,
-          consumerId: consumer.id,
-          organizationId: consumer.organizationId,
-        })
-      : null;
+  const lifeSession = isLiveTurn
+    ? await getOrCreateSession({
+        projectId: project.id,
+        sessionId: lifeSessionIdHint,
+        consumerKind: consumer.kind,
+        consumerId: consumer.id,
+        organizationId: consumer.organizationId,
+      })
+    : null;
   const history = lifeSession ? await getSessionHistory(lifeSession.id) : [];
 
   const rulesVersion = await getCurrentRulesVersion(project);

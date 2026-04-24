@@ -1660,10 +1660,24 @@ export const lifeSession = pgTable(
     projectId: uuid("projectId")
       .notNull()
       .references(() => lifeProject.id, { onDelete: "cascade" }),
-    /** 'user' | 'anon' */
+    /**
+     * 'user' | 'anon' | 'agent'
+     *
+     * - 'user'  — signed-in principal (better-auth session).
+     * - 'anon'  — anonymous visitor bound to an anon-session cookie.
+     * - 'agent' — x402 wallet caller OR the auth-less fallback used
+     *   when no credentials are present. Widened from the original
+     *   ('user' | 'anon') so agent sessions can also be persisted +
+     *   rehydrated (see /api/life/run/[project]/session/[id]/state).
+     *
+     * The DB column is plain VARCHAR(16) with no CHECK constraint, so
+     * widening the enum is TypeScript-only — no migration required.
+     * Downstream auth code in the /state endpoint handles each kind
+     * separately.
+     */
     consumerKind: varchar("consumerKind", {
       length: 16,
-      enum: ["user", "anon"],
+      enum: ["user", "anon", "agent"],
     }).notNull(),
     consumerId: varchar("consumerId", { length: 256 }).notNull(),
     /** Optional org context for authed sessions. */

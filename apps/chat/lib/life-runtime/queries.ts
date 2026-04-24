@@ -4,7 +4,7 @@
  */
 
 import "server-only";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   lifeProject,
@@ -80,7 +80,7 @@ export interface CreateRunParams {
 export interface GetOrCreateSessionParams {
   projectId: string;
   sessionId?: string; // if provided, must belong to (consumerKind, consumerId)
-  consumerKind: "user" | "anon";
+  consumerKind: "user" | "anon" | "agent";
   consumerId: string;
   organizationId?: string;
 }
@@ -300,6 +300,197 @@ export async function getRunEvents(runId: string): Promise<
     .from(lifeRunEvent)
     .where(eq(lifeRunEvent.runId, runId))
     .orderBy(asc(lifeRunEvent.seq));
+}
+
+/**
+ * Per-session envelope feed used by the replay endpoint + future
+ * scrollback. Flattens across all runs belonging to a session and
+ * exposes a single strictly-monotonic sequence (`globalSeq`).
+ *
+ * Why not just `lifeRunEvent.seq` directly? `seq` is per-run — each
+ * run's envelopes start at 0. For a multi-turn session we need a
+ * session-wide ordering so the client can paginate cursor-style
+ * ("give me events after global_seq=N"). We synthesize that ordering
+ * by sorting on `(run.createdAt, event.seq)` and re-numbering.
+ *
+ * The return shape carries both the synthetic `globalSeq` (for cursor)
+ * and the raw envelope object (as stored in `payload.envelope` — the
+ * Prosopon wire payload the emitter flushed).
+ */
+export async function getSessionEnvelopes(params: {
+  sessionId: string;
+  /** Cursor: return events with globalSeq > `after`. 0 = from start. */
+  after?: number;
+  /** Max rows to return. Defaults to 200, hard cap at 500. */
+  limit?: number;
+}): Promise<{
+  events: Array<{
+    globalSeq: number;
+    runId: string;
+    runSeq: number;
+    type: string;
+    envelope: Record<string, unknown>;
+    at: Date;
+  }>;
+  hasMore: boolean;
+}> {
+  const after = params.after ?? 0;
+  const limit = Math.min(params.limit ?? 200, 500);
+
+  // Pull all runs for the session in creation order, then fan out
+  // events. For the typical ~10 turns × ~20 envelopes = 200 rows case,
+  // a single ordered join is cheap. If sessions grow very long the
+  // caller should be hitting the scrollback path (which passes `after`),
+  // so we over-read by 1 to compute hasMore cheaply.
+  const runs = await db
+    .select({ id: lifeRun.id, createdAt: lifeRun.createdAt })
+    .from(lifeRun)
+    .where(eq(lifeRun.sessionId, params.sessionId))
+    .orderBy(asc(lifeRun.createdAt));
+
+  if (runs.length === 0) {
+    return { events: [], hasMore: false };
+  }
+
+  const runIds = runs.map((r) => r.id);
+  const rawEvents = await db
+    .select({
+      runId: lifeRunEvent.runId,
+      seq: lifeRunEvent.seq,
+      type: lifeRunEvent.type,
+      payload: lifeRunEvent.payload,
+      at: lifeRunEvent.at,
+    })
+    .from(lifeRunEvent)
+    .where(inArray(lifeRunEvent.runId, runIds))
+    .orderBy(asc(lifeRunEvent.at), asc(lifeRunEvent.seq));
+
+  // Assign globalSeq in the same order.
+  let globalSeq = 0;
+  const flattened = rawEvents.map((e) => {
+    globalSeq += 1;
+    const payload = e.payload as Record<string, unknown> | null;
+    const envelope = (payload?.envelope as Record<string, unknown>) ??
+      // Fallback: the emitter always wraps in `{ envelope: … }`, but for
+      // safety in case old rows are bare, synthesize a minimal shape.
+      ({
+        version: 1,
+        session_id: params.sessionId,
+        seq: e.seq,
+        ts: e.at.toISOString(),
+        event: { type: e.type },
+      } as Record<string, unknown>);
+    return {
+      globalSeq,
+      runId: e.runId,
+      runSeq: e.seq,
+      type: e.type,
+      envelope,
+      at: e.at,
+    };
+  });
+
+  // Apply cursor + limit post-flattening. Fine at current scale;
+  // when we hit 10k-event sessions, push the cursor down into SQL.
+  const windowed = flattened.filter((e) => e.globalSeq > after).slice(0, limit);
+  const hasMore = flattened.filter((e) => e.globalSeq > after).length > limit;
+
+  return { events: windowed, hasMore };
+}
+
+/**
+ * Hydration summary for a session, used by the `/state` endpoint.
+ * Returns session metadata + aggregate counters that would otherwise
+ * require additional round trips from the client.
+ */
+export async function getSessionSummary(
+  sessionId: string,
+): Promise<{
+  session: {
+    id: string;
+    projectId: string;
+    /**
+     * Widened from `lifeSession.consumerKind` ('user' | 'anon') to include
+     * 'agent' because the broader session namespace (inherited from
+     * LifeRun) does carry agent-origin sessions from x402 callers and
+     * the no-auth fallback. Auth-matching callers need to see the
+     * widest possible value.
+     */
+    consumerKind: "user" | "anon" | "agent";
+    consumerId: string;
+    organizationId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  projectSlug: string;
+  turnCount: number;
+  totalCostCents: number;
+  lastActivityAt: Date | null;
+} | null> {
+  const row = await db
+    .select({
+      id: lifeSession.id,
+      projectId: lifeSession.projectId,
+      consumerKind: lifeSession.consumerKind,
+      consumerId: lifeSession.consumerId,
+      organizationId: lifeSession.organizationId,
+      createdAt: lifeSession.createdAt,
+      updatedAt: lifeSession.updatedAt,
+      projectSlug: lifeProject.slug,
+    })
+    .from(lifeSession)
+    .innerJoin(lifeProject, eq(lifeSession.projectId, lifeProject.id))
+    .where(eq(lifeSession.id, sessionId))
+    .limit(1);
+
+  if (row.length === 0) return null;
+  const s = row[0]!;
+
+  const runsAgg = await db
+    .select({
+      turnCount: sql<number>`COUNT(*)::int`,
+      totalCostCents: sql<number>`COALESCE(SUM(${lifeRun.consumerPaidCents}), 0)::int`,
+      // `LifeRun` has no `updatedAt`; use finishedAt when present, fall
+      // back to startedAt / createdAt so an in-flight run still counts
+      // as "recent activity."
+      lastActivityAt: sql<Date | null>`MAX(COALESCE(${lifeRun.finishedAt}, ${lifeRun.startedAt}, ${lifeRun.createdAt}))`,
+    })
+    .from(lifeRun)
+    .where(eq(lifeRun.sessionId, sessionId));
+
+  const agg = runsAgg[0] ?? {
+    turnCount: 0,
+    totalCostCents: 0,
+    lastActivityAt: null,
+  };
+
+  // Narrow to the widest possible consumerKind: LifeSession's column
+  // is only ('user' | 'anon') today but the LifeRun side also uses
+  // 'agent' for x402 + fallback anonymous callers, and older rows in
+  // the wild can have that kind inherited. Cast defensively so callers
+  // get the full shape.
+  const consumerKind: "user" | "anon" | "agent" =
+    s.consumerKind === "user"
+      ? "user"
+      : s.consumerKind === "anon"
+        ? "anon"
+        : "agent";
+
+  return {
+    session: {
+      id: s.id,
+      projectId: s.projectId,
+      consumerKind,
+      consumerId: s.consumerId,
+      organizationId: s.organizationId,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    },
+    projectSlug: s.projectSlug,
+    turnCount: agg.turnCount,
+    totalCostCents: agg.totalCostCents,
+    lastActivityAt: agg.lastActivityAt,
+  };
 }
 
 /**
