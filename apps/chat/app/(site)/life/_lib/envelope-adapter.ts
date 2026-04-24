@@ -59,10 +59,16 @@ function isPillar(s: string): s is Pillar {
  * Tensor; today the emitter only uses Scalar, so unwrapping that covers
  * 100% of cases. Future encodings would need explicit handling here.
  */
-function unwrapScalar(v: SignalValue | undefined): string | number | boolean | null {
+function unwrapScalar(
+  v: SignalValue | undefined,
+): string | number | boolean | null {
   if (!v || typeof v !== "object") return null;
   const scalar = (v as Record<string, unknown>).Scalar;
-  if (typeof scalar === "string" || typeof scalar === "number" || typeof scalar === "boolean") {
+  if (
+    typeof scalar === "string" ||
+    typeof scalar === "number" ||
+    typeof scalar === "boolean"
+  ) {
     return scalar;
   }
   return null;
@@ -76,7 +82,13 @@ function unwrapScalar(v: SignalValue | undefined): string | number | boolean | n
 // ---------------------------------------------------------------------------
 
 export interface AdapterMetaEvent {
-  kind: "cost-total" | "cost-turn" | "tokens-in" | "tokens-out" | "duration-ms" | "payment-mode";
+  kind:
+    | "cost-total"
+    | "cost-turn"
+    | "tokens-in"
+    | "tokens-out"
+    | "duration-ms"
+    | "payment-mode";
   value: number | string;
 }
 
@@ -186,7 +198,10 @@ export class EnvelopeAdapter {
       case "stream": {
         // Text streams — seed an empty agent-text message keyed on the
         // originating message id (stream id = "stream-<id>").
-        if ((intent as { kind?: string }).kind === "text" && node.id.startsWith("stream-")) {
+        if (
+          (intent as { kind?: string }).kind === "text" &&
+          node.id.startsWith("stream-")
+        ) {
           return {
             ...emptyOutput(),
             replay: [
@@ -206,7 +221,9 @@ export class EnvelopeAdapter {
         // the matching tool-result ReplayEvent targets the same bucket.
         const callId = node.id.startsWith("tool-") ? node.id.slice(5) : node.id;
         const name = (intent as { name?: string }).name ?? "unknown";
-        const [bare, target = ""] = name.includes(":") ? name.split(":", 2) : [name];
+        const [bare, target = ""] = name.includes(":")
+          ? name.split(":", 2)
+          : [name];
         const args = (intent as { args?: unknown }).args ?? {};
         return {
           ...emptyOutput(),
@@ -257,7 +274,10 @@ export class EnvelopeAdapter {
         const bytes = raw.bytes;
         const title = raw.title;
         const narrowedOp: FsOpKind =
-          op === "create" || op === "append" || op === "delete" || op === "write"
+          op === "create" ||
+          op === "append" ||
+          op === "delete" ||
+          op === "write"
             ? op
             : "write";
         return {
@@ -276,15 +296,28 @@ export class EnvelopeAdapter {
         };
       }
       case "custom": {
+        const kind = (intent as { kind?: string }).kind;
+        const payload = ((intent as { payload?: unknown }).payload ??
+          {}) as Record<string, unknown>;
+
+        // User-turn envelope — emitted by the server at the start of every
+        // turn so the user's message is first-class in the LifeRunEvent log.
+        // Maps directly to the existing `{ kind: "user" }` ReplayEvent that
+        // the reducer already renders, so no UI change is needed on rehydration.
+        if (kind === "user.message") {
+          const text = typeof payload.text === "string" ? payload.text : "";
+          if (!text) return emptyOutput();
+          return {
+            ...emptyOutput(),
+            replay: [{ t: tMs, kind: "user", text }],
+          };
+        }
+
         // Back-compat fallback: producers still emitting
         // `Custom { kind: "fs.op", payload }` before adopting RFC-0004
         // typed variants continue to work through this branch. New emitters
         // should use Intent::FileRead / Intent::FileWrite directly.
-        if ((intent as { kind?: string }).kind !== "fs.op") return emptyOutput();
-        const payload = ((intent as { payload?: unknown }).payload ?? {}) as Record<
-          string,
-          unknown
-        >;
+        if (kind !== "fs.op") return emptyOutput();
         const path = typeof payload.path === "string" ? payload.path : "";
         const op = typeof payload.op === "string" ? payload.op : "write";
         return {
@@ -295,9 +328,14 @@ export class EnvelopeAdapter {
               kind: "fs-op",
               path,
               op: (op as "read" | "write" | "create" | "delete") ?? "write",
-              content: typeof payload.content === "string" ? payload.content : undefined,
-              title: typeof payload.title === "string" ? payload.title : undefined,
-              bytes: typeof payload.bytes === "number" ? payload.bytes : undefined,
+              content:
+                typeof payload.content === "string"
+                  ? payload.content
+                  : undefined,
+              title:
+                typeof payload.title === "string" ? payload.title : undefined,
+              bytes:
+                typeof payload.bytes === "number" ? payload.bytes : undefined,
             },
           ],
         };
@@ -322,10 +360,17 @@ export class EnvelopeAdapter {
     if (id.startsWith("msg-")) {
       const origId = id.slice(4);
       const attrs = patch.attrs as Record<string, unknown> | undefined;
-      const lifecycle = patch.lifecycle as { status?: { kind?: string } } | undefined;
+      const lifecycle = patch.lifecycle as
+        | { status?: { kind?: string } }
+        | undefined;
       const events: ReplayEvent[] = [];
       if (attrs && typeof attrs.thinking === "string") {
-        events.push({ t: tMs, kind: "thinking", id: origId, text: attrs.thinking });
+        events.push({
+          t: tMs,
+          kind: "thinking",
+          id: origId,
+          text: attrs.thinking,
+        });
       }
       if (lifecycle?.status?.kind === "resolved") {
         events.push({ t: tMs, kind: "agent-thinking-end", id: origId });
@@ -346,9 +391,7 @@ export class EnvelopeAdapter {
             : JSON.stringify(newIntent.payload ?? {});
         return {
           ...emptyOutput(),
-          replay: [
-            { t: tMs, kind: "tool-result", id: callId, result: text },
-          ],
+          replay: [{ t: tMs, kind: "tool-result", id: callId, result: text }],
         };
       }
     }
@@ -366,9 +409,11 @@ export class EnvelopeAdapter {
   ): AdapterOutput {
     // Map stream-<id> → append to message id <id>.
     const streamId = (ev as unknown as { id: string }).id;
-    const chunk = (ev as unknown as {
-      chunk: { payload?: { text?: string }; final_?: boolean };
-    }).chunk;
+    const chunk = (
+      ev as unknown as {
+        chunk: { payload?: { text?: string }; final_?: boolean };
+      }
+    ).chunk;
     const msgId = streamId.startsWith("stream-") ? streamId.slice(7) : streamId;
     const text = chunk?.payload?.text ?? "";
     if (!text) return emptyOutput();
@@ -394,7 +439,8 @@ export class EnvelopeAdapter {
       case TOPICS.HAIMA_SPEND:
         return {
           ...emptyOutput(),
-          meta: typeof value === "number" ? [{ kind: "cost-total", value }] : [],
+          meta:
+            typeof value === "number" ? [{ kind: "cost-total", value }] : [],
         };
       case TOPICS.HAIMA_LAST_TURN:
         return {
@@ -409,17 +455,20 @@ export class EnvelopeAdapter {
       case TOPICS.VIGIL_TOKENS_OUT:
         return {
           ...emptyOutput(),
-          meta: typeof value === "number" ? [{ kind: "tokens-out", value }] : [],
+          meta:
+            typeof value === "number" ? [{ kind: "tokens-out", value }] : [],
         };
       case TOPICS.VIGIL_DURATION_MS:
         return {
           ...emptyOutput(),
-          meta: typeof value === "number" ? [{ kind: "duration-ms", value }] : [],
+          meta:
+            typeof value === "number" ? [{ kind: "duration-ms", value }] : [],
         };
       case TOPICS.HAIMA_PAYMENT_MODE:
         return {
           ...emptyOutput(),
-          meta: typeof value === "string" ? [{ kind: "payment-mode", value }] : [],
+          meta:
+            typeof value === "string" ? [{ kind: "payment-mode", value }] : [],
         };
       case TOPICS.LIFE_PROJECT_SLUG:
         return emptyOutput();
@@ -440,7 +489,11 @@ export class EnvelopeAdapter {
     }
 
     // Autonomic per-pillar notes: append only on change.
-    if (topic.startsWith(AUTONOMIC_PREFIX) && topic.endsWith(".note") && typeof value === "string") {
+    if (
+      topic.startsWith(AUTONOMIC_PREFIX) &&
+      topic.endsWith(".note") &&
+      typeof value === "string"
+    ) {
       const pillar = topic.slice(AUTONOMIC_PREFIX.length, -".note".length);
       if (!isPillar(pillar)) return emptyOutput();
       if (this.lastAutonomic[pillar] === value) return emptyOutput();
@@ -487,7 +540,12 @@ export class EnvelopeAdapter {
  */
 function inferJournalKind(name: string): JournalKind {
   const lc = name.toLowerCase();
-  if (lc.startsWith("fs.") || lc.startsWith("fs_") || lc.startsWith("read_file")) return "fs";
+  if (
+    lc.startsWith("fs.") ||
+    lc.startsWith("fs_") ||
+    lc.startsWith("read_file")
+  )
+    return "fs";
   if (lc.includes("judge") || lc.includes("nous")) return "nous";
   if (lc.startsWith("autonomic")) return "autonomic";
   if (lc.startsWith("haima") || lc.includes("payment")) return "haima";

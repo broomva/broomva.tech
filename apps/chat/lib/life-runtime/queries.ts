@@ -7,16 +7,17 @@ import "server-only";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
+  chat,
+  type LifeProject,
+  type LifeRulesVersion,
+  type LifeRun,
+  type LifeSession,
   lifeProject,
   lifeReservedSlug,
   lifeRulesVersion,
   lifeRun,
   lifeRunEvent,
   lifeSession,
-  type LifeProject,
-  type LifeRulesVersion,
-  type LifeRun,
-  type LifeSession,
 } from "@/lib/db/schema";
 import type { ConsumerKind, PaymentMode } from "./types";
 
@@ -27,7 +28,9 @@ import type { ConsumerKind, PaymentMode } from "./types";
  * getRulesVersion(projectId, versionId?) to avoid wasted JSONB reads on
  * the listing surfaces.
  */
-export async function getProjectBySlug(slug: string): Promise<LifeProject | null> {
+export async function getProjectBySlug(
+  slug: string,
+): Promise<LifeProject | null> {
   const rows = await db
     .select()
     .from(lifeProject)
@@ -155,7 +158,8 @@ export async function getSessionHistory(
     // Assistant output — use the text if stored as { text: string }, else skip.
     if (row.status === "succeeded" && row.output) {
       const output = row.output as { text?: string } | null;
-      if (output?.text) history.push({ role: "assistant", content: output.text });
+      if (output?.text)
+        history.push({ role: "assistant", content: output.text });
     }
   }
   return history;
@@ -171,8 +175,9 @@ export async function createRun(params: CreateRunParams): Promise<LifeRun> {
   // The DB schema enforces rulesVersionId NOT NULL. For platform-seeded
   // projects we create an "initial" rules version lazily so the constraint
   // passes on the first run without extra migration work.
-  const effectiveRulesVersionId = params.rulesVersionId
-    ?? (await ensureInitialRulesVersion(params.projectId, params.consumerId));
+  const effectiveRulesVersionId =
+    params.rulesVersionId ??
+    (await ensureInitialRulesVersion(params.projectId, params.consumerId));
 
   // LifeRun.input is JSONB NOT NULL — coerce nullish callers to an empty
   // object so "start a run with no structured input" is always legal.
@@ -292,9 +297,9 @@ export async function appendRunEvent(
   });
 }
 
-export async function getRunEvents(runId: string): Promise<
-  Array<{ seq: number; type: string; payload: unknown; at: Date }>
-> {
+export async function getRunEvents(
+  runId: string,
+): Promise<Array<{ seq: number; type: string; payload: unknown; at: Date }>> {
   return await db
     .select({
       seq: lifeRunEvent.seq,
@@ -375,7 +380,8 @@ export async function getSessionEnvelopes(params: {
   const flattened = rawEvents.map((e) => {
     globalSeq += 1;
     const payload = e.payload as Record<string, unknown> | null;
-    const envelope = (payload?.envelope as Record<string, unknown>) ??
+    const envelope =
+      (payload?.envelope as Record<string, unknown>) ??
       // Fallback: the emitter always wraps in `{ envelope: … }`, but for
       // safety in case old rows are bare, synthesize a minimal shape.
       ({
@@ -408,9 +414,7 @@ export async function getSessionEnvelopes(params: {
  * Returns session metadata + aggregate counters that would otherwise
  * require additional round trips from the client.
  */
-export async function getSessionSummary(
-  sessionId: string,
-): Promise<{
+export async function getSessionSummary(sessionId: string): Promise<{
   session: {
     id: string;
     projectId: string;
@@ -489,6 +493,91 @@ export async function getSessionSummary(
  * Race condition on concurrent finishes is acceptable for a denormalized
  * counter (the authoritative run data lives in LifeRun).
  */
+/**
+ * Ensure a `Chat` row exists for a given LifeSession, and link it back via
+ * `LifeSession.chatId`. Idempotent — safe to call on every turn.
+ *
+ * This is the Tier-1 "reuse /chat thread container" wiring: once linked, the
+ * Life session surfaces in the existing `SidebarChatsList` and inherits all
+ * thread-level UX (titles, pinning, visibility, sharing) for free. The Chat
+ * row is metadata only; `LifeRunEvent` remains the source of truth for
+ * conversation history.
+ *
+ * Scope: **logged-in users only**. `Chat.userId` is NOT NULL with a FK to
+ * `user(id)`, so anon / agent consumers can't be linked — callers must gate on
+ * `consumerKind === 'user'` before invoking this helper. Returns the chatId
+ * in use (new or existing).
+ *
+ * Transactional shape:
+ *   - If the session already has a chatId, return it (no writes).
+ *   - Otherwise insert a new Chat row with a placeholder title, update the
+ *     session to point at it, and return the new id. Two writes; wrapped in a
+ *     transaction so a partial failure doesn't leave an orphan Chat row.
+ */
+export async function getOrCreateChatForLifeSession(params: {
+  lifeSessionId: string;
+  userId: string;
+  /** Fallback title if we can't derive one from the user's first message yet. */
+  fallbackTitle: string;
+}): Promise<{ chatId: string; created: boolean }> {
+  // Fast path: session already linked.
+  const existing = await db
+    .select({ chatId: lifeSession.chatId })
+    .from(lifeSession)
+    .where(eq(lifeSession.id, params.lifeSessionId))
+    .limit(1);
+  const existingChatId = existing[0]?.chatId;
+  if (existingChatId) {
+    return { chatId: existingChatId, created: false };
+  }
+
+  // Slow path: create + link atomically.
+  return await db.transaction(async (tx) => {
+    const [chatRow] = await tx
+      .insert(chat)
+      .values({
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        userId: params.userId,
+        title: params.fallbackTitle,
+      })
+      .returning({ id: chat.id });
+    if (!chatRow) {
+      throw new Error(
+        "getOrCreateChatForLifeSession: chat insert returned no row",
+      );
+    }
+    await tx
+      .update(lifeSession)
+      .set({ chatId: chatRow.id })
+      .where(eq(lifeSession.id, params.lifeSessionId));
+    return { chatId: chatRow.id, created: true };
+  });
+}
+
+/**
+ * Update the Chat.title for a Life thread, but only if the current title is
+ * still the placeholder we seeded. Idempotent — turn 2+ is a no-op.
+ *
+ * Keeping this separate from `getOrCreateChatForLifeSession` because title
+ * generation uses an LLM call and must not block the SSE stream. Callers
+ * fire-and-forget this (catching + logging errors) after the first user turn.
+ */
+export async function maybeSetChatTitle(params: {
+  chatId: string;
+  placeholderTitle: string;
+  newTitle: string;
+}): Promise<void> {
+  // Only overwrite if it still matches the placeholder. Protects against
+  // racing with a user-initiated rename.
+  await db
+    .update(chat)
+    .set({ title: params.newTitle, updatedAt: new Date() })
+    .where(
+      and(eq(chat.id, params.chatId), eq(chat.title, params.placeholderTitle)),
+    );
+}
+
 export async function bumpProjectStats(
   projectId: string,
   costCents: number,

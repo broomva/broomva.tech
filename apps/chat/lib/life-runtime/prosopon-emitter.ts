@@ -32,12 +32,12 @@
 
 import "server-only";
 import {
-  makeEnvelope,
   type Envelope,
+  makeEnvelope,
   type ProsoponEvent,
+  ProsoponSession,
   type Scene,
   type SceneNode,
-  ProsoponSession,
 } from "@broomva/prosopon";
 import type { RunEvent } from "./types";
 
@@ -170,6 +170,37 @@ export class ProsoponEmitter {
         ts: nowIso(),
       } as ProsoponEvent);
     }
+  }
+
+  /**
+   * Emit an envelope for the user's turn-starting message.
+   *
+   * Rationale: `LifeRunEvent` is the source of truth for a session. If the
+   * user's message doesn't flow through the envelope log, rehydration can't
+   * reconstruct the user bubble without reading a separate column
+   * (`LifeRun.inputText`). That breaks the single-source-of-truth invariant
+   * and forces every replay surface (web, CLI, operator panel) to know about
+   * the side-channel.
+   *
+   * Shape: a `node_added` under `CHAT_NODE_ID` with a `custom` intent
+   * (`kind: "user.message"`, payload `{ text }`) and a stable id
+   * `user-<turnId>` so diffing / retries are deterministic. We chose `custom`
+   * over promoting `user_message` to a first-class Prosopon intent for now
+   * because the change stays inside `apps/chat` (no `@broomva/prosopon` bump)
+   * and forward-compat is trivial — the adapter already branches on
+   * `custom.kind`.
+   */
+  userTurnStarted(args: { text: string; turnId: string }): Envelope {
+    const node = freshNode(`user-${args.turnId}`, {
+      type: "custom",
+      kind: "user.message",
+      payload: { text: args.text } as Record<string, unknown>,
+    });
+    return this.session.emit({
+      type: "node_added",
+      parent: CHAT_NODE_ID,
+      node,
+    });
   }
 
   /**
@@ -385,8 +416,14 @@ export class ProsoponEmitter {
           type: "file_write",
           path,
           op: writeKind,
-          content: writeKind === "delete" ? undefined : hasContent ? content : undefined,
-          bytes: writeKind === "delete" ? undefined : hasContent ? bytes : undefined,
+          content:
+            writeKind === "delete"
+              ? undefined
+              : hasContent
+                ? content
+                : undefined,
+          bytes:
+            writeKind === "delete" ? undefined : hasContent ? bytes : undefined,
           title: title ? title : undefined,
         });
         yield this.session.emit({
@@ -443,8 +480,7 @@ export class ProsoponEmitter {
         const inputTokens = payloadNumber(event, "inputTokens") ?? 0;
         const outputTokens = payloadNumber(event, "outputTokens") ?? 0;
         const elapsedMs = payloadNumber(event, "elapsedMs") ?? 0;
-        const total =
-          (this.opts.priorCostCents ?? 0) + costCents;
+        const total = (this.opts.priorCostCents ?? 0) + costCents;
         yield this.session.emit({
           type: "signal_changed",
           topic: "haima.spend.cents",
