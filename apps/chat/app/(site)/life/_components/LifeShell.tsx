@@ -70,12 +70,49 @@ export function LifeShell({
   // narrow viewport. Ignored on desktop (≥1280px) where all three are shown.
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
 
+  // Hydration — if the user had a session for this project on this
+  // device, pull its id from localStorage so the hook can restore
+  // chat/fs/signals on mount. URL-routed sessions (`/life/<slug>/<id>`)
+  // land in a follow-up PR (Phase 3 of the session-persistence spec);
+  // localStorage is the Phase 2 carrier for session continuity.
+  //
+  // Why a ref + useState: the ref captures mount-time value (so the
+  // hook sees it on the first render), the state propagates later
+  // updates (first turn of a fresh session writes the new id here,
+  // and we mirror it to localStorage via a separate effect).
+  const initialHydrateIdRef = useRef<string | undefined>(undefined);
+  if (
+    typeof window !== "undefined" &&
+    initialHydrateIdRef.current === undefined
+  ) {
+    initialHydrateIdRef.current =
+      window.localStorage.getItem(`life.${projectSlug}.lastSession`) ??
+      undefined;
+  }
+
   // Live-only run state. The user's first message begins the first turn.
   const [state, setState, liveMeta] = useProsoponRun({
     projectSlug,
     enabled: true,
     autoStart: false,
+    hydrateSessionId: initialHydrateIdRef.current,
   });
+
+  // Mirror the active session id back to localStorage so future page
+  // loads rehydrate the same thread.
+  useEffect(() => {
+    if (!liveMeta.sessionId) return;
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        `life.${projectSlug}.lastSession`,
+        liveMeta.sessionId,
+      );
+    } catch {
+      // Quota / private-mode failures are non-fatal; worst case is the
+      // user loses session continuity on next reload.
+    }
+  }, [projectSlug, liveMeta.sessionId]);
 
   const showPaymentBanner =
     liveMeta.status === "payment-required" && !!liveMeta.paymentQuote;

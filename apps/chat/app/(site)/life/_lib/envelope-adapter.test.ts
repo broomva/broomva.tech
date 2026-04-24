@@ -507,4 +507,221 @@ describe("EnvelopeAdapter", () => {
       expect(out.reset).toBe(false);
     }
   });
+
+  /**
+   * Hydration-replay parity. Locks in that feeding a historical
+   * envelope sequence through the adapter + reducer reconstructs
+   * the same logical state you'd see at live-stream time. This is
+   * the contract the /state endpoint relies on (Phase 2 session
+   * persistence, spec:
+   * docs/superpowers/specs/2026-04-24-life-session-persistence.md).
+   */
+  it("hydration replay: feeding a full turn sequence reconstructs state", async () => {
+    const { applyReplayEvent, EMPTY_REPLAY_STATE } = await import(
+      "./reducer"
+    );
+    const adapter = new EnvelopeAdapter();
+    let state = EMPTY_REPLAY_STATE;
+
+    // Simulated turn: user message → thinking → stream → fs write → nous.
+    // Each env() call is what the server persisted to LifeRunEvent.
+    const sequence = [
+      env({
+        type: "scene_reset",
+        scene: {
+          id: "s",
+          root: {
+            id: "root",
+            intent: { type: "section", title: "Sentinel" },
+            children: [],
+            bindings: [],
+            actions: [],
+            attrs: {},
+            lifecycle: { created_at: new Date().toISOString() },
+          },
+          signals: {},
+          hints: {},
+        },
+      }),
+      env({
+        type: "node_added",
+        parent: "chat",
+        node: {
+          id: "msg-a1",
+          intent: { type: "section", title: "Reasoning", collapsible: true },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      env({
+        type: "node_updated",
+        id: "msg-a1",
+        patch: {
+          lifecycle: {
+            created_at: new Date().toISOString(),
+            status: { kind: "resolved" },
+          },
+        },
+      }),
+      env({
+        type: "node_added",
+        parent: "chat",
+        node: {
+          id: "stream-a1",
+          intent: { type: "stream", id: "stream-a1", kind: "text" },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      env({
+        type: "stream_chunk",
+        id: "stream-a1",
+        chunk: {
+          seq: 1,
+          payload: { encoding: "text", text: "Checklist " },
+          final_: false,
+        },
+      }),
+      env({
+        type: "stream_chunk",
+        id: "stream-a1",
+        chunk: {
+          seq: 2,
+          payload: { encoding: "text", text: "landing." },
+          final_: false,
+        },
+      }),
+      env({
+        type: "node_added",
+        parent: "workspace",
+        node: {
+          id: "fs-note-1",
+          intent: {
+            type: "file_write",
+            path: "notes/audit.md",
+            op: "create",
+            content: "# Audit\n",
+            title: "Audit report",
+            bytes: 8,
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+      env({
+        type: "signal_changed",
+        topic: TOPICS.NOUS_COMPOSITE,
+        value: { Scalar: 0.82 },
+        ts: new Date().toISOString(),
+      }),
+      env({
+        type: "signal_changed",
+        topic: TOPICS.NOUS_BAND,
+        value: { Scalar: "good" },
+        ts: new Date().toISOString(),
+      }),
+    ];
+
+    for (const e of sequence) {
+      const out = adapter.feed(e, 0);
+      if (out.reset) state = EMPTY_REPLAY_STATE;
+      for (const ev of out.replay) {
+        state = applyReplayEvent(state, ev);
+      }
+    }
+
+    // Verify the reconstructed state matches what a live-stream user
+    // would have seen after the turn completed:
+    expect(state.messages.length).toBe(1);
+    expect(state.messages[0]?.id).toBe("a1");
+    expect(state.messages[0]?.text).toBe("Checklist landing.");
+    expect(state.fsOps.length).toBe(1);
+    expect(state.fsOps[0]?.path).toBe("notes/audit.md");
+    expect(state.fsOps[0]?.op).toBe("create");
+    expect(state.fsOps[0]?.content).toBe("# Audit\n");
+    expect(state.nous).toEqual({
+      score: 0.82,
+      band: "good",
+      note: "",
+    });
+  });
+
+  /**
+   * Idempotency: feeding the same envelopes twice through a fresh
+   * adapter must produce identical state. Critical for hydration —
+   * a page refresh during an in-flight fetch must not accumulate
+   * state when the replay re-runs.
+   */
+  it("hydration replay: re-feeding same envelopes produces same state", async () => {
+    const { applyReplayEvent, EMPTY_REPLAY_STATE } = await import(
+      "./reducer"
+    );
+
+    const fold = (envelopes: Envelope[]) => {
+      const adapter = new EnvelopeAdapter();
+      let state = EMPTY_REPLAY_STATE;
+      for (const e of envelopes) {
+        const out = adapter.feed(e, 0);
+        if (out.reset) state = EMPTY_REPLAY_STATE;
+        for (const ev of out.replay) {
+          state = applyReplayEvent(state, ev);
+        }
+      }
+      return state;
+    };
+
+    const sequence: Envelope[] = [
+      env({
+        type: "scene_reset",
+        scene: {
+          id: "s",
+          root: {
+            id: "root",
+            intent: { type: "section", title: "X" },
+            children: [],
+            bindings: [],
+            actions: [],
+            attrs: {},
+            lifecycle: { created_at: new Date().toISOString() },
+          },
+          signals: {},
+          hints: {},
+        },
+      }),
+      env({
+        type: "node_added",
+        parent: "workspace",
+        node: {
+          id: "fs-1",
+          intent: {
+            type: "file_write",
+            path: "a.md",
+            op: "create",
+            content: "one",
+            bytes: 3,
+          },
+          children: [],
+          bindings: [],
+          actions: [],
+          attrs: {},
+          lifecycle: { created_at: new Date().toISOString() },
+        },
+      }),
+    ];
+
+    const a = fold(sequence);
+    const b = fold(sequence);
+    expect(a.fsOps.length).toBe(b.fsOps.length);
+    expect(a.fsOps[0]?.path).toBe(b.fsOps[0]?.path);
+    expect(a.messages.length).toBe(b.messages.length);
+  });
 });

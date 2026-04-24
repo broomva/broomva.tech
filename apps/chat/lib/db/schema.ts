@@ -1801,4 +1801,114 @@ export const lifeRunEvent = pgTable(
 
 export type LifeRunEvent = InferSelectModel<typeof lifeRunEvent>;
 
+/**
+ * Periodic scene snapshot for bounded replay. Captures the full Scene
+ * tree + signal cache at a specific envelope seq so long sessions don't
+ * have to replay every event on page load. See
+ * `docs/superpowers/specs/2026-04-24-life-session-persistence.md` for
+ * the full architecture (Layer 3 snapshot policy, Phase 4 cadence).
+ *
+ * The event log stays authoritative — snapshots are a read-side
+ * optimization only. Regenerating from events MUST produce the same
+ * scene + signals.
+ */
+export const lifeRunSnapshot = pgTable(
+  "LifeRunSnapshot",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sessionId: uuid("sessionId")
+      .notNull()
+      .references(() => lifeSession.id, { onDelete: "cascade" }),
+    runId: uuid("runId")
+      .notNull()
+      .references(() => lifeRun.id, { onDelete: "cascade" }),
+    /** Snapshot is accurate up to and INCLUDING this envelope seq. */
+    atEventSeq: integer("atEventSeq").notNull(),
+    sceneJson: json("sceneJson").notNull(),
+    signalsJson: json("signalsJson").notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    LifeRunSnapshot_session_seq_idx: index(
+      "LifeRunSnapshot_session_seq_idx",
+    ).on(t.sessionId, t.atEventSeq),
+  }),
+);
+
+export type LifeRunSnapshot = InferSelectModel<typeof lifeRunSnapshot>;
+
+/**
+ * Project-level persistent filesystem. Artifacts written by the agent
+ * that survive across all sessions for this project — the agent's
+ * long-term memory for this workspace. Written by the `persist` tool
+ * (future Phase 5) or promoted from a session file.
+ */
+export const lifeProjectFile = pgTable(
+  "LifeProjectFile",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    projectId: uuid("projectId")
+      .notNull()
+      .references(() => lifeProject.id, { onDelete: "cascade" }),
+    /** Virtual path within the project, e.g. "notes/audit-2026-04.md". */
+    path: varchar("path", { length: 1024 }).notNull(),
+    /** Content hash (sha256 hex) — matches the Vercel Blob object. */
+    blobSha: varchar("blobSha", { length: 64 }).notNull(),
+    /** Stable Vercel Blob URL. */
+    blobUrl: text("blobUrl").notNull(),
+    sizeBytes: integer("sizeBytes").notNull(),
+    mime: varchar("mime", { length: 128 }),
+    /** Consumer id of the writer (user.id, anon-session id, or wallet). */
+    writtenBy: varchar("writtenBy", { length: 256 }).notNull(),
+    /** Origin session — nullable after session deletion for audit. */
+    sessionId: uuid("sessionId").references(() => lifeSession.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => ({
+    LifeProjectFile_project_path_uq: uniqueIndex(
+      "LifeProjectFile_project_path_uq",
+    ).on(t.projectId, t.path),
+    LifeProjectFile_written_by_idx: index(
+      "LifeProjectFile_written_by_idx",
+    ).on(t.writtenBy),
+  }),
+);
+
+export type LifeProjectFile = InferSelectModel<typeof lifeProjectFile>;
+
+/**
+ * Session-level ephemeral filesystem. Scratch space during a thread —
+ * the agent's working memory. Cascades on session delete. A session
+ * file promoted to project level is duplicated into LifeProjectFile;
+ * the session row stays for transcript fidelity.
+ */
+export const lifeSessionFile = pgTable(
+  "LifeSessionFile",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sessionId: uuid("sessionId")
+      .notNull()
+      .references(() => lifeSession.id, { onDelete: "cascade" }),
+    path: varchar("path", { length: 1024 }).notNull(),
+    blobSha: varchar("blobSha", { length: 64 }).notNull(),
+    blobUrl: text("blobUrl").notNull(),
+    sizeBytes: integer("sizeBytes").notNull(),
+    mime: varchar("mime", { length: 128 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    LifeSessionFile_session_path_uq: uniqueIndex(
+      "LifeSessionFile_session_path_uq",
+    ).on(t.sessionId, t.path),
+  }),
+);
+
+export type LifeSessionFile = InferSelectModel<typeof lifeSessionFile>;
+
 export const schema = { user, session, account, verification };
