@@ -31,8 +31,33 @@ import { z } from "zod";
 import { getLanguageModel } from "@/lib/ai/providers";
 import type { AppModelId } from "@/lib/ai/app-model-id";
 import type { LifeProject } from "@/lib/db/schema";
-import type { Runner, RunnerContext } from "./runner-dispatch";
 import type { ModuleTypeId, RunEvent } from "./types";
+
+// ---------------------------------------------------------------------------
+// Runner interface (previously exported from runner-dispatch.ts). Kept inline
+// now that RealAgentRunner is the only implementation — the legacy
+// ScenarioReplayRunner was decommissioned alongside the `/api/life/run/<slug>`
+// endpoint; only `/api/life/run/<slug>/prosopon` remains, and it constructs
+// RealAgentRunner directly.
+// ---------------------------------------------------------------------------
+
+export interface RunnerContext {
+  projectSlug: string;
+  moduleTypeId: string;
+  input: unknown;
+  maxCostCents: number;
+  /** Terminal cost attribution when the run finishes. */
+  onFinish?: (cost: {
+    llmCents: number;
+    model?: string;
+    provider?: string;
+  }) => void;
+}
+
+export interface Runner {
+  id: ModuleTypeId;
+  run(ctx: RunnerContext): AsyncIterable<RunEvent>;
+}
 
 // ---------------------------------------------------------------------------
 // Module-type-specific system prompt prefix — enough to give the agent a

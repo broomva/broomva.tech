@@ -1,7 +1,6 @@
 "use client";
 
-import { LIFE_GRAPH } from "../_lib/mock-workspace";
-import type { FsStyle, MiddleMode, ReplayState } from "../_lib/types";
+import type { MiddleMode, ReplayState } from "../_lib/types";
 import { FileTree } from "./FileTree";
 import { Journal } from "./Journal";
 import { KnowledgeGraph } from "./KnowledgeGraph";
@@ -14,8 +13,6 @@ interface Props {
   state: ReplayState;
   toolHighlight: string | null;
   setToolHighlight: (id: string | null) => void;
-  fsStyle: FsStyle;
-  journalRich: boolean;
   lastOpTs: number;
 }
 
@@ -33,16 +30,14 @@ export function MiddleColumn({
   state,
   toolHighlight,
   setToolHighlight,
-  fsStyle,
-  journalRich,
   lastOpTs,
 }: Props) {
   const dotByMode: Record<MiddleMode, boolean> = {
     files: state.fsOps.length > 0,
     journal: state.journal.length > 0,
-    timeline: false,
+    timeline: state.journal.length > 0,
     graph: false,
-    spaces: true,
+    spaces: false,
   };
   return (
     <div className="col col--middle">
@@ -73,25 +68,16 @@ export function MiddleColumn({
         >
           {mode === "files" && <>{state.fsOps.length} ops</>}
           {mode === "journal" && <>{state.journal.length} events</>}
-          {mode === "graph" && (
-            <>
-              {LIFE_GRAPH.nodes.length} nodes · {LIFE_GRAPH.edges.length} edges
-            </>
-          )}
+          {mode === "timeline" && <>{state.journal.length} events</>}
         </div>
       </div>
       <div className="col__body">
         {mode === "files" && (
-          <FileTree
-            fsOps={state.fsOps}
-            fsStyle={fsStyle}
-            lastOpTs={lastOpTs}
-          />
+          <FileTree fsOps={state.fsOps} lastOpTs={lastOpTs} />
         )}
         {mode === "journal" && (
           <Journal
             events={state.journal}
-            rich={journalRich}
             highlight={toolHighlight}
             setHighlight={setToolHighlight}
           />

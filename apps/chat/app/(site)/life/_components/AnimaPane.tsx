@@ -1,7 +1,6 @@
 "use client";
 
-import { LIFE_ANIMA } from "../_lib/mock-workspace";
-import type { LiveRunMeta } from "../_lib/use-live-run";
+import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
 export interface LifeUserIdentity {
   /** Authed user id, or anon-session id, or "anonymous" for no-cookie guests. */
@@ -17,12 +16,9 @@ export interface LifeUserIdentity {
 }
 
 interface Props {
-  /** Authed / anon / agent identity threaded from the server page. */
   user?: LifeUserIdentity;
-  /** Project slug to personalize the soul. */
   projectSlug?: string;
-  /** Present when live-streaming is active. */
-  liveMeta?: LiveRunMeta;
+  liveMeta?: ProsoponRunMeta;
 }
 
 function tierFor(kind: LifeUserIdentity["kind"] | undefined): string {
@@ -31,18 +27,33 @@ function tierFor(kind: LifeUserIdentity["kind"] | undefined): string {
   return "guest";
 }
 
-function deriveSoul(user: LifeUserIdentity | undefined, projectSlug?: string) {
-  if (!user) return LIFE_ANIMA;
-  const handle = user.handle ?? user.name.toLowerCase().replace(/\s+/g, "-");
+interface AnimaSoul {
+  name: string;
+  soul: string;
+  tier: string;
+  did: string;
+  beliefs: string[];
+  trust: Record<string, number>;
+}
+
+function deriveSoul(
+  user: LifeUserIdentity | undefined,
+  projectSlug: string | undefined,
+): AnimaSoul {
+  const name = user?.name ?? "Guest";
+  const handle =
+    user?.handle ?? name.toLowerCase().replace(/\s+/g, "-");
+  const kind = user?.kind ?? "anon";
+  const id = user?.id ?? "anonymous";
   return {
-    name: user.name,
+    name,
     soul: `soul:life.${handle}.${projectSlug ?? "broomva"}`,
-    tier: tierFor(user.kind),
-    did: `did:life:${user.id.slice(0, 22)}${user.id.length > 22 ? "…" : ""}`,
+    tier: tierFor(kind),
+    did: `did:life:${id.slice(0, 22)}${id.length > 22 ? "…" : ""}`,
     beliefs:
-      user.kind === "user"
+      kind === "user"
         ? [
-            `${user.name} is the authenticated principal for this run.`,
+            `${name} is the authenticated principal for this run.`,
             "Every action produces an immutable trace in LifeRunEvent.",
             "Payments settle through Haima; x402 for external callers.",
           ]
@@ -52,25 +63,18 @@ function deriveSoul(user: LifeUserIdentity | undefined, projectSlug?: string) {
             "Sign in to persist memory across sessions and unlock pro tier.",
           ],
     trust:
-      user.kind === "user"
+      kind === "user"
         ? { user: 0.92, workspace: 0.78, peers: 0.71 }
         : { user: 0.4, workspace: 0.3, peers: 0.5 },
-    session: liveRunIdShort(liveMeta(undefined)),
   };
 }
 
-function liveMeta(_x: undefined): string {
-  return "—";
-}
-
-export function AnimaPane({ user, projectSlug, liveMeta: live }: Props) {
-  const isLive = !!live;
-  const a = isLive ? deriveSoul(user, projectSlug) : LIFE_ANIMA;
-  // Override session from live run id if present.
+export function AnimaPane({ user, projectSlug, liveMeta }: Props) {
+  const a = deriveSoul(user, projectSlug);
   const sessionLabel =
-    live?.sessionId?.slice(0, 8) ??
-    live?.runId?.slice(0, 8) ??
-    (isLive ? "idle" : a.session);
+    liveMeta?.sessionId?.slice(0, 8) ??
+    liveMeta?.runId?.slice(0, 8) ??
+    "idle";
 
   return (
     <div className="right-pane">
@@ -79,9 +83,7 @@ export function AnimaPane({ user, projectSlug, liveMeta: live }: Props) {
         style={{ justifyContent: "space-between", marginBottom: 10 }}
       >
         <div className="eyebrow">Anima · identity</div>
-        <span className={`pill ${isLive ? "pill--accent" : ""}`}>
-          {isLive ? `live · ${a.tier}` : `demo · ${a.tier}`}
-        </span>
+        <span className="pill pill--accent">live · {a.tier}</span>
       </div>
       <div
         className="gauge"
@@ -121,13 +123,11 @@ export function AnimaPane({ user, projectSlug, liveMeta: live }: Props) {
           {sessionLabel}
         </div>
         <div className="gauge__sub">
-          {isLive
-            ? user?.email
-              ? `authed · ${user.email}`
-              : user?.kind === "anon"
-                ? "anon cookie"
-                : "no cookie · x402 eligible"
-            : "demo session"}
+          {user?.email
+            ? `authed · ${user.email}`
+            : user?.kind === "anon"
+              ? "anon cookie"
+              : "no cookie · x402 eligible"}
         </div>
       </div>
       <div className="section">Beliefs (active)</div>
@@ -171,8 +171,4 @@ export function AnimaPane({ user, projectSlug, liveMeta: live }: Props) {
       ))}
     </div>
   );
-}
-
-function liveRunIdShort(x: string | undefined): string {
-  return x ?? "—";
 }

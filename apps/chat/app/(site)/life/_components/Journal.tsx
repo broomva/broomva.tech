@@ -5,12 +5,11 @@ import type { LifeJournalEntry } from "../_lib/types";
 
 interface Props {
   events: LifeJournalEntry[];
-  rich: boolean;
   highlight: string | null;
   setHighlight: (id: string | null) => void;
 }
 
-export function Journal({ events, rich, highlight, setHighlight }: Props) {
+export function Journal({ events, highlight, setHighlight }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -18,23 +17,15 @@ export function Journal({ events, rich, highlight, setHighlight }: Props) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [events.length]);
   return (
-    <div
-      className={`journal ${rich ? "journal--rich" : ""}`}
-      ref={scrollRef}
-    >
+    <div className="journal journal--rich" ref={scrollRef}>
       {events.length === 0 && (
-        <div
-          style={{
-            padding: 24,
-            color: "var(--ag-text-muted)",
-            fontSize: 11.5,
-            textAlign: "center",
-          }}
-        >
-          <div className="eyebrow" style={{ marginBottom: 8 }}>
-            Lago · journal
+        <div className="pane-empty pane-empty--inline">
+          <div className="pane-empty__title">Journal is empty</div>
+          <div className="pane-empty__body">
+            Every tool call, filesystem op, and judgement from this session
+            will stream here in order.
           </div>
-          Events from the current tick will stream here.
+          <div className="pane-empty__meta">source · Lago event journal</div>
         </div>
       )}
       {events.map((e) => {

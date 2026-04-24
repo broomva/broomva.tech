@@ -13,10 +13,8 @@ interface Props {
   running: boolean;
   toolHighlight: string | null;
   setToolHighlight: (id: string | null) => void;
-  /** When present, Composer is a real send button that routes to /api/life/run. */
+  /** Send handler — routes to /api/life/run/<slug>/prosopon. */
   onSendMessage?: (text: string) => void;
-  /** Label for the "mock | live" chip in the column header. */
-  sourceLabel?: "mock" | "live";
   /** Model identifier to display in the Composer footer. */
   modelLabel?: string;
   /** Hint lines for the empty state — swapped per project. */
@@ -33,7 +31,6 @@ export function ChatColumn({
   toolHighlight,
   setToolHighlight,
   onSendMessage,
-  sourceLabel = "mock",
   modelLabel,
   emptyStateTitle,
   emptyStateHint,
@@ -72,27 +69,7 @@ export function ChatColumn({
       <div className="col__header">
         <div className="row" style={{ gap: 10 }}>
           <span className="eyebrow">Chat · Arcan</span>
-          <span
-            className={`pill ${sourceLabel === "live" ? "pill--accent" : ""}`}
-          >
-            {sourceLabel}
-          </span>
-        </div>
-        <div className="row" style={{ gap: 4 }}>
-          <button
-            type="button"
-            className="btn btn--ghost btn--icon"
-            title="New session"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost btn--icon"
-            title="Sessions"
-          >
-            ☰
-          </button>
+          <span className="pill pill--accent">live</span>
         </div>
       </div>
       <div className="chat-scroll" ref={scrollRef}>

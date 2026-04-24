@@ -1,9 +1,10 @@
-// Typed contracts for the /life UI surface.
-// Layer 2 / 3 / 4 follow-up notes live in the project-map.ts and PR description.
+// Typed contracts for the /life UI surface. Live-only — the legacy
+// scenario-replay path + mock workspace are gone. Everything here is either
+// (a) derived from a Prosopon envelope stream through EnvelopeAdapter, or
+// (b) configuration the user controls from the Tweaks panel.
 
-export type ScenarioId = "refactor" | "ingest" | "research" | "materiales";
+// ---- Pane modes (user-controllable from Tweaks) ----
 
-export type LayoutMode = "classic" | "experimental";
 export type MiddleMode = "files" | "journal" | "timeline" | "graph" | "spaces";
 export type RightMode =
   | "preview"
@@ -12,22 +13,18 @@ export type RightMode =
   | "autonomic"
   | "haima"
   | "anima";
-export type FsStyle = "finder" | "shimmer" | "heartbeat" | "ticker";
-export type MetricsDensity = "minimal" | "medium" | "rich";
+
+// On mobile, the shell collapses to a single column. The user switches
+// between the three "logical" columns — chat, workspace (middle), inspector
+// (right) — via a bottom tab bar. Desktop shows all three in a grid.
+export type MobileTab = "chat" | "workspace" | "inspector";
 
 export interface TweaksState {
-  layout: LayoutMode;
   middleMode: MiddleMode;
   rightMode: RightMode;
-  fsStyle: FsStyle;
-  journalRich: boolean;
-  metricsDensity: MetricsDensity;
-  orbs: boolean;
-  scenario: ScenarioId;
-  autoplay: boolean;
 }
 
-// ---- Replay scenario events ----
+// ---- Live state events + shape ----
 
 export type JournalKind =
   | "tool"
@@ -37,6 +34,13 @@ export type JournalKind =
   | "autonomic"
   | "haima";
 
+export type FsOpKind = "read" | "write" | "create" | "delete";
+
+/**
+ * Replay events feed the `applyReplayEvent` reducer. On the live wire they
+ * are synthesized by `EnvelopeAdapter` from Prosopon envelopes — the shape
+ * lives on for reducer convenience, not because it reflects the wire.
+ */
 export type ReplayEvent =
   | { t: number; kind: "user"; text: string }
   | { t: number; kind: "agent-thinking-start"; id: string }
@@ -77,9 +81,7 @@ export type ReplayEvent =
       text: string;
     };
 
-export type FsOpKind = "read" | "write" | "create" | "delete";
-
-// ---- Replay state shape ----
+// ---- Reduced state shape — what the panes render ----
 
 export interface LifeTool {
   id: string;
@@ -89,7 +91,7 @@ export interface LifeTool {
   result: string | null;
   status: "running" | "ok";
   t: number;
-  /** Timestamp (ms since start) when tool_result landed. Used by Vigil pane. */
+  /** Timestamp when tool_result landed — used by Vigil pane for duration. */
   endT?: number;
 }
 
@@ -110,8 +112,7 @@ export interface LifeFsOp {
   path: string;
   op: FsOpKind;
   t: number;
-  /** Optional payload for the file — when the agent writes a note, the
-   *  body lands here so the Preview pane can render the real content. */
+  /** Raw payload for Preview pane when the agent wrote a note. */
   content?: string;
   title?: string;
   bytes?: number;
@@ -149,85 +150,10 @@ export interface ReplayState {
   t: number;
 }
 
-// ---- Workspace mock data ----
+// ---- File-tree node (live-derived only) ----
 
 export interface LifeFsNode {
   path: string;
   type: "dir" | "file";
   children?: LifeFsNode[];
-}
-
-export interface LifeTraceSpan {
-  name: string;
-  kind: "root" | "span" | "tool" | "llm";
-  start: number;
-  dur: number;
-  color: "tool" | "llm" | "default";
-}
-
-export interface LifeHomeoPillar {
-  value: number;
-  target: number;
-  sub: string;
-}
-
-export interface LifeHomeo {
-  operational: LifeHomeoPillar;
-  cognitive: LifeHomeoPillar;
-  economic: LifeHomeoPillar;
-}
-
-export interface LifeHaima {
-  session_spend: number;
-  session_budget: number;
-  tokens_in: number;
-  tokens_out: number;
-  x402_txs: number;
-  last_pay: string;
-}
-
-export interface LifeJudge {
-  axis: string;
-  score: number;
-  band: "good" | "warn";
-  note: string;
-}
-
-export interface LifeAnima {
-  name: string;
-  soul: string;
-  tier: string;
-  did: string;
-  beliefs: string[];
-  trust: Record<string, number>;
-  session: string;
-}
-
-export interface LifePeer {
-  name: string;
-  role: string;
-  lat: number;
-  status: string;
-  hue: string;
-}
-
-export interface LifeGraphNode {
-  id: string;
-  label: string;
-  x: number;
-  y: number;
-  kind: "concept" | "paper" | "artifact";
-  r: number;
-  fresh?: boolean;
-}
-
-export interface LifeGraphEdge {
-  a: string;
-  b: string;
-  fresh?: boolean;
-}
-
-export interface LifeGraph {
-  nodes: LifeGraphNode[];
-  edges: LifeGraphEdge[];
 }

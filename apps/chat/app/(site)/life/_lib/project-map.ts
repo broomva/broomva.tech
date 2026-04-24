@@ -1,21 +1,14 @@
-// Mapping between URL slug → seed project metadata + replay scenario.
-// For Phase A only the two demo projects below are valid; everything else 404s.
-// Phase C will add user-created projects via /life/new.
-
-import type { ScenarioId } from "./types";
+// URL slug → seed project metadata. Production projects are always live —
+// there is no scripted scenario path anymore. User-created projects can be
+// added at runtime via /life/new (Phase C), at which point this registry
+// will be merged with a DB-backed list.
 
 export type ProjectChipColor = "emerald" | "amber" | "violet";
 
 export interface LifeProjectInfo {
-  scenarioId: ScenarioId;
   displayName: string;
   eyebrow: string;
   chipColor: ProjectChipColor;
-  /**
-   * When true, the shell hits /api/life/run/<slug> over SSE instead of
-   * running the in-browser scenario replay clock.
-   */
-  liveStream: boolean;
   /** Empty-state title above the composer prompt. */
   emptyTitle?: string;
   /** Empty-state hint describing what the project does. */
@@ -26,11 +19,9 @@ export interface LifeProjectInfo {
 
 export const PROJECTS: Record<string, LifeProjectInfo> = {
   sentinel: {
-    scenarioId: "refactor",
     displayName: "Sentinel — property-ops WO audit",
     eyebrow: "sentinel-property-ops · exclusive-rentals",
     chipColor: "emerald",
-    liveStream: true,
     emptyTitle: "What should Sentinel audit?",
     emptyHint:
       "Describe a work order, a vendor pattern, or a portfolio you want reviewed. Sentinel flags duplicates, weak closures, follow-up risk, and missing evidence.",
@@ -52,21 +43,17 @@ export const PROJECTS: Record<string, LifeProjectInfo> = {
     ],
   },
   materiales: {
-    scenarioId: "research",
     displayName: "Materiales Intel — precio unitario en vivo",
     eyebrow: "materiales-intel · _pending-constructora",
     chipColor: "amber",
-    liveStream: false,
     emptyTitle: "¿Qué material investigamos?",
     emptyHint:
       "Describe el material (familia, unidad, región) y el agente consulta proveedores colombianos en vivo, con precios citados.",
   },
   "sentinel-paid": {
-    scenarioId: "refactor",
     displayName: "Sentinel Pro — paid demo",
     eyebrow: "sentinel-property-ops · x402 @ $0.50/run",
     chipColor: "violet",
-    liveStream: true,
     emptyTitle: "Sentinel Pro — paid via x402",
     emptyHint:
       "Same audit engine as /life/sentinel. External callers settle $0.50/run via x402 — you'll see the payment approval flow.",

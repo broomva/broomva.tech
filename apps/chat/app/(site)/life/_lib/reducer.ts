@@ -1,11 +1,16 @@
-// Replay clock — drives the streaming agent UI from a typed scenario script.
-// Client-only (uses requestAnimationFrame + performance.now).
-// SSR-safe: all browser globals are guarded.
+// Live-state reducer for /life panes.
+//
+// Each `ReplayEvent` folds into the `ReplayState` the panes render. On the
+// live wire, events come from the `EnvelopeAdapter` which translates Prosopon
+// envelopes. The reducer itself is pure — given the same events in the same
+// order, the same state is produced. SSR / Node / browser all run it
+// identically.
+//
+// (Previously lived in `use-replay.ts` alongside a scenario-replay clock.
+// The clock was removed along with the rest of the prototype demo surface;
+// this file preserves the reducer so Prosopon-driven state folding still
+// works.)
 
-"use client";
-
-import type { Dispatch, SetStateAction } from "react";
-import { useEffect, useRef, useState } from "react";
 import type {
   LifeFsOp,
   LifeJournalEntry,
@@ -23,9 +28,6 @@ export const EMPTY_REPLAY_STATE: ReplayState = {
   autonomic: [],
   t: 0,
 };
-
-// Back-compat alias (keep EMPTY_STATE used by the hook body below).
-const EMPTY_STATE = EMPTY_REPLAY_STATE;
 
 function formatTime(ms: number): string {
   const total = Math.floor(ms / 1000);
@@ -232,81 +234,4 @@ export function applyReplayEvent(s: ReplayState, ev: ReplayEvent): ReplayState {
     default:
       return s;
   }
-}
-
-export type ReplayHookResult = [
-  ReplayState,
-  Dispatch<SetStateAction<ReplayState>>,
-];
-
-export function useReplay(
-  script: ReplayEvent[],
-  playing: boolean,
-): ReplayHookResult {
-  const [state, setState] = useState<ReplayState>(EMPTY_STATE);
-  const timer = useRef<number | null>(null);
-  const idxRef = useRef(0);
-  const startRef = useRef<number | null>(null);
-  const tRef = useRef(0);
-
-  // Reset whenever the underlying scenario script changes.
-  useEffect(() => {
-    setState(EMPTY_STATE);
-    idxRef.current = 0;
-    startRef.current = null;
-    tRef.current = 0;
-  }, [script]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!playing) {
-      if (timer.current !== null) {
-        cancelAnimationFrame(timer.current);
-        timer.current = null;
-      }
-      return;
-    }
-    startRef.current = performance.now() - tRef.current;
-
-    const step = (now: number) => {
-      const elapsed = now - (startRef.current ?? now);
-      tRef.current = elapsed;
-      let didUpdate = false;
-      setState((s) => {
-        let next: ReplayState = { ...s, t: elapsed };
-        while (
-          idxRef.current < script.length &&
-          script[idxRef.current]!.t <= elapsed
-        ) {
-          const ev = script[idxRef.current++]!;
-          next = applyReplayEvent(next, ev);
-          didUpdate = true;
-        }
-        return didUpdate || next.t !== s.t ? next : s;
-      });
-      if (idxRef.current < script.length) {
-        timer.current = requestAnimationFrame(step);
-      } else {
-        timer.current = null;
-      }
-    };
-
-    timer.current = requestAnimationFrame(step);
-    return () => {
-      if (timer.current !== null) {
-        cancelAnimationFrame(timer.current);
-        timer.current = null;
-      }
-    };
-    // We deliberately depend only on `playing` and `script` — start ref
-    // captures resume time so internal state doesn't retrigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, script]);
-
-  // Keep tRef in sync when state.t changes externally (e.g. reset).
-  useEffect(() => {
-    tRef.current = state.t;
-  }, [state.t]);
-
-  return [state, setState];
 }
