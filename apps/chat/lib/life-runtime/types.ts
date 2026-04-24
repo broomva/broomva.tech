@@ -2,10 +2,11 @@
  * Life Runtime — shared types for the /life/[project] surface.
  *
  * Mirrors the Drizzle schema (apps/chat/lib/db/schema.ts, LifeProject et al.)
- * but adds the runtime-only types (PaymentMode, ConsumerIdentity, RunEvent)
+ * but adds the runtime-only types (PaymentMode, ConsumerIdentity, RunnerYield)
  * that don't live in the DB.
  */
 
+import type { TextStreamPart, ToolSet } from "ai";
 import { z } from "zod";
 
 /**
@@ -43,32 +44,59 @@ export type ModuleTypeId =
   | "module-builder"; // future
 
 /**
- * Event types streamed from the runner over SSE. Subset maps to the Life
- * Interface UI (_components/ChatColumn, MiddleColumn.Journal, etc.). Any new
- * type requires UI to gracefully ignore unknown types — keeps the protocol
- * additive.
+ * Runner → emitter wire. Discriminated union separating two concerns that
+ * were previously conflated under a single `RunEvent` type:
+ *
+ *   1. **LLM stream parts** ("kind: 'llm'") — AI SDK v6 `fullStream` items,
+ *      passed through verbatim. Zero re-encoding. This gives us parallel
+ *      tool-call correlation, Claude thinking signatures, source/file/raw
+ *      parts, and per-step usage for free — anything AI SDK supports now or
+ *      adds in the future flows end-to-end without a patch to the middle
+ *      layer.
+ *
+ *   2. **Domain events** ("kind: 'domain'") — runtime-level things our agent
+ *      emits *on top of* the LLM stream: workspace file operations, Nous
+ *      self-evaluation, Autonomic pillar notes, aggregated cost/tokens.
+ *      These are genuinely ours and don't belong in AI SDK's vocabulary.
+ *
+ * The rationale for this split is documented in
+ * `docs/superpowers/specs/2026-04-24-life-runner-aisdk-passthrough.md`.
+ *
+ * The Prosopon emitter branches on `.kind` and routes each half to its own
+ * translator, so new AI-SDK part types only require a single branch in
+ * `translateLLMPart` (or a no-op pass) rather than a 4-file surgery.
  */
-export type RunEventType =
-  | "run_started"
-  | "thinking_start"
-  | "thinking_delta"
-  | "thinking_end"
-  | "text_start"
-  | "text_delta"
-  | "text_end"
-  | "tool_call"
-  | "tool_result"
-  | "fs_op"
-  | "nous_score"
-  | "autonomic_event"
-  | "error"
-  | "done";
 
-export interface RunEvent {
-  type: RunEventType;
+/**
+ * The full AI SDK v6 `fullStream` part union, parameterised over any
+ * `ToolSet`. Re-exported here so the rest of the runtime can import it from
+ * one place; if AI SDK evolves to v7, this alias is the single update
+ * point.
+ */
+export type LLMStreamPart = TextStreamPart<ToolSet>;
+
+/**
+ * Runtime-level events our agent emits alongside the LLM stream. Kept small
+ * and stable; every variant has a well-defined payload contract that's
+ * independent of any specific model / provider / SDK version.
+ */
+export type DomainEventType =
+  | "run_started" // scene already reset by emitter.runStarted(); this is metadata-only
+  | "fs_op" // workspace file op (from the `note` tool today; generic tool bridge later)
+  | "nous_score" // self-eval emitted post-stream by the runner
+  | "autonomic_event" // pillar note (economic / cognitive / operational)
+  | "done" // aggregated per-run totals (cost, tokens, elapsed, finishReason)
+  | "error"; // runtime-level error surface (separate from AI SDK `error` parts)
+
+export interface DomainEvent {
+  type: DomainEventType;
   payload: Record<string, unknown>;
   at: string; // ISO timestamp
 }
+
+export type RunnerYield =
+  | { kind: "llm"; part: LLMStreamPart; at: string }
+  | { kind: "domain"; event: DomainEvent };
 
 /**
  * Outcome of a billing decision, taken BEFORE the runner executes. Returned
