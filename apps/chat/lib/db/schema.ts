@@ -1660,10 +1660,20 @@ export const lifeSession = pgTable(
     projectId: uuid("projectId")
       .notNull()
       .references(() => lifeProject.id, { onDelete: "cascade" }),
-    /** 'user' | 'anon' */
+    /**
+     * 'user' | 'anon' | 'agent'
+     *
+     * Widened from the original ('user' | 'anon') so x402 wallet
+     * callers and the auth-less fallback (both use kind='agent')
+     * can also own LifeSessions and be persisted + rehydrated via
+     * /api/life/run/[project]/session/[id]/state.
+     *
+     * The DB column is plain VARCHAR(16) with no CHECK constraint —
+     * widening the enum is TypeScript-only; no migration required.
+     */
     consumerKind: varchar("consumerKind", {
       length: 16,
-      enum: ["user", "anon"],
+      enum: ["user", "anon", "agent"],
     }).notNull(),
     consumerId: varchar("consumerId", { length: 256 }).notNull(),
     /** Optional org context for authed sessions. */

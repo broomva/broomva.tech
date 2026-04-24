@@ -80,7 +80,12 @@ export interface CreateRunParams {
 export interface GetOrCreateSessionParams {
   projectId: string;
   sessionId?: string; // if provided, must belong to (consumerKind, consumerId)
-  consumerKind: "user" | "anon";
+  /**
+   * Widened from ('user' | 'anon') to match the LifeSession schema
+   * change so the /prosopon endpoint can persist agent-kind sessions
+   * (both x402 wallets and the auth-less anonymous fallback).
+   */
+  consumerKind: "user" | "anon" | "agent";
   consumerId: string;
   organizationId?: string;
 }
@@ -409,7 +414,8 @@ export async function getSessionSummary(
   session: {
     id: string;
     projectId: string;
-    consumerKind: "user" | "anon";
+    /** 'user' | 'anon' | 'agent' — see LifeSession schema note. */
+    consumerKind: "user" | "anon" | "agent";
     consumerId: string;
     organizationId: string | null;
     createdAt: Date;
