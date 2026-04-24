@@ -32,6 +32,11 @@ import {
   userHasCreditsFor,
 } from "@/lib/life-runtime/billing";
 import {
+  createKernelClient,
+  type KernelContext,
+  type VmHandle,
+} from "@/lib/life-runtime/kernel";
+import {
   makeInitialScene,
   ProsoponEmitter,
   SCENE_ROOT_ID,
@@ -47,8 +52,12 @@ import {
   getProjectBySlug,
   getSessionHistory,
   maybeSetChatTitle,
+  setLifeSessionKernelVmHandle,
 } from "@/lib/life-runtime/queries";
-import { RealAgentRunner } from "@/lib/life-runtime/real-runner";
+import {
+  makeLifeToolHandlers,
+  RealAgentRunner,
+} from "@/lib/life-runtime/real-runner";
 import {
   type ConsumerIdentity,
   RunRequestSchema,
@@ -80,6 +89,32 @@ function sseFrame(envelope: Envelope): string {
   // can addEventListener("envelope") just like prosopon-daemon's fanout.
   const json = JSON.stringify(envelope);
   return `event: envelope\ndata: ${json}\n\n`;
+}
+
+/**
+ * Narrow `LifeSession.kernelVmHandleJson` to a usable `VmHandle`. Rejects
+ * stale rows where the persisted backend differs from the current client's
+ * backend, so a config flip (`LIFED_GATEWAY_URL` set/unset) re-mints rather
+ * than reuses an incompatible handle. All required scalar fields must be
+ * strings; `status` must be an object.
+ */
+function isValidPersistedHandle(
+  raw: unknown,
+  expectedBackend: string,
+): raw is VmHandle {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const h = raw as Record<string, unknown>;
+  return (
+    typeof h.vmId === "string" &&
+    typeof h.backend === "string" &&
+    h.backend === expectedBackend &&
+    typeof h.sessionId === "string" &&
+    typeof h.agentId === "string" &&
+    typeof h.createdAt === "string" &&
+    typeof h.metadataJson === "string" &&
+    typeof h.status === "object" &&
+    h.status !== null
+  );
 }
 
 async function resolveConsumer(): Promise<ConsumerIdentity | null> {
@@ -277,6 +312,56 @@ async function handlePost(
   let provider: string | undefined;
   let assistantTextAccum = "";
 
+  // KernelClient — every tool call is dispatched through this surface so
+  // attribution + ResourceUsage land on a uniform contract. Today we only
+  // ship `InProcessKernelClient`; the `LIFED_GATEWAY_URL` env var picks
+  // `LifedHttpKernelClient` when Phase D lands.
+  const toolHandlers = makeLifeToolHandlers(project);
+  const kernelClient = createKernelClient({ tools: toolHandlers });
+
+  const kernelCtx: KernelContext = {
+    sessionId: lifeSession?.id ?? run.id,
+    agentId: consumer.kind === "agent" ? consumer.id : `user:${consumer.id}`,
+  };
+
+  // VmHandle: reuse the persisted handle when the LifeSession has a valid
+  // one matching the current backend; otherwise create a fresh VM and
+  // persist its handle. The validity check is deliberately strict — a
+  // handle from a different backend (e.g., persisted under
+  // `LifedHttpKernelClient` and now read by `InProcessKernelClient`) would
+  // mis-attribute OTel spans + Vigil signals if reused as-is. A re-mint
+  // is cheap and the new handle is persisted in the same code path.
+  let vm: VmHandle;
+  const persistedHandle = lifeSession?.kernelVmHandleJson;
+  if (isValidPersistedHandle(persistedHandle, kernelClient.backendId)) {
+    vm = persistedHandle as VmHandle;
+  } else {
+    vm = await kernelClient.createVm(
+      {
+        backendHint: kernelClient.backendId,
+        toolAllowlist: Object.keys(toolHandlers),
+        metadataJson: JSON.stringify({
+          projectSlug: slug,
+          moduleTypeId: project.moduleTypeId,
+        }),
+      },
+      kernelCtx,
+    );
+    if (lifeSession) {
+      try {
+        await setLifeSessionKernelVmHandle({
+          lifeSessionId: lifeSession.id,
+          vmHandle: vm,
+        });
+      } catch (err) {
+        console.warn(
+          "[life/run/prosopon] setLifeSessionKernelVmHandle failed (non-fatal):",
+          err,
+        );
+      }
+    }
+  }
+
   // `onFinish` is threaded via the constructor (not post-construction
   // assignment) so the runner's `opts` can stay private. It's the terminal
   // cost-attribution hook — captures LLM cents + model identity so the
@@ -291,6 +376,11 @@ async function handlePost(
     history,
     userMessage,
     paymentMode: decision.mode,
+    kernelClient,
+    vm,
+    kernelCtx,
+    turnId: run.id,
+    lifeSessionId: lifeSession?.id,
     onFinish: (cost) => {
       finalCostCents = cost.llmCents;
       model = cost.model;
@@ -304,6 +394,7 @@ async function handlePost(
     displayName: project.displayName,
     paymentMode: decision.mode,
     priorCostCents: 0,
+    kernelBackendId: kernelClient.backendId,
   });
 
   const stream = new ReadableStream<Uint8Array>({

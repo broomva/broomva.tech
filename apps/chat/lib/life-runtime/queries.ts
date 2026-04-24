@@ -19,6 +19,7 @@ import {
   lifeRunEvent,
   lifeSession,
 } from "@/lib/db/schema";
+import type { VmHandle } from "./kernel";
 import type { ConsumerKind, PaymentMode } from "./types";
 
 /**
@@ -576,6 +577,28 @@ export async function maybeSetChatTitle(params: {
     .where(
       and(eq(chat.id, params.chatId), eq(chat.title, params.placeholderTitle)),
     );
+}
+
+/**
+ * Persist the serialised KernelClient `VmHandle` for a Life session. Called
+ * on the first turn that dispatches through the kernel (when
+ * `lifeSession.kernelVmHandleJson` is null); subsequent turns reuse the
+ * stored handle. Stored as `json` so future indexing on backend / status is
+ * available without a schema migration.
+ *
+ * Spec: docs/superpowers/specs/2026-04-24-life-kernel-client-integration.md §3.3
+ */
+export async function setLifeSessionKernelVmHandle(params: {
+  lifeSessionId: string;
+  vmHandle: VmHandle;
+}): Promise<void> {
+  await db
+    .update(lifeSession)
+    .set({
+      kernelVmHandleJson: params.vmHandle as unknown as Record<string, unknown>,
+      updatedAt: new Date(),
+    })
+    .where(eq(lifeSession.id, params.lifeSessionId));
 }
 
 export async function bumpProjectStats(

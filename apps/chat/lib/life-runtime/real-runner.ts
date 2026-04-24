@@ -31,6 +31,13 @@ import { z } from "zod";
 import type { AppModelId } from "@/lib/ai/app-model-id";
 import { getLanguageModel } from "@/lib/ai/providers";
 import type { LifeProject } from "@/lib/db/schema";
+import type {
+  KernelClient,
+  KernelContext,
+  ResourceUsage,
+  ToolHandler,
+  VmHandle,
+} from "./kernel";
 import type { DomainEvent, ModuleTypeId, RunnerYield } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -156,6 +163,41 @@ function computeCostCents(
 }
 
 // ---------------------------------------------------------------------------
+// Tool registry — descriptor + handler pairs shared between AI SDK and the
+// KernelClient. `makeLifeToolHandlers` returns the handler map that the
+// kernel client dispatches to; the runner's tool descriptors (below) carry
+// the same `inputSchema` plus an `execute` shim that routes each call
+// through `KernelClient.dispatch`. Keeping the registry here (rather than
+// in the route) means runner tests don't need to know about the route, and
+// future tools slot in at one site.
+// ---------------------------------------------------------------------------
+
+const noteInputSchema = z.object({
+  slug: z
+    .string()
+    .regex(/^[a-z0-9-]{3,48}$/)
+    .describe("kebab-case slug for the note, 3-48 chars"),
+  title: z.string().max(200),
+  body: z.string().max(4000),
+});
+
+export function makeLifeToolHandlers(
+  _project: LifeProject,
+): Record<string, ToolHandler> {
+  return {
+    note: async (input) => {
+      const parsed = noteInputSchema.parse(input);
+      return {
+        path: `/workspace/notes/${parsed.slug}.md`,
+        bytesWritten: parsed.body.length + parsed.title.length + 8,
+        title: parsed.title,
+        preview: parsed.body.slice(0, 160),
+      };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Real agent runner
 // ---------------------------------------------------------------------------
 
@@ -164,11 +206,33 @@ export interface RealRunnerOptions extends RunnerContext {
   history: LifeConversationMessage[];
   userMessage: string;
   paymentMode: string;
+  /** KernelClient that every tool call is dispatched through. */
+  kernelClient: KernelClient;
+  /** VM handle for this turn (one per session; reused across turns). */
+  vm: VmHandle;
+  /** Context threaded into every `KernelClient.dispatch` call. */
+  kernelCtx: KernelContext;
+  /** Per-turn LifeRun id — surfaced on OTel spans as `life.turn.id`. */
+  turnId: string;
+  /** LifeSession id when persisted — surfaced on OTel spans as `life.session.id`. */
+  lifeSessionId?: string;
+}
+
+/**
+ * Per-dispatch result stash populated by the tool `execute` shim and drained
+ * by the `fullStream` loop to emit the `kernel.dispatch.completed` DomainEvent
+ * right after AI SDK's `tool-result` / `tool-error` part.
+ */
+interface KernelDispatchRecord {
+  toolName: string;
+  usage?: ResourceUsage;
+  isError: boolean;
 }
 
 export class RealAgentRunner implements Runner {
   readonly id: ModuleTypeId;
   private opts: RealRunnerOptions;
+  private kernelResults = new Map<string, KernelDispatchRecord>();
 
   constructor(opts: RealRunnerOptions) {
     this.id = (opts.moduleTypeId as ModuleTypeId) ?? "generic-rules-runner";
@@ -197,28 +261,25 @@ export class RealAgentRunner implements Runner {
       at: now(),
     });
 
-    // Tool set — kept small on purpose. `note` appends to the run's
-    // virtual workspace; we bridge its result into a `fs_op` domain event
-    // right after the LLM `tool-result` part so the Workspace pane reacts.
+    // Tool set — descriptor + execute shim pattern. The shim routes every
+    // call through `KernelClient.dispatch` so tool attribution, ResourceUsage,
+    // and the `kernel.*` event vocabulary land on a single uniform surface.
+    // Today's `InProcessKernelClient` runs the handler inline; Phase D's
+    // `LifedHttpKernelClient` proxies to the lifed daemon with no change to
+    // this file.
+    //
+    // The spec (§4.2) suggests "tools registered without an execute function"
+    // but AI SDK v6's `streamText` drives tool execution inside its own step
+    // loop — removing `execute` breaks the loop. A thin shim delivers the
+    // same architectural win (every dispatch carries KernelContext / returns
+    // ResourceUsage) without re-implementing the step machinery here.
     const tools = {
       note: tool({
         description:
           "Persist a finding, observation, or artifact into the workspace. Creates a new markdown file under /workspace/notes/ named by a slug you provide.",
-        inputSchema: z.object({
-          slug: z
-            .string()
-            .regex(/^[a-z0-9-]{3,48}$/)
-            .describe("kebab-case slug for the note, 3-48 chars"),
-          title: z.string().max(200),
-          body: z.string().max(4000),
-        }),
-        execute: async ({ slug, title, body }) => {
-          return {
-            path: `/workspace/notes/${slug}.md`,
-            bytesWritten: body.length + title.length + 8,
-            title,
-            preview: body.slice(0, 160),
-          };
+        inputSchema: noteInputSchema,
+        execute: async (input, meta) => {
+          return this.dispatchViaKernel("note", input, meta.toolCallId);
         },
       }),
     };
@@ -232,9 +293,11 @@ export class RealAgentRunner implements Runner {
 
     // `experimental_telemetry` wires AI SDK's OTel hooks so model calls
     // show up in Vercel / Sentry traces out of the box. `functionId` is the
-    // span attribute grouping spans by call-site; metadata is arbitrary
-    // per-span enrichment (we use it to correlate to the project slug).
-    // Identical pattern to `generateTitleFromUserMessage` in /chat actions.
+    // span attribute grouping spans by call-site. Metadata keys are
+    // deliberately aligned with the `life.*` / `kernel.*` / `haima.*`
+    // namespace that lifed's Phase 2 daemon emits on its own spans — once
+    // lifed traces land in Vigil, a single trace view will span /life →
+    // runner → kernel.dispatch → lifed → hypervisor without join work.
     const result = streamText({
       model,
       system,
@@ -245,9 +308,14 @@ export class RealAgentRunner implements Runner {
         isEnabled: true,
         functionId: "life.run.prosopon",
         metadata: {
-          projectSlug: project.slug,
-          moduleTypeId: project.moduleTypeId,
-          paymentMode,
+          "life.project.slug": project.slug,
+          "life.module.type_id": project.moduleTypeId,
+          "life.turn.id": this.opts.turnId,
+          ...(this.opts.lifeSessionId
+            ? { "life.session.id": this.opts.lifeSessionId }
+            : {}),
+          "kernel.backend": this.opts.kernelClient.backendId,
+          "haima.payment_mode": paymentMode,
         },
       },
     });
@@ -257,8 +325,44 @@ export class RealAgentRunner implements Runner {
     // access to every field AI SDK emits (including `toolCallId`,
     // `providerMetadata`, signatures, source/file/raw parts). When AI SDK
     // evolves, we update the emitter's switch; no 4-file surgery.
+    //
+    // Domain-event side effects are interleaved with the LLM passthrough:
+    //   - `tool-call` → emit `kernel.dispatch.started`
+    //   - `tool-result` / `tool-error` → emit `kernel.dispatch.completed`
+    //     with the `ResourceUsage` populated by the execute shim
+    //   - `tool-result` on `note` → existing `fs_op` workspace event
     for await (const part of result.fullStream) {
       yield { kind: "llm", part, at: now() };
+
+      if (part.type === "tool-call") {
+        yield domain({
+          type: "kernel.dispatch.started",
+          payload: {
+            callId: part.toolCallId,
+            toolName: part.toolName,
+            backend: this.opts.kernelClient.backendId,
+          },
+          at: now(),
+        });
+        continue;
+      }
+
+      if (part.type === "tool-result" || part.type === "tool-error") {
+        const record = this.kernelResults.get(part.toolCallId);
+        if (record) {
+          this.kernelResults.delete(part.toolCallId);
+          yield domain({
+            type: "kernel.dispatch.completed",
+            payload: {
+              callId: part.toolCallId,
+              toolName: record.toolName,
+              isError: record.isError,
+              ...(record.usage ? { usage: record.usage } : {}),
+            },
+            at: now(),
+          });
+        }
+      }
 
       // Domain-event side effect: when the `note` tool resolves, emit a
       // workspace `fs_op` event so the file-tree pane reacts. We read the
@@ -344,5 +448,67 @@ export class RealAgentRunner implements Runner {
       },
       at: now(),
     });
+  }
+
+  /**
+   * AI SDK `execute` shim. Serialises the tool input, calls
+   * `KernelClient.dispatch`, stashes `ResourceUsage` + `isError` on
+   * `kernelResults` so the `fullStream` loop can emit the matching
+   * `kernel.dispatch.completed` DomainEvent, then returns the parsed
+   * `outputJson` to AI SDK. Error results are re-thrown so AI SDK produces
+   * a `tool-error` part (preserving the pre-refactor error semantics).
+   *
+   * The dispatch call itself is wrapped in try/catch so a transport-level
+   * throw (Phase D `LifedHttpKernelClient`: network errors) still produces
+   * a `kernel.dispatch.completed` record — otherwise the Vigil pane would
+   * show a started-but-never-completed dispatch. `InProcessKernelClient`
+   * never throws (it returns `isError: true`), so this only matters for
+   * future remote backends.
+   */
+  private async dispatchViaKernel(
+    toolName: string,
+    input: unknown,
+    toolCallId: string,
+  ): Promise<unknown> {
+    let result;
+    try {
+      result = await this.opts.kernelClient.dispatch(
+        this.opts.vm,
+        {
+          callId: toolCallId,
+          toolName,
+          inputJson: JSON.stringify(input ?? {}),
+          requestedCapabilities: [],
+        },
+        this.opts.kernelCtx,
+      );
+    } catch (err) {
+      this.kernelResults.set(toolCallId, { toolName, isError: true });
+      throw err instanceof Error
+        ? err
+        : new Error(`kernel dispatch threw: ${String(err)}`);
+    }
+    this.kernelResults.set(toolCallId, {
+      toolName,
+      usage: result.usage,
+      isError: result.isError,
+    });
+    const output = safeJsonParse(result.outputJson);
+    if (result.isError) {
+      const message =
+        output && typeof output === "object" && "error" in output
+          ? String((output as { error: unknown }).error)
+          : "kernel dispatch failed";
+      throw new Error(message);
+    }
+    return output;
+  }
+}
+
+function safeJsonParse(json: string): unknown {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return null;
   }
 }

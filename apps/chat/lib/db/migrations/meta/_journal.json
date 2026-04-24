@@ -456,6 +456,13 @@
       "when": 1777036715737,
       "tag": "0064_keen_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1777062597229,
+      "tag": "0065_military_warlock",
+      "breakpoints": true
     }
   ]
 }

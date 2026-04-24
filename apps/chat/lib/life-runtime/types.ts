@@ -85,6 +85,8 @@ export type DomainEventType =
   | "fs_op" // workspace file op (from the `note` tool today; generic tool bridge later)
   | "nous_score" // self-eval emitted post-stream by the runner
   | "autonomic_event" // pillar note (economic / cognitive / operational)
+  | "kernel.dispatch.started" // runner is about to invoke KernelClient.dispatch
+  | "kernel.dispatch.completed" // KernelClient.dispatch returned (carries ResourceUsage)
   | "done" // aggregated per-run totals (cost, tokens, elapsed, finishReason)
   | "error"; // runtime-level error surface (separate from AI SDK `error` parts)
 
