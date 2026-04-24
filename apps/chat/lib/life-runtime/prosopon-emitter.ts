@@ -618,7 +618,10 @@ export class ProsoponEmitter {
       case "kernel.dispatch.completed": {
         // Fires right after the AI SDK `tool-result` / `tool-error` part,
         // carrying the `ResourceUsage` populated by the kernel client.
-        // Spec §4.3 defines these four topics; inspector panes subscribe.
+        // Spec §4.3 defines `vigil.dispatch.duration_ms` /
+        // `vigil.dispatch.egress_bytes` / `vigil.dispatch.confidence`;
+        // `kernel.dispatch.tool` is emitted on the matching `started`
+        // event so the four signals tile together in the inspector pane.
         const usage = extractUsage(event);
         if (usage) {
           yield this.session.emit({
@@ -763,9 +766,17 @@ function extractUsage(ev: DomainEvent): ExtractedUsage | undefined {
   const raw = (ev.payload as Record<string, unknown> | undefined)?.usage;
   if (!raw || typeof raw !== "object") return undefined;
   const u = raw as Record<string, unknown>;
-  const durationMs = typeof u.durationMs === "number" ? u.durationMs : 0;
-  const egressBytes = typeof u.egressBytes === "number" ? u.egressBytes : 0;
-  const confidence =
-    typeof u.confidence === "string" ? u.confidence : "unknown";
-  return { durationMs, egressBytes, confidence };
+  // Require at least one expected field with a valid type; an empty `{}`
+  // (or one with only unrelated keys) returns undefined so the emitter
+  // skips dispatch signaling rather than emitting all-zero/"unknown" noise.
+  const hasAny =
+    typeof u.durationMs === "number" ||
+    typeof u.egressBytes === "number" ||
+    typeof u.confidence === "string";
+  if (!hasAny) return undefined;
+  return {
+    durationMs: typeof u.durationMs === "number" ? u.durationMs : 0,
+    egressBytes: typeof u.egressBytes === "number" ? u.egressBytes : 0,
+    confidence: typeof u.confidence === "string" ? u.confidence : "unknown",
+  };
 }

@@ -1697,8 +1697,9 @@ export const lifeSession = pgTable(
      * `lib/life-runtime/kernel/types.ts::VmHandle`). Nullable because existing
      * sessions predate kernel-client integration; populated on the first turn
      * that dispatches through `KernelClient.createVm` and reused on subsequent
-     * turns. Stored as `jsonb` so indexing by backend / status is available
-     * without a schema migration if needed later.
+     * turns. Stored as Postgres `json` (matching the rest of the schema's
+     * `json(…)` columns); a future migration can flip to `jsonb` if we need
+     * to index on `backend` / `status` without rewriting callers.
      *
      * Today (Phase A/B with `InProcessKernelClient`) this is a free-form record
      * of the VM identity — no backend resources are held across turns. When

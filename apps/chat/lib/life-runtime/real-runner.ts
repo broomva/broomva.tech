@@ -457,22 +457,37 @@ export class RealAgentRunner implements Runner {
    * `kernel.dispatch.completed` DomainEvent, then returns the parsed
    * `outputJson` to AI SDK. Error results are re-thrown so AI SDK produces
    * a `tool-error` part (preserving the pre-refactor error semantics).
+   *
+   * The dispatch call itself is wrapped in try/catch so a transport-level
+   * throw (Phase D `LifedHttpKernelClient`: network errors) still produces
+   * a `kernel.dispatch.completed` record — otherwise the Vigil pane would
+   * show a started-but-never-completed dispatch. `InProcessKernelClient`
+   * never throws (it returns `isError: true`), so this only matters for
+   * future remote backends.
    */
   private async dispatchViaKernel(
     toolName: string,
     input: unknown,
     toolCallId: string,
   ): Promise<unknown> {
-    const result = await this.opts.kernelClient.dispatch(
-      this.opts.vm,
-      {
-        callId: toolCallId,
-        toolName,
-        inputJson: JSON.stringify(input ?? {}),
-        requestedCapabilities: [],
-      },
-      this.opts.kernelCtx,
-    );
+    let result;
+    try {
+      result = await this.opts.kernelClient.dispatch(
+        this.opts.vm,
+        {
+          callId: toolCallId,
+          toolName,
+          inputJson: JSON.stringify(input ?? {}),
+          requestedCapabilities: [],
+        },
+        this.opts.kernelCtx,
+      );
+    } catch (err) {
+      this.kernelResults.set(toolCallId, { toolName, isError: true });
+      throw err instanceof Error
+        ? err
+        : new Error(`kernel dispatch threw: ${String(err)}`);
+    }
     this.kernelResults.set(toolCallId, {
       toolName,
       usage: result.usage,

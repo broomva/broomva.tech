@@ -91,6 +91,32 @@ function sseFrame(envelope: Envelope): string {
   return `event: envelope\ndata: ${json}\n\n`;
 }
 
+/**
+ * Narrow `LifeSession.kernelVmHandleJson` to a usable `VmHandle`. Rejects
+ * stale rows where the persisted backend differs from the current client's
+ * backend, so a config flip (`LIFED_GATEWAY_URL` set/unset) re-mints rather
+ * than reuses an incompatible handle. All required scalar fields must be
+ * strings; `status` must be an object.
+ */
+function isValidPersistedHandle(
+  raw: unknown,
+  expectedBackend: string,
+): raw is VmHandle {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const h = raw as Record<string, unknown>;
+  return (
+    typeof h.vmId === "string" &&
+    typeof h.backend === "string" &&
+    h.backend === expectedBackend &&
+    typeof h.sessionId === "string" &&
+    typeof h.agentId === "string" &&
+    typeof h.createdAt === "string" &&
+    typeof h.metadataJson === "string" &&
+    typeof h.status === "object" &&
+    h.status !== null
+  );
+}
+
 async function resolveConsumer(): Promise<ConsumerIdentity | null> {
   const hdrs = await headers();
   const session = await getSafeSession({ fetchOptions: { headers: hdrs } });
@@ -290,35 +316,30 @@ async function handlePost(
   // attribution + ResourceUsage land on a uniform contract. Today we only
   // ship `InProcessKernelClient`; the `LIFED_GATEWAY_URL` env var picks
   // `LifedHttpKernelClient` when Phase D lands.
-  const kernelClient = createKernelClient({
-    tools: makeLifeToolHandlers(project),
-  });
+  const toolHandlers = makeLifeToolHandlers(project);
+  const kernelClient = createKernelClient({ tools: toolHandlers });
 
   const kernelCtx: KernelContext = {
     sessionId: lifeSession?.id ?? run.id,
     agentId: consumer.kind === "agent" ? consumer.id : `user:${consumer.id}`,
   };
 
-  // VmHandle: reuse the persisted handle when the LifeSession has one
-  // (subsequent turns of the same session); otherwise create a fresh VM
-  // and persist its handle. For `InProcessKernelClient` the handle is just
-  // an identity record — no backend resources to reattach to. For
-  // `LifedHttpKernelClient` (Phase D) this is how a Vercel function cold
-  // start reattaches to the long-running lifed VM.
+  // VmHandle: reuse the persisted handle when the LifeSession has a valid
+  // one matching the current backend; otherwise create a fresh VM and
+  // persist its handle. The validity check is deliberately strict — a
+  // handle from a different backend (e.g., persisted under
+  // `LifedHttpKernelClient` and now read by `InProcessKernelClient`) would
+  // mis-attribute OTel spans + Vigil signals if reused as-is. A re-mint
+  // is cheap and the new handle is persisted in the same code path.
   let vm: VmHandle;
   const persistedHandle = lifeSession?.kernelVmHandleJson;
-  if (
-    persistedHandle &&
-    typeof persistedHandle === "object" &&
-    !Array.isArray(persistedHandle) &&
-    typeof (persistedHandle as VmHandle).vmId === "string"
-  ) {
+  if (isValidPersistedHandle(persistedHandle, kernelClient.backendId)) {
     vm = persistedHandle as VmHandle;
   } else {
     vm = await kernelClient.createVm(
       {
         backendHint: kernelClient.backendId,
-        toolAllowlist: Object.keys(makeLifeToolHandlers(project)),
+        toolAllowlist: Object.keys(toolHandlers),
         metadataJson: JSON.stringify({
           projectSlug: slug,
           moduleTypeId: project.moduleTypeId,
@@ -330,7 +351,7 @@ async function handlePost(
       try {
         await setLifeSessionKernelVmHandle({
           lifeSessionId: lifeSession.id,
-          vmHandle: vm as unknown as Record<string, unknown>,
+          vmHandle: vm,
         });
       } catch (err) {
         console.warn(

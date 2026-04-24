@@ -19,6 +19,7 @@ import {
   lifeRunEvent,
   lifeSession,
 } from "@/lib/db/schema";
+import type { VmHandle } from "./kernel";
 import type { ConsumerKind, PaymentMode } from "./types";
 
 /**
@@ -589,11 +590,14 @@ export async function maybeSetChatTitle(params: {
  */
 export async function setLifeSessionKernelVmHandle(params: {
   lifeSessionId: string;
-  vmHandle: Record<string, unknown>;
+  vmHandle: VmHandle;
 }): Promise<void> {
   await db
     .update(lifeSession)
-    .set({ kernelVmHandleJson: params.vmHandle, updatedAt: new Date() })
+    .set({
+      kernelVmHandleJson: params.vmHandle as unknown as Record<string, unknown>,
+      updatedAt: new Date(),
+    })
     .where(eq(lifeSession.id, params.lifeSessionId));
 }
 

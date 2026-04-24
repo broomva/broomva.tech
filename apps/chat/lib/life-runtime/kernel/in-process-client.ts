@@ -50,14 +50,23 @@ export class InProcessKernelClient implements KernelClient {
   }
 
   async createVm(spec: VmSpec, ctx: KernelContext): Promise<VmHandle> {
+    // `backend` always reflects the actual executing backend so OTel spans
+    // and `vigil.dispatch.*` signals attribute correctly. `spec.backendHint`
+    // is advisory metadata only — preserved on `metadataJson` when present
+    // so the caller's intent is auditable, but never overrides truth.
+    const baseMetadata = parseMetadata(spec.metadataJson);
+    const metadata =
+      spec.backendHint && spec.backendHint !== this.backendId
+        ? { ...baseMetadata, backendHint: spec.backendHint }
+        : baseMetadata;
     return {
       vmId: randomUUID(),
-      backend: spec.backendHint ?? this.backendId,
+      backend: this.backendId,
       sessionId: ctx.sessionId,
       agentId: ctx.agentId,
       status: { state: "running" },
       createdAt: new Date().toISOString(),
-      metadataJson: spec.metadataJson ?? "{}",
+      metadataJson: JSON.stringify(metadata),
     };
   }
 
@@ -143,6 +152,18 @@ function errorResult(
     isError: true,
     usage: makeEstimatedUsage(durationMs),
   };
+}
+
+function parseMetadata(json: string | undefined): Record<string, unknown> {
+  if (!json) return {};
+  try {
+    const parsed = JSON.parse(json);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 function makeEstimatedUsage(durationMs: number): ResourceUsage {
