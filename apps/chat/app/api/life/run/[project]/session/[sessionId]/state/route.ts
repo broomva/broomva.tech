@@ -92,10 +92,17 @@ export async function GET(
         session: {
           id: summary.session.id,
           projectSlug: summary.projectSlug,
-          createdAt: summary.session.createdAt.toISOString(),
+          // Defensive ISO coercion: postgres-js on Vercel returns
+          // timestamp columns as strings, not Date objects, despite
+          // Drizzle typing them as `Date`. Wrapping in `new Date()`
+          // then calling `.toISOString()` works for both shapes and
+          // avoids the "toISOString is not a function" runtime bug.
+          createdAt: toIsoString(summary.session.createdAt),
           turnCount: summary.turnCount,
           totalCostCents: summary.totalCostCents,
-          lastActivityAt: summary.lastActivityAt?.toISOString() ?? null,
+          lastActivityAt: summary.lastActivityAt
+            ? toIsoString(summary.lastActivityAt)
+            : null,
         },
         // Snapshot path lands in Phase 4 (snapshot-cadence PR). Today
         // the tail IS the full history — fine for current session
@@ -113,17 +120,9 @@ export async function GET(
       },
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     console.error("[life/session/state] uncaught:", err);
     return NextResponse.json(
-      {
-        error: "internal",
-        // Include a truncated error message so production debugging
-        // doesn't require function log access. Surfaces Drizzle /
-        // Postgres error strings without leaking secrets or PII. If
-        // this ever needs to leak less, wrap in a dev-env check.
-        detail: message.slice(0, 320),
-      },
+      { error: "internal" },
       { status: 500 },
     );
   }
@@ -135,6 +134,29 @@ export async function GET(
  */
 function notFound(): NextResponse {
   return NextResponse.json({ error: "not_found" }, { status: 404 });
+}
+
+/**
+ * Coerce a Drizzle-typed timestamp to an ISO string.
+ *
+ * Drizzle declares `timestamp(...)` columns as `Date` on the TS side,
+ * but the actual runtime type depends on the driver / pg client:
+ *
+ * - Node `pg` / most setups: returns Date instances.
+ * - `postgres-js` (which broomva.tech uses) in some environments:
+ *   returns ISO-8601 strings when `mode: 'string'` is set OR when
+ *   connection pooling strips type parsers. On Vercel's build this
+ *   ends up as a string, so calling `.toISOString()` throws
+ *   `TypeError: ... is not a function`.
+ *
+ * This helper covers both shapes: if it's already a Date, call
+ * `toISOString`; if it's a string, construct a Date first then format
+ * (round-trip ensures a valid ISO-8601 even for oddly-formatted
+ * inputs); if it's a number (epoch ms), same.
+ */
+function toIsoString(value: Date | string | number): string {
+  if (value instanceof Date) return value.toISOString();
+  return new Date(value).toISOString();
 }
 
 /**
