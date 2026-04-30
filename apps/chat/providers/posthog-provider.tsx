@@ -3,13 +3,17 @@
 import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST =
   process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://t.broomva.tech";
 
-if (typeof window !== "undefined" && POSTHOG_KEY) {
+let posthogInitialized = false;
+
+function initPostHog(): void {
+  if (posthogInitialized || !POSTHOG_KEY) return;
+  posthogInitialized = true;
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     ui_host: "https://us.posthog.com",
@@ -67,16 +71,40 @@ function UTMTracker() {
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!POSTHOG_KEY) return;
+    const handle = () => {
+      initPostHog();
+      setReady(true);
+    };
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(handle, { timeout: 3000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(handle, 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   if (!POSTHOG_KEY) return <>{children}</>;
 
   return (
     <PHProvider client={posthog}>
-      <Suspense fallback={null}>
-        <PostHogPageView />
-      </Suspense>
-      <Suspense fallback={null}>
-        <UTMTracker />
-      </Suspense>
+      {ready ? (
+        <>
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
+          <Suspense fallback={null}>
+            <UTMTracker />
+          </Suspense>
+        </>
+      ) : null}
       {children}
     </PHProvider>
   );
