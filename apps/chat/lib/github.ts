@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cacheLife } from "next/cache";
 
 export interface GitHubRepo {
   name: string;
@@ -24,6 +24,8 @@ async function fetchRecentPublicRepos(
   username: string,
   limit: number,
 ): Promise<GitHubRepo[]> {
+  "use cache";
+  cacheLife("weeks");
   const headers: HeadersInit = {
     Accept: "application/vnd.github+json",
   };
@@ -59,14 +61,12 @@ async function fetchRecentPublicRepos(
   return [...flagship, ...rest].slice(0, limit);
 }
 
-const ONE_WEEK = 60 * 60 * 24 * 7;
-
-export const getRecentRepos = unstable_cache(
-  (username: string, limit: number) =>
-    fetchRecentPublicRepos(username, limit),
-  ["github-recent-repos"],
-  { revalidate: ONE_WEEK },
-);
+export async function getRecentRepos(
+  username: string,
+  limit: number,
+): Promise<GitHubRepo[]> {
+  return fetchRecentPublicRepos(username, limit);
+}
 
 // ─── Dynamic Skills Roster ───────────────────────────────────────────────────
 
@@ -136,6 +136,8 @@ function parseSkillFrontmatter(content: string): SkillFrontmatter | null {
 import type { BstackLayer, BstackSkill } from "@/lib/skills-data";
 
 async function fetchSkillsFromGitHub(username: string): Promise<BstackLayer[]> {
+  "use cache";
+  cacheLife("weeks");
   const headers: HeadersInit = {
     Accept: "application/vnd.github+json",
   };
@@ -219,8 +221,6 @@ async function fetchSkillsFromGitHub(username: string): Promise<BstackLayer[]> {
   return layers;
 }
 
-export const getSkillsRoster = unstable_cache(
-  (username: string) => fetchSkillsFromGitHub(username),
-  ["github-skills-roster"],
-  { revalidate: ONE_WEEK },
-);
+export async function getSkillsRoster(username: string): Promise<BstackLayer[]> {
+  return fetchSkillsFromGitHub(username);
+}
