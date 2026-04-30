@@ -8,6 +8,7 @@ import {
   Network,
   Sparkles,
   Terminal,
+  User,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
@@ -22,6 +23,13 @@ import { useToolbarDock } from "./toolbar-dock-context";
 
 const allLinks = [
   { href: "/", label: "Home", icon: Home, productOnly: true, authOnly: false },
+  {
+    href: "/profile",
+    label: "Profile",
+    icon: User,
+    productOnly: false,
+    authOnly: false,
+  },
   {
     href: "/prompts",
     label: "Prompts",
