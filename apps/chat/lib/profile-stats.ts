@@ -16,7 +16,6 @@ export interface GitHubAggregateStats {
     url: string;
     topics: string[];
     pushedAt: string;
-    pushedAtRelative: string;
     language: string | null;
   }>;
 }
@@ -54,7 +53,6 @@ async function fetchGitHubAggregate(
 
     const owned = repos.filter((r) => !r.fork);
     const totalStars = owned.reduce((sum, r) => sum + r.stargazers_count, 0);
-    const now = Date.now();
     const topRepos = owned
       .toSorted((a, b) => b.stargazers_count - a.stargazers_count)
       .slice(0, 6)
@@ -65,7 +63,6 @@ async function fetchGitHubAggregate(
         url: r.html_url,
         topics: r.topics ?? [],
         pushedAt: r.pushed_at,
-        pushedAtRelative: relativeFrom(r.pushed_at, now),
         language: r.language,
       }));
 
@@ -94,7 +91,6 @@ export interface CratesAggregateStats {
     version: string;
     description: string | null;
     updatedAt: string;
-    updatedAtRelative: string;
     url: string;
   }>;
 }
@@ -144,7 +140,6 @@ async function fetchCratesAggregate(): Promise<CratesAggregateStats> {
   const found = results.filter((c): c is NonNullable<typeof c> => c !== null);
 
   const totalDownloads = found.reduce((sum, c) => sum + c.downloads, 0);
-  const now = Date.now();
   const topCrates = found
     .toSorted((a, b) => b.downloads - a.downloads)
     .map((c) => ({
@@ -153,7 +148,6 @@ async function fetchCratesAggregate(): Promise<CratesAggregateStats> {
       version: c.max_version,
       description: c.description,
       updatedAt: c.updated_at,
-      updatedAtRelative: relativeFrom(c.updated_at, now),
       url: `https://crates.io/crates/${c.name}`,
     }));
 
@@ -173,7 +167,6 @@ export interface BookkeepingSnapshot {
   topScored: number;
   recentPromotions7d: number;
   lastRun: string;
-  lastRunRelative: string;
   byType: Record<string, number>;
 }
 
@@ -195,13 +188,11 @@ async function fetchBookkeepingSnapshot(): Promise<BookkeepingSnapshot | null> {
     const data = JSON.parse(raw) as RawBookkeepingStatus;
     const distribution = data.scoring_distribution ?? {};
     const topScored = (distribution["8"] ?? 0) + (distribution["9"] ?? 0);
-    const lastRun = data.last_run ?? "";
     return {
       totalEntities: data.total_entities ?? 0,
       topScored,
       recentPromotions7d: data.recent_promotions_7d ?? 0,
-      lastRun,
-      lastRunRelative: lastRun ? relativeFrom(lastRun, Date.now()) : "",
+      lastRun: data.last_run ?? "",
       byType: data.by_type ?? {},
     };
   } catch {
@@ -227,15 +218,9 @@ export function formatNumber(n: number): string {
   return n.toString();
 }
 
-/**
- * Internal helper used inside cached fetch functions only — those functions
- * are allowed to call Date.now() because each cache fill is timestamped by
- * the cache layer. Server components must NOT call this directly under
- * Next.js 16 cacheComponents (use the pre-computed *Relative fields on the
- * returned data instead).
- */
-function relativeFrom(iso: string, now: number): string {
+export function formatRelative(iso: string): string {
   const then = new Date(iso).getTime();
+  const now = Date.now();
   const diffMs = now - then;
   const diffMin = Math.floor(diffMs / 60_000);
   const diffHr = Math.floor(diffMin / 60);
