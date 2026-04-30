@@ -1,9 +1,10 @@
 import { headers } from "next/headers";
-import { PromptsList } from "@/components/site/prompts-list";
+import { Suspense } from "react";
 import { PromptsEnergyBeam } from "@/components/site/prompts-energy-beam";
+import { PromptsList } from "@/components/site/prompts-list";
 import { UserPrompts } from "@/components/site/user-prompts";
-import { getContentList } from "@/lib/content";
 import { getSafeSession } from "@/lib/auth";
+import { getContentList } from "@/lib/content";
 
 export const metadata = {
   title: "Prompts",
@@ -12,10 +13,7 @@ export const metadata = {
 };
 
 export default async function PromptsPage() {
-  const [entries, { data: session }] = await Promise.all([
-    getContentList("prompts"),
-    getSafeSession({ fetchOptions: { headers: await headers() } }),
-  ]);
+  const entries = await getContentList("prompts");
 
   return (
     <>
@@ -29,10 +27,22 @@ export default async function PromptsPage() {
             review, research, architecture, and more.
           </p>
         </header>
-        {session ? <UserPrompts session={session} /> : null}
+        {/* User-owned prompts are session-dependent; stream them so the
+            public list renders immediately without waiting on auth. */}
+        <Suspense fallback={null}>
+          <UserPromptsSlot />
+        </Suspense>
         <PromptsList entries={entries} />
       </main>
       <PromptsEnergyBeam />
     </>
   );
+}
+
+async function UserPromptsSlot() {
+  const { data: session } = await getSafeSession({
+    fetchOptions: { headers: await headers() },
+  });
+  if (!session) return null;
+  return <UserPrompts session={session} />;
 }
