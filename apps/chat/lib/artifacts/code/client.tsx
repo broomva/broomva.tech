@@ -10,6 +10,33 @@ import { Artifact } from "@/components/create-artifact";
 import { config } from "@/lib/config";
 import { generateUUID, getLanguageFromFileName } from "@/lib/utils";
 
+const PYODIDE_INDEX_URL = "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/";
+
+let pyodideScriptPromise: Promise<void> | null = null;
+
+function ensurePyodideScript(): Promise<void> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Pyodide can only load in the browser"));
+  }
+  if ("loadPyodide" in window) {
+    return Promise.resolve();
+  }
+  if (!pyodideScriptPromise) {
+    pyodideScriptPromise = new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = `${PYODIDE_INDEX_URL}pyodide.js`;
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => {
+        pyodideScriptPromise = null;
+        reject(new Error("Failed to load Pyodide runtime"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return pyodideScriptPromise;
+}
+
 const OUTPUT_HANDLERS = {
   matplotlib: `
     import io
@@ -123,10 +150,11 @@ export const codeArtifact = new Artifact<"code", Metadata>({
         }));
 
         try {
-          // Python execution using Pyodide
-          // @ts-expect-error - loadPyodide is not defined
+          // Python execution using Pyodide — script is fetched lazily on first run
+          await ensurePyodideScript();
+          // @ts-expect-error - loadPyodide injected by pyodide.js
           const currentPyodideInstance = await globalThis.loadPyodide({
-            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/",
+            indexURL: PYODIDE_INDEX_URL,
           });
 
           currentPyodideInstance.setStdout({
