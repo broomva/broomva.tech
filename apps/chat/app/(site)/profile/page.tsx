@@ -28,7 +28,6 @@ import { getLatest } from "@/lib/content";
 import { formatDate } from "@/lib/date";
 import {
   formatNumber,
-  formatRelative,
   getBookkeepingSnapshot,
   getCratesAggregate,
   getGitHubAggregate,
@@ -350,11 +349,7 @@ export default async function ProfilePage() {
               totalRepos: github.totalRepos,
               totalStars: github.totalStars,
             }}
-            lastPushRelative={
-              github.topRepos[0]
-                ? formatRelative(github.topRepos[0].pushedAt)
-                : "—"
-            }
+            lastPushRelative={github.topRepos[0]?.pushedAtRelative ?? "—"}
             lastPushRepo={github.topRepos[0]?.name ?? "—"}
             recentCount={writing.length + notes.length}
             recentLabel="Recent writing"
@@ -376,11 +371,7 @@ export default async function ProfilePage() {
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
               The Broomva bookkeeping pipeline scores and promotes raw extracts
               into a queryable entity graph. This is what's in the graph right
-              now — last sync{" "}
-              {bookkeeping.lastRun
-                ? formatRelative(bookkeeping.lastRun)
-                : "recent"}
-              .
+              now — last sync {bookkeeping.lastRunRelative || "recent"}.
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl glass p-5">
@@ -586,7 +577,7 @@ export default async function ProfilePage() {
                       <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
                         {repo.language && <span>{repo.language}</span>}
                         {repo.language && <span>·</span>}
-                        <span>{formatRelative(repo.pushedAt)}</span>
+                        <span>{repo.pushedAtRelative}</span>
                       </div>
                     </a>
                   </LiftCard>
@@ -631,7 +622,7 @@ export default async function ProfilePage() {
                     )}
                     <div className="mt-3 flex items-center justify-between text-xs text-text-muted">
                       <span>{formatNumber(crate.downloads)} downloads</span>
-                      <span>{formatRelative(crate.updatedAt)}</span>
+                      <span>{crate.updatedAtRelative}</span>
                     </div>
                   </a>
                 </StaggerItem>
