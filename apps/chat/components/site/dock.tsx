@@ -193,16 +193,18 @@ function DockLabel({ children, className, ...rest }: DockLabelProps) {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: 1, y: -10 }}
-          exit={{ opacity: 0, y: 0 }}
-          transition={{ duration: 0.2 }}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           className={cn(
-            "absolute -top-6 left-1/2 w-fit whitespace-pre rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-200",
+            // Anchor above parent via bottom-full (no fixed pixel offset),
+            // center via inset-x-0 + mx-auto so positioning is stable even
+            // while the DockItem parent's width is mid-animation.
+            "pointer-events-none absolute bottom-full inset-x-0 z-50 mx-auto mb-2 w-fit max-w-[10rem] whitespace-pre rounded-md border border-zinc-700 bg-zinc-900/95 px-2 py-0.5 text-xs text-zinc-200 shadow-md backdrop-blur-md",
             className,
           )}
           role="tooltip"
-          style={{ x: "-50%" }}
         >
           {children}
         </motion.div>

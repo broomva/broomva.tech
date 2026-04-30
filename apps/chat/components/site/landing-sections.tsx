@@ -13,6 +13,7 @@ import ThermodynamicGrid from "@/components/ui/interactive-thermodynamic-grid";
 /* ------------------------------------------------------------------ */
 
 const socials = [
+  { href: "/profile", label: "Profile" },
   { href: "https://github.com/broomva", label: "GitHub" },
   { href: "https://www.linkedin.com/in/broomva/", label: "LinkedIn" },
   { href: "https://x.com/broomva_tech", label: "X" },
@@ -167,7 +168,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
         >
           {firstName
             ? "How can I help you today?"
-            : "Lead AI at Stimulus. Databricks expert. Rust Agent OS builder. From scalable data pipelines to autonomous agent infrastructure — reliability engineering across software, body, and craft."}
+            : "Agent OS architect and AI engineering lead. Builder of multi-tenant agentic platforms, lakehouse-native data substrates, and the open-source Rust Agent OS — reliability engineering across software, body, and craft."}
         </motion.p>
 
         {/* Social links — only when not logged in */}
