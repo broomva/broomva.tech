@@ -225,6 +225,8 @@ export async function getContentBySlug(
     "$1",
   );
 
+  html = optimizeProseImages(html);
+
   // Rewrite frontmatter image/audio URLs
   if (summary.image) {
     summary.image = rewriteAssetUrl(summary.image);
@@ -239,6 +241,41 @@ export async function getContentBySlug(
     content: rewrittenContent,
     html,
   };
+}
+
+/**
+ * Rewrite <img src="/images/..."> tags in rendered HTML to use Next.js's
+ * /_next/image proxy with width/srcset hints. The first image becomes the
+ * LCP candidate (loading="eager", fetchpriority="high"); subsequent images
+ * stay lazy. This is server-side so the SSR HTML ships optimized URLs and
+ * the browser never makes a wasted request to the raw asset.
+ *
+ * Idempotent: tags that already carry a srcset are left untouched.
+ */
+function optimizeProseImages(html: string): string {
+  const widths = [640, 828, 1200] as const;
+  let index = 0;
+  return html.replace(
+    /<img\b([^>]*?)\ssrc=(["'])(\/images\/[^"']+)\2([^>]*?)\/?>/g,
+    (match, before: string, _quote: string, src: string, after: string) => {
+      const tail = `${before} ${after}`;
+      if (/\bsrcset=/.test(tail)) {
+        return match;
+      }
+      const encoded = encodeURIComponent(src);
+      const srcset = widths
+        .map((w) => `/_next/image?url=${encoded}&w=${w}&q=80 ${w}w`)
+        .join(", ");
+      const optimizedSrc = `/_next/image?url=${encoded}&w=1200&q=80`;
+      const sizes = '(max-width: 768px) 100vw, 800px';
+      const isFirst = index === 0;
+      index += 1;
+      const loadingAttr = isFirst
+        ? 'loading="eager" fetchpriority="high" decoding="async"'
+        : 'loading="lazy" decoding="async"';
+      return `<img${before} src="${optimizedSrc}" srcset="${srcset}" sizes="${sizes}" ${loadingAttr}${after}>`;
+    },
+  );
 }
 
 export function estimateReadingTime(content: string): number {
