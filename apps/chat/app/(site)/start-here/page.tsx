@@ -29,26 +29,46 @@ export default async function StartHerePage() {
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <PageHero
         title="Start here"
-        description="I build autonomous software systems: a Rust Agent OS stack with orchestration, governance, and kernel layers that turn LLM capability into reliable, controllable workflows. This page is the shortest route to my best work."
+        description="I build AI-native, multi-tenant data platforms and agent systems in production — from open-source Rust runtime substrates to live commercial deployments. This page is the shortest route to my best work and to me."
       />
 
       <section className="mt-10 grid gap-4 rounded-2xl glass p-6 sm:grid-cols-2 sm:gap-6">
         <div>
           <h2 className="font-display text-2xl">What I build</h2>
           <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-            A Rust-native Agent OS stack: Symphony for orchestration, a control
-            metalayer for governance, and aiOS as the kernel. Plus harness
-            engineering patterns that make agents reliable in production.
+            Three concurrent Principal-tier roles: Co-founder &amp; CTO at Wedi
+            Pay (agentic cross-border payments), Senior ML/AI Lead at Stimulus
+            (governed agentic procurement), and Data Architect at TEAM
+            International. On the substrate side: the Rust Agent OS stack —
+            Life, Symphony, the control metalayer, and the RCS paper series.
           </p>
         </div>
         <div>
           <h2 className="font-display text-2xl">Why it matters</h2>
           <p className="mt-3 text-sm leading-relaxed text-text-secondary">
             Most failures are not model failures. They are harness failures. I
-            focus on the systems-level primitives that make agents controllable,
-            observable, and useful under real constraints.
+            focus on the systems-level primitives that make agents
+            controllable, observable, and useful under real constraints — with
+            audit-grade governance as a default property, not an afterthought.
           </p>
         </div>
+      </section>
+
+      <section className="mt-6">
+        <Link
+          href={"/profile" as Route}
+          className="glass-card group flex items-center justify-between p-5 transition hover:border-ai-blue/40"
+        >
+          <div>
+            <h2 className="font-display text-xl text-text-primary group-hover:text-ai-blue">
+              The full profile →
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+              Concurrent leadership, anonymized client engagements, the OSS
+              substrate, and downloadable CVs in three lengths.
+            </p>
+          </div>
+        </Link>
       </section>
 
       <section className="mt-12">

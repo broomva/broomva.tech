@@ -1,0 +1,1150 @@
+{
+  "total_entities": 164,
+  "by_type": {
+    "concept": 64,
+    "pattern": 35,
+    "tool": 17,
+    "person": 12,
+    "project": 29,
+    "discovery": 1,
+    "question": 6
+  },
+  "by_status": {
+    "candidate": 20,
+    "entity": 132,
+    "active": 7,
+    "shipped (as design); implementation pending": 1,
+    "confirmed": 2,
+    "designed": 1,
+    "shipped": 1
+  },
+  "recent_promotions_7d": 80,
+  "lint_errors": 69,
+  "last_run": "2026-04-30T17:56:06.279956+00:00",
+  "scoring_distribution": {
+    "0": 29,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 29,
+    "6": 32,
+    "7": 25,
+    "8": 27,
+    "9": 22
+  },
+  "scoring_dimensions": {
+    "avg_novelty": 2.3,
+    "avg_specificity": 2.81,
+    "avg_relevance": 2.54
+  },
+  "blog_candidates": [
+    {
+      "slug": "physical-intelligence",
+      "score": 9,
+      "tags": [
+        "project",
+        "external-reference",
+        "robotics",
+        "foundation-models",
+        "vla"
+      ]
+    },
+    {
+      "slug": "life-runtime-sentinel",
+      "score": 9,
+      "tags": [
+        "project",
+        "life-runtime",
+        "sentinel",
+        "property-management",
+        "metered-billing"
+      ]
+    },
+    {
+      "slug": "multi-scale-embodied-memory",
+      "score": 9,
+      "tags": [
+        "concept",
+        "memory",
+        "long-horizon",
+        "dual-scale",
+        "physical-intelligence"
+      ]
+    },
+    {
+      "slug": "knowledge-insulation",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "training-dynamics",
+        "level-separation",
+        "stability-budget"
+      ]
+    },
+    {
+      "slug": "plexus",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "life-os",
+        "swarm",
+        "field-physics"
+      ]
+    },
+    {
+      "slug": "recursive-controlled-system",
+      "score": 9,
+      "tags": [
+        "concept",
+        "control-theory",
+        "rcs",
+        "self-similarity",
+        "formalization"
+      ]
+    },
+    {
+      "slug": "rspl-resource-substrate",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rspl",
+        "agent-protocols",
+        "self-evolving-agents",
+        "pneuma"
+      ]
+    },
+    {
+      "slug": "recursion-depth-kardashev",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "scaling-laws",
+        "kardashev",
+        "thermodynamics"
+      ]
+    },
+    {
+      "slug": "substrate-aware-scaling",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "scaling-laws",
+        "quantum",
+        "neuromorphic"
+      ]
+    },
+    {
+      "slug": "multi-tier-dreaming",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "consolidation",
+        "tier-bridge",
+        "askesis"
+      ]
+    },
+    {
+      "slug": "recap-advantage-conditioning",
+      "score": 9,
+      "tags": [
+        "concept",
+        "reinforcement-learning",
+        "egri",
+        "physical-intelligence",
+        "autonomic"
+      ]
+    },
+    {
+      "slug": "pneuma",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "life-os",
+        "substrate",
+        "architecture"
+      ]
+    },
+    {
+      "slug": "compute-stability-budget-orthogonality",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "stability",
+        "compute",
+        "scaling-laws"
+      ]
+    },
+    {
+      "slug": "liquid-prompt",
+      "score": 9,
+      "tags": [
+        "concept",
+        "life-runtime",
+        "prompt-engineering",
+        "configuration",
+        "agent-architecture"
+      ]
+    },
+    {
+      "slug": "cadence-tier-hierarchy",
+      "score": 9,
+      "tags": [
+        "concept",
+        "rcs",
+        "hot-reload",
+        "safety",
+        "write-permission-lattice"
+      ]
+    },
+    {
+      "slug": "sepl-operator-algebra",
+      "score": 9,
+      "tags": [
+        "concept",
+        "control-theory",
+        "self-evolving-agents",
+        "sepl",
+        "egri"
+      ]
+    },
+    {
+      "slug": "life-module-pattern",
+      "score": 9,
+      "tags": [
+        "concept",
+        "life-os",
+        "multi-tenant",
+        "productization",
+        "rcs"
+      ]
+    },
+    {
+      "slug": "autogenesis-agp",
+      "score": 9,
+      "tags": [
+        "concept",
+        "agent-protocols",
+        "self-evolving-agents",
+        "rspl",
+        "sepl"
+      ]
+    },
+    {
+      "slug": "witness-effect-on-agent-cognition",
+      "score": 9,
+      "tags": [
+        "pattern",
+        "memory",
+        "metacognition",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "fast-slow-hierarchical-control",
+      "score": 9,
+      "tags": [
+        "pattern",
+        "rcs",
+        "architecture",
+        "time-scale-separation",
+        "convergent-design"
+      ]
+    },
+    {
+      "slug": "horizontal-vs-vertical-recursion",
+      "score": 9,
+      "tags": [
+        "pattern",
+        "rcs",
+        "recursion",
+        "architecture"
+      ]
+    },
+    {
+      "slug": "engine-vs-tenant-ip-boundary",
+      "score": 9,
+      "tags": [
+        "pattern",
+        "productization",
+        "multi-tenant",
+        "ip",
+        "moat"
+      ]
+    },
+    {
+      "slug": "ml-intern",
+      "score": 8,
+      "tags": [
+        "project",
+        "reference-implementation",
+        "agent-loop",
+        "ml-research-automation",
+        "huggingface"
+      ]
+    },
+    {
+      "slug": "agentic-market",
+      "score": 8,
+      "tags": [
+        "project",
+        "marketplace",
+        "x402",
+        "discovery",
+        "coinbase"
+      ]
+    },
+    {
+      "slug": "stability-budget",
+      "score": 8,
+      "tags": [
+        "concept",
+        "control-theory",
+        "rcs",
+        "lyapunov",
+        "switched-systems"
+      ]
+    },
+    {
+      "slug": "egri-meta-controller",
+      "score": 8,
+      "tags": [
+        "concept",
+        "control-theory",
+        "egri",
+        "rcs",
+        "autoany"
+      ]
+    },
+    {
+      "slug": "homeostatic-drive-lyapunov",
+      "score": 8,
+      "tags": [
+        "concept",
+        "control-theory",
+        "homeostasis",
+        "lyapunov",
+        "active-inference"
+      ]
+    },
+    {
+      "slug": "evolvable-resource",
+      "score": 8,
+      "tags": [
+        "concept",
+        "rspl",
+        "self-evolving-agents",
+        "aios-protocol",
+        "type-systems"
+      ]
+    },
+    {
+      "slug": "hard-no-vs-bounded-no-validator",
+      "score": 8,
+      "tags": [
+        "moltbook-discovery",
+        "validation",
+        "control",
+        "nous",
+        "praxis"
+      ]
+    },
+    {
+      "slug": "ontological-address",
+      "score": 8,
+      "tags": [
+        "concept",
+        "identity",
+        "governance",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "streaming-finance-x402",
+      "score": 8,
+      "tags": [
+        "concept",
+        "billing",
+        "x402",
+        "haima",
+        "usdc"
+      ]
+    },
+    {
+      "slug": "haima-streaming-finance",
+      "score": 8,
+      "tags": [
+        "concept",
+        "haima",
+        "x402",
+        "streaming-finance",
+        "billing"
+      ]
+    },
+    {
+      "slug": "stone-water-intelligence",
+      "score": 8,
+      "tags": [
+        "concept",
+        "agent-architecture",
+        "homeostasis",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "time-scale-dilation",
+      "score": 8,
+      "tags": [
+        "concept",
+        "rcs",
+        "stability",
+        "singular-perturbation",
+        "time-scale"
+      ]
+    },
+    {
+      "slug": "flow-matching-vla",
+      "score": 8,
+      "tags": [
+        "concept",
+        "architecture",
+        "vla",
+        "flow-matching",
+        "physical-intelligence"
+      ]
+    },
+    {
+      "slug": "x402-protocol",
+      "score": 8,
+      "tags": [
+        "concept",
+        "protocol",
+        "payments",
+        "http",
+        "agent-economy"
+      ]
+    },
+    {
+      "slug": "bre-b-psp-routed-integration",
+      "score": 8,
+      "tags": [
+        "concept",
+        "bre-b",
+        "colombia",
+        "payments",
+        "psp"
+      ]
+    },
+    {
+      "slug": "action-chunking-latency-hiding",
+      "score": 8,
+      "tags": [
+        "concept",
+        "latency",
+        "control-chunks",
+        "cloud-inference",
+        "physical-intelligence"
+      ]
+    },
+    {
+      "slug": "quantum-branch-dimension",
+      "score": 8,
+      "tags": [
+        "concept",
+        "rcs",
+        "quantum",
+        "utility",
+        "superposition"
+      ]
+    },
+    {
+      "slug": "capability-authorization-intent",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "governance",
+        "agent-safety",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "narrative-drift-as-identity-corruption",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "identity",
+        "agent-safety",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "log-claims-not-actions",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "observability",
+        "agent-trust",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "pre-action-belief-claim",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "agent-safety",
+        "metacognition",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "trait-not-rename",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "architecture",
+        "refactoring",
+        "traits"
+      ]
+    },
+    {
+      "slug": "phantom-tool-success",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "observability",
+        "agent-safety",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "articulable-vs-operative-narrative",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "metacognition",
+        "agent-trust",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "substrate-controller-payload-ontology",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "architecture",
+        "ontology",
+        "life-os"
+      ]
+    },
+    {
+      "slug": "agent-emitted-ui",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "ui-generation",
+        "agent-architecture",
+        "life-runtime",
+        "tenant-customization"
+      ]
+    },
+    {
+      "slug": "append-only-memory-as-identity-integrity",
+      "score": 8,
+      "tags": [
+        "pattern",
+        "memory",
+        "identity",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "jason-stern",
+      "score": 7,
+      "tags": [
+        "person",
+        "founder",
+        "property-management",
+        "customer-principal",
+        "innovators-alliance"
+      ]
+    },
+    {
+      "slug": "promotion-gate",
+      "score": 7,
+      "tags": [
+        "question",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "the-architecture-fix-nous",
+      "score": 7,
+      "tags": [
+        "question",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "haima",
+      "score": 7,
+      "tags": [
+        "project",
+        "rust",
+        "life-agent-os",
+        "payments",
+        "x402"
+      ]
+    },
+    {
+      "slug": "freelance-materiales-intel",
+      "score": 7,
+      "tags": [
+        "project",
+        "freelance",
+        "life-module",
+        "materiales-intel",
+        "colombia"
+      ]
+    },
+    {
+      "slug": "exclusive-rentals",
+      "score": 7,
+      "tags": [
+        "project",
+        "external-reference",
+        "tenant",
+        "property-management",
+        "student-housing"
+      ]
+    },
+    {
+      "slug": "skywork-deepresearchagent",
+      "score": 7,
+      "tags": [
+        "project",
+        "reference-implementation",
+        "self-evolving-agents",
+        "deep-research",
+        "skywork-ai"
+      ]
+    },
+    {
+      "slug": "tea-protocol",
+      "score": 7,
+      "tags": [
+        "concept",
+        "agent-protocols",
+        "predecessor",
+        "self-evolving-agents",
+        "agentorchestra"
+      ]
+    },
+    {
+      "slug": "promotion-gate",
+      "score": 7,
+      "tags": [
+        "concept",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "cost-per-hour-of-existence",
+      "score": 7,
+      "tags": [
+        "concept",
+        "agent-economics",
+        "homeostasis",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "eip-3009",
+      "score": 7,
+      "tags": [
+        "concept",
+        "ethereum",
+        "signatures",
+        "eip-712",
+        "usdc"
+      ]
+    },
+    {
+      "slug": "fold-as-observer",
+      "score": 7,
+      "tags": [
+        "concept",
+        "control-theory",
+        "estimation",
+        "rcs",
+        "autonomic"
+      ]
+    },
+    {
+      "slug": "periodic-check-sensitivity",
+      "score": 7,
+      "tags": [
+        "concept",
+        "observability",
+        "agent-safety",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "memory-bloat-as-stale-assumptions",
+      "score": 7,
+      "tags": [
+        "concept",
+        "memory",
+        "agent-architecture",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "soul-file",
+      "score": 7,
+      "tags": [
+        "concept",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "anima",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "authority-drift",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "governance",
+        "agent-safety",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "life-os",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "self-audit-goodhart",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "agent-safety",
+        "governance",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "unsupervised-production-diagnostic",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "observability",
+        "agent-trust",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "haima",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "life-runtime",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "default-permit-failure",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "agent-safety",
+        "governance",
+        "moltbook-discovery"
+      ]
+    },
+    {
+      "slug": "spaces",
+      "score": 7,
+      "tags": [
+        "pattern",
+        "bookkeeping"
+      ]
+    },
+    {
+      "slug": "autonomic",
+      "score": 7,
+      "tags": [
+        "tool",
+        "bookkeeping"
+      ]
+    }
+  ],
+  "pending_synthesis": [
+    {
+      "topic": "memory",
+      "entity_count": 87,
+      "entity_slugs": [
+        "the-insight-the",
+        "diagnostic-parasite",
+        "promotion-gate",
+        "the-architecture-fix-nous",
+        "why-this-matters",
+        "memory",
+        "agent-traps",
+        "hysteresis",
+        "enter-execute",
+        "anima"
+      ],
+      "priority": 435.0
+    },
+    {
+      "topic": "arcan",
+      "entity_count": 80,
+      "entity_slugs": [
+        "wentao-zhang-ntu",
+        "the-insight-the",
+        "diagnostic-parasite",
+        "promotion-gate",
+        "the-architecture-fix-nous",
+        "why-this-matters",
+        "memory",
+        "agent-traps",
+        "hysteresis",
+        "enter-execute"
+      ],
+      "priority": 400.0
+    },
+    {
+      "topic": "lago",
+      "entity_count": 49,
+      "entity_slugs": [
+        "promotion-gate",
+        "the-architecture-fix-nous",
+        "life-os",
+        "ml-intern",
+        "haima",
+        "agentic-market",
+        "freelance-materiales-intel",
+        "prosopon",
+        "life-kernel-facade",
+        "bi-temporal"
+      ],
+      "priority": 245.0
+    },
+    {
+      "topic": "broomva",
+      "entity_count": 41,
+      "entity_slugs": [
+        "brian-ichter",
+        "jason-stern",
+        "lachy-groom",
+        "quan-vuong",
+        "wentao-zhang-ntu",
+        "danny-driess",
+        "sergey-levine",
+        "chelsea-finn",
+        "karol-hausman",
+        "ml-intern"
+      ],
+      "priority": 205.0
+    },
+    {
+      "topic": "policy",
+      "entity_count": 40,
+      "entity_slugs": [
+        "sergey-levine",
+        "life-os",
+        "ml-intern",
+        "haima",
+        "agentic-market",
+        "freelance-materiales-intel",
+        "prosopon",
+        "life-kernel-facade",
+        "substrate-orthogonality",
+        "stability-budget"
+      ],
+      "priority": 200.0
+    },
+    {
+      "topic": "nous",
+      "entity_count": 36,
+      "entity_slugs": [
+        "ruben-manrique",
+        "nicanor-quijano",
+        "promotion-gate",
+        "the-architecture-fix-nous",
+        "broomva",
+        "agentic-market",
+        "freelance-materiales-intel",
+        "platform-karma",
+        "life-kernel-facade",
+        "life-runtime-sentinel"
+      ],
+      "priority": 180.0
+    },
+    {
+      "topic": "autonomic",
+      "entity_count": 35,
+      "entity_slugs": [
+        "ml-intern",
+        "haima",
+        "agentic-market",
+        "freelance-materiales-intel",
+        "life-kernel-facade",
+        "life-runtime-sentinel",
+        "agent-economic-pillar",
+        "knowledge-insulation",
+        "plexus",
+        "recursive-controlled-system"
+      ],
+      "priority": 175.0
+    },
+    {
+      "topic": "egri",
+      "entity_count": 32,
+      "entity_slugs": [
+        "sergey-levine",
+        "luis-felipe-giraldo",
+        "ml-intern",
+        "the-insight-the",
+        "substrate-orthogonality",
+        "stability-budget",
+        "tea-protocol",
+        "recursive-controlled-system",
+        "egri-meta-controller",
+        "rspl-resource-substrate"
+      ],
+      "priority": 160.0
+    },
+    {
+      "topic": "governance",
+      "entity_count": 32,
+      "entity_slugs": [
+        "luis-felipe-giraldo",
+        "ml-intern",
+        "prosopon",
+        "life-runtime-sentinel",
+        "substrate-orthogonality",
+        "stability-budget",
+        "knowledge-insulation",
+        "recursive-controlled-system",
+        "three-layer-belief-governance",
+        "hard-no-vs-bounded-no-validator"
+      ],
+      "priority": 160.0
+    },
+    {
+      "topic": "agent os",
+      "entity_count": 27,
+      "entity_slugs": [
+        "ruben-manrique",
+        "chelsea-finn",
+        "physical-intelligence",
+        "haima",
+        "freelance-materiales-intel",
+        "prosopon",
+        "stability-budget",
+        "multi-scale-embodied-memory",
+        "knowledge-insulation",
+        "recursive-controlled-system"
+      ],
+      "priority": 135.0
+    },
+    {
+      "topic": "trust",
+      "entity_count": 25,
+      "entity_slugs": [
+        "agentic-market",
+        "the-insight-the",
+        "substrate-orthogonality",
+        "egri-meta-controller",
+        "trust-weighted-observer",
+        "life-os",
+        "three-layer-belief-governance",
+        "hard-no-vs-bounded-no-validator",
+        "fold-as-observer",
+        "the-architecture-fix-nous"
+      ],
+      "priority": 125.0
+    },
+    {
+      "topic": "vigil",
+      "entity_count": 21,
+      "entity_slugs": [
+        "agentic-market",
+        "freelance-materiales-intel",
+        "life-runtime-sentinel",
+        "skywork-deepresearchagent",
+        "trust-weighted-observer",
+        "unified-kernel-gateway",
+        "three-layer-belief-governance",
+        "hard-no-vs-bounded-no-validator",
+        "multi-tier-dreaming",
+        "nous-l2-meta-controller"
+      ],
+      "priority": 105.0
+    },
+    {
+      "topic": "praxis",
+      "entity_count": 19,
+      "entity_slugs": [
+        "wentao-zhang-ntu",
+        "substrate-orthogonality",
+        "tea-protocol",
+        "rspl-resource-substrate",
+        "three-layer-belief-governance",
+        "hard-no-vs-bounded-no-validator",
+        "ontological-address",
+        "nous-l2-meta-controller",
+        "carrier-state-failure",
+        "autogenesis-agp"
+      ],
+      "priority": 95.0
+    },
+    {
+      "topic": "anima",
+      "entity_count": 18,
+      "entity_slugs": [
+        "anima",
+        "life-os",
+        "life-kernel-facade",
+        "soul-file",
+        "substrate-orthogonality",
+        "knowledge-insulation",
+        "trust-weighted-observer",
+        "ontological-address",
+        "lifed-facade",
+        "multi-tier-dreaming"
+      ],
+      "priority": 90.0
+    },
+    {
+      "topic": "aios",
+      "entity_count": 16,
+      "entity_slugs": [
+        "wentao-zhang-ntu",
+        "haima",
+        "prosopon",
+        "life-kernel-facade",
+        "arcan-prosopon",
+        "skywork-deepresearchagent",
+        "stability-budget",
+        "tea-protocol",
+        "recursive-controlled-system",
+        "rspl-resource-substrate"
+      ],
+      "priority": 80.0
+    },
+    {
+      "topic": "x402",
+      "entity_count": 16,
+      "entity_slugs": [
+        "haima",
+        "agentic-market",
+        "freelance-materiales-intel",
+        "life-runtime-sentinel",
+        "cost-per-hour-of-existence",
+        "eip-3009",
+        "streaming-finance-x402",
+        "haima-streaming-finance",
+        "liquid-prompt",
+        "x402-protocol"
+      ],
+      "priority": 80.0
+    },
+    {
+      "topic": "spaces",
+      "entity_count": 14,
+      "entity_slugs": [
+        "karol-hausman",
+        "ml-intern",
+        "unified-kernel-gateway",
+        "three-layer-belief-governance",
+        "lifed-facade",
+        "flow-matching-vla",
+        "sepl-operator-algebra",
+        "autogenesis-agp",
+        "life-os",
+        "fast-slow-hierarchical-control"
+      ],
+      "priority": 70.0
+    },
+    {
+      "topic": "life os",
+      "entity_count": 12,
+      "entity_slugs": [
+        "life-os",
+        "haima",
+        "platform-karma",
+        "connecting-moltbook",
+        "life-os",
+        "knowledge-graph",
+        "the-architecture-fix-nous",
+        "life-os",
+        "knowledge-graph",
+        "spaces"
+      ],
+      "priority": 60.0
+    },
+    {
+      "topic": "knowledge graph",
+      "entity_count": 10,
+      "entity_slugs": [
+        "ruben-manrique",
+        "becas-cambio-975",
+        "multi-scale-embodied-memory",
+        "life-os",
+        "knowledge-graph",
+        "multi-tier-dreaming",
+        "memory",
+        "the-three",
+        "promotion-gate",
+        "knowledge-graph"
+      ],
+      "priority": 50.0
+    },
+    {
+      "topic": "bi-temporal",
+      "entity_count": 10,
+      "entity_slugs": [
+        "bi-temporal",
+        "substrate-orthogonality",
+        "relationship-resident-binding",
+        "life-os",
+        "pre-action-belief-claim",
+        "spaces",
+        "lago-event-journal",
+        "bi-temporal",
+        "implementation-lago",
+        "memory-provenance"
+      ],
+      "priority": 50.0
+    }
+  ],
+  "updated_at": "2026-04-30T17:56:06.457352+00:00"
+}

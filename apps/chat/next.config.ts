@@ -20,6 +20,19 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    return [
+      // Profile aliases — single canonical /profile
+      { source: "/cv", destination: "/profile", permanent: true },
+      { source: "/resume", destination: "/profile", permanent: true },
+      { source: "/about", destination: "/profile", permanent: true },
+      { source: "/carlos", destination: "/profile", permanent: true },
+      // Writing canonicalization — /blog folds into /writing
+      { source: "/blog", destination: "/writing", permanent: true },
+      { source: "/blog/:slug", destination: "/writing/:slug", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {
