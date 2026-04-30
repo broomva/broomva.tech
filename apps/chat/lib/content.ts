@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { cacheLife } from "next/cache";
 import matter from "gray-matter";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
@@ -171,6 +172,8 @@ async function readFile(
 export async function getContentList(
   kind: ContentKind,
 ): Promise<ContentSummary[]> {
+  "use cache";
+  cacheLife("hours");
   const files = await readDirectory(kind);
 
   const entries = await Promise.all(
@@ -195,6 +198,8 @@ export async function getContentBySlug(
   kind: ContentKind,
   slug: string,
 ): Promise<ContentDocument | null> {
+  "use cache";
+  cacheLife("hours");
   const raw = await readFile(kind, slug);
   if (!raw) return null;
 
@@ -246,6 +251,8 @@ export async function getLatest(
   kind: ContentKind,
   limit = 3,
 ): Promise<ContentSummary[]> {
+  "use cache";
+  cacheLife("hours");
   const list = await getContentList(kind);
   return list.slice(0, limit);
 }
@@ -253,12 +260,16 @@ export async function getLatest(
 export async function getPinnedProjects(
   limit = 3,
 ): Promise<ContentSummary[]> {
+  "use cache";
+  cacheLife("hours");
   const projects = await getContentList("projects");
   const pinned = projects.filter((project) => project.pinned);
   return pinned.slice(0, limit);
 }
 
 export async function getAllSlugs(kind: ContentKind): Promise<string[]> {
+  "use cache";
+  cacheLife("hours");
   const list = await getContentList(kind);
   return list.map((item) => item.slug);
 }

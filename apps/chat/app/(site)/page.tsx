@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import Script from "next/script";
 import { LandingClient } from "@/components/site/landing-sections";
 import { getSafeSession } from "@/lib/auth";
 import { config } from "@/lib/config";
@@ -35,13 +34,11 @@ export default async function Home() {
 
   return (
     <>
-      <Script
-        id="json-ld"
+      {/* JSON-LD inlined into SSR HTML — crawlers see it without blocking hydration */}
+      <script
         type="application/ld+json"
-        strategy="beforeInteractive"
-      >
-        {JSON.stringify(jsonLd)}
-      </Script>
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <LandingClient
         projects={projects}
         writing={writing}

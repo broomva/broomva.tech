@@ -74,7 +74,8 @@ const ThermodynamicGrid = ({
       mouse.active = false;
     };
 
-    let rafId: number;
+    let rafId: number | null = null;
+    let isVisible = true;
 
     const update = () => {
       if (mouse.active) {
@@ -152,15 +153,43 @@ const ThermodynamicGrid = ({
       rafId = requestAnimationFrame(update);
     };
 
+    const start = () => {
+      if (rafId === null) rafId = requestAnimationFrame(update);
+    };
+    const stop = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible && !document.hidden) start();
+        else stop();
+      },
+      { rootMargin: "100px" },
+    );
+    visibilityObserver.observe(container);
+
+    const handleDocumentVisibility = () => {
+      if (document.hidden) stop();
+      else if (isVisible) start();
+    };
+    document.addEventListener("visibilitychange", handleDocumentVisibility);
+
     window.addEventListener("resize", resize);
-    container.addEventListener("mousemove", handleMouseMove);
-    container.addEventListener("mouseleave", handleMouseLeave);
+    container.addEventListener("mousemove", handleMouseMove, { passive: true });
+    container.addEventListener("mouseleave", handleMouseLeave, { passive: true });
 
     resize();
-    update();
+    start();
 
     return () => {
-      cancelAnimationFrame(rafId);
+      stop();
+      visibilityObserver.disconnect();
+      document.removeEventListener("visibilitychange", handleDocumentVisibility);
       window.removeEventListener("resize", resize);
       container.removeEventListener("mousemove", handleMouseMove);
       container.removeEventListener("mouseleave", handleMouseLeave);
