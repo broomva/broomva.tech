@@ -13,6 +13,7 @@ const PUBLIC_PAGE_PREFIXES = [
   "/now",
   "/contact",
   "/prompts",
+  "/profile",
   "/share/",
   "/privacy",
   "/terms",
