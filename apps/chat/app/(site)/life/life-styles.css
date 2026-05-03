@@ -800,6 +800,347 @@
 .life-landing__chip--emerald { color: oklch(0.78 0.15 155); border: 1px solid oklch(0.72 0.19 155 / 0.4); background: oklch(0.72 0.19 155 / 0.08); }
 .life-landing__chip--amber { color: oklch(0.87 0.18 85); border: 1px solid oklch(0.87 0.18 85 / 0.4); background: oklch(0.87 0.18 85 / 0.08); }
 
+/* ============================================================================
+   /life articulation page — hero, sections, subsystems, custody, quickstart.
+   Extends the project-picker styles above; everything stays under the
+   .life-landing namespace.
+   ============================================================================ */
+
+.life-landing__hero {
+  margin-bottom: 72px;
+}
+.life-landing__hero .life-landing__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.life-landing__pulse {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 9999px;
+  background: oklch(0.78 0.15 155);
+  box-shadow: 0 0 0 0 oklch(0.78 0.15 155 / 0.6);
+  animation: life-landing-pulse 2.4s ease-out infinite;
+}
+@keyframes life-landing-pulse {
+  0%   { box-shadow: 0 0 0 0 oklch(0.78 0.15 155 / 0.6); }
+  70%  { box-shadow: 0 0 0 10px oklch(0.78 0.15 155 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.78 0.15 155 / 0); }
+}
+.life-landing__br { display: none; }
+@media (min-width: 720px) {
+  .life-landing__br { display: inline; }
+  .life-landing__title { font-size: 64px; }
+}
+.life-landing__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 36px;
+}
+.life-landing__cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  font-family: var(--ag-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: transform var(--ag-transition-fast), border-color var(--ag-transition-fast), background var(--ag-transition-fast);
+}
+.life-landing__cta--primary {
+  background: var(--ag-ai-blue);
+  color: oklch(1 0 0);
+  border: 1px solid transparent;
+}
+.life-landing__cta--primary:hover {
+  background: color-mix(in oklab, var(--ag-ai-blue) 88%, white);
+  transform: translateY(-1px);
+}
+.life-landing__cta--ghost {
+  background: transparent;
+  color: var(--ag-text-primary);
+  border: 1px solid var(--ag-border-subtle);
+}
+.life-landing__cta--ghost:hover {
+  border-color: oklch(0.60 0.12 260 / 0.5);
+  color: var(--ag-ai-blue);
+}
+
+.life-landing__stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--ag-border-subtle);
+}
+.life-landing__stat {
+  background: color-mix(in oklab, var(--ag-bg-surface) 55%, transparent);
+  backdrop-filter: blur(12px) saturate(1.2);
+  padding: 14px 18px;
+}
+.life-landing__stat dt {
+  font-family: var(--ag-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ag-text-muted);
+  margin: 0 0 6px 0;
+}
+.life-landing__stat dd {
+  font-family: var(--ag-font-heading);
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: var(--ag-text-primary);
+  margin: 0;
+}
+
+/* ── Section scaffold ──────────────────────────────────────────── */
+.life-landing__section {
+  margin-bottom: 72px;
+}
+.life-landing__section-head {
+  margin-bottom: 28px;
+}
+.life-landing__kicker {
+  font-family: var(--ag-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ag-text-muted);
+  margin: 0 0 8px 0;
+}
+.life-landing__h2 {
+  font-family: var(--ag-font-heading);
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--ag-text-primary);
+  margin: 0 0 14px 0;
+}
+@media (min-width: 720px) {
+  .life-landing__h2 { font-size: 36px; }
+}
+.life-landing__lede {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ag-text-secondary);
+  max-width: 720px;
+  margin: 0;
+}
+.life-landing__lede--small {
+  font-size: 13px;
+  margin-top: 14px;
+  color: var(--ag-text-muted);
+}
+.life-landing__lede code,
+.life-landing__footnote code {
+  font-family: var(--ag-font-mono);
+  font-size: 0.92em;
+  background: color-mix(in oklab, var(--ag-bg-surface) 60%, transparent);
+  border: 1px solid var(--ag-border-subtle);
+  border-radius: 6px;
+  padding: 1px 6px;
+  color: var(--ag-text-primary);
+}
+
+/* ── Subsystem grid ────────────────────────────────────────────── */
+.life-landing__sub-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.life-landing__sub-card {
+  padding: 16px 18px;
+  border: 1px solid var(--ag-border-subtle);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--ag-bg-surface) 50%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+  scroll-margin-top: 80px;
+}
+.life-landing__sub-name {
+  font-family: var(--ag-font-heading);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--ag-text-primary);
+  margin: 0 0 6px 0;
+}
+.life-landing__sub-role {
+  display: inline-block;
+  margin-left: 6px;
+  font-family: var(--ag-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ag-text-muted);
+  vertical-align: middle;
+}
+.life-landing__sub-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ag-text-secondary);
+  margin: 0;
+}
+
+/* ── Custody backend grid ─────────────────────────────────────── */
+.life-landing__custody-grid {
+  list-style: none;
+  margin: 0 0 18px 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.life-landing__custody-card {
+  padding: 16px 18px;
+  border: 1px solid oklch(0.60 0.12 260 / 0.18);
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, oklch(0.60 0.12 260 / 0.04), transparent 60%),
+    color-mix(in oklab, var(--ag-bg-surface) 50%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+.life-landing__custody-surface {
+  font-family: var(--ag-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ag-ai-blue);
+  margin: 0 0 6px 0;
+}
+.life-landing__custody-name {
+  font-family: var(--ag-font-mono);
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--ag-text-primary);
+  margin: 0 0 6px 0;
+}
+.life-landing__custody-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ag-text-secondary);
+  margin: 0;
+}
+.life-landing__footnote {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ag-text-muted);
+  margin: 0;
+}
+.life-landing__footnote-label {
+  font-family: var(--ag-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ag-text-secondary);
+  background: color-mix(in oklab, var(--ag-bg-surface) 70%, transparent);
+  border: 1px solid var(--ag-border-subtle);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 4px;
+}
+.life-landing__inline-link {
+  color: var(--ag-text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--ag-border-subtle);
+  text-underline-offset: 3px;
+  transition: color var(--ag-transition-fast), text-decoration-color var(--ag-transition-fast);
+}
+.life-landing__inline-link:hover {
+  color: var(--ag-ai-blue);
+  text-decoration-color: var(--ag-ai-blue);
+}
+
+/* ── Code block ─────────────────────────────────────────────── */
+.life-landing__code {
+  border: 1px solid var(--ag-border-subtle);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--ag-bg-deep) 65%, transparent);
+  backdrop-filter: blur(20px);
+  overflow: auto;
+  position: relative;
+}
+.life-landing__code::before {
+  content: "$";
+  position: absolute;
+  top: 14px; left: 14px;
+  font-family: var(--ag-font-mono);
+  font-size: 11px;
+  color: var(--ag-text-muted);
+  letter-spacing: 0.1em;
+}
+.life-landing__code pre {
+  margin: 0;
+  padding: 16px 18px 18px 36px;
+  font-family: var(--ag-font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ag-text-secondary);
+  overflow-x: auto;
+}
+.life-landing__code pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.life-landing__footer {
+  margin-top: 80px;
+  padding-top: 32px;
+  border-top: 1px solid var(--ag-border-subtle);
+  text-align: center;
+}
+.life-landing__footer-line {
+  font-size: 13px;
+  color: var(--ag-text-muted);
+  margin: 0 0 14px 0;
+}
+.life-landing__footer-line strong {
+  color: var(--ag-text-secondary);
+  font-weight: 500;
+}
+.life-landing__footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--ag-font-mono);
+  font-size: 12px;
+  margin-bottom: 32px;
+}
+.life-landing__footer-links a {
+  color: var(--ag-text-secondary);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color var(--ag-transition-fast);
+}
+.life-landing__footer-links a:hover {
+  color: var(--ag-ai-blue);
+}
+.life-landing__footer-links span {
+  color: var(--ag-text-muted);
+  opacity: 0.5;
+}
+.life-landing__epigraph {
+  font-family: var(--ag-font-heading);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ag-text-primary);
+  margin: 0;
+  opacity: 0.75;
+}
+
 .life-landing__notfound {
   padding: 80px 24px;
   text-align: center;
