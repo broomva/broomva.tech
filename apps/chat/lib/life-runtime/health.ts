@@ -141,6 +141,34 @@ export function staticHealthSnapshot(): LifeHealth {
     },
   ];
 
+  // The AgentSessionClient backend overrides the `arcan` row's status
+  // when active. Adding it here (rather than in the live probe) keeps
+  // the static snapshot honest even before the probe runs.
+  const agentBackend = process.env.LIFED_DISABLED === "1" ? "in-process" :
+    (process.env.LIFED_GATEWAY_URL ? "lifed-ws" : "in-process");
+  if (agentBackend === "lifed-ws") {
+    // Optimistic — the live probe in /api/life/health will degrade
+    // these to `degraded` if lifegw is unreachable.
+    const arcanIdx = services.findIndex((s) => s.id === "arcan");
+    if (arcanIdx >= 0) {
+      services[arcanIdx] = {
+        id: "arcan",
+        label: "Arcan",
+        status: "live",
+        detail: `agent loop via lifegw (${process.env.LIFED_GATEWAY_URL})`,
+      };
+    }
+    const lifedIdx = services.findIndex((s) => s.id === "lifed");
+    if (lifedIdx >= 0) {
+      services[lifedIdx] = {
+        id: "lifed",
+        label: "lifed",
+        status: "live",
+        detail: `wired via ${process.env.LIFED_GATEWAY_URL}`,
+      };
+    }
+  }
+
   return {
     ts: new Date().toISOString(),
     env,
