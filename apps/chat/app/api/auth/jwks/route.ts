@@ -1,11 +1,14 @@
 /**
- * GET /api/auth/jwks.json
+ * GET /api/auth/jwks   (also reachable via /api/auth/jwks.json rewrite)
  *
  * Publishes the public half of the lifegw Tier-1 signing key so lifegw
- * can verify Tier-1 JWTs minted by `mintTier1ForConsumer()`. Path is
- * the canonical default referenced by lifegw's `auth.jwks_url` config
- * — see `core/life/crates/life-runtime/lifegw/src/config.rs`
- * (`default_jwks_url() = "https://broomva.tech/api/auth/jwks.json"`).
+ * can verify Tier-1 JWTs minted by `mintTier1ForConsumer()`. The
+ * canonical lifegw URL is `/api/auth/jwks.json` (see
+ * `core/life/crates/life-runtime/lifegw/src/config.rs`,
+ * `default_jwks_url()`); a rewrite in `next.config.ts` maps that path
+ * to this folder. We can't use a literal `jwks.json` folder because
+ * Next.js routes folder-names-with-dots through the Neon Auth
+ * `[...path]` catch-all instead of the literal segment.
  *
  * Cache headers match lifegw's default JWKS cache TTL (5 minutes,
  * `default_jwks_cache_ttl()`). The 30-min `s-maxage` lets the Vercel
