@@ -17,6 +17,13 @@ const nextConfig: NextConfig = {
     return [
       { source: "/llms.txt", destination: "/api/llms" },
       { source: "/llms-full.txt", destination: "/api/llms-full" },
+      // lifegw's default `auth.jwks_url` points at `/api/auth/jwks.json`
+      // (see `core/life/crates/life-runtime/lifegw/src/config.rs`). The
+      // Neon Auth catch-all `[...path]` ate the literal-folder version
+      // because Next.js routes folders-with-dots through the catch-all,
+      // so we serve the JWKS from `/api/auth/jwks` and rewrite the
+      // canonical `.json` URL in.
+      { source: "/api/auth/jwks.json", destination: "/api/auth/jwks" },
     ];
   },
 
