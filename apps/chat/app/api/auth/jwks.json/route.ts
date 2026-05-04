@@ -16,8 +16,11 @@
 import { NextResponse } from "next/server";
 import { publishJwks } from "@/lib/auth/lifegw-jwt";
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+// Route segment config (dynamic / runtime) intentionally omitted —
+// `nextConfig.cacheComponents` rejects them. The handler is a vanilla
+// Node-runtime route by default, which matches our needs (lifegw fetches
+// this endpoint with a 5-min JwksCache TTL, so cold-start latency is
+// not a hot path).
 
 export async function GET(): Promise<NextResponse> {
   try {
