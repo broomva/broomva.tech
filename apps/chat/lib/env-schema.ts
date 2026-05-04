@@ -159,4 +159,40 @@ export const serverEnvSchema = {
 
   // Vercel platform (auto-set by Vercel)
   VERCEL_URL: z.string().optional().describe("Auto-set by Vercel platform"),
+
+  // ── lifegw Tier-1 JWT signing (Spec C₃ §5.2) ──────────────────────
+  // Generate via `node apps/chat/scripts/generate-lifegw-tier1-jwk.mjs`.
+  // Required in production. Local-dev uses a per-process random key.
+  LIFEGW_TIER1_SIGNING_JWK: z
+    .string()
+    .optional()
+    .describe(
+      "ES256 P-256 private JWK (JSON-encoded) used to sign Tier-1 JWTs " +
+        "presented to lifegw. Generate via " +
+        "`node apps/chat/scripts/generate-lifegw-tier1-jwk.mjs`.",
+    ),
+  LIFEGW_TIER1_ISSUER: z
+    .string()
+    .url()
+    .optional()
+    .describe(
+      "Override Tier-1 issuer (default `https://broomva.tech`). Must match " +
+        "lifegw's `auth.tier1_issuer` config.",
+    ),
+  LIFEGW_TIER1_AUDIENCE: z
+    .string()
+    .optional()
+    .describe(
+      "Override Tier-1 audience (default `lifegw`). Must match lifegw's " +
+        "`auth.tier1_audience` config.",
+    ),
+  LIFED_GATEWAY_URL: z
+    .string()
+    .url()
+    .optional()
+    .describe(
+      "lifegw base URL (e.g. https://lifegw-production.up.railway.app). " +
+        "When set, broomva.tech routes agent traffic through the canonical " +
+        "wire (Spec C₃) instead of the in-process runner.",
+    ),
 };

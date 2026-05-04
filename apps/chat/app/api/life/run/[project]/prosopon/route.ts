@@ -25,6 +25,8 @@ import { z } from "zod";
 import { generateTitleFromUserMessage } from "@/app/(chat)/actions";
 import { getAnonymousSession } from "@/lib/anonymous-session-server";
 import { getSafeSession } from "@/lib/auth";
+import { mintTier1ForConsumer } from "@/lib/auth/lifegw-jwt";
+import type { TierUserCap } from "@/lib/life-runtime/agent-session/types";
 import { userHasCreditsFor } from "@/lib/life-runtime/billing";
 import { createLifeRuntime } from "@/lib/life-runtime/canonical";
 import {
@@ -160,7 +162,39 @@ async function handlePost(
     );
   }
 
-  // ── 3. Delegate to canonical LifeRuntime ──────────────────────
+  // ── 3. Mint Tier-1 capability + delegate to canonical LifeRuntime ─
+  // The capability is a short-lived ES256 JWT signed with the broomva.tech
+  // private key whose public half is published at /api/auth/jwks.json.
+  // lifegw verifies it against that JWKS and mints a Tier-2 cap downstream.
+  // For the in-process backend the capability is harmless extra payload —
+  // the lifed-ws backend is the only consumer that actually presents it
+  // on the WS handshake.
+  let capability: TierUserCap | undefined;
+  try {
+    capability = await mintTier1ForConsumer({
+      consumer,
+      projectSlug: slug,
+    });
+  } catch (mintErr) {
+    // Production deployments require LIFEGW_TIER1_SIGNING_JWK; if it's
+    // missing the mint throws. Surface a 503 so the client retries
+    // instead of getting a confusing 500 from the runtime.
+    console.error(
+      "[life/run/prosopon] failed to mint Tier-1 capability:",
+      mintErr,
+    );
+    return jsonError(
+      503,
+      "Identity service unavailable — Tier-1 signing key is not configured.",
+      {
+        detail:
+          process.env.VERCEL_ENV === "production"
+            ? undefined
+            : (mintErr as Error).message,
+      },
+    );
+  }
+
   const runtime = createLifeRuntime();
   const outcome = await runtime.run({
     projectSlug: slug,
@@ -169,6 +203,7 @@ async function handlePost(
     sessionIdHint: lifeSessionIdHint,
     input,
     byokKeyId,
+    capability,
   });
 
   if (outcome.kind === "rejected") {
