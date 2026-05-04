@@ -48,6 +48,10 @@ async function maybeProbe(service: LifeService): Promise<LifeService> {
       case "lago":
         // Lago-in-this-deploy is Postgres — probe the DB.
         return await probePostgres(service);
+      case "lifed":
+        // Live reachability probe to lifegw `/healthz` when configured.
+        // Spec: 2026-05-03-life-runtime-canonical.md §"Health-endpoint contract".
+        return await probeLifegw(service);
       default:
         return service;
     }
@@ -56,6 +60,41 @@ async function maybeProbe(service: LifeService): Promise<LifeService> {
       ...service,
       status: "degraded",
       detail: `${service.detail ?? ""} · probe error: ${(err as Error).message.slice(0, 60)}`,
+    };
+  }
+}
+
+async function probeLifegw(service: LifeService): Promise<LifeService> {
+  const url = process.env.LIFED_GATEWAY_URL;
+  if (!url || process.env.LIFED_DISABLED === "1") {
+    // Snapshot already says `not-deployed`; preserve that.
+    return service;
+  }
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2_000);
+    const resp = await fetch(`${url.replace(/\/+$/, "")}/healthz`, {
+      method: "GET",
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    if (!resp.ok) {
+      return {
+        ...service,
+        status: "degraded",
+        detail: `lifegw returned ${resp.status}`,
+      };
+    }
+    return {
+      ...service,
+      status: "live",
+      detail: `lifegw at ${url}`,
+    };
+  } catch (err) {
+    return {
+      ...service,
+      status: "down",
+      detail: `lifegw unreachable: ${(err as Error).message.slice(0, 60)}`,
     };
   }
 }

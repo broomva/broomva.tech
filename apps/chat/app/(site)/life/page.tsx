@@ -6,6 +6,8 @@ const CHIP_LABELS: Record<ProjectChipColor, string> = {
   emerald: "live",
   amber: "research",
   violet: "paid",
+  blue: "preview",
+  rose: "alpha",
 };
 
 export const metadata: Metadata = {
