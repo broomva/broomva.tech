@@ -148,6 +148,39 @@ const TRANSIENT_CLOSE_CODES: ReadonlySet<number> = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
+// Errors surfaced from the unary `createSession` helper. Stage 3a.
+// ---------------------------------------------------------------------------
+
+export interface LifedCreateSessionErrorOpts {
+  /** Stable error code — caller switches on this for retry policy. */
+  code: string;
+  /** Underlying cause for `.cause` chaining. */
+  cause?: unknown;
+  /** HTTP status when the failure came from a non-2xx response. */
+  httpStatus?: number;
+}
+
+/**
+ * Error thrown from `LifedWsAgentSessionClient.createSession`.
+ *
+ * Distinct from the `error` events the WS stream yields — this is a
+ * synchronous failure of the unary HTTP call (network, 4xx/5xx,
+ * malformed body). Callers translate it into a Prosopon
+ * envelope or a route-level 5xx response.
+ */
+export class LifedCreateSessionError extends Error {
+  readonly code: string;
+  readonly httpStatus?: number;
+
+  constructor(message: string, opts: LifedCreateSessionErrorOpts) {
+    super(message, { cause: opts.cause });
+    this.name = "LifedCreateSessionError";
+    this.code = opts.code;
+    this.httpStatus = opts.httpStatus;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
 
@@ -187,6 +220,109 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
     this.healthTimeoutMs = deps.healthTimeoutMs ?? 2_000;
     this.healthTokenProducer = deps.healthTokenProducer;
     this.fetchFn = deps.fetchFn ?? fetch;
+  }
+
+  /**
+   * Create a lifed-side session (Stage 3a — May 2026).
+   *
+   * lifed's `Agent.StreamSession` returns `not_found` when the sid
+   * isn't already in its routing cache. The cache populates only after
+   * a successful `Agent.CreateSession` (4-step saga: arcan create_agent
+   * + lago open_namespace + haima bind_wallet + anima register_session).
+   *
+   * This helper POSTs to lifegw's `/v1/agent/create_session` HTTP/JSON
+   * wrapper (see `core/life/crates/life-runtime/lifegw/src/services/agent_http.rs`).
+   * Callers (canonical runtime) invoke this BEFORE `stream()` and use
+   * the returned sid for the WS upgrade. The Tier-1 cap on `input.capability`
+   * authenticates the call; lifegw verifies it via the same JWKS the
+   * AuthLayer uses, mints a Tier-2 cap internally, and forwards to lifed.
+   */
+  async createSession(input: {
+    capability: { token: string };
+    userId: string;
+    projectSlug: string;
+    label?: string;
+    resumeSid?: string;
+    signal?: AbortSignal;
+  }): Promise<{
+    sid: string;
+    agentId: string;
+    userId: string;
+    projectId: string;
+    createdAtUnix: number;
+  }> {
+    const url = `${this.baseUrl}/v1/agent/create_session`;
+    const body: Record<string, unknown> = {
+      user_id: input.userId,
+      project_id: input.projectSlug,
+    };
+    if (input.label && input.label.length > 0) body.label = input.label;
+    if (input.resumeSid && input.resumeSid.length > 0)
+      body.resume_sid = input.resumeSid;
+    let resp: Response;
+    try {
+      resp = await this.fetchFn(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${input.capability.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: input.signal,
+      });
+    } catch (err) {
+      const e = err as Error;
+      throw new LifedCreateSessionError(
+        `network error reaching ${url}: ${e.message}`,
+        { code: "lifed-ws.create_session.fetch_failed", cause: e },
+      );
+    }
+    if (!resp.ok) {
+      let detail = "";
+      try {
+        detail = await resp.text();
+      } catch {
+        // swallow — surface the status code regardless
+      }
+      throw new LifedCreateSessionError(
+        `lifegw create_session returned HTTP ${resp.status}${
+          detail ? ` — ${detail.slice(0, 256)}` : ""
+        }`,
+        {
+          code: `lifed-ws.create_session.http_${resp.status}`,
+          httpStatus: resp.status,
+        },
+      );
+    }
+    let parsed: {
+      sid?: string;
+      agent_id?: string;
+      user_id?: string;
+      project_id?: string;
+      created_at_unix?: number;
+    };
+    try {
+      parsed = (await resp.json()) as typeof parsed;
+    } catch (err) {
+      const e = err as Error;
+      throw new LifedCreateSessionError(
+        `lifegw create_session returned non-JSON body: ${e.message}`,
+        { code: "lifed-ws.create_session.bad_response_body", cause: e },
+      );
+    }
+    if (!parsed.sid || parsed.sid.length === 0) {
+      throw new LifedCreateSessionError(
+        "lifegw create_session response missing 'sid'",
+        { code: "lifed-ws.create_session.missing_sid" },
+      );
+    }
+    return {
+      sid: parsed.sid,
+      agentId: parsed.agent_id ?? "",
+      userId: parsed.user_id ?? input.userId,
+      projectId: parsed.project_id ?? input.projectSlug,
+      createdAtUnix: parsed.created_at_unix ?? 0,
+    };
   }
 
   async health(): Promise<AgentSessionHealth> {

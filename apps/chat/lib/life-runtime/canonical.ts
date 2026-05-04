@@ -194,9 +194,65 @@ export function createLifeRuntime(deps: LifeRuntimeDeps = {}): LifeRuntime {
             : `user:${input.consumer.id}`,
       };
 
+      // 3.5. Stage 3a (May 2026): for the lifed-ws backend, the WS
+      // upgrade lands on `Agent.StreamSession` which requires the sid
+      // to already exist in lifed's routing cache. The cache populates
+      // only after a successful `Agent.CreateSession`. lifed's
+      // routing-cache idle-eviction is 1h (configurable) so within a
+      // chat we'd ideally reuse the lifed sid — but persisting it is
+      // a separate concern (Stage 3a-bis); for now we mint a fresh
+      // lifed session per turn. The CreateSession saga is cheap
+      // against mock substrates (~1 ms) and well within budget against
+      // real ones (~100 ms).
+      //
+      // The InProcess backend is a no-op for this step — it doesn't
+      // route through lifegw and ignores the lifed sid.
+      let wsSid: string = lifeSession.id;
+      if (
+        sessionClient.backendId === "lifed-ws" &&
+        input.capability &&
+        typeof (
+          sessionClient as unknown as {
+            createSession?: (
+              x: unknown,
+            ) => Promise<{ sid: string }>;
+          }
+        ).createSession === "function"
+      ) {
+        const createSessionFn = (
+          sessionClient as unknown as {
+            createSession: (x: {
+              capability: { token: string };
+              userId: string;
+              projectSlug: string;
+              label?: string;
+            }) => Promise<{ sid: string }>;
+          }
+        ).createSession;
+        try {
+          const created = await createSessionFn({
+            capability: input.capability,
+            userId: input.consumer.id,
+            projectSlug: input.projectSlug,
+            label: lifeSession.id, // human-debuggable cross-ref
+          });
+          wsSid = created.sid;
+        } catch (err) {
+          // Surface the failure as a typed envelope rather than a 500
+          // — the route handler emits this through the SSE stream so
+          // the client can react. Falling back to the broomva-side
+          // `lifeSession.id` would just reproduce the boot-race
+          // "internal_error" we're trying to fix; better to fail loud.
+          const e = err as Error;
+          throw new Error(
+            `Failed to create lifed session before WS upgrade: ${e.message}`,
+          );
+        }
+      }
+
       // 4. Build the canonical event stream from the agent-session client.
       const canonicalStream = sessionClient.stream({
-        sessionId: lifeSession.id,
+        sessionId: wsSid,
         agentId: kernelCtx.agentId,
         projectSlug: input.projectSlug,
         userMessage: input.userMessage,

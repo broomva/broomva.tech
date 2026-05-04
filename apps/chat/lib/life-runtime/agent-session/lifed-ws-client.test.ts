@@ -274,6 +274,234 @@ describe("decodeAgentEvent — UNKNOWN", () => {
   });
 });
 
+describe("createSession (Stage 3a)", () => {
+  // Setup: import the class lazily here so the `vi.mock("server-only")`
+  // above takes effect before module evaluation, then construct an
+  // instance with an injected `fetch` so we can probe the request shape
+  // and stub responses without a network call.
+  const importClient = async () => {
+    const m = await import("./lifed-ws-client");
+    return m.LifedWsAgentSessionClient;
+  };
+
+  // No-op WebSocket factory so the constructor doesn't trip the
+  // "no WebSocket impl" guard when `globalThis.WebSocket` is missing.
+  const noopWsFactory = () =>
+    ({
+      readyState: 0,
+      send: () => {},
+      close: () => {},
+      addEventListener: () => {},
+    }) as unknown as ReturnType<typeof Object>;
+
+  it("POSTs to /v1/agent/create_session with the Tier-1 bearer + JSON body", async () => {
+    const Cls = await importClient();
+    const captured: { url?: string; init?: RequestInit } = {};
+    const stubFetch: typeof fetch = async (url, init) => {
+      captured.url = url as string;
+      captured.init = init;
+      return new Response(
+        JSON.stringify({
+          sid: "lifed_sid_001",
+          agent_id: "agent_x",
+          user_id: "alice",
+          project_id: "sentinel",
+          created_at_unix: 1_777_900_000,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+    const client = new Cls({
+      baseUrl: "https://lifegw.test",
+      fetchFn: stubFetch,
+      // biome-ignore lint/suspicious/noExplicitAny: test-only factory
+      webSocketFactory: noopWsFactory as any,
+    });
+    const out = await client.createSession({
+      capability: { token: "tok_xyz" },
+      userId: "alice",
+      projectSlug: "sentinel",
+      label: "smoke",
+    });
+    expect(out.sid).toBe("lifed_sid_001");
+    expect(out.agentId).toBe("agent_x");
+    expect(out.userId).toBe("alice");
+    expect(out.projectId).toBe("sentinel");
+    expect(out.createdAtUnix).toBe(1_777_900_000);
+
+    // Wire-shape assertions.
+    expect(captured.url).toBe(
+      "https://lifegw.test/v1/agent/create_session",
+    );
+    expect(captured.init?.method).toBe("POST");
+    const headers = captured.init?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer tok_xyz");
+    expect(headers["Content-Type"]).toBe("application/json");
+    const body = JSON.parse(captured.init?.body as string);
+    expect(body).toEqual({
+      user_id: "alice",
+      project_id: "sentinel",
+      label: "smoke",
+    });
+  });
+
+  it("omits empty optional fields from the request body", async () => {
+    const Cls = await importClient();
+    const captured: { body?: string } = {};
+    const stubFetch: typeof fetch = async (_url, init) => {
+      captured.body = init?.body as string;
+      return new Response(
+        JSON.stringify({ sid: "x", agent_id: "y" }),
+        { status: 200 },
+      );
+    };
+    const client = new Cls({
+      baseUrl: "https://lifegw.test",
+      fetchFn: stubFetch,
+      // biome-ignore lint/suspicious/noExplicitAny: test-only factory
+      webSocketFactory: noopWsFactory as any,
+    });
+    await client.createSession({
+      capability: { token: "t" },
+      userId: "alice",
+      projectSlug: "sentinel",
+      // no label, no resumeSid
+    });
+    const body = JSON.parse(captured.body as string);
+    expect(body).toEqual({ user_id: "alice", project_id: "sentinel" });
+    expect(body).not.toHaveProperty("label");
+    expect(body).not.toHaveProperty("resume_sid");
+  });
+
+  it("throws LifedCreateSessionError on non-2xx with httpStatus + code populated", async () => {
+    const Cls = await importClient();
+    const { LifedCreateSessionError } = await import("./lifed-ws-client");
+    const stubFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ error: "missing Tier-1 bearer" }), {
+        status: 401,
+      });
+    const client = new Cls({
+      baseUrl: "https://lifegw.test",
+      fetchFn: stubFetch,
+      // biome-ignore lint/suspicious/noExplicitAny: test-only factory
+      webSocketFactory: noopWsFactory as any,
+    });
+    await expect(
+      client.createSession({
+        capability: { token: "stale" },
+        userId: "alice",
+        projectSlug: "sentinel",
+      }),
+    ).rejects.toMatchObject({
+      name: "LifedCreateSessionError",
+      code: "lifed-ws.create_session.http_401",
+      httpStatus: 401,
+    });
+    // `instanceof` check for completeness — the import path is unique
+    // even with hot-reload.
+    try {
+      await client.createSession({
+        capability: { token: "stale" },
+        userId: "alice",
+        projectSlug: "sentinel",
+      });
+    } catch (err) {
+      expect(err).toBeInstanceOf(LifedCreateSessionError);
+    }
+  });
+
+  it("throws on network failure with code='fetch_failed'", async () => {
+    const Cls = await importClient();
+    const stubFetch: typeof fetch = async () => {
+      throw new Error("ECONNREFUSED");
+    };
+    const client = new Cls({
+      baseUrl: "https://lifegw.test",
+      fetchFn: stubFetch,
+      // biome-ignore lint/suspicious/noExplicitAny: test-only factory
+      webSocketFactory: noopWsFactory as any,
+    });
+    await expect(
+      client.createSession({
+        capability: { token: "t" },
+        userId: "alice",
+        projectSlug: "sentinel",
+      }),
+    ).rejects.toMatchObject({
+      name: "LifedCreateSessionError",
+      code: "lifed-ws.create_session.fetch_failed",
+    });
+  });
+
+  it("throws on missing 'sid' in the response body", async () => {
+    const Cls = await importClient();
+    const stubFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ agent_id: "no-sid-here" }), {
+        status: 200,
+      });
+    const client = new Cls({
+      baseUrl: "https://lifegw.test",
+      fetchFn: stubFetch,
+      // biome-ignore lint/suspicious/noExplicitAny: test-only factory
+      webSocketFactory: noopWsFactory as any,
+    });
+    await expect(
+      client.createSession({
+        capability: { token: "t" },
+        userId: "alice",
+        projectSlug: "sentinel",
+      }),
+    ).rejects.toMatchObject({
+      code: "lifed-ws.create_session.missing_sid",
+    });
+  });
+
+  it("throws on non-JSON response with code='bad_response_body'", async () => {
+    const Cls = await importClient();
+    const stubFetch: typeof fetch = async () =>
+      new Response("not json at all", {
+        status: 200,
+        headers: { "Content-Type": "text/plain" },
+      });
+    const client = new Cls({
+      baseUrl: "https://lifegw.test",
+      fetchFn: stubFetch,
+      // biome-ignore lint/suspicious/noExplicitAny: test-only factory
+      webSocketFactory: noopWsFactory as any,
+    });
+    await expect(
+      client.createSession({
+        capability: { token: "t" },
+        userId: "alice",
+        projectSlug: "sentinel",
+      }),
+    ).rejects.toMatchObject({
+      code: "lifed-ws.create_session.bad_response_body",
+    });
+  });
+
+  it("strips trailing slashes from baseUrl when constructing the URL", async () => {
+    const Cls = await importClient();
+    const captured: { url?: string } = {};
+    const stubFetch: typeof fetch = async (url) => {
+      captured.url = url as string;
+      return new Response(JSON.stringify({ sid: "x" }), { status: 200 });
+    };
+    const client = new Cls({
+      baseUrl: "https://lifegw.test///",
+      fetchFn: stubFetch,
+      // biome-ignore lint/suspicious/noExplicitAny: test-only factory
+      webSocketFactory: noopWsFactory as any,
+    });
+    await client.createSession({
+      capability: { token: "t" },
+      userId: "alice",
+      projectSlug: "sentinel",
+    });
+    expect(captured.url).toBe("https://lifegw.test/v1/agent/create_session");
+  });
+});
+
 describe("TRANSIENT_CLOSE_CODES", () => {
   it("includes the 4 codes Spec C₃ §6.5 marks as transient", () => {
     // 4002 — backpressure
