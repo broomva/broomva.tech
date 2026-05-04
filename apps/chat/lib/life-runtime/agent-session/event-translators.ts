@@ -120,6 +120,11 @@ export function llmPartToCanonical(part: unknown): AgentEvent[] {
   if (!part || typeof part !== "object") return [];
   const p = part as { type?: string; [k: string]: unknown };
   switch (p.type) {
+    case "text-start": {
+      const messageId = String(p.id ?? "");
+      if (!messageId) return [];
+      return [{ kind: "text_start", messageId }];
+    }
     case "text-delta": {
       const text =
         typeof p.text === "string"
@@ -128,7 +133,14 @@ export function llmPartToCanonical(part: unknown): AgentEvent[] {
             ? p.delta
             : "";
       if (!text) return [];
-      return [{ kind: "token", delta: text }];
+      const messageId =
+        typeof p.id === "string" && p.id.length > 0 ? p.id : undefined;
+      return [{ kind: "token", delta: text, messageId }];
+    }
+    case "text-end": {
+      const messageId = String(p.id ?? "");
+      if (!messageId) return [];
+      return [{ kind: "text_end", messageId }];
     }
     case "reasoning-delta":
     case "reasoning":

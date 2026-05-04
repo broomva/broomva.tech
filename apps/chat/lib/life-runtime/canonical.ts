@@ -424,11 +424,31 @@ async function* pumpEnvelopes(
 function canonicalToRunnerYield(ev: CanonicalAgentEvent): RunnerYield[] {
   const at = ev.at;
   switch (ev.event.kind) {
+    case "text_start":
+      return [
+        {
+          kind: "llm",
+          part: { type: "text-start", id: ev.event.messageId } as never,
+          at,
+        },
+      ];
     case "token":
       return [
         {
           kind: "llm",
-          part: { type: "text-delta", text: ev.event.delta } as never,
+          part: {
+            type: "text-delta",
+            text: ev.event.delta,
+            id: ev.event.messageId,
+          } as never,
+          at,
+        },
+      ];
+    case "text_end":
+      return [
+        {
+          kind: "llm",
+          part: { type: "text-end", id: ev.event.messageId } as never,
           at,
         },
       ];

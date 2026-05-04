@@ -47,8 +47,20 @@ export type AgentEvent =
    * Carries the VM handle so consumers can persist resume cursors.
    */
   | { kind: "open"; sessionId: string; vmHandle: VmHandle }
-  /** Token delta — the LLM emitted text. */
-  | { kind: "token"; delta: string }
+  /**
+   * The model started a new text-message segment. `messageId` is the
+   * stable correlation id used to thread all subsequent `token`
+   * events (and the closing `text_end`) back to the same message.
+   */
+  | { kind: "text_start"; messageId: string }
+  /**
+   * Token delta — the LLM emitted text. `messageId` correlates the
+   * delta with its `text_start` and `text_end`. When undefined, the
+   * UI synthesizes a placeholder id (legacy compat path).
+   */
+  | { kind: "token"; delta: string; messageId?: string }
+  /** End of a text-message segment. */
+  | { kind: "text_end"; messageId: string }
   /** The model entered a thinking/reasoning block. */
   | { kind: "thinking_start" }
   /** The model exited the thinking block. `ms` is wall-clock duration. */
