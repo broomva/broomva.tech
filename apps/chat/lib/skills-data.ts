@@ -231,7 +231,15 @@ export const BSTACK_LAYERS: BstackLayer[] = [
         slug: "pre-mortem",
         name: "Pre-Mortem",
         description:
-          "Structured risk analysis: imagine failure, identify causes, design mitigations before launch.",
+          "Structured risk analysis: imagine failure, identify causes by category, score by likelihood × impact, design mitigations before launch.",
+        installCommand: "npx skills add broomva/strategy-skills",
+        skillsUrl: "https://skills.sh/broomva/strategy-skills",
+      },
+      {
+        slug: "premortem",
+        name: "Premortem (Klein/Kahneman)",
+        description:
+          "It's 6 months from now and your plan failed — narrative deep-dive on why, in parallel sub-agents. Renders HTML report with hidden assumption + revised plan. Adapted from @itsolelehmann.",
         installCommand: "npx skills add broomva/strategy-skills",
         skillsUrl: "https://skills.sh/broomva/strategy-skills",
       },

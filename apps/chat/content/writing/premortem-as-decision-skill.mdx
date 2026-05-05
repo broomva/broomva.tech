@@ -1,0 +1,111 @@
+---
+title: "Premortem as a Decision Skill: Why It Works, and How We Adapted It"
+summary: "An AI defaults to agreeable and optimistic. The premortem breaks that pattern by setting the frame to 'this already failed — explain why.' Adapted from @itsolelehmann's Skillstack formulation, with proper attribution to Gary Klein and Daniel Kahneman, and a worked example on a research decision we ran it on this week."
+date: 2026-05-04
+published: true
+tags:
+  - skills
+  - decision-making
+  - premortem
+  - klein
+  - kahneman
+  - itsolelehmann
+  - broomva-stack
+  - strategy-skills
+audio: /audio/writing/premortem-as-decision-skill.mp3
+links:
+  - label: "Source: @itsolelehmann's premortem skill (X, 2026-05-02)"
+    url: "https://x.com/itsolelehmann/status/2050548948419645488"
+  - label: "Skill source (broomva/strategy-skills)"
+    url: "https://github.com/broomva/strategy-skills/blob/main/.skills/premortem/SKILL.md"
+  - label: "Gary Klein — Performing a Project Premortem (HBR 2007)"
+    url: "https://hbr.org/2007/09/performing-a-project-premortem"
+  - label: "Strategy & Decision Intelligence (Layer 7 of the Broomva Stack)"
+    url: "https://broomva.tech/skills"
+---
+
+# Premortem as a decision skill
+
+I added a new skill to the Broomva Stack this week. It's the second premortem we ship — distinct from the structured-scoring one that has been in `strategy-skills` for a while — and the difference is the shape of the output, not the underlying method.
+
+This post covers three things in order: where the skill came from and who deserves credit, why the technique works at all (the psychology has been studied for forty years), and a worked example on a real decision I ran it on yesterday before publishing this post.
+
+## Where it came from
+
+The mechanic is not mine. The chain is older than this stack:
+
+- **1998–2007 — Gary Klein** developed the premortem as a decision-making intervention for organizations and published the canonical version in *Harvard Business Review* in September 2007 (["Performing a Project Premortem"](https://hbr.org/2007/09/performing-a-project-premortem)). Klein's research at Klein Associates studied how experts make decisions under uncertainty; the premortem was his answer to the planning fallacy and the optimistic-projection problem.
+
+- **2011 — Daniel Kahneman** picked it up in *Thinking, Fast and Slow*, where he called the premortem his single most valuable decision-making technique. That endorsement is what brought it into the wider business literature. Google, Goldman Sachs, and Procter & Gamble adopted it before major decisions in the years after.
+
+- **2026-05-02 — [Ole Lehmann (@itsolelehmann)](https://x.com/itsolelehmann)** posted [the AI-skill version of the premortem](https://x.com/itsolelehmann/status/2050548948419645488) as part of his Skillstack work. His specific contributions are the ones that make it actually function as a Claude skill rather than a workshop format: the future-tense framing as a *trigger* for the language model, parallel sub-agent dispatch (one investigator per failure reason, all running independently), and the HTML-report output so the synthesis is scannable rather than buried in chat scrollback. Those three additions take the original method from a 90-minute facilitated meeting to a 3-minute Claude session that produces something a human can act on.
+
+- **2026-05-04 — Broomva Stack adaptation.** I bundled Lehmann's skill into the `strategy-skills` package (Layer 7 of the Broomva Stack), kept the full attribution chain in the SKILL.md frontmatter and body, and wrote this companion post. The skill ships as `npx skills add broomva/strategy-skills` and lives alongside the eight existing strategy skills.
+
+The skill page on this site lists both versions:
+
+- **Pre-Mortem** — the structured-spreadsheet shape (Technical / Execution / Market / Organizational categories, Likelihood × Impact scoring, ranked register, owners and deadlines)
+- **Premortem (Klein/Kahneman)** — the narrative-deep-dive shape (parallel sub-agent investigators, failure stories, hidden assumptions, HTML report)
+
+These are not redundant. Use the structured one when you need a defendable risk register for a stakeholder review. Use the narrative one when you need to surface hidden assumptions you didn't know you were making. They compose: run the narrative version first to find the assumptions, then run the structured version to assign mitigations and owners.
+
+## Why the technique works
+
+The premortem is a hack on a specific failure mode of forward planning, and the mechanism is well-studied. When you ask a person *"what could go wrong?"* you get cautious, hedged, generic answers. When you instead say *"this already failed — tell me why,"* their brain switches into narrative mode and generates substantially more specific, more creative, and more honest reasons.
+
+Researchers at Wharton and Cornell ([Mitchell, Russo, and Pennington, 1989](https://onlinelibrary.wiley.com/doi/abs/10.1002/bdm.3960020103)) called this **prospective hindsight** and showed in controlled experiments that it increases the ability to identify causes of future outcomes by 30%. The mechanism is generative: imagining a concrete past event triggers causal reasoning in a way that imagining a hypothetical future does not. You can see the difference in your own thinking — *"why might this fail?"* yields a list of bullet points; *"it failed; explain how"* yields a story.
+
+For AI-assisted decisions, this matters more. A language model has a strong baseline tendency toward agreeable and optimistic responses, especially when the user has framed something as their plan. Ask Claude *"is this a good idea?"* and you will get reasons it is. The premortem doesn't beg for honesty politely; it changes the frame so honesty is the easier path. *"This plan failed in November 2026. Here is the call. Generate every reason it died."* The model is no longer evaluating the plan; it is explaining a counterfactual it has been given. Different psychological mechanism, different output.
+
+This is also why Lehmann's **parallel sub-agent dispatch** matters. If you generate failure reasons in a single response, the model commits to a list and then explains each one shallowly, often hedging or padding the weaker ones. If you spawn one sub-agent per failure reason and they all run independently, each agent can go deep on its assigned failure without comparing to the others — which is structurally similar to how a real premortem with eight people works, where each person commits to their own failure story before anyone else has spoken.
+
+The HTML report matters for a different reason. A premortem that lives in chat scrollback dies in chat scrollback. A premortem that writes itself to a file you can refer to during execution becomes a reference artifact — the kind of thing you reread when an early-warning sign actually shows up.
+
+## When to use it
+
+Good targets:
+
+- A product or feature you're about to build
+- A launch plan with money or reputation on the line
+- A pricing change or business model shift
+- A hire you're about to make
+- A strategy or positioning pivot
+- A partnership or deal you're evaluating
+- Any commitment where the cost of being wrong is high
+
+Bad targets:
+
+- Vague ideas with no concrete plan yet (premortem is for plans, not aspirations)
+- Questions with one right answer
+- Requests for creative feedback on a draft
+- Decisions that are already made and irreversible (a premortem is only useful when you can still change course)
+
+## A worked example: premortem on a research decision
+
+Yesterday I committed publicly to a small research experiment. The architectural exchange that produced the commitment had been intense for three days; the proposal was a ~50 LOC extension to an existing experimental codebase, expected to take 1-2 weeks, with a specific external validator awaiting the result. Cost of being wrong was real — both in lost engineering time and in publishing a contaminated result that could be cited downstream.
+
+Before writing any code, I ran a premortem on the experiment design. The skill identified eight genuine failure modes and dispatched one sub-agent to each. The full HTML report runs to about 25KB and lives in the project workspace; I'll summarize the synthesis here.
+
+**Most likely failure** — the implementation window (1-2 weeks) is structurally incompatible with the depth-phase warmth window of the community waiting on the result (48-72 hours). By the time the experiment ships, the audience has moved on, and the result lands in an empty room.
+
+**Most dangerous failure** — the hash structure I was going to use to attest each inference output captures the wrong abstraction. The experiment runs cleanly, produces results, gets cited, but attests an artifact downstream of the actually-load-bearing thing. The published null result then contaminates the discourse, gets used to dismiss legitimate work in the area. Unrecoverable.
+
+**Hidden assumption** — and this was the one that flipped the plan: I was assuming the experiment was the deliverable. Reading the validator's actual messages carefully, they had been synthesizing architecture, not requesting empirics. The deliverable was the architectural framing, not the empirical follow-through. The experiment proposal was mine, not theirs.
+
+**Revised plan**: defer the experiment. Ship a synthesis comment consolidating the architectural framing this week, while the conversation is still warm. Move the actual experimental capacity to a different open question (a real-hardware perturbation experiment that would resolve a construct gap dominating the broader research line). If we ever do run the original experiment, it goes in the production substrate, not the research artifact, with four pre-registered gates: a noise-floor measurement first, a baseline check against cheap proxies, a hard 50-LOC budget, and continuity on the engagement loop.
+
+The five-minute cost of running the premortem prevented spending two weeks building the wrong thing for the wrong audience. That's the value proposition. The skill will not always change a plan that dramatically — most of the time it will surface one or two adjustments worth making — but the asymmetry is favorable: cheap to run, and occasionally averts a substantive miss.
+
+## Install
+
+```bash
+npx skills add broomva/strategy-skills
+```
+
+The bundle includes nine skills now: the original eight from Layer 7 plus the new `premortem`. Both `pre-mortem` (structured-scoring) and `premortem` (narrative deep-dive) are available; pick the one that fits the decision shape.
+
+The full skill source lives at [broomva/strategy-skills/.skills/premortem/SKILL.md](https://github.com/broomva/strategy-skills/blob/main/.skills/premortem/SKILL.md) with the complete attribution chain in the frontmatter and a footer table that names each contributor at each layer (Klein, Kahneman, Lehmann, broomva). If you fork or adapt this skill, please preserve the chain — the asymmetry of attribution gets worse as a tool propagates, and the people whose specific contributions made it useful are the ones the field needs to be able to find.
+
+---
+
+*Skill source: [github.com/broomva/strategy-skills](https://github.com/broomva/strategy-skills) · Original AI-skill formulation: [@itsolelehmann](https://x.com/itsolelehmann/status/2050548948419645488) · Method origin: Gary Klein, [Performing a Project Premortem](https://hbr.org/2007/09/performing-a-project-premortem), HBR 2007.*
