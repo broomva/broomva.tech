@@ -1,0 +1,165 @@
+---
+title: "Higgsfield CLI in the Content Engine: One Auth, 30 Models, Zero Browser Steps"
+summary: "We just rewired Broomva's content-engine to make Higgsfield's CLI the default Tier-1 generation path. One auth flow, 30+ models (Soul V2, Nano Banana 2, Veo 3.1, Kling 3.0, Seedance 2.0, Flux 2, GPT Image 2, Marketing Studio), one credit pool, scriptable from Claude Code. Here's the integration, why it's better than the per-provider SDK soup we had before, and when the Higgsfield MCP path is the right choice instead."
+date: 2026-05-05
+published: true
+tags:
+  - content-engine
+  - higgsfield
+  - mcp
+  - cli
+  - skills
+  - broomva-stack
+  - generative-ai
+  - cinematic
+  - integration
+links:
+  - label: "Higgsfield MCP page"
+    url: "https://higgsfield.ai/mcp"
+  - label: "Higgsfield CLI (GitHub)"
+    url: "https://github.com/higgsfield-ai/cli"
+  - label: "Higgsfield skills bundle"
+    url: "https://github.com/higgsfield-ai/skills"
+  - label: "broomva content-engine SKILL.md"
+    url: "https://github.com/broomva/content-engine/blob/main/SKILL.md"
+  - label: "broomva content-engine-cinema SKILL.md"
+    url: "https://github.com/broomva/content-engine/blob/main/skills/content-engine-cinema/SKILL.md"
+---
+
+# Higgsfield CLI in the Content Engine
+
+The Broomva content-engine had a real integration gap until today. It mentioned Higgsfield three times — all in the wrong tier. "Higgsfield account — Soul Cinema start frames" was listed as **optional**, alongside Topaz Gigapixel and Weavy. The actual generation pipeline ran through `@google/genai` (Gemini) for Nano Banana and Veo, plus `@fal-ai/client` for Kling and Sora. Two different SDKs, two different credit pools, two different auth flows. Higgsfield was a browser-automation footnote.
+
+That was the wrong shape. Higgsfield ships a CLI that exposes 30+ models behind a single auth, including every model we were already calling through other providers. The integration we just landed makes Higgsfield CLI the **default Tier-1 path** for content-engine-cinema. Every cinematic generation node — start frame, motion synthesis, character consistency, marketing-studio ads, soul-character training — flows through one CLI, one credit pool, one shell-scriptable interface.
+
+This post covers what changed, why we made the call, when Higgsfield's MCP path is the right alternative, and the test plan we ran to verify the integration before promoting it to default.
+
+## What we had before
+
+Three layers of provider soup:
+
+```
+content-engine-cinema (orchestration)
+  ├── @google/genai SDK    → Nano Banana 2, Veo 3.1, Imagen
+  ├── @fal-ai/client       → Kling 3.0, Sora, Flux variants
+  └── /agent-browser       → Higgsfield Studio, Weavy, Midjourney (browser-driven)
+```
+
+Each path needed its own setup ritual: a Google API key, a fal.ai key, a Playwright session for the browser-automated tools. Each kept its own billing. The cinema sub-skill's tool-priority matrix had to enumerate which model lived behind which SDK, and every new model from Higgsfield's bench had to be either bridged in via the browser or skipped entirely.
+
+The browser path for Higgsfield was the worst of the three. Soul Cinema start frames are core to our cinematic generation doctrine ("video quality is only as good as your initial image"), but invoking them meant launching Chromium via `agent-browser`, navigating Higgsfield Studio's UI, prompting through the web interface, and parsing the rendered output URL. Brittle, slow, manual on every campaign.
+
+## What changed
+
+Higgsfield's [official guidance for Claude Code and Codex users](https://higgsfield.ai/mcp) is direct: *"If you are using Claude Code or Codex, it's better to use the CLI."* The bundle ships three skill wrappers ([higgsfield-ai/skills](https://github.com/higgsfield-ai/skills) on GitHub):
+
+- `higgsfield-generate` — 30+ models behind a single command
+- `higgsfield-product-photoshoot` — brand-quality product images with mode-specific prompt enhancement
+- `higgsfield-soul-id` — train Soul Character refs for face/identity locking across a series
+
+We installed all three with `npx skills add higgsfield-ai/skills`, installed the underlying CLI with `curl -fsSL https://raw.githubusercontent.com/higgsfield-ai/cli/main/install.sh | sh`, and rewrote the cinema sub-skill's tool priority matrix to put Higgsfield CLI on top.
+
+The new tool matrix:
+
+| Priority | Image Gen | Video Gen | Upscaling | Color Grade |
+|----------|-----------|-----------|-----------|-------------|
+| **Tier 1: Higgsfield CLI** *(default)* | `higgsfield-generate --model soul_v2 / nano_banana_2 / flux_2` | `higgsfield-generate --model veo_3 / kling_3 / seedance_2` | Topaz Gigapixel | Lightroom |
+| Tier 1 (alternates) | Nano Banana 2 (`@google/genai`) | Veo 3.1 (`@google/genai`) | — | — |
+| Tier 2: Browser-automated | Midjourney | Kling 3 Pro (fal.ai) | Topaz web UI | DaVinci Resolve |
+| Tier 3: Local pipeline | ComfyUI + SD/Flux | ComfyUI + Wan/AnimateDiff | Real-ESRGAN | ffmpeg LUT |
+
+The browser-automated row no longer mentions Higgsfield. Studio access is now CLI; the legacy browser path is preserved only for tools that genuinely have no API or MCP (Weavy, Artlist for music selection).
+
+## The cinema → Higgsfield workflow
+
+The compounded workflow when content-engine-cinema dispatches a scene now looks like this:
+
+```
+Concept (cinema scene brief)
+  ↓
+Camera-style vocabulary picked (Fincher / Nolan / Villeneuve / etc.)
+  ↓
+Style fragment + scene description merged into final prompt
+  ↓
+START FRAME: invoke higgsfield-generate --model soul_v2 (or nano_banana_2)
+             → upload_id captured from output
+  ↓
+[Optional: invoke higgsfield-soul-id if face/identity needs to be locked]
+  ↓
+MOTION: invoke higgsfield-generate --model veo_3 / kling_3 --image <upload_id>
+        → wait for job, capture video_url
+  ↓
+POST-PRODUCE: Topaz Gigapixel for upscale, Lightroom or ffmpeg LUT for grade
+  ↓
+Output to /content-engine/output/{campaign-slug}/raw/
+  ↓
+manifest.json updated with: prompt, model, upload_id, job_id, timestamp, identity_refs
+```
+
+Every node above is a single CLI invocation; no browser steps, no SDK swaps, no per-provider auth dance. The director-vocabulary library (Anderson, Fincher, Nolan, Villeneuve, Kubrick, Wong Kar-wai, Ridley Scott, Malick) is unchanged — it merges into the prompt before the CLI call, exactly the way it merged into the SDK call before. What changed is the bottom of the stack, not the top.
+
+## CLI vs MCP: which path when
+
+Higgsfield ships **two** programmatic integrations that target different runtimes. The official guidance and our own decision tree:
+
+| Runtime | Path | Setup | Why |
+|---------|------|-------|-----|
+| Claude Code, Codex, agent-browser, scripts, CI | **CLI** | `curl ... \| sh` then `higgsfield auth login` | Per Higgsfield's own guidance: "If you are using Claude Code or Codex, it's better to use the CLI." Direct programmatic access, scriptable, integrates with the skill bundle. |
+| Claude Desktop, web Claude, IDE plugins | **MCP** at `https://mcp.higgsfield.ai` | Claude Settings → Connectors → Add custom connector → paste URL → authenticate | One-click connector, GUI-native, no CLI install, no shell scripting. Cannot be driven from Claude Code. |
+
+Both paths use the same Higgsfield credit pool. Neither requires an API key — auth is via your Higgsfield account through a browser flow. The choice is purely about which runtime is calling.
+
+For broomva's stack — Claude Code + Cursor + scripted CI — the CLI is the right pick. For people running Claude Desktop with no terminal in the loop, the MCP path is genuinely better; nothing to install, one-click connector setup, same model surface. We document both in `content-engine/SKILL.md` because content-engine is meant to be portable across both runtimes.
+
+## Why the consolidation matters operationally
+
+Three concrete things changed when Higgsfield CLI became the default:
+
+**One auth, one credit pool.** Before: separate Google API key for Nano Banana/Veo, separate fal.ai key for Kling, separate Higgsfield browser session for Soul Cinema. Three different billing surfaces, three different rate-limit profiles, three different ways for a generation pipeline to fail. After: one auth state, one balance to monitor, one auth-renewal flow when tokens expire.
+
+**Scriptability.** The browser path for Higgsfield was the single largest non-scriptable node in the cinema pipeline. Every scene that needed Soul Cinema's start-frame model required either a manual session or a Playwright script that tracks Higgsfield's UI changes. The CLI eliminates both. The cinema sub-skill can now generate a 10-scene campaign as a single shell pipeline with no human intervention beyond the initial `higgsfield auth login`.
+
+**Skill bundle composition.** The three `higgsfield-*` skills compose cleanly with content-engine's existing sub-skills:
+
+- `content-engine-dna` compiles brand identity into a markdown file with tool-specific prompt fragments
+- `content-engine-cinema` selects camera-style vocabulary and merges it with the brand DNA
+- `higgsfield-generate` consumes the merged prompt and produces the output
+- `higgsfield-soul-id` locks face identity across a campaign series
+- `higgsfield-product-photoshoot` handles brand-quality product shots with mode-specific enhancement
+
+Each skill is independently invokable, version-locked through the Broomva stack's skills lock file, and shows up to the skill scanner as a first-class capability. No cross-skill imports, no shared code, just composition through prompt merging and CLI invocation.
+
+## Test plan
+
+Before promoting Higgsfield CLI to Tier-1 default, we ran an eight-test verification battery:
+
+1. **CLI install reachability.** Binary at `~/.local/bin/higgsfield`, `--help` returns command listing.
+2. **Version pin.** `higgsfield version` returns `0.1.28`, build hash `e7a475eb`, build date `2026-05-04`.
+3. **Subcommand surface.** `higgsfield model list --help` documents the expected flags (`--image`, `--video`, `--json`).
+4. **Auth state probe.** `higgsfield model list` returns `Error: Not authenticated. Hint: Run: higgsfield auth login` — the expected fail-loud signal when auth is missing. No silent fallback.
+5. **Cinema SKILL.md frontmatter integrity.** Description includes `higgsfield`, `soul cinema`, `marketing studio` triggers. Frontmatter parses as valid YAML.
+6. **Reference count audit.** 28 Higgsfield references in content-engine/SKILL.md, 24 in content-engine-cinema/SKILL.md, 4 in CLAUDE.md. Was zero in the cinema sub-skill before this change.
+7. **Skill scanner symlinks.** `~/.claude/skills/higgsfield-generate`, `~/.claude/skills/higgsfield-product-photoshoot`, `~/.claude/skills/higgsfield-soul-id` are present and resolve to `~/.agents/skills/higgsfield-*` correctly.
+8. **Cross-reference completeness.** 14 lines in content-engine-cinema/SKILL.md explicitly invoke one of the three higgsfield-* skill wrappers. The cinema → Higgsfield workflow block names every node.
+
+Tests 1, 2, 3, 5, 6, 7, 8 pass deterministically. Test 4 confirms the expected auth-required state — the only manual step is the user running `higgsfield auth login` once in their terminal. After that, the entire content-engine pipeline runs unattended.
+
+We did not test live generation against the Higgsfield API in this verification pass — that requires the auth step. The next concrete validation is a single end-to-end campaign run after auth, comparing the CLI output to the previous SDK output for the same prompt and confirming bit-similar results within the model's stochastic envelope.
+
+## What's next
+
+Three operational follow-ups now that the default path is set:
+
+1. **Backfill brand DNA prompt fragments.** Every compiled brand-identity file in `content-engine/knowledge/compiled/` was written with prompt fragments targeting Nano Banana via `@google/genai`. The fragments still work — Higgsfield exposes `nano_banana_2` directly — but they should be re-compiled with the broader Higgsfield model surface so that scenes can pick `soul_v2`, `flux_2`, or `marketing_studio_video` based on which best fits the scene rather than always defaulting to Nano Banana.
+
+2. **End-to-end campaign run.** Pick a small campaign (3-5 scenes), run it through the new pipeline, manually compare output quality and generation latency against the same scenes run through the previous SDK path. The verification target is parity within stochastic envelope, not improvement; if Higgsfield CLI delivers the same quality with simpler auth, the consolidation is justified on operational grounds alone.
+
+3. **MCP setup documentation.** For Broomva users who run Claude Desktop instead of Claude Code, document the MCP path step-by-step. The official Higgsfield MCP page has the basics; we should add a Broomva-specific section that names which content-engine commands work via MCP and which require the CLI.
+
+The integration is live in `broomva/content-engine` (cinema SKILL.md + top-level SKILL.md + CLAUDE.md updated this afternoon). The skill bundle ships through `npx skills add higgsfield-ai/skills` and lands at `~/.agents/skills/higgsfield-*` with symlinks to every supported runtime. CLI installation is a single curl command. The auth step is one interactive `higgsfield auth login` per user, persistent thereafter.
+
+For a content stack that already had three SDKs and a browser-automation footnote, consolidating to one CLI was the integration that should have shipped on day one.
+
+---
+
+*Skill source: [github.com/broomva/content-engine](https://github.com/broomva/content-engine) · Higgsfield CLI: [github.com/higgsfield-ai/cli](https://github.com/higgsfield-ai/cli) · Higgsfield MCP: [higgsfield.ai/mcp](https://higgsfield.ai/mcp) · Skill bundle: `npx skills add higgsfield-ai/skills`.*
