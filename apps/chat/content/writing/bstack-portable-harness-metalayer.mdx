@@ -1,0 +1,181 @@
+---
+title: "bstack: the portable harness metalayer for autonomous workflows"
+summary: "65% of enterprise AI failures trace to harness defects, not reasoning. bstack is what we built when we stopped optimizing prompts and started shipping the substrate — nine primitives that turn an unsupervised Claude Code session into a self-operating system. This post documents the thesis, the primitives, and the dogfood loop that produced 13 PRs in a single session."
+date: 2026-05-05
+published: true
+tags:
+  - agents
+  - harness-engineering
+  - context-engineering
+  - infrastructure
+  - bstack
+  - life-agent-os
+  - open-source
+  - rcs
+links:
+  - label: "bstack repo"
+    url: "https://github.com/broomva/bstack"
+  - label: "P9 — CI watcher + productive-wait skill"
+    url: "https://github.com/broomva/p9"
+  - label: "P6 — Bookkeeping skill"
+    url: "https://github.com/broomva/bookkeeping"
+  - label: "RCS Formalization"
+    url: "https://broomva.tech/writing/recursive-controlled-systems"
+audio: /audio/writing/bstack-portable-harness-metalayer.mp3
+image: /images/writing/bstack-portable-harness-metalayer/hero.png
+---
+
+<video src="/images/writing/bstack-portable-harness-metalayer/outro.mp4" autoplay muted loop playsinline style="width:100%;border-radius:8px;margin-bottom:1.5rem"></video>
+
+> **65% of enterprise AI failures trace to harness defects, not reasoning.**
+> bstack is what we built when we stopped optimizing prompts and started shipping the substrate.
+
+This post documents the thesis, the nine primitives, and a dogfood loop that produced thirteen pull requests across four repositories in a single session — using bstack to build bstack.
+
+## 1. The bottleneck moved
+
+Three threads triangulate to the same place. They don't reference each other but they say the same thing.
+
+**YC flipped its thesis.** The Spring 2026 Request for Startups read: *"AI-native companies can do expensive work faster."* The Summer 2026 RFS reads: *"AI becomes the operating system of the company."* Of the W26 batch — 194 companies, the largest ever — **41.5% are building agent infrastructure**: auth, testing, security, monitoring, context management, billing. The application-layer gold rush created demand for a platform layer, and the money followed. The defensible moat per RFS commentary is **governance — who can act, what they can access, how you audit**.
+
+![YC W26 batch composition: agent infrastructure dominates](/images/writing/bstack-portable-harness-metalayer/chart-yc-w26.png)
+
+**Harness engineering became the dominant frame.** Across Anthropic's three-agent harness, Google Scion's multi-agent hypervisor, MongoDB's platform metalayer, and Claude Code's reframing as "programmable runtime with 22 lifecycle events," the industry converged on a single sentence: *"if you're not the model, you're the harness."* Production rejected unconstrained swarms. The winning shape is **bounded deterministic workflows with phase-gating** — Plan-Execute-Verify loops, hard circuit breakers, human-on-the-loop. The numbers: **65% of enterprise AI failures trace to harness defects** — context drift, schema misalignment, state degradation — not reasoning gaps.
+
+**Prompt engineering got renamed context engineering.** Karpathy named it in June 2025 ([the post that started it](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)). Anthropic formalized it. Context windows have *n²* attention scarcity → larger contexts mean *worse* recall, a phenomenon the field calls **context rot**. The frontier moved from "stuff more in" to **managed filesystem-like environments with explicit write/promote/retrieve/compress/forget operations**. Mem0, Memory-R1, Mem-α, EverMemOS — each treats memory as a managed lifecycle, not a passive store. Gartner: *by 2027, 80% of AI failures will be poor context management*.
+
+Three threads. One conclusion: **reasoning is saturating; the environment is where the work is**. The harness, the substrate, the workspace — these are the bottleneck.
+
+## 2. What bstack is
+
+bstack is **a portable harness metalayer**. Nine irreducible primitives that turn any agent-driven workspace into a self-operating system.
+
+It's not a framework. It's not a SaaS. It's a curated set of skills you `npx skills add broomva/bstack` into your Claude Code, Codex, Gemini CLI, OpenCode, or any of the [50+ agent CLIs the skills ecosystem supports](https://github.com/vercel-labs/skills). Each primitive is a small, opinionated piece of substrate: a hook, a script, a reflexive rule, or a configuration block. Each one closes a specific failure mode that *would otherwise drift into entropy across an unsupervised session*.
+
+The nine primitives compose into one autonomous development loop:
+
+![The nine primitives composing the autonomous-development loop](/images/writing/bstack-portable-harness-metalayer/diagram-nine-primitives-loop.png)
+
+A naming detail worth flagging up front: **skill repositories are independent**. Some have stable names that don't track primitive numbers. P6's repo is `broomva/bookkeeping`. P7's repo is `broomva/p9` — historical, named when it was the ninth primitive; renaming would break every existing install. Primitive numbers are sequential identifiers in the bstack itself; skills are npm-style packages with their own stable names. The map is in the table.
+
+## 3. The nine primitives
+
+| # | Primitive | Closes the failure mode | Mechanism |
+|---|---|---|---|
+| **P1** | Conversation Bridge | Sessions are stateless; context evaporates between agent runs. | `Stop` hook → JSONL transcript → structured Obsidian doc → vault. Bridge stamp must be < 24h stale. |
+| **P2** | Control Gate | Agents fluently run destructive shell commands the model didn't actually authorize. | `PreToolUse` hook reads `.control/policy.yaml`. G1–G4 gates are blocking, never bypassed. |
+| **P3** | Linear Tickets | Autonomous work without tracking is invisible work. | Linear MCP — every unit of work has a ticket. State must reflect actual state. |
+| **P4** | PR Pipeline | Code without review is hope. | Branch → PR → CI → merge → deploy. Never merge with failing checks. Never `--no-verify`. |
+| **P5** | Parallel Agents | Sequential execution wastes time on independent tasks. | `git worktree` per agent. Independent contexts merged via branches, not shared state. |
+| **P6** | Knowledge Bookkeeping (`broomva/bookkeeping` skill) | Knowledge graphs without quality control degrade into noise. | 7-stage pipeline. Nous gate (novelty + specificity + relevance, ≥ 5/9) for promotion. Contradiction detection. |
+| **P7** | CI Watcher + Productive Wait (`broomva/p9` skill) | Agents `sleep` on CI and waste 5–15 minutes per PR. | `gh pr checks --watch` via `run_in_background`. Wait-queue drains during the wait. Classifier + evaluator self-heal red CI. Auto-merge actuator with governance pre-pass. |
+| **P8** | Skill Freshness Check | Skills installed via `npx skills add` are snapshots and silently rot between manual updates. | `SessionStart` hook nudges when an update check is overdue (≥ 7d). Never blocks. |
+| **P9** | Branch + Worktree Janitor | Squash-merged branches accumulate forever; `git branch --merged` doesn't catch them. | `make janitor` runs the canonical squash-detection idiom. Default `--dry-run`; protected branches always skipped. |
+
+Two of these — P8 and P9 — were *born this session*. The fresh-session test of P7 surfaced the exact bugs each closes: a stale install at `~/.agents/skills/p9/` made the AGENTS.md reflexive rule fail with `error: unrecognized arguments: --background`; orphan `WATCHING` rows from earlier worktree work were blocking new watchers via `max_concurrent_prs=1`. The system found its own gaps and shipped the fixes. That's the dogfood loop in §6.
+
+## 4. Where bstack is ahead of the discourse
+
+Four things bstack does that I haven't found in YC commentary, Anthropic's engineering blog, or the harness-engineering survey papers.
+
+### Formalized stability budgets
+
+bstack's governance layer (CLAUDE.md + AGENTS.md + `.control/policy.yaml`) is the **Level 3 controller** in a [Recursive Controlled Systems hierarchy](/writing/recursive-controlled-systems) with formal stability proofs.
+
+| Level | System | Controller | Stability λ |
+|---|---|---|---|
+| L0 | External plant | Arcan agent loop (`shell.rs`) | 1.455 |
+| L1 | Agent internal | Autonomic homeostasis controller | 0.411 |
+| L2 | Meta-control | EGRI loop engine | 0.069 |
+| **L3** | **Governance** | **CLAUDE.md + AGENTS.md + policy.yaml** | **0.006** |
+
+Composite stability: λᵢ > 0 at all levels ⟹ exponentially stable (Theorem 1, [`p0-foundations`](https://github.com/broomva/rcs)). The L3 stability margin is narrow on purpose — **governance changes consume budget**. If you rewrite AGENTS.md every session, the system destabilizes. If you observe patterns across sessions and crystallize rules slowly, it converges. The math is what justifies the rule that says *"governance changes are rare and deliberate"* — it's not a stylistic choice, it's a stability constraint.
+
+![RCS hierarchy with stability budgets](/images/writing/bstack-portable-harness-metalayer/diagram-rcs-hierarchy.png)
+
+### Reflexive trigger rules
+
+Most harnesses enforce policy through hooks. Hooks are rigid: they fire or they don't, they have no judgment. Anthropic's *Effective context engineering* recommends finding "the right altitude" — *specific enough to guide, flexible enough to let the model judge*.
+
+bstack does this with **reflexive trigger rules** in AGENTS.md, written as binding-on-every-agent text. P6 has one ("Bookkeeping is reflexive — invoke without being prompted whenever you commit a feature that reads from the graph"). P7 has four ("After every push, before any sleep, on red CI before re-pushing, on MERGE_READY before manual merge"). The rule loads at SessionStart; the agent reads it and applies it. No hook needed. If the agent finds itself sleeping on CI, the reflex failed and that's a session-level error worth flagging.
+
+This isn't softer than hooks — it's *deeper*. Hooks gate one tool call. Reflexive rules shape the agent's whole approach to a class of work.
+
+### Productive wait
+
+I searched the harness-engineering literature for "drain context-scoped queue while CI runs." It doesn't appear. P7 is genuinely novel.
+
+The standard pattern is: agent pushes, agent sleeps, agent polls. The bstack pattern is: agent pushes, agent spawns `gh pr checks --watch` via `run_in_background`, then drains a priority-ordered queue (`session > memory > graph > docs > linear`) while the watcher runs. When the bg-task notification fires, the agent reads `p9 status`, transitions to `MERGE_READY` or runs the classifier. *The wait time disappears.*
+
+This session's evidence: I shipped 5 PRs in parallel CI windows that would otherwise have been 5 sequential `sleep 600`s. That's an hour of clock time recovered, in one session.
+
+### Knowledge graph at Layer 3
+
+P6's bookkeeping treats knowledge as a managed lifecycle — same shape as Mem0, EverMemOS, Memory-R1 — but with bi-temporal metadata, contradiction detection, and a **Nous gate** that scores items on novelty (0–3) + specificity (0–3) + relevance (0–3). Items below 2/9 are discarded. Items 5/9 promote to Layer 3 entity pages. Items above 7 fast-path. *Contradiction detection runs on every promotion.*
+
+The graph never holds garbage. That's the invariant.
+
+## 5. The dogfood loop — evidence
+
+Here's the thing I find most interesting: **we built bstack by using bstack to build bstack**.
+
+This single session shipped:
+
+- **13 pull requests merged** across 4 repositories
+- **108 tests** added/modified in `broomva/p9` (46 unit + 15 integration + 6 chaos + 25 fix-cycle + 16 actuator)
+- Matrix CI green on Python 3.11 / 3.12 / 3.13
+- Two new bstack primitives (P8, P9) added in response to bugs the system surfaced about itself
+- One architectural realignment (drop P3/P4 Spaces/Lago, renumber 9→7, then add 8 and 9 = back to 9 — but a cleaner, portable 9)
+
+![PR throughput: traditional sleep-then-poll vs bstack productive-wait](/images/writing/bstack-portable-harness-metalayer/chart-pr-throughput.png)
+
+The interesting moments weren't the PRs themselves. They were the **safety pre-passes triggering correctly**:
+
+- The **P2 control gate blocked my own `git reset --hard`** mid-session — the agent that built the gate hit the gate, and the gate held.
+- The **P7 auto-merge actuator self-blocked** on PR #40 because it touched `CLAUDE.md` (governance-class path → `require_human`). The actuator I shipped two PRs earlier refused to ship the next PR. Manually approved with full context — exactly the intended human-in-the-loop behavior.
+- The **P9 janitor** I shipped at the end of the session **dropped a stale `feat/mil-tier2-foundations` branch** that had been sitting around for weeks, in the very next operation after merge.
+
+A demo of the productive-wait pattern in action:
+
+![Demo: productive-wait drains the queue while CI runs](/images/writing/bstack-portable-harness-metalayer/demo-productive-wait.gif)
+
+The agent never `sleep`s. The watcher runs in background. The agent pulls the next deferred work item, does it, and by the time the bg-task notification fires, the next PR is already half-prepared.
+
+## 6. What bstack doesn't solve yet
+
+Honest list, in priority order:
+
+1. **Per-agent identity and credential scoping.** bstack treats agent ≡ user. Anthropic's three-agent harness and Google Scion both isolate per-agent. *Tier C work.*
+2. **Sandbox isolation.** P5 worktrees are git-isolation, not process-isolation. Daytona (running ~100 YC startups) and E2B (~10% of W26) handle this. *bstack should wrap, not reinvent.*
+3. **Durable execution.** Only P7 has a `state.jsonl` checkpoint. Agent intent and plan aren't checkpointed; a session crash loses them.
+4. **Managed forget/compress.** P6 promotes; it doesn't forget. Auto-memory grows unboundedly. Mem0 / EverMemOS have explicit forget ops we should borrow.
+5. **In-session phase indicator.** TAO and Plan-Execute-Verify expose "step N of M". We don't surface this; the agent re-derives every turn.
+6. **Pre-CI test-driven execution.** bstack does TDX in CI (P7); pre-CI it doesn't. "Run test → see error → refine" closed loop in-session would close this.
+
+These are roadmap items, not weakness. Most of them are well within reach for someone reading this post who wants to contribute one.
+
+![Coverage map: paradigm gaps × bstack primitives](/images/writing/bstack-portable-harness-metalayer/heatmap-coverage.png)
+
+## 7. Closing
+
+In one paragraph:
+
+> **bstack is the body around the brain.** Reasoning is saturating; the environment is the bottleneck. The 2026 paradigm rediscovered governance, harness engineering, and context engineering — three threads that all say "the work is in the substrate." bstack is one concrete answer: nine portable primitives that any agent-driven workspace can install, with formal stability budgets at the governance layer, reflexive rules that bind without rigidity, and a productive-wait pattern that *recovers the time CI takes from your agent's life*. We built it by using it to build it. It's open source. It's installable now.
+
+```bash
+npx skills add broomva/bstack
+```
+
+If you build with Claude Code, Codex, Gemini CLI, or any of the 50+ agents the skills ecosystem supports — `npx skills add broomva/bstack` activates the meta-skill that bootstraps the whole stack into your project. It also installs hooks: the bridge, the gate, the freshness check. It costs you nothing if you don't use it; it gives you a self-operating workspace if you do.
+
+If you want to read the spec before installing, the 9 primitives are documented in `AGENTS.md` of [broomva/workspace](https://github.com/broomva). Each one has a *what / how / why / invariant* section, plus the reflexive trigger rules where applicable. The RCS formalization with stability proofs lives in `research/rcs/papers/p0-foundations`.
+
+If you want to contribute, the gaps in §6 are real, scoped, and high-leverage. Especially the durable-execution and sandbox-integration ones — those would land in a single PR each and would close paradigm-level gaps.
+
+The thesis I'm willing to defend: **the next decade of agentic work happens in workspaces that are themselves intelligent**. Not because the model got smarter, but because the substrate did. bstack is one substrate. Build a better one. Critique this one. But stop optimizing prompts in a system that drops state, never sleeps a CI loop, and accumulates worktree garbage. Build the body.
+
+---
+
+*Special thanks to the agents that built this with me. Their session transcripts are in `~/broomva/docs/conversations/`, captured automatically by P1. The synthesis memory entry that drove this post is at `project_bstack_paradigm_synthesis.md`. Both will be checked at the start of the next session, and the next, and the next.*
+
+*The dogfood loop is closed.*
