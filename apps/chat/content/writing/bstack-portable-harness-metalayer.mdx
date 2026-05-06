@@ -1,6 +1,6 @@
 ---
 title: "What the AI productivity step-function looks like — and the substrate that produced it"
-summary: "Sam Altman says programmers are 10x more productive, the world wants 1000x more software. Vercel CEO Guillermo Rauch says v0 hit 3,200 PRs merged per day. They're describing an inflection. Here's what that inflection looks like in a single contribution graph — five commits in 2022 to 6,519 in five months of 2026 — and the open-source substrate that produced it."
+summary: "Sam Altman says the world wants 1000x more software. Vercel CEO Guillermo Rauch says he's hiring people who know how to use AI — engineers who write good prompts and orchestrate agents to maximize results. They're describing the same inflection. Here's what it looks like in a single contribution graph — five commits in 2022 to 6,519 in five months of 2026 — and the open-source substrate that produced it."
 date: 2026-05-05
 published: true
 tags:
@@ -18,6 +18,8 @@ links:
     url: "https://github.com/broomva/bstack"
   - label: "Sam Altman — 1000x more software at the Federal Reserve conference"
     url: "https://www.finalroundai.com/blog/sam-altman-says-world-wants-1000x-more-software"
+  - label: "Guillermo Rauch — Vercel hires people who know how to use AI (Bloomberg Línea reel)"
+    url: "https://www.instagram.com/reel/DXho28KkdCo/"
   - label: "Guillermo Rauch — v0 hit 3,200 PRs merged per day (How I AI podcast, Feb 2026)"
     url: "https://podcasts.apple.com/us/podcast/guillermo-rauch-vercel-ceo-on-how-v0-hit-3-200-prs/id1809663079?i=1000748077601"
   - label: "P9 — CI watcher + productive-wait skill"
@@ -34,9 +36,9 @@ image: /images/writing/bstack-portable-harness-metalayer/hero.png
 
 > *"The world wants a gigantic amount more software, 100 times maybe a thousand times more software."* — **Sam Altman**, Federal Reserve conference
 >
-> *"v0 hit 3,200 PRs merged per day."* — **Guillermo Rauch**, Vercel CEO
+> *Vercel hires "people who know how to use AI — who write good prompts and manage AI agents to maximize results."* — **Guillermo Rauch**, Vercel CEO ([Bloomberg Línea reel](https://www.instagram.com/reel/DXho28KkdCo/))
 
-Both quotes describe the same thing from different angles: an industry-level productivity step-function that is now visible. The IEEE Spectrum and Emergent VC commentary frame it explicitly — *"AI will give the top engineers an even greater ability to get things done; we'll soon have 100x and 1000x engineers."*
+Two angles on the same thing. Altman is the *demand side*: the world wants two-to-three orders of magnitude more software than humans-typing-alone can produce. Rauch is the *supply side*: the operators who can meet that demand are the ones who manage agents, not the ones who out-type them. v0 itself is the existence proof — Rauch said elsewhere that v0 hit *3,200 PRs merged per day*. That's not a team scaling, it's a substrate scaling. IEEE Spectrum and Emergent VC named it: *"we'll soon have 100x and 1000x engineers."*
 
 This post is what that inflection looks like, in one engineer's contribution graph, plus the substrate that produced it.
 
@@ -244,7 +246,7 @@ The thesis I'm willing to defend: **the next decade of agentic work happens in w
 
 ---
 
-*The chart at the top is generated from `gh api graphql` queries against the broomva user, run on 2026-05-06. Reproducible — anyone can pull their own contribution trajectory the same way. Sources for the industry framing: Sam Altman at the [Federal Reserve conference](https://www.finalroundai.com/blog/sam-altman-says-world-wants-1000x-more-software); Guillermo Rauch on the [How I AI podcast (Feb 2026)](https://podcasts.apple.com/us/podcast/guillermo-rauch-vercel-ceo-on-how-v0-hit-3-200-prs/id1809663079); IEEE Spectrum and Emergent VC on the 100x/1000x engineer framing.*
+*The chart at the top is generated from `gh api graphql` queries against the broomva user, run on 2026-05-06. Reproducible — anyone can pull their own contribution trajectory the same way. Sources for the industry framing: Sam Altman at the [Federal Reserve conference](https://www.finalroundai.com/blog/sam-altman-says-world-wants-1000x-more-software); Guillermo Rauch on hiring AI-fluent engineers ([Bloomberg Línea Argentina reel](https://www.instagram.com/reel/DXho28KkdCo/)) and on v0's throughput ([How I AI podcast, Feb 2026](https://podcasts.apple.com/us/podcast/guillermo-rauch-vercel-ceo-on-how-v0-hit-3-200-prs/id1809663079)); IEEE Spectrum and Emergent VC on the 100x/1000x engineer framing.*
 
 *Special thanks to the agents that built this with me. Their session transcripts are in `~/broomva/docs/conversations/`, captured automatically by P1. The synthesis memory entry that drove this post is at `project_bstack_paradigm_synthesis.md`. Both will be checked at the start of the next session, and the next, and the next.*
 
