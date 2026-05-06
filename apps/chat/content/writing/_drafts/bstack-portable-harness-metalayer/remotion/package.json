@@ -1,0 +1,21 @@
+{
+  "name": "bstack-video",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "render": "remotion render src/index.ts BstackInflection out/bstack-inflection.mp4",
+    "preview": "remotion studio"
+  },
+  "dependencies": {
+    "remotion": "^4.0.260",
+    "@remotion/cli": "^4.0.260",
+    "@remotion/transitions": "^4.0.260",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
