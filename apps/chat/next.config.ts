@@ -166,6 +166,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pino", "pino-pretty"],
   images: {
     formats: ["image/avif", "image/webp"],
+    // Next.js 16 requires explicit qualities; default is [75].
+    // optimizeProseImages in lib/content.ts emits q=80 URLs, which would
+    // otherwise be rejected by Vercel with INVALID_IMAGE_OPTIMIZE_REQUEST.
+    qualities: [75, 80],
     remotePatterns: [
       {
         hostname: "avatar.vercel.sh",
