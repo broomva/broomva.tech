@@ -123,7 +123,7 @@ The eleven primitives compose into one autonomous development loop:
 
 ![The primitives composing the autonomous-development loop (diagram shows the original nine; P10 + P11 joined the contract through the parallel work this post describes)](/images/writing/bstack-portable-harness-metalayer/diagram-nine-primitives-loop.png)
 
-A naming detail worth flagging up front: **skill repositories are independent**. Some have stable names that don't track primitive numbers. P6's repo is `broomva/bookkeeping`. P7's repo is `broomva/p9` — historical, named when it was the ninth primitive; renaming would break every existing install. Primitive numbers are sequential identifiers in the bstack itself; skills are npm-style packages with their own stable names. The map is in the table.
+One naming detail worth flagging up front: P6's skill repo is `broomva/bookkeeping`, not `broomva/p6` — that one mismatch is historical. Every other primitive number lines up with its skill name (P9 → `broomva/p9`, etc.). Primitive numbers are sequential identifiers in the bstack itself; skills are npm-style packages.
 
 ## The eleven primitives
 
@@ -135,13 +135,13 @@ A naming detail worth flagging up front: **skill repositories are independent**.
 | **P4** | PR Pipeline | Code without review is hope. | Branch → PR → CI → merge → deploy. Never merge with failing checks. Never `--no-verify`. |
 | **P5** | Parallel Agents | Sequential execution wastes time on independent tasks. | `git worktree` per agent. Independent contexts merged via branches, not shared state. |
 | **P6** | Knowledge Bookkeeping (`broomva/bookkeeping` skill) | Knowledge graphs without quality control degrade into noise. | 7-stage pipeline. Nous gate (novelty + specificity + relevance, ≥ 5/9) for promotion. Contradiction detection. |
-| **P7** | CI Watcher + Productive Wait (`broomva/p9` skill) | Agents `sleep` on CI and waste 5–15 minutes per PR. | `gh pr checks --watch` via `run_in_background`. Wait-queue drains during the wait. Classifier + evaluator self-heal red CI. Auto-merge actuator with governance pre-pass. |
-| **P8** | Skill Freshness Check | Skills installed via `npx skills add` are snapshots and silently rot between manual updates. | `SessionStart` hook nudges when an update check is overdue (≥ 7d). Never blocks. |
-| **P9** | Branch + Worktree Janitor | Squash-merged branches accumulate forever; `git branch --merged` doesn't catch them. | `make janitor` runs the canonical squash-detection idiom. Default `--dry-run`; protected branches always skipped. |
-| **P10** | Worktree Hygiene Discipline | Dirty trees, half-finished branches, and orphan worktrees become slow leaks of merge conflicts and "what was I doing?" amnesia across sessions. | Reasoning-enforced rule: P5 supplies the *mechanism* (worktrees), P10 supplies the *discipline* — decide worktree-or-not before the first file, keep `git status` clean through the PR lifecycle, run P9 janitor immediately after merge. |
+| **P7** | Skill Freshness Check | Skills installed via `npx skills add` are snapshots and silently rot between manual updates. | `SessionStart` hook nudges when an update check is overdue (≥ 7d). Never blocks. |
+| **P8** | Branch + Worktree Janitor | Squash-merged branches accumulate forever; `git branch --merged` doesn't catch them. | `make janitor` runs the canonical squash-detection idiom. Default `--dry-run`; protected branches always skipped. |
+| **P9** | CI Watcher + Productive Wait (`broomva/p9` skill) | Agents `sleep` on CI and waste 5–15 minutes per PR. | `gh pr checks --watch` via `run_in_background`. Wait-queue drains during the wait. Classifier + evaluator self-heal red CI. Auto-merge actuator with governance pre-pass. |
+| **P10** | Worktree Hygiene Discipline | Dirty trees, half-finished branches, and orphan worktrees become slow leaks of merge conflicts and "what was I doing?" amnesia across sessions. | Reasoning-enforced rule: P5 supplies the *mechanism* (worktrees), P10 supplies the *discipline* — decide worktree-or-not before the first file, keep `git status` clean through the PR lifecycle, run P8 janitor immediately after merge. |
 | **P11** | Empirical Feedback Loop | Code that compiles, lints, and even passes CI, but never actually does the thing the user asked for in the deployed environment. | Reflexive composition: parallel `run_in_background` log-tails, gstack/agent-browser E2E, before-and-after visual diff, multi-level test composition, deploy-preview screenshot capture. Reasoning isn't validation — interaction is. |
 
-Four of these — P8, P9, P10, P11 — are *recent crystallizations*. P8 + P9 were born from a session where existing primitives surfaced their own bugs (a stale install, orphan watcher rows). P10 and P11 followed from the next set of failure modes the loop exposed: dirty trees compounding across sessions (P10), and code that ships green-CI but doesn't behave correctly when actually exercised (P11). The system found its own gaps and shipped the fixes. That's the dogfood loop in §6.
+Four of these — P7, P8, P10, P11 — are *recent crystallizations*. P7 + P8 were born from a session where existing primitives surfaced their own bugs (a stale install, orphan watcher rows). P10 and P11 followed from the next set of failure modes the loop exposed: dirty trees compounding across sessions (P10), and code that ships green-CI but doesn't behave correctly when actually exercised (P11). The system found its own gaps and shipped the fixes. That's the dogfood loop in §6.
 
 ## Where bstack is ahead of the discourse
 
@@ -166,13 +166,13 @@ Composite stability: λᵢ > 0 at all levels ⟹ exponentially stable (Theorem 1
 
 Most harnesses enforce policy through hooks. Hooks are rigid: they fire or they don't, they have no judgment. Anthropic's *Effective context engineering* recommends finding "the right altitude" — *specific enough to guide, flexible enough to let the model judge*.
 
-bstack does this with **reflexive trigger rules** in AGENTS.md, written as binding-on-every-agent text. P6 has one ("Bookkeeping is reflexive — invoke without being prompted whenever you commit a feature that reads from the graph"). P7 has four ("After every push, before any sleep, on red CI before re-pushing, on MERGE_READY before manual merge"). The rule loads at SessionStart; the agent reads it and applies it. No hook needed. If the agent finds itself sleeping on CI, the reflex failed and that's a session-level error worth flagging.
+bstack does this with **reflexive trigger rules** in AGENTS.md, written as binding-on-every-agent text. P6 has one ("Bookkeeping is reflexive — invoke without being prompted whenever you commit a feature that reads from the graph"). P9 has four ("After every push, before any sleep, on red CI before re-pushing, on MERGE_READY before manual merge"). The rule loads at SessionStart; the agent reads it and applies it. No hook needed. If the agent finds itself sleeping on CI, the reflex failed and that's a session-level error worth flagging.
 
 This isn't softer than hooks — it's *deeper*. Hooks gate one tool call. Reflexive rules shape the agent's whole approach to a class of work.
 
 ### Productive wait
 
-I searched the harness-engineering literature for "drain context-scoped queue while CI runs." It doesn't appear. P7 is genuinely novel.
+I searched the harness-engineering literature for "drain context-scoped queue while CI runs." It doesn't appear. P9 is genuinely novel.
 
 The standard pattern is: agent pushes, agent sleeps, agent polls. The bstack pattern is: agent pushes, agent spawns `gh pr checks --watch` via `run_in_background`, then drains a priority-ordered queue (`session > memory > graph > docs > linear`) while the watcher runs. When the bg-task notification fires, the agent reads `p9 status`, transitions to `MERGE_READY` or runs the classifier. *The wait time disappears.*
 
@@ -193,7 +193,7 @@ This single session shipped:
 - **13 pull requests merged** across 4 repositories
 - **108 tests** added/modified in `broomva/p9` (46 unit + 15 integration + 6 chaos + 25 fix-cycle + 16 actuator)
 - Matrix CI green on Python 3.11 / 3.12 / 3.13
-- Two new bstack primitives (P8, P9) added in response to bugs the system surfaced about itself — and two more (P10, P11) crystallized in the parallel work that ran while this post was being written
+- Two new bstack primitives (P7, P8) added in response to bugs the system surfaced about itself — and two more (P10, P11) crystallized in the parallel work that ran while this post was being written
 - One architectural realignment (drop P3/P4 Spaces/Lago, renumber 9→7, then add 8 and 9 → 11 — a portable contract that the doctor enforces and the bootstrap scaffolds)
 
 ![PR throughput: traditional sleep-then-poll vs bstack productive-wait](/images/writing/bstack-portable-harness-metalayer/chart-pr-throughput.png)
@@ -201,8 +201,8 @@ This single session shipped:
 The interesting moments weren't the PRs themselves. They were the **safety pre-passes triggering correctly**:
 
 - The **P2 control gate blocked my own `git reset --hard`** mid-session — the agent that built the gate hit the gate, and the gate held.
-- The **P7 auto-merge actuator self-blocked** on PR #40 because it touched `CLAUDE.md` (governance-class path → `require_human`). The actuator I shipped two PRs earlier refused to ship the next PR. Manually approved with full context — exactly the intended human-in-the-loop behavior.
-- The **P9 janitor** I shipped at the end of the session **dropped a stale `feat/mil-tier2-foundations` branch** that had been sitting around for weeks, in the very next operation after merge.
+- The **P9 auto-merge actuator self-blocked** on PR #40 because it touched `CLAUDE.md` (governance-class path → `require_human`). The actuator I shipped two PRs earlier refused to ship the next PR. Manually approved with full context — exactly the intended human-in-the-loop behavior.
+- The **P8 janitor** I shipped at the end of the session **dropped a stale `feat/mil-tier2-foundations` branch** that had been sitting around for weeks, in the very next operation after merge.
 
 A demo of the productive-wait pattern in action:
 
@@ -230,10 +230,10 @@ Honest list, in priority order:
 
 1. **Per-agent identity and credential scoping.** bstack treats agent ≡ user. Anthropic's three-agent harness and Google Scion both isolate per-agent. *Tier C work.*
 2. **Sandbox isolation.** P5 worktrees are git-isolation, not process-isolation. Daytona (running ~100 YC startups) and E2B (~10% of W26) handle this. *bstack should wrap, not reinvent.*
-3. **Durable execution.** Only P7 has a `state.jsonl` checkpoint. Agent intent and plan aren't checkpointed; a session crash loses them.
+3. **Durable execution.** Only P9 has a `state.jsonl` checkpoint. Agent intent and plan aren't checkpointed; a session crash loses them.
 4. **Managed forget/compress.** P6 promotes; it doesn't forget. Auto-memory grows unboundedly. Mem0 / EverMemOS have explicit forget ops we should borrow.
 5. **In-session phase indicator.** TAO and Plan-Execute-Verify expose "step N of M". We don't surface this; the agent re-derives every turn.
-6. **Pre-CI test-driven execution.** bstack does TDX in CI (P7); pre-CI it doesn't. "Run test → see error → refine" closed loop in-session would close this.
+6. **Pre-CI test-driven execution.** bstack does TDX in CI (P9); pre-CI it doesn't. "Run test → see error → refine" closed loop in-session would close this.
 
 These are roadmap items, not weaknesses. Most of them are well within reach for someone reading this post who wants to contribute one.
 
@@ -245,7 +245,7 @@ The Vercel CEO is right that a small number of operators with the right tools wi
 
 Three reasons.
 
-**Compounding.** Every operator that adopts bstack and runs into a primitive-shaped failure mode is a free debug case. P8 and P9 were born from a session where the existing primitives surfaced their own bugs; P10 and P11 followed in the next round. Deploy that across hundreds of operators and the substrate gets sharper faster than any closed team can match. The OSS distribution is itself a meta-primitive we haven't formally named — call it "the contributor loop is the harness's f₃ dynamics function."
+**Compounding.** Every operator that adopts bstack and runs into a primitive-shaped failure mode is a free debug case. P7 and P8 were born from a session where the existing primitives surfaced their own bugs; P10 and P11 followed in the next round. Deploy that across hundreds of operators and the substrate gets sharper faster than any closed team can match. The OSS distribution is itself a meta-primitive we haven't formally named — call it "the contributor loop is the harness's f₃ dynamics function."
 
 **Calibration.** The Altman-Rauch-IEEE framing is real but it's also suspiciously easy to claim. *"I'm a 100x engineer now"* is unfalsifiable in private. Publishing the substrate opens it to comparison: anyone can install it, run their own session, and report back whether their throughput moved. If it doesn't, that's a real critique we should hear.
 
