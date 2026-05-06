@@ -38,15 +38,42 @@ image: /images/writing/bstack-portable-harness-metalayer/hero-cinematic-poster.p
 >
 > *Vercel hires "people who know how to use AI — who write good prompts and manage AI agents to maximize results."* — **Guillermo Rauch**, Vercel CEO ([Bloomberg Línea reel](https://www.instagram.com/reel/DXho28KkdCo/))
 
-Two angles on the same thing. Altman is the *demand side*: the world wants two-to-three orders of magnitude more software than humans-typing-alone can produce. Rauch is the *supply side*: the operators who can meet that demand are the ones who manage agents, not the ones who out-type them. v0 itself is the existence proof — Rauch said elsewhere that v0 hit *3,200 PRs merged per day*. That's not a team scaling, it's a substrate scaling. IEEE Spectrum and Emergent VC named it: *"we'll soon have 100x and 1000x engineers."*
+**Two angles on the same thing.** Altman is the *demand side*: orders of magnitude more software than humans-typing-alone can produce. Rauch is the *supply side*: hire operators who manage agents, not operators who out-type them. v0 hit *3,200 PRs merged per day* — that's not a team scaling, it's a substrate scaling.
 
-This post is what that inflection looks like, in one engineer's contribution graph, plus the substrate that produced it.
-
-## The graph
-
-Pulled from GitHub's GraphQL API for `broomva` on 2026-05-06:
+This post is what that inflection looks like in one engineer's contribution graph — and the open-source substrate that produced it.
 
 ![Throughput inflection: yearly contributions 2022-2026 + monthly breakdown of 2026, showing a 6.2x jump in March 2026 when bstack started shipping](/images/writing/bstack-portable-harness-metalayer/chart-inflection.png)
+
+That's `broomva` on GitHub, pulled from the GraphQL API on 2026-05-06. **Five contributions in 2022. 6,519 in the first five months of 2026.** The inflection wasn't gradual — it was a single month: **February → March, 465 → 2,881, a 6.2× jump that sustained through April.**
+
+What started shipping that month is **bstack** — a portable harness metalayer of eleven irreducible primitives that turn any agent-driven workspace into a self-operating system. *That's the aha:* the multiplier isn't from the model getting smarter; it's from the substrate becoming load-bearing.
+
+## Try it in one command
+
+If you build with Claude Code, Codex, Gemini CLI, OpenCode, or any of the [50+ agent CLIs the skills ecosystem supports](https://github.com/vercel-labs/skills), you can install the whole stack right now:
+
+```bash
+npx skills add broomva/bstack
+```
+
+Then, in your agent session:
+
+```text
+/bstack bootstrap     → install all 28 skills + scaffold governance + wire hooks + run doctor
+/bstack doctor        → verify the eleven-primitive contract (always exits 0; --strict for CI)
+/bstack status        → show installed-vs-missing skills + harness health
+/bstack repair        → apply targeted fixes for any gap doctor surfaces
+```
+
+`bootstrap` is the only one most people need. It scaffolds the governance files (`CLAUDE.md`, `AGENTS.md`, `.control/policy.yaml`), wires the hooks (`Stop`, `PreToolUse`, `SessionStart`), installs the 28 curated skills, and runs the doctor to confirm the primitive contract is satisfied. *Idempotent*: re-running it on an existing project never overwrites your customizations.
+
+Costs you nothing if you don't use it. Gives you a self-operating workspace if you do.
+
+The full eleven-primitive spec — what each closes, how it's enforced, and the four reasoning-enforced reflexive trigger rules — lives at [`references/primitives.md`](https://github.com/broomva/bstack/blob/main/references/primitives.md). The repo itself is [broomva/bstack](https://github.com/broomva/bstack).
+
+The rest of this post is *why* the substrate produced that 6.2× month — what each primitive closes, where bstack is ahead of the YC / Anthropic / harness-engineering discourse, and the dogfood evidence from the session that built this very post.
+
+## The graph in detail
 
 Yearly contributions, public + private:
 
@@ -67,8 +94,6 @@ Monthly breakdown of 2026, where the inflection is sharp:
 | **Mar** | **2,881** |
 | **Apr** | **2,561** |
 | May (5 days) | 354 |
-
-**February → March 2026: 6.2× jump in a single month.** Sustained through April. The thing that started shipping in March is the substrate this post is about.
 
 For comparison: a productive engineer commits ~1,500–2,500 times per year on a typical year. The 2026 trajectory is **on pace for ~15,000+** in the calendar year. That's not a 10× engineer; it's the productivity multiplier Altman and Rauch are pointing at, made personal and dated.
 
@@ -232,19 +257,13 @@ Same shape Vercel is taking with v0 + the skills marketplace. Same shape Anthrop
 
 In one paragraph:
 
-> **bstack is the body around the brain.** Reasoning is saturating; the environment is the bottleneck. The 2026 paradigm rediscovered governance, harness engineering, and context engineering — three threads that all say "the work is in the substrate." bstack is one concrete answer: eleven portable primitives that any agent-driven workspace can install, with formal stability budgets at the governance layer, reflexive rules that bind without rigidity, a productive-wait pattern that recovers the time CI takes from your agent's life, worktree-hygiene discipline that keeps the tree clean across the PR lifecycle, and an empirical-feedback reflex that refuses to call work *done* until the agent has interacted with the deployed result. The chart at the top of this post is what the substrate produced when one operator turned it on. **It's open source. It's installable now.**
+> **bstack is the body around the brain.** Reasoning is saturating; the environment is the bottleneck. The 2026 paradigm rediscovered governance, harness engineering, and context engineering — three threads that all say "the work is in the substrate." bstack is one concrete answer: eleven portable primitives that any agent-driven workspace can install, with formal stability budgets at the governance layer, reflexive rules that bind without rigidity, a productive-wait pattern that recovers the time CI takes from your agent's life, worktree-hygiene discipline that keeps the tree clean across the PR lifecycle, and an empirical-feedback reflex that refuses to call work *done* until the agent has interacted with the deployed result. The chart near the top of this post is what the substrate produced when one operator turned it on.
 
-```bash
-npx skills add broomva/bstack
-```
-
-If you build with Claude Code, Codex, Gemini CLI, or any of the 50+ agents the skills ecosystem supports — `npx skills add broomva/bstack` activates the meta-skill that bootstraps the whole stack into your project. It also installs hooks: the bridge, the gate, the freshness check. It costs you nothing if you don't use it; it gives you a self-operating workspace if you do.
-
-If you want to read the spec before installing, the 11 primitives are documented in [`references/primitives.md`](https://github.com/broomva/bstack/blob/main/references/primitives.md) of [broomva/bstack](https://github.com/broomva/bstack). Each one has a *what / how / why / invariant* section, plus the reflexive trigger rules for the four reasoning-enforced ones (P6, P7, P10, P11). The RCS formalization with stability proofs lives in `research/rcs/papers/p0-foundations`.
+The install is at the top. The full primitive spec is at [`references/primitives.md`](https://github.com/broomva/bstack/blob/main/references/primitives.md). The repo is [broomva/bstack](https://github.com/broomva/bstack). The RCS formalization with stability proofs lives in `research/rcs/papers/p0-foundations`.
 
 If you want to contribute, the gaps in §"What bstack doesn't solve yet" are real, scoped, and high-leverage. Especially the durable-execution and sandbox-integration ones — those would land in a single PR each and would close paradigm-level gaps.
 
-The thesis I'm willing to defend: **the next decade of agentic work happens in workspaces that are themselves intelligent**. Not because the model got smarter, but because the substrate did. The contribution graph at the top of this post is what one operator's throughput looks like when the substrate is right. bstack is one substrate. Build a better one. Critique this one. But stop optimizing prompts in a system that drops state, never sleeps a CI loop, and accumulates worktree garbage. **Build the body.**
+The thesis I'm willing to defend: **the next decade of agentic work happens in workspaces that are themselves intelligent**. Not because the model got smarter, but because the substrate did. The contribution graph near the top of this post is what one operator's throughput looks like when the substrate is right. bstack is one substrate. Build a better one. Critique this one. But stop optimizing prompts in a system that drops state, never sleeps a CI loop, and accumulates worktree garbage. **Build the body.**
 
 ---
 
