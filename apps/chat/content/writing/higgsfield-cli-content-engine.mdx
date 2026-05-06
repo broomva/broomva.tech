@@ -27,6 +27,8 @@ links:
     url: "https://github.com/broomva/content-engine/blob/main/skills/content-engine-cinema/SKILL.md"
 ---
 
+![Vast cathedral-scale architectural interior with thirty cool blue beams of light flowing downward from above and converging into a single warm amber column at the center — Villeneuve / Blade Runner 2049 visual language. Generated end-to-end via Higgsfield CLI (FLUX.2 Pro, 16:9) using the cinematic doctrine described in this post.](/images/writing/higgsfield-cli-content-engine/hero-villeneuve-convergence.png)
+
 # Higgsfield CLI in the Content Engine
 
 The Broomva content-engine had a real integration gap until today. It mentioned Higgsfield three times — all in the wrong tier. "Higgsfield account — Soul Cinema start frames" was listed as **optional**, alongside Topaz Gigapixel and Weavy. The actual generation pipeline ran through `@google/genai` (Gemini) for Nano Banana and Veo, plus `@fal-ai/client` for Kling and Sora. Two different SDKs, two different credit pools, two different auth flows. Higgsfield was a browser-automation footnote.
@@ -72,6 +74,8 @@ The new tool matrix:
 The browser-automated row no longer mentions Higgsfield. Studio access is now CLI; the legacy browser path is preserved only for tools that genuinely have no API or MCP (Weavy, Artlist for music selection).
 
 ## The cinema → Higgsfield workflow
+
+![Schematic Fincher-style production design board showing a six-node vertical chain (Concept, Camera Style, Start Frame, Soul ID Lock, Motion, Post-Production) connected by amber data-flow lines on a dark slate ground, with thirty hair-thin blue lines converging into the chain from the upper left — visualizing thirty consolidated models flowing into one CLI pipeline. Generated via Higgsfield CLI (Seedream V5 Lite, 16:9).](/images/writing/higgsfield-cli-content-engine/workflow-fincher-diagram.png)
 
 The compounded workflow when content-engine-cinema dispatches a scene now looks like this:
 
@@ -161,6 +165,16 @@ The integration is live in `broomva/content-engine` (cinema SKILL.md + top-level
 
 For a content stack that already had three SDKs and a browser-automation footnote, consolidating to one CLI was the integration that should have shipped on day one.
 
+## A note on this post's imagery
+
+The two images on this post are themselves the proof. Both were generated end-to-end through the integration this post describes, after `higgsfield auth login` and zero browser steps:
+
+- **Hero** — `higgsfield generate create flux_2 --aspect_ratio "16:9" --prompt "..."` with a Villeneuve-vocabulary scene description ("vast geometric architectural interior, thirty cool blue beams converging into a single warm amber column, cinematic anamorphic, Blade Runner 2049 visual language"). One CLI call, one job ID, one `result_url`. The convergence metaphor is literal: thirty beams represent the thirty models the CLI exposes; the single amber column is the consolidated path.
+
+- **Workflow diagram** — `higgsfield generate create seedream_v5_lite --aspect_ratio "16:9" --prompt "..."` with a Fincher-vocabulary scene description ("schematic technical diagram, dark slate background, low-key sodium-vapor lighting, desaturated blue-green tones, six geometric nodes in a vertical chain connected by amber lines, thirty parallel hair-thin lines flowing into the chain from above-left"). Same single-call shape; the diagram is the cinema → Higgsfield pipeline rendered in its own visual idiom.
+
+Total post production: two `higgsfield generate create` invocations, no SDK swaps, no `agent-browser` Chromium sessions, no per-provider auth dance. The post writes itself into being a working test case for the integration it announces.
+
 ---
 
-*Skill source: [github.com/broomva/content-engine](https://github.com/broomva/content-engine) · Higgsfield CLI: [github.com/higgsfield-ai/cli](https://github.com/higgsfield-ai/cli) · Higgsfield MCP: [higgsfield.ai/mcp](https://higgsfield.ai/mcp) · Skill bundle: `npx skills add higgsfield-ai/skills`.*
+*Skill source: [github.com/broomva/content-engine](https://github.com/broomva/content-engine) · Higgsfield CLI: [github.com/higgsfield-ai/cli](https://github.com/higgsfield-ai/cli) · Higgsfield MCP: [higgsfield.ai/mcp](https://higgsfield.ai/mcp) · Skill bundle: `npx skills add higgsfield-ai/skills`. Imagery generated via Higgsfield FLUX.2 Pro (hero) and Seedream V5 Lite (workflow diagram), both 16:9.*
