@@ -1,0 +1,178 @@
+---
+title: "AI Agent Repo Leaks: A Five-Layer Defense"
+summary: "A public branch I didn't create — but my coding agent did — was sitting on one of my repos for five weeks before a third-party scan flagged it. Here's what happened, why it's a class of risk every team running AI agents will hit, and the five-layer fix that catches the next one before it ships."
+date: 2026-05-08
+published: true
+tags:
+  - AI
+  - agents
+  - security
+  - git
+  - gitignore
+  - developer-tools
+---
+
+A public branch on one of my repos got flagged this week — by someone running a GitHub-wide scan, not by me. The branch was `entire/checkpoints/v1` on `github.com/broomva/life`, with 660 auto-commits dated 2026-04-05. I hadn't created it. My coding agent had — months ago, during a one-week evaluation. I'd uninstalled the agent. The hooks were removed. The `.entire/` directory was gitignored. But the branch it had pushed remained on GitHub, exposed for five weeks before someone else's scanner noticed.
+
+This is a class of risk, not a one-off. Every team adopting autonomous coding agents will hit some version of it. Here's what I found and the defense I deployed.
+
+## The Threat Model
+
+AI coding agents that wrap your editor or terminal often want to "checkpoint" your session — for replay, recovery, sharing, or telemetry. The good ones make this opt-in. Some make it default-on with friendly UX. A few create git branches and push them to your remote without asking.
+
+The leak surface has two distinct shapes:
+
+1. **Files** — agents write per-project state to dotfile dirs (`.entire/`, `.omnara/`, `.cursor/projects/`, `.codex/transcripts/`, `.aider*`). If you `git add .` without reading the diff, secrets end up in commits.
+2. **Branches** — agents auto-create and push branches like `entire/checkpoints/v1` or `checkpoint-1778083028535`. Even if `.gitignore` blocks the on-disk files, branches aren't files. They sail past gitignore entirely.
+
+Most defensive thinking covers (1). My leak was (2). The fact that an external scanner found it before I did was the wake-up call.
+
+## What Was Actually In The Leak
+
+I scanned before deleting. The branch contained:
+
+- 660 commits, mostly `Checkpoint: <hash>` auto-commits
+- A `.entire/settings.json` (`strategy: manual-commit, telemetry: false`)
+- ~600 `docs/conversations/session-*.md` files — bridge metadata only (timestamps, turn counts, commit refs), **not** raw tool-call transcripts
+- No matches on common secret patterns (`sk-ant-`, `ghp_`, `AKIA`, `AIza`, `xoxb-`)
+
+The agent had quietly done one good thing: its `.entire/.gitignore` excluded `tmp/`, `metadata/`, `logs/` — the high-risk subpaths. The leak was metadata-shaped, not credential-shaped. Lucky, not by my design.
+
+But the *shape* of the leak was wrong: 660 commits authored by me, on a branch I never asked for, exposed for 5 weeks, on a public repo. The data ages out — GitHub keeps deleted commits reachable at their SHAs for ~90 days, and anyone who cloned during the exposure window still has it. Lucky doesn't fix that.
+
+## The Five-Layer Defense
+
+After deleting the branch and rotating nothing (because nothing leaked that mattered), I asked: *how do I make sure the next agent can't do this?*
+
+```
+Layer 1: ~/.gitignore_global         # all repos, all hosts
+Layer 2: ~/.git-template/            # auto-applied on git init / clone
+Layer 3: .git/info/exclude (per-repo) # invisible runtime guard
+Layer 4: .gitignore (per-repo, optional) # collaborator-visible
+Layer 5: .git/hooks/pre-push (per-repo) # blocks the actual leak shape
+```
+
+The layers escalate in specificity but the most important one is **Layer 5** — because gitignore alone doesn't stop branch pushes.
+
+### Layer 1 — Global gitignore
+
+```bash
+git config --global core.excludesfile ~/.gitignore_global
+```
+
+A single file that applies to every repo on the machine, including ones I clone next year:
+
+```gitignore
+# Always-auto-state agents (no legitimate tracked content)
+.entire/
+.omnara/
+.aider*
+.specstory/
+.tabnine/
+.codeium/
+.cody/
+.augment/
+.continue/
+.qoder/
+.windsurf/
+
+# Tools with both intentional config AND auto-state — scope to leak paths only
+.cursor/projects/
+.cursor/agent-transcripts/
+.cursor/transcript*.jsonl
+.codex/transcripts/
+.codex/sessions/
+.claude/projects/
+.claude/.credentials.json
+.claude/settings.local.json
+
+# Generic checkpoint/session shapes
+**/checkpoint-[0-9]*.json
+**/checkpoint-[0-9]*.jsonl
+**/session-*.jsonl
+**/transcript-*.jsonl
+**/agent-transcripts/
+```
+
+Note the discipline: I broad-ignore tools that are *always* auto-state (entire, omnara, aider). I narrow-ignore tools where some content is intentional (cursor rules, codex commands, claude settings). Silently hiding `.cursor/rules/foo.mdc` is itself a class of bug.
+
+### Layer 2 — Init template
+
+```bash
+git config --global init.templatedir ~/.git-template
+```
+
+`~/.git-template/` is copied into `.git/` on every fresh `git init` and `git clone`. Mine contains:
+
+- `info/exclude` — same patterns as the global gitignore, baked into the per-repo state
+- `hooks/pre-push` — the actual fix (next layer)
+
+This means **every new repo on this machine inherits the protection at creation time**, before I install anything else.
+
+### Layers 3–4 — Per-repo gitignores
+
+Layer 3 is `.git/info/exclude` — invisible to collaborators but enforced locally. Layer 4 is the committed `.gitignore` — visible to forks/clones, propagates the rule wherever the repo travels.
+
+I patched 93 active workspace repos with `.git/info/exclude` (kept) and `.gitignore` (reverted, since global config covers me locally and I didn't want 93 noisy commits). Pick the policy that matches your team: solo dev → Layer 3 is enough; shared org → patch Layer 4 too.
+
+### Layer 5 — Pre-push hook (the real fix)
+
+This is the one that would have caught the entire.io leak:
+
+```bash
+#!/usr/bin/env bash
+# ~/.git-template/hooks/pre-push
+set -e
+[ "${BROOMVA_ALLOW_AGENT_PUSH:-0}" = "1" ] && exit 0
+
+BLOCKED_PATTERNS=(
+  '^refs/heads/entire/'
+  '^refs/heads/omnara/'
+  '^refs/heads/aider/'
+  '^refs/heads/cursor/'
+  '^refs/heads/windsurf/'
+  '^refs/heads/codeium/'
+  '^refs/heads/zed/'
+  '^refs/heads/copilot/'
+  '^refs/heads/qoder/'
+  '^refs/heads/codex/'
+  '^refs/heads/checkpoint-[0-9]+'
+)
+
+block=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+  for pat in "${BLOCKED_PATTERNS[@]}"; do
+    if [[ "$remote_ref" =~ $pat ]]; then
+      echo "✗ pre-push: refusing to push $remote_ref"
+      echo "  Pattern '$pat' matches an AI agent auto-checkpoint branch."
+      echo "  Override with BROOMVA_ALLOW_AGENT_PUSH=1 (rarely correct)."
+      block=1
+    fi
+  done
+done
+exit "$block"
+```
+
+Reads stdin (git's push-refs format), regex-checks every ref against known agent-tool prefixes, exits 1 if any match. The override env var exists for edge cases but it's purposefully ugly — the kind of variable you don't accidentally export.
+
+I also chained this hook after existing pre-push hooks (the conversation-bridge one already does PII redaction on session metadata) — the chain only works because conversation-bridge doesn't consume stdin. If your existing hook does, you'll need to capture stdin once and pipe it to both.
+
+## What This Cost
+
+About two hours of careful work. Most of it was understanding the false-positive cases — `.codex/rules.md` and `.cursor/hooks/state/` are intentionally tracked in two of my repos, so the broad patterns I started with would have silently hidden new files in those subpaths. The fix was scoping the broad patterns to the actually-leak-shaped subpaths.
+
+The deployment hit 93 repos. Of those, 88 got fresh hooks installed, 5 had existing hooks that needed chaining. After cleanup — including 170 stale `.tmp` files from a failed `awk` attempt with multi-line `-v` — the working trees are clean.
+
+## What To Do Right Now
+
+If you run any AI coding agent, today:
+
+1. `gh api "repos/<you>/<repo>/git/matching-refs/heads/entire"` — and same for `omnara`, `checkpoint`, `aider`, `cursor`, `windsurf`. If anything returns non-empty, you have the leak.
+2. `git push origin --delete <branch>` — but understand that on GitHub, the commits remain reachable at their SHAs for ~90 days. Anyone who cloned during exposure has it. Plan accordingly.
+3. Install the five-layer defense above. The ~12-line global gitignore + the pre-push hook catches the next one before it ships.
+4. Audit which agents on your machine have *push* in their default workflow. The answer is sometimes surprising.
+
+## A Note To Agent-Tooling Authors
+
+If you're shipping a coding agent: **default to `push:false`**. Your users don't know what your `--checkpoint` flag does. Silent auto-push to a public remote is the worst kind of UX bug — invisible until someone else's scanner finds it.
