@@ -12,7 +12,7 @@ tags:
   - developer-tools
 ---
 
-A public branch on one of my repos got flagged this week — by someone running a GitHub-wide scan, not by me. The branch was `entire/checkpoints/v1` on `github.com/broomva/life`, with 660 auto-commits dated 2026-04-05. I hadn't created it. My coding agent had — months ago, during a one-week evaluation. I'd uninstalled the agent. The hooks were removed. The `.entire/` directory was gitignored. But the branch it had pushed remained on GitHub, exposed for five weeks before someone else's scanner noticed.
+A public branch I hadn't created was sitting on one of my repos this week. `entire/checkpoints/v1` on `github.com/broomva/life`, with 660 auto-commits dated 2026-04-05. My coding agent had pushed it months ago, during a one-week evaluation. I'd uninstalled the agent. The hooks were removed. The `.entire/` directory was gitignored. But the branch remained on GitHub, exposed for five weeks before I noticed.
 
 This is a class of risk, not a one-off. Every team adopting autonomous coding agents will hit some version of it. Here's what I found and the defense I deployed.
 
@@ -25,7 +25,7 @@ The leak surface has two distinct shapes:
 1. **Files** — agents write per-project state to dotfile dirs (`.entire/`, `.omnara/`, `.cursor/projects/`, `.codex/transcripts/`, `.aider*`). If you `git add .` without reading the diff, secrets end up in commits.
 2. **Branches** — agents auto-create and push branches like `entire/checkpoints/v1` or `checkpoint-1778083028535`. Even if `.gitignore` blocks the on-disk files, branches aren't files. They sail past gitignore entirely.
 
-Most defensive thinking covers (1). My leak was (2). The fact that an external scanner found it before I did was the wake-up call.
+Most defensive thinking covers (1). My leak was (2).
 
 ## What Was Actually In The Leak
 
@@ -176,3 +176,7 @@ If you run any AI coding agent, today:
 ## A Note To Agent-Tooling Authors
 
 If you're shipping a coding agent: **default to `push:false`**. Your users don't know what your `--checkpoint` flag does. Silent auto-push to a public remote is the worst kind of UX bug — invisible until someone else's scanner finds it.
+
+---
+
+*Thanks to Noam for the heads-up that prompted this audit.*
