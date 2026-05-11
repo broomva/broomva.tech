@@ -298,6 +298,62 @@ pub async fn handle_complete(
     Ok(())
 }
 
+pub async fn handle_feedback(
+    client: &BroomvaClient,
+    invocation_id: Option<&str>,
+    slug: Option<&str>,
+    version: &str,
+    signal: &str,
+    text: Option<&str>,
+    format: OutputFormat,
+) -> BroomvaResult<()> {
+    // Resolve the slug. For attached feedback (with invocation_id), --slug
+    // is currently required because there's no GET /api/invocations/[id]
+    // endpoint exposed in the CLI yet (Phase 2.1 follow-up). For detached
+    // feedback, --slug is mandatory.
+    let resolved_slug = match (invocation_id, slug) {
+        (Some(_id), Some(s)) => s.to_string(),
+        (Some(id), None) => {
+            return Err(BroomvaError::User(format!(
+                "feedback on invocation {id} requires --slug (detached lookup not yet wired)"
+            )));
+        }
+        (None, Some(s)) => s.to_string(),
+        (None, None) => {
+            return Err(BroomvaError::User(
+                "either invocation_id or --slug is required".into(),
+            ));
+        }
+    };
+
+    let normalized_signal = match signal {
+        "up" => "thumbs_up",
+        "down" => "thumbs_down",
+        other => {
+            return Err(BroomvaError::User(format!(
+                "invalid signal {other} (use up|down)"
+            )));
+        }
+    };
+
+    let req = crate::api::types::FeedbackCreateRequest {
+        invocation_id: invocation_id.map(|s| s.to_string()),
+        prompt_slug: resolved_slug,
+        prompt_version: version.to_string(),
+        signal: normalized_signal.to_string(),
+        text: text.map(|s| s.to_string()),
+        source: crate::telemetry::source::detect_source().as_str().to_string(),
+    };
+
+    let resp = client.create_feedback(&req).await?;
+    if format == OutputFormat::Json {
+        print_json(&resp);
+    } else {
+        println!("  Recorded feedback: {} ({})", resp.id, normalized_signal);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -485,6 +541,55 @@ mod tests {
             None,
             None,
             None,
+            None,
+            crate::cli::output::OutputFormat::Table,
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn feedback_attached_with_slug_posts() {
+        let _env_guard = crate::telemetry::TELEMETRY_ENV_LOCK.lock().unwrap();
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/api/feedback"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "id": "fb-1",
+                "created_at": "2026-05-11T00:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let client = BroomvaClient::new(server.uri(), None);
+        let result = handle_feedback(
+            &client,
+            Some("abc-123"),
+            Some("x"),
+            "1.0",
+            "up",
+            Some("nice"),
+            crate::cli::output::OutputFormat::Table,
+        )
+        .await;
+        assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn feedback_detached_no_slug_rejects_locally() {
+        let _env_guard = crate::telemetry::TELEMETRY_ENV_LOCK.lock().unwrap();
+
+        let server = MockServer::start().await;
+        let client = BroomvaClient::new(server.uri(), None);
+        let result = handle_feedback(
+            &client,
+            None,
+            None,
+            "1.0",
+            "down",
             None,
             crate::cli::output::OutputFormat::Table,
         )

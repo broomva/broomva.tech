@@ -156,7 +156,6 @@ pub struct InvocationRow {
 
 // ── Feedback (Phase 2 telemetry) ──
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct FeedbackCreateRequest {
@@ -170,7 +169,6 @@ pub struct FeedbackCreateRequest {
     pub source: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct FeedbackCreateResponse {

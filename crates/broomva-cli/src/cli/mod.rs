@@ -213,6 +213,23 @@ pub enum PromptsCommand {
         #[arg(long)]
         error_message: Option<String>,
     },
+    /// Leave thumbs-up/down feedback on a prompt invocation.
+    Feedback {
+        /// Invocation id. Omit to leave detached feedback (use --slug then).
+        invocation_id: Option<String>,
+        /// Explicitly target a slug. Required for detached feedback.
+        #[arg(long)]
+        slug: Option<String>,
+        /// Prompt version (for detached feedback). Defaults to "unknown".
+        #[arg(long, default_value = "unknown")]
+        version: String,
+        /// Thumbs direction.
+        #[arg(long, value_parser = ["up", "down"])]
+        signal: String,
+        /// Optional freeform note (max 2000 chars).
+        #[arg(long)]
+        text: Option<String>,
+    },
 }
 
 // ── Skills ──
@@ -468,6 +485,24 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                     tokens_in,
                     tokens_out,
                     error_message.as_deref(),
+                    format,
+                )
+                .await
+            }
+            PromptsCommand::Feedback {
+                invocation_id,
+                slug,
+                version,
+                signal,
+                text,
+            } => {
+                prompts::handle_feedback(
+                    &client,
+                    invocation_id.as_deref(),
+                    slug.as_deref(),
+                    &version,
+                    &signal,
+                    text.as_deref(),
                     format,
                 )
                 .await

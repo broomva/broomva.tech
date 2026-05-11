@@ -250,7 +250,6 @@ impl BroomvaClient {
 
     // ── Feedback (Phase 2 telemetry) ──
 
-    #[allow(dead_code)]
     pub async fn create_feedback(
         &self,
         req: &FeedbackCreateRequest,
