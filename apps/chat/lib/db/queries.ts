@@ -1587,3 +1587,261 @@ export async function getFeedbackForPrompt(opts: {
     .orderBy(desc(promptFeedback.createdAt))
     .limit(Math.min(opts.limit ?? 8, 100));
 }
+
+// ─── Metrics aggregate queries ─────────────────────────────────────────────
+
+type Window = "24h" | "7d" | "30d" | "all";
+
+function windowStart(w: Window): Date | null {
+  if (w === "all") return null;
+  const now = Date.now();
+  const ms =
+    w === "24h" ? 24 * 60 * 60 * 1000
+    : w === "7d" ? 7 * 24 * 60 * 60 * 1000
+    : 30 * 24 * 60 * 60 * 1000;
+  return new Date(now - ms);
+}
+
+export async function getOverviewMetrics(opts: { since: Window }) {
+  const start = windowStart(opts.since);
+  const prev = start
+    ? new Date(start.getTime() - (Date.now() - start.getTime()))
+    : null;
+
+  const rangeCond = start
+    ? sql`"createdAt" >= ${start.toISOString()}`
+    : sql`TRUE`;
+  const prevCond =
+    start && prev
+      ? sql`"createdAt" >= ${prev.toISOString()} AND "createdAt" < ${start.toISOString()}`
+      : null;
+
+  const totalsRow = (await db.execute<{
+    source: string;
+    n: number;
+  }>(sql`
+    SELECT source::text AS source, COUNT(*)::int AS n
+    FROM "PromptInvocation"
+    WHERE ${rangeCond}
+    GROUP BY source
+  `)) as unknown as { source: string; n: number }[];
+
+  const prevRow: { source: string; n: number }[] = prevCond
+    ? ((await db.execute<{ source: string; n: number }>(sql`
+        SELECT source::text AS source, COUNT(*)::int AS n
+        FROM "PromptInvocation"
+        WHERE ${prevCond}
+        GROUP BY source
+      `)) as unknown as { source: string; n: number }[])
+    : [];
+
+  const lastInvocation = (await db.execute<{ last: Date | null }>(sql`
+    SELECT MAX("createdAt") AS last FROM "PromptInvocation"
+  `)) as unknown as { last: Date | null }[];
+
+  const failures1h = (await db.execute<{ n: number }>(sql`
+    SELECT COUNT(*)::int AS n FROM "PromptInvocation"
+    WHERE status = 'failed' AND "createdAt" >= now() - interval '1 hour'
+  `)) as unknown as { n: number }[];
+
+  const promptCount = (await db.execute<{ n: number }>(sql`
+    SELECT COUNT(*)::int AS n FROM "UserPrompt"
+    WHERE "deletedAt" IS NULL AND visibility = 'public'
+  `)) as unknown as { n: number }[];
+
+  const bySource = (rows: { source: string; n: number }[]) => {
+    const init = { web: 0, cli: 0, skill: 0, api: 0 };
+    for (const r of rows) {
+      if (r.source in init) (init as Record<string, number>)[r.source] = r.n;
+    }
+    return init;
+  };
+
+  const curr = bySource(totalsRow);
+  const prevS = bySource(prevRow);
+  const total = curr.web + curr.cli + curr.skill + curr.api;
+  const prevTotal = prevS.web + prevS.cli + prevS.skill + prevS.api;
+  const delta = (a: number, b: number) =>
+    b === 0 ? (a > 0 ? 1 : 0) : (a - b) / b;
+
+  const lastVal = lastInvocation[0]?.last;
+  return {
+    since: opts.since,
+    as_of: new Date().toISOString(),
+    last_invocation_at: lastVal ? new Date(lastVal).toISOString() : null,
+    totals: {
+      prompts: promptCount[0]?.n ?? 0,
+      copies: curr.web,
+      cli_pulls: curr.cli,
+      skill_invokes: curr.skill,
+      traces: total,
+      runs_7d: total,
+    },
+    deltas_vs_prev: {
+      copies: delta(curr.web, prevS.web),
+      cli_pulls: delta(curr.cli, prevS.cli),
+      skill_invokes: delta(curr.skill, prevS.skill),
+      traces: delta(total, prevTotal),
+    },
+    live_failures_1h: failures1h[0]?.n ?? 0,
+  };
+}
+
+export async function getRecentInvocations(opts: {
+  promptSlug?: string;
+  source?: "web" | "cli" | "skill" | "api";
+  limit?: number;
+  before?: Date;
+}) {
+  const limit = Math.min(opts.limit ?? 50, 200);
+  const conditions = [];
+  if (opts.promptSlug) conditions.push(eq(promptInvocation.promptSlug, opts.promptSlug));
+  if (opts.source) conditions.push(eq(promptInvocation.source, opts.source));
+  if (opts.before) conditions.push(sql`"createdAt" < ${opts.before.toISOString()}`);
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  return db
+    .select()
+    .from(promptInvocation)
+    .where(where)
+    .orderBy(desc(promptInvocation.createdAt))
+    .limit(limit);
+}
+
+export async function getVolumeTimeseries(opts: {
+  bucket: "hour" | "day";
+  since: "24h" | "7d" | "30d";
+}) {
+  const start = windowStart(opts.since)!;
+  const trunc = opts.bucket === "hour" ? "hour" : "day";
+  const result = (await db.execute<{
+    ts: Date;
+    source: string;
+    count: number;
+  }>(sql.raw(`
+    SELECT date_trunc('${trunc}', "createdAt") AS ts,
+           source::text AS source,
+           COUNT(*)::int AS count
+    FROM "PromptInvocation"
+    WHERE "createdAt" >= '${start.toISOString()}'
+    GROUP BY ts, source
+    ORDER BY ts ASC
+  `))) as unknown as { ts: Date; source: string; count: number }[];
+
+  const byTs = new Map<
+    string,
+    { ts: string; count: number; by_source: Record<string, number> }
+  >();
+  for (const r of result) {
+    const tsKey = new Date(r.ts).toISOString();
+    if (!byTs.has(tsKey)) {
+      byTs.set(tsKey, {
+        ts: tsKey,
+        count: 0,
+        by_source: { web: 0, cli: 0, skill: 0, api: 0 },
+      });
+    }
+    const entry = byTs.get(tsKey)!;
+    entry.count += r.count;
+    entry.by_source[r.source] = r.count;
+  }
+  return Array.from(byTs.values());
+}
+
+export async function getPromptMetrics(slug: string) {
+  const r = (await db.execute<{
+    web: number; cli: number; skill: number; api: number;
+    runs_7d: number; last_used: Date | null;
+    avg_latency_ms: number | null; avg_cost: string | null;
+  }>(sql`
+    SELECT
+      COUNT(*) FILTER (WHERE source = 'web')::int AS web,
+      COUNT(*) FILTER (WHERE source = 'cli')::int AS cli,
+      COUNT(*) FILTER (WHERE source = 'skill')::int AS skill,
+      COUNT(*) FILTER (WHERE source = 'api')::int AS api,
+      COUNT(*) FILTER (WHERE "createdAt" >= now() - interval '7 days')::int AS runs_7d,
+      MAX("createdAt") AS last_used,
+      AVG("latencyMs")::int AS avg_latency_ms,
+      AVG("costUsd")::text AS avg_cost
+    FROM "PromptInvocation"
+    WHERE "promptSlug" = ${slug}
+  `)) as unknown as {
+    web: number; cli: number; skill: number; api: number;
+    runs_7d: number; last_used: Date | null;
+    avg_latency_ms: number | null; avg_cost: string | null;
+  }[];
+
+  const fb = (await db.execute<{ ups: number; downs: number }>(sql`
+    SELECT
+      COUNT(*) FILTER (WHERE signal = 'thumbs_up')::int AS ups,
+      COUNT(*) FILTER (WHERE signal = 'thumbs_down')::int AS downs
+    FROM "PromptFeedback"
+    WHERE "promptSlug" = ${slug}
+  `)) as unknown as { ups: number; downs: number }[];
+
+  const row = r[0] ?? {
+    web: 0, cli: 0, skill: 0, api: 0,
+    runs_7d: 0, last_used: null, avg_latency_ms: null, avg_cost: null,
+  };
+  const fbRow = fb[0] ?? { ups: 0, downs: 0 };
+  const totalFb = fbRow.ups + fbRow.downs;
+
+  return {
+    totals: {
+      copies: row.web,
+      cli_pulls: row.cli,
+      skill_invokes: row.skill,
+      traces: row.web + row.cli + row.skill + row.api,
+    },
+    runs_7d: row.runs_7d,
+    delta_pct: 0,
+    last_used_at: row.last_used ? new Date(row.last_used).toISOString() : null,
+    avg_latency_ms: row.avg_latency_ms,
+    avg_cost_usd: row.avg_cost ? Number(row.avg_cost) : null,
+    feedback: {
+      thumbs_up: fbRow.ups,
+      thumbs_down: fbRow.downs,
+      rate: totalFb === 0 ? null : fbRow.ups / totalFb,
+    },
+    timeseries: {
+      pass_rate_7d_by_day: null,
+      volume_7d_by_day: [],
+    },
+  };
+}
+
+export async function getMetricsForSlugs(slugs: string[]) {
+  if (slugs.length === 0) return new Map<string, {
+    copies: number; cli_pulls: number; skill_invokes: number; traces: number;
+    runs_7d: number;
+  }>();
+  const result = (await db.execute<{
+    slug: string; web: number; cli: number; skill: number; api: number; runs_7d: number;
+  }>(sql`
+    SELECT
+      "promptSlug" AS slug,
+      COUNT(*) FILTER (WHERE source = 'web')::int AS web,
+      COUNT(*) FILTER (WHERE source = 'cli')::int AS cli,
+      COUNT(*) FILTER (WHERE source = 'skill')::int AS skill,
+      COUNT(*) FILTER (WHERE source = 'api')::int AS api,
+      COUNT(*) FILTER (WHERE "createdAt" >= now() - interval '7 days')::int AS runs_7d
+    FROM "PromptInvocation"
+    WHERE "promptSlug" = ANY(${slugs})
+    GROUP BY "promptSlug"
+  `)) as unknown as {
+    slug: string; web: number; cli: number; skill: number; api: number; runs_7d: number;
+  }[];
+  const map = new Map<string, {
+    copies: number; cli_pulls: number; skill_invokes: number; traces: number; runs_7d: number;
+  }>();
+  for (const r of result) {
+    map.set(r.slug, {
+      copies: r.web,
+      cli_pulls: r.cli,
+      skill_invokes: r.skill,
+      traces: r.web + r.cli + r.skill + r.api,
+      runs_7d: r.runs_7d,
+    });
+  }
+  return map;
+}
