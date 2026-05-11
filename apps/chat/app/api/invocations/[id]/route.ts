@@ -16,7 +16,10 @@ export async function PATCH(
 
   const existing = await getPromptInvocation(id);
   if (!existing) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Invocation not found", code: "not_found" },
+      { status: 404 },
+    );
   }
 
   const auth = await resolveAuth(request);
@@ -27,25 +30,38 @@ export async function PATCH(
   // with.
   if (existing.userId) {
     if (!auth || auth.userId !== existing.userId) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Not your invocation", code: "auth_mismatch" },
+        { status: 403 },
+      );
     }
   }
 
   if (existing.status !== "pulled") {
-    return NextResponse.json({ error: "already_locked" }, { status: 409 });
+    return NextResponse.json(
+      { error: "Invocation already locked", code: "invocation_locked" },
+      { status: 409 },
+    );
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid JSON", code: "invalid_payload" },
+      { status: 400 },
+    );
   }
 
   const parsed = updateInvocationSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.flatten() },
+      {
+        error: "Invalid request body",
+        code: "invalid_payload",
+        details: parsed.error.flatten(),
+      },
       { status: 400 },
     );
   }
@@ -70,7 +86,10 @@ export async function PATCH(
 
   // Race: another writer flipped status between our check and update.
   if (!updated) {
-    return NextResponse.json({ error: "already_locked" }, { status: 409 });
+    return NextResponse.json(
+      { error: "Invocation already locked", code: "invocation_locked" },
+      { status: 409 },
+    );
   }
 
   return NextResponse.json(serializeInvocation(updated), { status: 200 });

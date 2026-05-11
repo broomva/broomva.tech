@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       Math.ceil((rate.resetAt - Date.now()) / 1000),
     );
     return NextResponse.json(
-      { error: "rate_limited" },
+      { error: "Rate limit exceeded", code: "rate_limited" },
       {
         status: 429,
         headers: { "Retry-After": String(retryAfter) },
@@ -30,13 +30,20 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid JSON", code: "invalid_payload" },
+      { status: 400 },
+    );
   }
 
   const parsed = createInvocationSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.flatten() },
+      {
+        error: "Invalid request body",
+        code: "invalid_payload",
+        details: parsed.error.flatten(),
+      },
       { status: 400 },
     );
   }
@@ -58,6 +65,9 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("logInvocation failed:", error);
-    return NextResponse.json({ error: "insert_failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to log invocation", code: "internal" },
+      { status: 500 },
+    );
   }
 }
