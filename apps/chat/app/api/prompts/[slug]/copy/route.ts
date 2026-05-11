@@ -60,6 +60,7 @@ export async function POST(
         prompt_slug: slug,
         prompt_version: promptVersion ?? "unknown",
         source: "web",
+        caller: request.headers.get("user-agent")?.slice(0, 128) ?? undefined,
       },
       auth: sessionUserId
         ? { userId: sessionUserId, email: "" }
