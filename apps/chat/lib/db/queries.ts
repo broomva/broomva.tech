@@ -1713,20 +1713,22 @@ export async function getVolumeTimeseries(opts: {
   since: "24h" | "7d" | "30d";
 }) {
   const start = windowStart(opts.since)!;
-  const trunc = opts.bucket === "hour" ? "hour" : "day";
+  // Enum-bounded local choice; sql`'hour'` / sql`'day'` are SQL string literals
+  // that drizzle won't reinterpret. This deletes the file's only sql.raw callsite.
+  const truncSql = opts.bucket === "hour" ? sql`'hour'` : sql`'day'`;
   const result = (await db.execute<{
     ts: Date;
     source: string;
     count: number;
-  }>(sql.raw(`
-    SELECT date_trunc('${trunc}', "createdAt") AS ts,
+  }>(sql`
+    SELECT date_trunc(${truncSql}, "createdAt") AS ts,
            source::text AS source,
            COUNT(*)::int AS count
     FROM "PromptInvocation"
-    WHERE "createdAt" >= '${start.toISOString()}'
+    WHERE "createdAt" >= ${start.toISOString()}
     GROUP BY ts, source
     ORDER BY ts ASC
-  `))) as unknown as { ts: Date; source: string; count: number }[];
+  `)) as unknown as { ts: Date; source: string; count: number }[];
 
   const byTs = new Map<
     string,
