@@ -81,7 +81,10 @@ pub struct UpdatePromptRequest {
 }
 
 // ── Invocations (Phase 2 telemetry) ──
+// Some structs below are consumed only by tests in Batch A; CLI wiring in
+// subsequent batches will exercise them. Suppress dead-code until then.
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InvocationCreateRequest {
@@ -100,6 +103,7 @@ pub struct InvocationCreateRequest {
     pub metadata: Option<serde_json::Value>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InvocationCreateResponse {
@@ -107,6 +111,7 @@ pub struct InvocationCreateResponse {
     pub created_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InvocationUpdateRequest {
@@ -123,6 +128,7 @@ pub struct InvocationUpdateRequest {
     pub error_message: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InvocationRow {
@@ -152,6 +158,7 @@ pub struct InvocationRow {
 
 // ── Feedback (Phase 2 telemetry) ──
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct FeedbackCreateRequest {
@@ -165,6 +172,7 @@ pub struct FeedbackCreateRequest {
     pub source: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct FeedbackCreateResponse {
@@ -172,6 +180,7 @@ pub struct FeedbackCreateResponse {
     pub created_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct FeedbackRow {
@@ -188,6 +197,7 @@ pub struct FeedbackRow {
 
 // ── Metrics responses (Phase 2 telemetry) ──
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MetricsTotals {
@@ -199,6 +209,7 @@ pub struct MetricsTotals {
     pub runs_7d: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MetricsDeltas {
@@ -208,6 +219,7 @@ pub struct MetricsDeltas {
     pub traces: f64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MetricsOverview {
@@ -219,6 +231,7 @@ pub struct MetricsOverview {
     pub live_failures_1h: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct VolumeBucketRow {
@@ -227,6 +240,7 @@ pub struct VolumeBucketRow {
     pub by_source: serde_json::Value,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct PromptMetricTotals {
@@ -236,6 +250,7 @@ pub struct PromptMetricTotals {
     pub traces: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct PromptFeedbackSummary {
@@ -244,6 +259,7 @@ pub struct PromptFeedbackSummary {
     pub rate: Option<f64>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct PromptMetrics {
