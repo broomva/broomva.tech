@@ -121,6 +121,12 @@ pub enum PromptsCommand {
         model: Option<String>,
         #[arg(long)]
         mine: bool,
+        /// Include per-prompt metric counts (copies/cli/skill/runs_7d).
+        #[arg(long)]
+        metrics: bool,
+        /// Sort by metric (requires --metrics).
+        #[arg(long, value_parser = ["skill_invokes", "cli_pulls", "copies", "runs_7d"])]
+        sort: Option<String>,
     },
     /// Get a prompt by slug.
     Get {
@@ -399,6 +405,8 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 tag,
                 model,
                 mine,
+                metrics,
+                sort,
             } => {
                 prompts::handle_list(
                     &client,
@@ -406,6 +414,8 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                     tag.as_deref(),
                     model.as_deref(),
                     mine,
+                    metrics,
+                    sort.as_deref(),
                     format,
                 )
                 .await

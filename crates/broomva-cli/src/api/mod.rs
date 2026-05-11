@@ -317,6 +317,36 @@ impl BroomvaClient {
         Ok(resp.json().await?)
     }
 
+    /// List prompts with metrics enriched (`?include=metrics`).
+    /// Returns the raw JSON values so the caller can extract the
+    /// snake_case metrics block alongside the camelCase prompt summary.
+    pub async fn list_prompts_with_metrics(
+        &self,
+        category: Option<&str>,
+        tag: Option<&str>,
+        model: Option<&str>,
+        sort: Option<&str>,
+    ) -> BroomvaResult<Vec<serde_json::Value>> {
+        let mut req = self
+            .request(Method::GET, "/api/prompts")
+            .query(&[("include", "metrics")]);
+        if let Some(c) = category {
+            req = req.query(&[("category", c)]);
+        }
+        if let Some(t) = tag {
+            req = req.query(&[("tag", t)]);
+        }
+        if let Some(m) = model {
+            req = req.query(&[("model", m)]);
+        }
+        if let Some(s) = sort {
+            req = req.query(&[("sort", s)]);
+        }
+        let resp = req.send().await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
     #[allow(dead_code)]
     pub async fn get_metrics_volume(
         &self,

@@ -7,39 +7,100 @@ use crate::cli::output::{OutputFormat, print_json, print_kv, print_table};
 use crate::error::{BroomvaError, BroomvaResult};
 use crate::frontmatter;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_list(
     client: &BroomvaClient,
     category: Option<&str>,
     tag: Option<&str>,
     model: Option<&str>,
     mine: bool,
+    metrics: bool,
+    sort: Option<&str>,
     format: OutputFormat,
 ) -> BroomvaResult<()> {
-    let prompts = client.list_prompts(category, tag, model, mine).await?;
-
-    if format == OutputFormat::Json {
-        print_json(&prompts);
+    // Standard list path
+    if !metrics {
+        let prompts = client.list_prompts(category, tag, model, mine).await?;
+        if format == OutputFormat::Json {
+            print_json(&prompts);
+            return Ok(());
+        }
+        let rows: Vec<Vec<String>> = prompts
+            .iter()
+            .map(|p| {
+                vec![
+                    p.slug.clone(),
+                    p.title.clone(),
+                    p.category.clone().unwrap_or_default(),
+                    p.model.clone().unwrap_or_default(),
+                    p.visibility.clone().unwrap_or_default(),
+                ]
+            })
+            .collect();
+        print_table(
+            &["slug", "title", "category", "model", "visibility"],
+            &rows,
+            format,
+        );
         return Ok(());
     }
 
-    let rows: Vec<Vec<String>> = prompts
+    // Metrics-enriched path — server returns the prompt list wrapper +
+    // snake_case `metrics` block per item.
+    let entries = client
+        .list_prompts_with_metrics(category, tag, model, sort)
+        .await?;
+
+    if format == OutputFormat::Json {
+        print_json(&entries);
+        return Ok(());
+    }
+
+    let rows: Vec<Vec<String>> = entries
         .iter()
-        .map(|p| {
+        .map(|e| {
+            let slug = e.get("slug").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let category = e
+                .get("category")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let m = e.get("metrics");
+            let copies = m
+                .and_then(|x| x.get("copies"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let cli = m
+                .and_then(|x| x.get("cli_pulls"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let skill = m
+                .and_then(|x| x.get("skill_invokes"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            let runs7 = m
+                .and_then(|x| x.get("runs_7d"))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
             vec![
-                p.slug.clone(),
-                p.title.clone(),
-                p.category.clone().unwrap_or_default(),
-                p.model.clone().unwrap_or_default(),
-                p.visibility.clone().unwrap_or_default(),
+                slug,
+                title,
+                category,
+                copies.to_string(),
+                cli.to_string(),
+                skill.to_string(),
+                runs7.to_string(),
             ]
         })
         .collect();
 
     print_table(
-        &["slug", "title", "category", "model", "visibility"],
+        &["slug", "title", "category", "copies", "cli", "skill", "runs7d"],
         &rows,
         format,
     );
+
     Ok(())
 }
 
@@ -595,5 +656,47 @@ mod tests {
         )
         .await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn list_with_metrics_renders_extra_columns() {
+        let _env_guard = crate::telemetry::TELEMETRY_ENV_LOCK.lock().unwrap();
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/prompts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "slug": "code-review-agent",
+                    "title": "Code Review Agent",
+                    "category": "system-prompts",
+                    "model": "claude-sonnet-4.5",
+                    "visibility": "public",
+                    "metrics": {
+                        "copies": 42,
+                        "cli_pulls": 8,
+                        "skill_invokes": 100,
+                        "traces": 150,
+                        "runs_7d": 30
+                    }
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let client = BroomvaClient::new(server.uri(), None);
+        let result = handle_list(
+            &client,
+            None,
+            None,
+            None,
+            false,
+            true,
+            Some("skill_invokes"),
+            crate::cli::output::OutputFormat::Table,
+        )
+        .await;
+        assert!(result.is_ok(), "{result:?}");
     }
 }
