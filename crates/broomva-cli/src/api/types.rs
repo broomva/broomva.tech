@@ -111,7 +111,6 @@ pub struct InvocationCreateResponse {
     pub created_at: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InvocationUpdateRequest {
@@ -128,7 +127,6 @@ pub struct InvocationUpdateRequest {
     pub error_message: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InvocationRow {

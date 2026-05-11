@@ -257,6 +257,47 @@ pub async fn handle_push(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_complete(
+    client: &BroomvaClient,
+    invocation_id: &str,
+    status: &str,
+    model: Option<&str>,
+    latency_ms: Option<i64>,
+    tokens_in: Option<i64>,
+    tokens_out: Option<i64>,
+    error_message: Option<&str>,
+    format: OutputFormat,
+) -> BroomvaResult<()> {
+    // Local validation: failed status MUST have an error_message
+    if status == "failed" && error_message.is_none() {
+        return Err(BroomvaError::User(
+            "--error-message required when --status=failed".into(),
+        ));
+    }
+
+    let req = crate::api::types::InvocationUpdateRequest {
+        status: status.to_string(),
+        model: model.map(|s| s.to_string()),
+        latency_ms,
+        tokens_in,
+        tokens_out,
+        error_message: error_message.map(|s| s.to_string()),
+    };
+
+    let row = client.update_invocation(invocation_id, &req).await?;
+
+    if format == OutputFormat::Json {
+        print_json(&row);
+    } else {
+        println!("  Completed invocation: {} ({})", row.id, row.status);
+        if let Some(cost) = row.cost_usd {
+            println!("    cost: ${cost:.6}");
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -375,5 +416,79 @@ mod tests {
         let dest = tmp.path().join("out.md");
         let result = handle_pull(&client, "x", Some(dest.to_str().unwrap()), false).await;
         assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn complete_with_pass_status_calls_patch() {
+        let _env_guard = crate::telemetry::TELEMETRY_ENV_LOCK.lock().unwrap();
+
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/api/invocations/abc-123"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "abc-123",
+                "prompt_slug": "x",
+                "prompt_version": "1.0",
+                "source": "cli",
+                "caller": null,
+                "user_id": null,
+                "agent_id": null,
+                "session_id": null,
+                "client_ip_hash": null,
+                "variables": null,
+                "status": "completed",
+                "model": "claude-sonnet-4.5",
+                "latency_ms": 1000,
+                "tokens_in": 100,
+                "tokens_out": 50,
+                "cost_usd": 0.001,
+                "error_message": null,
+                "external_trace_id": null,
+                "external_span_id": null,
+                "metadata": null,
+                "created_at": "2026-05-11T00:00:00Z",
+                "completed_at": "2026-05-11T00:00:01Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let client = BroomvaClient::new(server.uri(), None);
+        let result = handle_complete(
+            &client,
+            "abc-123",
+            "completed",
+            Some("claude-sonnet-4.5"),
+            Some(1000),
+            Some(100),
+            Some(50),
+            None,
+            crate::cli::output::OutputFormat::Table,
+        )
+        .await;
+        assert!(result.is_ok(), "{result:?}");
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn complete_failed_without_error_message_rejects_locally() {
+        let _env_guard = crate::telemetry::TELEMETRY_ENV_LOCK.lock().unwrap();
+
+        let server = MockServer::start().await;
+        // No mock needed — the rejection should happen before any HTTP call
+        let client = BroomvaClient::new(server.uri(), None);
+        let result = handle_complete(
+            &client,
+            "abc-123",
+            "failed",
+            None,
+            None,
+            None,
+            None,
+            None,
+            crate::cli::output::OutputFormat::Table,
+        )
+        .await;
+        assert!(result.is_err());
     }
 }

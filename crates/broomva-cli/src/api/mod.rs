@@ -234,7 +234,6 @@ impl BroomvaClient {
         Ok(resp.json().await?)
     }
 
-    #[allow(dead_code)]
     pub async fn update_invocation(
         &self,
         id: &str,

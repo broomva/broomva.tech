@@ -187,6 +187,32 @@ pub enum PromptsCommand {
         #[arg(long)]
         create: bool,
     },
+    /// Mark a prior invocation as completed (or failed/abandoned). The
+    /// invocation id is the one printed by `broomva prompts pull` (or
+    /// emitted on stderr in `--json` mode).
+    Complete {
+        /// Invocation id (UUID v4) returned from `prompts pull`.
+        invocation_id: String,
+        /// Final status. Default: completed.
+        #[arg(long, default_value = "completed", value_parser = ["completed", "failed", "abandoned"])]
+        status: String,
+        /// Model identifier (e.g. `claude-sonnet-4.5`). Required when
+        /// status=completed for cost computation.
+        #[arg(long)]
+        model: Option<String>,
+        /// Wall-clock latency in milliseconds.
+        #[arg(long)]
+        latency_ms: Option<i64>,
+        /// Input token count.
+        #[arg(long)]
+        tokens_in: Option<i64>,
+        /// Output token count.
+        #[arg(long)]
+        tokens_out: Option<i64>,
+        /// Required when status=failed.
+        #[arg(long)]
+        error_message: Option<String>,
+    },
 }
 
 // ── Skills ──
@@ -423,6 +449,28 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             }
             PromptsCommand::Push { file, create } => {
                 prompts::handle_push(&client, &file, create, format).await
+            }
+            PromptsCommand::Complete {
+                invocation_id,
+                status,
+                model,
+                latency_ms,
+                tokens_in,
+                tokens_out,
+                error_message,
+            } => {
+                prompts::handle_complete(
+                    &client,
+                    &invocation_id,
+                    &status,
+                    model.as_deref(),
+                    latency_ms,
+                    tokens_in,
+                    tokens_out,
+                    error_message.as_deref(),
+                    format,
+                )
+                .await
             }
         },
         Command::Skills { action } => match action {
