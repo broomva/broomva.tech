@@ -121,6 +121,12 @@ pub enum PromptsCommand {
         model: Option<String>,
         #[arg(long)]
         mine: bool,
+        /// Include per-prompt metric counts (copies/cli/skill/runs_7d).
+        #[arg(long)]
+        metrics: bool,
+        /// Sort by metric (requires --metrics).
+        #[arg(long, value_parser = ["skill_invokes", "cli_pulls", "copies", "runs_7d"])]
+        sort: Option<String>,
     },
     /// Get a prompt by slug.
     Get {
@@ -166,12 +172,18 @@ pub enum PromptsCommand {
     },
     /// Delete a prompt.
     Delete { slug: String },
-    /// Pull a prompt to a local file.
+    /// Pull a prompt to a local file. Fires a telemetry invocation
+    /// beacon by default; pass `--json` to emit a machine-readable line
+    /// on stderr with the invocation id (used by the Claude Code skill).
     Pull {
         slug: String,
-        /// Output file path.
+        /// Output file path. Omit to write to `<slug>.md` in cwd.
         #[arg(short, long)]
         output: Option<String>,
+        /// Emit a machine-readable JSON line on stderr containing
+        /// {invocation_id, prompt_slug, prompt_version, posted}.
+        #[arg(long)]
+        json: bool,
     },
     /// Push a local file as a prompt.
     Push {
@@ -180,6 +192,49 @@ pub enum PromptsCommand {
         /// Create instead of update.
         #[arg(long)]
         create: bool,
+    },
+    /// Mark a prior invocation as completed (or failed/abandoned). The
+    /// invocation id is the one printed by `broomva prompts pull` (or
+    /// emitted on stderr in `--json` mode).
+    Complete {
+        /// Invocation id (UUID v4) returned from `prompts pull`.
+        invocation_id: String,
+        /// Final status. Default: completed.
+        #[arg(long, default_value = "completed", value_parser = ["completed", "failed", "abandoned"])]
+        status: String,
+        /// Model identifier (e.g. `claude-sonnet-4.5`). Required when
+        /// status=completed for cost computation.
+        #[arg(long)]
+        model: Option<String>,
+        /// Wall-clock latency in milliseconds.
+        #[arg(long)]
+        latency_ms: Option<i64>,
+        /// Input token count.
+        #[arg(long)]
+        tokens_in: Option<i64>,
+        /// Output token count.
+        #[arg(long)]
+        tokens_out: Option<i64>,
+        /// Required when status=failed.
+        #[arg(long)]
+        error_message: Option<String>,
+    },
+    /// Leave thumbs-up/down feedback on a prompt invocation.
+    Feedback {
+        /// Invocation id. Omit to leave detached feedback (use --slug then).
+        invocation_id: Option<String>,
+        /// Explicitly target a slug. Required for detached feedback.
+        #[arg(long)]
+        slug: Option<String>,
+        /// Prompt version (for detached feedback). Defaults to "unknown".
+        #[arg(long, default_value = "unknown")]
+        version: String,
+        /// Thumbs direction.
+        #[arg(long, value_parser = ["up", "down"])]
+        signal: String,
+        /// Optional freeform note (max 2000 chars).
+        #[arg(long)]
+        text: Option<String>,
     },
 }
 
@@ -350,6 +405,8 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 tag,
                 model,
                 mine,
+                metrics,
+                sort,
             } => {
                 prompts::handle_list(
                     &client,
@@ -357,6 +414,8 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                     tag.as_deref(),
                     model.as_deref(),
                     mine,
+                    metrics,
+                    sort.as_deref(),
                     format,
                 )
                 .await
@@ -412,11 +471,51 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 prompts::handle_update(&client, &slug, req, format).await
             }
             PromptsCommand::Delete { slug } => prompts::handle_delete(&client, &slug).await,
-            PromptsCommand::Pull { slug, output } => {
-                prompts::handle_pull(&client, &slug, output.as_deref()).await
+            PromptsCommand::Pull { slug, output, json } => {
+                prompts::handle_pull(&client, &slug, output.as_deref(), json).await
             }
             PromptsCommand::Push { file, create } => {
                 prompts::handle_push(&client, &file, create, format).await
+            }
+            PromptsCommand::Complete {
+                invocation_id,
+                status,
+                model,
+                latency_ms,
+                tokens_in,
+                tokens_out,
+                error_message,
+            } => {
+                prompts::handle_complete(
+                    &client,
+                    &invocation_id,
+                    &status,
+                    model.as_deref(),
+                    latency_ms,
+                    tokens_in,
+                    tokens_out,
+                    error_message.as_deref(),
+                    format,
+                )
+                .await
+            }
+            PromptsCommand::Feedback {
+                invocation_id,
+                slug,
+                version,
+                signal,
+                text,
+            } => {
+                prompts::handle_feedback(
+                    &client,
+                    invocation_id.as_deref(),
+                    slug.as_deref(),
+                    &version,
+                    &signal,
+                    text.as_deref(),
+                    format,
+                )
+                .await
             }
         },
         Command::Skills { action } => match action {

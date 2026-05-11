@@ -4,6 +4,7 @@ mod config;
 mod daemon;
 mod error;
 mod frontmatter;
+mod telemetry;
 
 use clap::Parser;
 
