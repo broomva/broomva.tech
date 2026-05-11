@@ -1,4 +1,6 @@
--- Enums shared with prompt_feedback are created here so 0066 owns them.
+-- Enums first so the table can reference them.
+-- prompt_invocation_source is reused by PromptFeedback in 0067;
+-- prompt_feedback_signal is defined in 0067 where it's first used.
 
 CREATE TYPE "prompt_invocation_source" AS ENUM ('web', 'cli', 'skill', 'api');
 CREATE TYPE "prompt_invocation_status" AS ENUM ('pulled', 'completed', 'failed', 'abandoned');
