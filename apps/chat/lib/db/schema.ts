@@ -7,6 +7,8 @@ import {
   index,
   integer,
   json,
+  numeric,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -16,6 +18,25 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { encryptedJson, encryptedText } from "./encrypted-text";
+
+export const promptInvocationSourceEnum = pgEnum("prompt_invocation_source", [
+  "web",
+  "cli",
+  "skill",
+  "api",
+]);
+
+export const promptInvocationStatusEnum = pgEnum("prompt_invocation_status", [
+  "pulled",
+  "completed",
+  "failed",
+  "abandoned",
+]);
+
+export const promptFeedbackSignalEnum = pgEnum("prompt_feedback_signal", [
+  "thumbs_up",
+  "thumbs_down",
+]);
 
 export type User = InferSelectModel<typeof user>;
 
@@ -467,6 +488,81 @@ export const userPrompt = pgTable(
 );
 
 export type UserPrompt = InferSelectModel<typeof userPrompt>;
+
+export const promptInvocation = pgTable(
+  "PromptInvocation",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    promptSlug: varchar("promptSlug", { length: 256 }).notNull(),
+    promptVersion: varchar("promptVersion", { length: 32 }).notNull(),
+    source: promptInvocationSourceEnum("source").notNull(),
+    caller: varchar("caller", { length: 128 }),
+    userId: text("userId").references(() => user.id, { onDelete: "set null" }),
+    agentId: text("agentId"),
+    sessionId: uuid("sessionId"),
+    clientIpHash: varchar("clientIpHash", { length: 64 }),
+    variables: json("variables").$type<Record<string, string>>(),
+    status: promptInvocationStatusEnum("status").notNull().default("pulled"),
+    model: varchar("model", { length: 64 }),
+    latencyMs: integer("latencyMs"),
+    tokensIn: integer("tokensIn"),
+    tokensOut: integer("tokensOut"),
+    costUsd: numeric("costUsd", { precision: 10, scale: 6 }),
+    errorMessage: text("errorMessage"),
+    externalTraceId: varchar("externalTraceId", { length: 128 }),
+    externalSpanId: varchar("externalSpanId", { length: 128 }),
+    metadata: json("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    completedAt: timestamp("completedAt"),
+  },
+  (t) => ({
+    PromptInvocation_slug_created_idx: index(
+      "PromptInvocation_slug_created_idx",
+    ).on(t.promptSlug, t.createdAt),
+    PromptInvocation_created_idx: index("PromptInvocation_created_idx").on(
+      t.createdAt,
+    ),
+    PromptInvocation_source_created_idx: index(
+      "PromptInvocation_source_created_idx",
+    ).on(t.source, t.createdAt),
+    PromptInvocation_user_created_idx: index(
+      "PromptInvocation_user_created_idx",
+    ).on(t.userId, t.createdAt),
+    PromptInvocation_status_idx: index("PromptInvocation_status_idx").on(
+      t.status,
+    ),
+  }),
+);
+
+export type PromptInvocation = InferSelectModel<typeof promptInvocation>;
+
+export const promptFeedback = pgTable(
+  "PromptFeedback",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    invocationId: uuid("invocationId").references(() => promptInvocation.id, {
+      onDelete: "set null",
+    }),
+    promptSlug: varchar("promptSlug", { length: 256 }).notNull(),
+    promptVersion: varchar("promptVersion", { length: 32 }).notNull(),
+    userId: text("userId").references(() => user.id, { onDelete: "set null" }),
+    signal: promptFeedbackSignalEnum("signal").notNull(),
+    text: text("text"),
+    source: promptInvocationSourceEnum("source").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    PromptFeedback_slug_created_idx: index("PromptFeedback_slug_created_idx").on(
+      t.promptSlug,
+      t.createdAt,
+    ),
+    PromptFeedback_invocation_idx: index("PromptFeedback_invocation_idx").on(
+      t.invocationId,
+    ),
+  }),
+);
+
+export type PromptFeedback = InferSelectModel<typeof promptFeedback>;
 
 export const deviceAuthCode = pgTable(
   "DeviceAuthCode",
