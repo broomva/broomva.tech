@@ -21,12 +21,12 @@ use crate::error::BroomvaResult;
 fn find_relayd_binary() -> Option<String> {
     // 1. Check PATH (relayd or life-relayd)
     for name in &["relayd", "life-relayd"] {
-        if let Ok(output) = ProcessCommand::new("which").arg(name).output() {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() {
-                    return Some(path);
-                }
+        if let Ok(output) = ProcessCommand::new("which").arg(name).output()
+            && output.status.success()
+        {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                return Some(path);
             }
         }
     }
@@ -260,13 +260,12 @@ async fn run_lightweight_relay(api_base: &str, token: &str, _bind: &str) -> Broo
 
                 match poll_res {
                     Ok(resp) if resp.status().is_success() => {
-                        if let Ok(body) = resp.json::<serde_json::Value>().await {
-                            if let Some(cmd) = body.get("command") {
-                                if !cmd.is_null() {
-                                    let cmd_type = cmd.get("type").and_then(|t| t.as_str()).unwrap_or("?");
-                                    eprintln!("  Command received: {cmd_type} (cannot execute in lightweight mode)");
-                                }
-                            }
+                        if let Ok(body) = resp.json::<serde_json::Value>().await
+                            && let Some(cmd) = body.get("command")
+                            && !cmd.is_null()
+                        {
+                            let cmd_type = cmd.get("type").and_then(|t| t.as_str()).unwrap_or("?");
+                            eprintln!("  Command received: {cmd_type} (cannot execute in lightweight mode)");
                         }
                     }
                     Ok(resp) => {
