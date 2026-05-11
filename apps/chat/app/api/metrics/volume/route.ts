@@ -6,8 +6,6 @@ const VALID_WINDOWS = ["24h", "7d", "30d"] as const;
 type Bucket = (typeof VALID_BUCKETS)[number];
 type Window = (typeof VALID_WINDOWS)[number];
 
-export const revalidate = 60;
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const bucket = (url.searchParams.get("bucket") ?? "hour") as Bucket;

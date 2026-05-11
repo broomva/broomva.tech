@@ -4,8 +4,6 @@ import { getRecentInvocations } from "@/lib/db/queries";
 const VALID_SOURCES = ["web", "cli", "skill", "api"] as const;
 type Source = (typeof VALID_SOURCES)[number];
 
-export const revalidate = 30;
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const promptSlug = url.searchParams.get("prompt_slug") ?? undefined;

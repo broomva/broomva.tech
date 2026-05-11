@@ -4,8 +4,6 @@ import { getOverviewMetrics } from "@/lib/db/queries";
 const VALID_WINDOWS = ["24h", "7d", "30d", "all"] as const;
 type Window = (typeof VALID_WINDOWS)[number];
 
-export const revalidate = 60;
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const since = (url.searchParams.get("since") ?? "7d") as Window;
