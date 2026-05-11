@@ -84,7 +84,6 @@ pub struct UpdatePromptRequest {
 // Some structs below are consumed only by tests in Batch A; CLI wiring in
 // subsequent batches will exercise them. Suppress dead-code until then.
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InvocationCreateRequest {

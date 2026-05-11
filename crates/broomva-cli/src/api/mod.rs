@@ -221,7 +221,6 @@ impl BroomvaClient {
     // Batch B/C will wire them into commands. #[allow(dead_code)] suppresses
     // bin-target dead-code lints until those handlers land.
 
-    #[allow(dead_code)]
     pub async fn create_invocation(
         &self,
         req: &InvocationCreateRequest,
