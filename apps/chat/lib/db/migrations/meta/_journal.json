@@ -463,6 +463,20 @@
       "when": 1777062597229,
       "tag": "0065_military_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1778523289119,
+      "tag": "0066_add_prompt_invocation",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1778523330526,
+      "tag": "0067_add_prompt_feedback",
+      "breakpoints": true
     }
   ]
 }
