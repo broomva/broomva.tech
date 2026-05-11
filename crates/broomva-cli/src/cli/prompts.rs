@@ -171,7 +171,7 @@ pub async fn handle_pull(
         let line = serde_json::json!({
             "invocation_id": beacon.id,
             "prompt_slug": slug,
-            "prompt_version": version,
+            "prompt_version": prompt.version,
             "posted": beacon.posted,
         });
         eprintln!("{line}");
@@ -265,13 +265,42 @@ mod tests {
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    /// RAII guard that restores an env var on drop — panic-safe so a failing
+    /// assertion can't leak state into sibling tests.
+    struct EnvGuard {
+        key: &'static str,
+        prev: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let prev = std::env::var(key).ok();
+            unsafe { std::env::set_var(key, value) };
+            Self { key, prev }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.prev {
+                Some(v) => unsafe { std::env::set_var(self.key, v) },
+                None => unsafe { std::env::remove_var(self.key) },
+            }
+        }
+    }
+
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn pull_fires_telemetry_beacon_after_get() {
         // Tokio test runs on a single-threaded runtime; holding the lock
         // across awaits serializes tests that touch BROOMVA_* env vars
         // without risking deadlock on another worker thread.
-        let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
+        let _env_guard = TELEMETRY_ENV_LOCK.lock().unwrap();
+        let session_tmp = tempdir().unwrap();
+        let session_path = session_tmp.path().join("session");
+        let _session_guard =
+            EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
+
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/prompts/code-review-agent"))
@@ -313,11 +342,15 @@ mod tests {
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn pull_with_telemetry_disabled_still_writes_file() {
-        let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
-        // Set the env var for this test. BROOMVA_TELEMETRY_DISABLED is
-        // read fresh in beacon::post_invocation_beacon so the disable
-        // takes effect immediately.
-        unsafe { std::env::set_var("BROOMVA_TELEMETRY_DISABLED", "1") };
+        let _env_guard = TELEMETRY_ENV_LOCK.lock().unwrap();
+        let session_tmp = tempdir().unwrap();
+        let session_path = session_tmp.path().join("session");
+        let _session_guard =
+            EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
+        // BROOMVA_TELEMETRY_DISABLED is read fresh in
+        // beacon::post_invocation_beacon so the disable takes effect
+        // immediately. The guard restores the var on drop — panic-safe.
+        let _disabled_guard = EnvGuard::set("BROOMVA_TELEMETRY_DISABLED", "1");
 
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -342,7 +375,5 @@ mod tests {
         let dest = tmp.path().join("out.md");
         let result = handle_pull(&client, "x", Some(dest.to_str().unwrap()), false).await;
         assert!(result.is_ok(), "{result:?}");
-
-        unsafe { std::env::remove_var("BROOMVA_TELEMETRY_DISABLED") };
     }
 }

@@ -11,6 +11,9 @@ use crate::config::constants::config_dir;
 const SESSION_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 fn session_path() -> PathBuf {
+    if let Ok(p) = std::env::var("BROOMVA_SESSION_PATH") {
+        return PathBuf::from(p);
+    }
     config_dir().join("session")
 }
 
@@ -54,19 +57,37 @@ fn write_session(id: &str) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
+
+    /// Helper: scope a temp session file via env override + shared lock.
+    fn with_temp_session<F: FnOnce()>(f: F) {
+        let _guard = crate::telemetry::TELEMETRY_ENV_LOCK.lock().unwrap();
+        let tmp = tempdir().unwrap();
+        let path = tmp.path().join("session");
+        let prev = std::env::var("BROOMVA_SESSION_PATH").ok();
+        unsafe { std::env::set_var("BROOMVA_SESSION_PATH", &path) };
+        f();
+        match prev {
+            Some(v) => unsafe { std::env::set_var("BROOMVA_SESSION_PATH", v) },
+            None => unsafe { std::env::remove_var("BROOMVA_SESSION_PATH") },
+        }
+        // tmp is dropped here, cleaning up the file
+    }
 
     #[test]
     fn get_or_create_returns_valid_uuid() {
-        let id = get_or_create_session_id();
-        assert!(uuid::Uuid::parse_str(&id).is_ok(), "got: {id}");
+        with_temp_session(|| {
+            let id = get_or_create_session_id();
+            assert!(uuid::Uuid::parse_str(&id).is_ok(), "got: {id}");
+        });
     }
 
     #[test]
     fn get_or_create_is_stable_within_window() {
-        // Two consecutive calls in the same test run should return the same id
-        // ONLY if the cache file already exists from the prior call.
-        let id1 = get_or_create_session_id();
-        let id2 = get_or_create_session_id();
-        assert_eq!(id1, id2);
+        with_temp_session(|| {
+            let id1 = get_or_create_session_id();
+            let id2 = get_or_create_session_id();
+            assert_eq!(id1, id2);
+        });
     }
 }

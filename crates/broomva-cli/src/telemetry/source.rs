@@ -32,8 +32,7 @@ pub fn detect_source() -> Source {
     match std::env::var(ENV_SOURCE).ok().as_deref() {
         Some("skill") => Source::Skill,
         Some("api") => Source::Api,
-        Some("cli") | None => Source::Cli,
-        Some(_) => Source::Cli,
+        _ => Source::Cli,
     }
 }
 
