@@ -79,8 +79,33 @@ pub async fn post_invocation_beacon(
 mod tests {
     use super::*;
     use crate::telemetry::TELEMETRY_ENV_LOCK;
+    use tempfile::tempdir;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    /// RAII guard restoring an env var on drop — keeps tests hermetic
+    /// even when an assertion panics mid-test.
+    struct EnvGuard {
+        key: &'static str,
+        prev: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let prev = std::env::var(key).ok();
+            unsafe { std::env::set_var(key, value) };
+            Self { key, prev }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.prev {
+                Some(v) => unsafe { std::env::set_var(self.key, v) },
+                None => unsafe { std::env::remove_var(self.key) },
+            }
+        }
+    }
 
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
@@ -89,6 +114,16 @@ mod tests {
         // tokio::test defaults to a single-threaded runtime, so the
         // guard cannot block another thread for the test duration.
         let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
+
+        // Hermeticity: point the session cache at a tempdir so the test
+        // doesn't write into the developer's real ~/.broomva/session.
+        let session_tmp = tempdir().unwrap();
+        let session_path = session_tmp.path().join("session");
+        let _session_guard = EnvGuard::set(
+            "BROOMVA_SESSION_PATH",
+            &session_path.to_string_lossy(),
+        );
+
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/invocations"))
@@ -110,6 +145,14 @@ mod tests {
     #[allow(clippy::await_holding_lock)]
     async fn beacon_returns_posted_false_on_429() {
         let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
+
+        let session_tmp = tempdir().unwrap();
+        let session_path = session_tmp.path().join("session");
+        let _session_guard = EnvGuard::set(
+            "BROOMVA_SESSION_PATH",
+            &session_path.to_string_lossy(),
+        );
+
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/invocations"))
