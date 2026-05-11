@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPromptMetrics } from "@/lib/db/queries";
 
-export const revalidate = 60;
+export const revalidate = 30;
 
 export async function GET(
   _request: Request,
