@@ -41,6 +41,10 @@ import {
   type Part,
   part,
   project,
+  promptFeedback,
+  type PromptFeedback,
+  promptInvocation,
+  type PromptInvocation,
   suggestion,
   type User,
   type UserModelPreference,
@@ -1448,4 +1452,138 @@ export async function deleteAudioPlaybackState({
   } catch (error) {
     console.error("Failed to delete audio playback state", error);
   }
+}
+
+// ─── Prompt invocation & feedback queries ──────────────────────────────────
+
+export async function createPromptInvocation(input: {
+  id?: string;
+  promptSlug: string;
+  promptVersion: string;
+  source: "web" | "cli" | "skill" | "api";
+  caller?: string | null;
+  userId?: string | null;
+  agentId?: string | null;
+  sessionId?: string | null;
+  clientIpHash?: string | null;
+  variables?: Record<string, string> | null;
+  status?: "pulled" | "completed";
+  completedAt?: Date | null;
+  metadata?: Record<string, unknown> | null;
+}): Promise<PromptInvocation> {
+  const insertValues = {
+    ...(input.id ? { id: input.id } : {}),
+    promptSlug: input.promptSlug,
+    promptVersion: input.promptVersion,
+    source: input.source,
+    caller: input.caller ?? null,
+    userId: input.userId ?? null,
+    agentId: input.agentId ?? null,
+    sessionId: input.sessionId ?? null,
+    clientIpHash: input.clientIpHash ?? null,
+    variables: input.variables ?? null,
+    status: input.status ?? "pulled",
+    completedAt: input.completedAt ?? null,
+    metadata: input.metadata ?? null,
+  } as const;
+
+  const inserted = await db
+    .insert(promptInvocation)
+    .values(insertValues)
+    .onConflictDoNothing({ target: promptInvocation.id })
+    .returning();
+
+  if (inserted.length > 0) return inserted[0];
+
+  const id = input.id;
+  if (!id) {
+    throw new Error("createPromptInvocation: conflict path with no id");
+  }
+  const [existing] = await db
+    .select()
+    .from(promptInvocation)
+    .where(eq(promptInvocation.id, id));
+  if (!existing) {
+    throw new Error(
+      "createPromptInvocation: insert returned no rows AND no existing row",
+    );
+  }
+  return existing;
+}
+
+export async function updatePromptInvocation(
+  id: string,
+  input: {
+    status: "completed" | "failed" | "abandoned";
+    model?: string | null;
+    latencyMs?: number | null;
+    tokensIn?: number | null;
+    tokensOut?: number | null;
+    costUsd?: string | null;
+    errorMessage?: string | null;
+  },
+): Promise<PromptInvocation | undefined> {
+  const [updated] = await db
+    .update(promptInvocation)
+    .set({
+      status: input.status,
+      model: input.model ?? null,
+      latencyMs: input.latencyMs ?? null,
+      tokensIn: input.tokensIn ?? null,
+      tokensOut: input.tokensOut ?? null,
+      costUsd: input.costUsd ?? null,
+      errorMessage: input.errorMessage ?? null,
+      completedAt: new Date(),
+    })
+    .where(
+      and(eq(promptInvocation.id, id), eq(promptInvocation.status, "pulled")),
+    )
+    .returning();
+  return updated;
+}
+
+export async function getPromptInvocation(
+  id: string,
+): Promise<PromptInvocation | undefined> {
+  const [row] = await db
+    .select()
+    .from(promptInvocation)
+    .where(eq(promptInvocation.id, id));
+  return row;
+}
+
+export async function createPromptFeedbackRow(input: {
+  invocationId?: string | null;
+  promptSlug: string;
+  promptVersion: string;
+  userId?: string | null;
+  signal: "thumbs_up" | "thumbs_down";
+  text?: string | null;
+  source: "web" | "cli" | "skill" | "api";
+}): Promise<PromptFeedback> {
+  const [row] = await db
+    .insert(promptFeedback)
+    .values({
+      invocationId: input.invocationId ?? null,
+      promptSlug: input.promptSlug,
+      promptVersion: input.promptVersion,
+      userId: input.userId ?? null,
+      signal: input.signal,
+      text: input.text ?? null,
+      source: input.source,
+    })
+    .returning();
+  return row;
+}
+
+export async function getFeedbackForPrompt(opts: {
+  promptSlug: string;
+  limit?: number;
+}): Promise<PromptFeedback[]> {
+  return db
+    .select()
+    .from(promptFeedback)
+    .where(eq(promptFeedback.promptSlug, opts.promptSlug))
+    .orderBy(desc(promptFeedback.createdAt))
+    .limit(Math.min(opts.limit ?? 8, 100));
 }
