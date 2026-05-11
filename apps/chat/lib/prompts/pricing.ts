@@ -10,8 +10,8 @@ type ModelPricing = { inputPer1M: number; outputPer1M: number };
 
 const PRICES: Record<string, ModelPricing> = {
   "claude-sonnet-4.5": { inputPer1M: 3, outputPer1M: 15 },
-  "claude-opus-4.5": { inputPer1M: 15, outputPer1M: 75 },
-  "claude-haiku-4.5": { inputPer1M: 0.8, outputPer1M: 4 },
+  "claude-opus-4.5": { inputPer1M: 5, outputPer1M: 25 },
+  "claude-haiku-4.5": { inputPer1M: 1, outputPer1M: 5 },
   "claude-sonnet-4": { inputPer1M: 3, outputPer1M: 15 },
   "claude-opus-4": { inputPer1M: 15, outputPer1M: 75 },
   "gpt-4o": { inputPer1M: 2.5, outputPer1M: 10 },

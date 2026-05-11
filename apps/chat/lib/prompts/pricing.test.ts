@@ -10,8 +10,12 @@ describe("computeCostUsd", () => {
   });
 
   test("claude-opus-4.5: 1k input + 0 output", () => {
-    // opus pricing per the model table: input $15/M, output $75/M
-    expect(computeCostUsd("claude-opus-4.5", 1000, 0)).toBeCloseTo(0.015, 4);
+    // opus 4.5 pricing per the model table: input $5/M, output $25/M
+    expect(computeCostUsd("claude-opus-4.5", 1000, 0)).toBeCloseTo(0.005, 4);
+  });
+
+  test("claude-haiku-4.5: 1M input + 1M output = $1 + $5 = $6", () => {
+    expect(computeCostUsd("claude-haiku-4.5", 1_000_000, 1_000_000)).toBeCloseTo(6, 4);
   });
 
   test("unknown model returns null (does not throw)", () => {
