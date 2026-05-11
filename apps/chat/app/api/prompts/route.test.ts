@@ -1,0 +1,139 @@
+import { describe, expect, test, beforeEach, vi } from "vitest";
+import { NextRequest } from "next/server";
+
+vi.mock("server-only", () => ({}));
+
+vi.mock("@/lib/db/queries", () => ({
+  getAllPublicPrompts: vi.fn(),
+  getMetricsForSlugs: vi.fn(),
+  createUserPrompt: vi.fn(),
+  getPromptBySlug: vi.fn(),
+}));
+
+vi.mock("@/lib/content", () => ({
+  getContentList: vi.fn(),
+}));
+
+vi.mock("@/lib/prompts/resolve-auth", () => ({
+  resolveAuth: vi.fn(),
+}));
+
+vi.mock("@/lib/prompts/admin", () => ({
+  isAdmin: vi.fn(() => false),
+  generateSlug: vi.fn((t: string) => t.toLowerCase().replace(/\s+/g, "-")),
+}));
+
+vi.mock("@/lib/prompts/github-commit", () => ({
+  commitPromptToGitHub: vi.fn(),
+}));
+
+import { GET } from "./route";
+import { getAllPublicPrompts, getMetricsForSlugs } from "@/lib/db/queries";
+import { getContentList } from "@/lib/content";
+
+const mockGetAll = vi.mocked(getAllPublicPrompts);
+const mockGetMetrics = vi.mocked(getMetricsForSlugs);
+const mockGetContentList = vi.mocked(getContentList);
+
+function makeReq(qs: string): NextRequest {
+  return new NextRequest(`http://localhost/api/prompts${qs ? `?${qs}` : ""}`);
+}
+
+const DB_PROMPT = {
+  id: "id-1",
+  userId: "u1",
+  slug: "code-review-agent",
+  title: "Code Review Agent",
+  summary: "A code review agent",
+  content: "system: code review",
+  category: "engineering",
+  tags: ["code", "review"],
+  links: [],
+  model: "claude",
+  version: "1.0",
+  variables: null,
+  visibility: "public" as const,
+  copyCount: 0,
+  isHighlighted: false,
+  deletedAt: null,
+  createdAt: new Date("2026-05-10T00:00:00Z"),
+  updatedAt: new Date("2026-05-10T00:00:00Z"),
+};
+
+const MDX_ENTRY = {
+  title: "Refactor Helper",
+  summary: "MDX prompt",
+  date: "2026-05-09T00:00:00.000Z",
+  slug: "refactor-helper",
+  kind: "prompts" as const,
+  published: true,
+  pinned: false,
+  tags: [],
+  links: [],
+};
+
+describe("GET /api/prompts", () => {
+  beforeEach(() => {
+    mockGetAll.mockReset();
+    mockGetMetrics.mockReset();
+    mockGetContentList.mockReset();
+
+    mockGetAll.mockResolvedValue([DB_PROMPT] as never);
+    mockGetContentList.mockResolvedValue([MDX_ENTRY] as never);
+    mockGetMetrics.mockResolvedValue(
+      new Map([
+        [
+          "code-review-agent",
+          {
+            copies: 10,
+            cli_pulls: 2,
+            skill_invokes: 50,
+            traces: 62,
+            runs_7d: 62,
+          },
+        ],
+        [
+          "refactor-helper",
+          {
+            copies: 3,
+            cli_pulls: 5,
+            skill_invokes: 1,
+            traces: 9,
+            runs_7d: 9,
+          },
+        ],
+      ]),
+    );
+  });
+
+  test("200 — no ?include returns merged list without metrics", async () => {
+    const res = await GET(makeReq(""));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBe(2);
+    expect(body[0].metrics).toBeUndefined();
+    expect(body[1].metrics).toBeUndefined();
+    expect(mockGetMetrics).not.toHaveBeenCalled();
+  });
+
+  test("200 — ?include=metrics enriches each entry with metrics", async () => {
+    const res = await GET(makeReq("include=metrics"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBe(2);
+    const found = body.find((b: { slug: string }) => b.slug === "code-review-agent");
+    expect(found.metrics).toBeDefined();
+    expect(found.metrics.skill_invokes).toBe(50);
+    expect(mockGetMetrics).toHaveBeenCalledOnce();
+  });
+
+  test("200 — ?include=metrics&sort=skill_invokes orders by metric desc", async () => {
+    const res = await GET(makeReq("include=metrics&sort=skill_invokes"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body[0].slug).toBe("code-review-agent");
+    expect(body[1].slug).toBe("refactor-helper");
+  });
+});

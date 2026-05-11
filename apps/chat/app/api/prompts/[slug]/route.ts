@@ -11,10 +11,24 @@ import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
+  const url = new URL(request.url);
+  const includeMetrics = url.searchParams.get("include") === "metrics";
+
+  let metrics:
+    | Awaited<ReturnType<typeof import("@/lib/db/queries").getPromptMetrics>>
+    | undefined;
+  if (includeMetrics) {
+    try {
+      const { getPromptMetrics } = await import("@/lib/db/queries");
+      metrics = await getPromptMetrics(slug);
+    } catch {
+      // Tables not ready — omit metrics gracefully
+    }
+  }
 
   // DB first — gracefully handle missing migration
   let dbPrompt: Awaited<ReturnType<typeof getPromptBySlug>> | undefined;
@@ -40,6 +54,7 @@ export async function GET(
       model: dbPrompt.model ?? undefined,
       version: dbPrompt.version ?? undefined,
       variables: dbPrompt.variables ?? undefined,
+      ...(includeMetrics ? { metrics: metrics ?? null } : {}),
     });
   }
 
@@ -48,7 +63,9 @@ export async function GET(
   if (!entry) {
     return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
   }
-  return NextResponse.json(entry);
+  return NextResponse.json(
+    includeMetrics ? { ...entry, metrics: metrics ?? null } : entry,
+  );
 }
 
 export async function PUT(

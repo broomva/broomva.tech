@@ -39,8 +39,9 @@ export async function GET(request: NextRequest) {
   const tag = searchParams.get("tag");
   const model = searchParams.get("model");
   const format = searchParams.get("format");
+  const includeMetrics = searchParams.get("include") === "metrics";
+  const sort = searchParams.get("sort");
 
-  // DB prompts (public) — gracefully handle missing migration
   let dbPrompts: UserPrompt[] = [];
   try {
     dbPrompts = await getAllPublicPrompts({ category, tag, model });
@@ -50,20 +51,61 @@ export async function GET(request: NextRequest) {
   const dbSlugs = new Set(dbPrompts.map((p) => p.slug));
   const dbSummaries = dbPrompts.map(dbToSummary);
 
-  // MDX fallback (only include entries not already in DB)
   let mdxEntries = await getContentList("prompts");
   mdxEntries = mdxEntries.filter((e) => !dbSlugs.has(e.slug));
   if (category) mdxEntries = mdxEntries.filter((e) => e.category === category);
   if (tag) mdxEntries = mdxEntries.filter((e) => e.tags.includes(tag));
   if (model) mdxEntries = mdxEntries.filter((e) => e.model === model);
 
-  const merged = [...dbSummaries, ...mdxEntries].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
+  type Summary = ReturnType<typeof dbToSummary>;
+  type EnrichedSummary = Summary & {
+    metrics?: {
+      copies: number;
+      cli_pulls: number;
+      skill_invokes: number;
+      traces: number;
+      runs_7d: number;
+    };
+  };
+  let merged: EnrichedSummary[] = [...dbSummaries, ...mdxEntries];
+
+  if (includeMetrics) {
+    const { getMetricsForSlugs } = await import("@/lib/db/queries");
+    const slugs = merged.map((e) => e.slug);
+    let metricsMap: Awaited<ReturnType<typeof getMetricsForSlugs>> = new Map();
+    try {
+      metricsMap = await getMetricsForSlugs(slugs);
+    } catch {
+      // Tables not ready — proceed with empty metrics
+    }
+    merged = merged.map((e) => ({
+      ...e,
+      metrics: metricsMap.get(e.slug) ?? {
+        copies: 0,
+        cli_pulls: 0,
+        skill_invokes: 0,
+        traces: 0,
+        runs_7d: 0,
+      },
+    }));
+  }
+
+  if (sort && includeMetrics) {
+    const key = sort === "skill_invokes" ? "skill_invokes"
+              : sort === "cli_pulls" ? "cli_pulls"
+              : sort === "copies" ? "copies"
+              : sort === "runs_7d" ? "runs_7d"
+              : null;
+    if (key) {
+      merged.sort((a, b) => (b.metrics?.[key] ?? 0) - (a.metrics?.[key] ?? 0));
+    } else {
+      merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+  } else {
+    merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
 
   if (format === "full") {
-    // For DB prompts, add content directly
-    // For MDX, load via getContentBySlug
     const { getContentBySlug } = await import("@/lib/content");
     const full = await Promise.all(
       merged.map(async (entry) => {
