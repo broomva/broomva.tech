@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/queries";
 import { updateInvocationSchema } from "@/lib/prompts/validation";
 import { computeCostUsd } from "@/lib/prompts/pricing";
+import { serializeInvocation } from "@/lib/prompts/serialize";
 
 export async function PATCH(
   request: Request,
@@ -72,5 +73,5 @@ export async function PATCH(
     return NextResponse.json({ error: "already_locked" }, { status: 409 });
   }
 
-  return NextResponse.json(updated, { status: 200 });
+  return NextResponse.json(serializeInvocation(updated), { status: 200 });
 }

@@ -5,6 +5,7 @@ import {
   getFeedbackForPrompt,
 } from "@/lib/db/queries";
 import { createFeedbackSchema } from "@/lib/prompts/validation";
+import { serializeFeedback } from "@/lib/prompts/serialize";
 import { checkTelemetryRateLimit } from "@/lib/telemetry/rate-limit";
 
 export async function POST(request: Request) {
@@ -81,5 +82,5 @@ export async function GET(request: Request) {
   );
 
   const rows = await getFeedbackForPrompt({ promptSlug, limit });
-  return NextResponse.json(rows, { status: 200 });
+  return NextResponse.json(rows.map(serializeFeedback), { status: 200 });
 }

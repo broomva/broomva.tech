@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRecentInvocations } from "@/lib/db/queries";
+import { serializeInvocation } from "@/lib/prompts/serialize";
 
 const VALID_SOURCES = ["web", "cli", "skill", "api"] as const;
 type Source = (typeof VALID_SOURCES)[number];
@@ -45,5 +46,5 @@ export async function GET(request: Request) {
     limit,
     before,
   });
-  return NextResponse.json(rows);
+  return NextResponse.json(rows.map(serializeInvocation));
 }
