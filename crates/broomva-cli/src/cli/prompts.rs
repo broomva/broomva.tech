@@ -124,9 +124,21 @@ pub async fn handle_pull(
     client: &BroomvaClient,
     slug: &str,
     output: Option<&str>,
+    json: bool,
 ) -> BroomvaResult<()> {
+    // 1. Fetch the prompt detail first so we have the version for the beacon
     let prompt = client.get_prompt(slug).await?;
+    let version = prompt
+        .version
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string());
 
+    // 2. Fire the telemetry beacon — best-effort. The beacon prints a
+    //    stderr warning on failure but never blocks the pull.
+    let beacon =
+        crate::telemetry::beacon::post_invocation_beacon(client, slug, &version).await;
+
+    // 3. Write the prompt to disk (existing behavior preserved)
     let mut fm = std::collections::BTreeMap::new();
     fm.insert("title".into(), prompt.title.clone());
     fm.insert("slug".into(), prompt.slug.clone());
@@ -153,6 +165,20 @@ pub async fn handle_pull(
     let dest = output.unwrap_or(&default_name);
     fs::write(dest, &rendered)?;
     println!("  Saved to {dest}");
+
+    // 4. Emit invocation id on stderr (machine-readable JSON if --json)
+    if json {
+        let line = serde_json::json!({
+            "invocation_id": beacon.id,
+            "prompt_slug": slug,
+            "prompt_version": version,
+            "posted": beacon.posted,
+        });
+        eprintln!("{line}");
+    } else {
+        eprintln!("\n[broomva] invocation: {}", beacon.id);
+    }
+
     Ok(())
 }
 
@@ -229,4 +255,94 @@ pub async fn handle_push(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::telemetry::TELEMETRY_ENV_LOCK;
+    use tempfile::tempdir;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn pull_fires_telemetry_beacon_after_get() {
+        // Tokio test runs on a single-threaded runtime; holding the lock
+        // across awaits serializes tests that touch BROOMVA_* env vars
+        // without risking deadlock on another worker thread.
+        let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/prompts/code-review-agent"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "id": "u1",
+                    "slug": "code-review-agent",
+                    "title": "Code Review Agent",
+                    "content": "system prompt body",
+                    "summary": "Structured code review",
+                    "category": "system-prompts",
+                    "model": "claude-sonnet-4.5",
+                    "tags": ["code-review"],
+                    "visibility": "public",
+                    "createdAt": "2026-05-09T00:00:00Z",
+                    "updatedAt": "2026-05-09T00:00:00Z"
+                }
+            })))
+            .mount(&server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path("/api/invocations"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "id": "ignored",
+                "created_at": "2026-05-11T00:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let client = BroomvaClient::new(server.uri(), None);
+        let tmp = tempdir().unwrap();
+        let dest = tmp.path().join("out.md");
+        let result = handle_pull(&client, "code-review-agent", Some(dest.to_str().unwrap()), false).await;
+        assert!(result.is_ok(), "{result:?}");
+        let written = std::fs::read_to_string(&dest).unwrap();
+        assert!(written.contains("Code Review Agent"));
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn pull_with_telemetry_disabled_still_writes_file() {
+        let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
+        // Set the env var for this test. BROOMVA_TELEMETRY_DISABLED is
+        // read fresh in beacon::post_invocation_beacon so the disable
+        // takes effect immediately.
+        unsafe { std::env::set_var("BROOMVA_TELEMETRY_DISABLED", "1") };
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/prompts/x"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "id": "u1",
+                    "slug": "x",
+                    "title": "X",
+                    "content": "body",
+                    "tags": [],
+                    "visibility": "public"
+                }
+            })))
+            .mount(&server)
+            .await;
+        // No mock for POST /api/invocations — with telemetry disabled,
+        // no POST should land at all.
+
+        let client = BroomvaClient::new(server.uri(), None);
+        let tmp = tempdir().unwrap();
+        let dest = tmp.path().join("out.md");
+        let result = handle_pull(&client, "x", Some(dest.to_str().unwrap()), false).await;
+        assert!(result.is_ok(), "{result:?}");
+
+        unsafe { std::env::remove_var("BROOMVA_TELEMETRY_DISABLED") };
+    }
 }

@@ -166,12 +166,18 @@ pub enum PromptsCommand {
     },
     /// Delete a prompt.
     Delete { slug: String },
-    /// Pull a prompt to a local file.
+    /// Pull a prompt to a local file. Fires a telemetry invocation
+    /// beacon by default; pass `--json` to emit a machine-readable line
+    /// on stderr with the invocation id (used by the Claude Code skill).
     Pull {
         slug: String,
-        /// Output file path.
+        /// Output file path. Omit to write to `<slug>.md` in cwd.
         #[arg(short, long)]
         output: Option<String>,
+        /// Emit a machine-readable JSON line on stderr containing
+        /// {invocation_id, prompt_slug, prompt_version, posted}.
+        #[arg(long)]
+        json: bool,
     },
     /// Push a local file as a prompt.
     Push {
@@ -412,8 +418,8 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 prompts::handle_update(&client, &slug, req, format).await
             }
             PromptsCommand::Delete { slug } => prompts::handle_delete(&client, &slug).await,
-            PromptsCommand::Pull { slug, output } => {
-                prompts::handle_pull(&client, &slug, output.as_deref()).await
+            PromptsCommand::Pull { slug, output, json } => {
+                prompts::handle_pull(&client, &slug, output.as_deref(), json).await
             }
             PromptsCommand::Push { file, create } => {
                 prompts::handle_push(&client, &file, create, format).await

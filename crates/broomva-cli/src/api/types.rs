@@ -26,6 +26,7 @@ pub struct PromptDetail {
     pub summary: Option<String>,
     pub category: Option<String>,
     pub model: Option<String>,
+    pub version: Option<String>,
     pub tags: Option<Vec<String>>,
     pub visibility: Option<String>,
     pub created_at: Option<String>,

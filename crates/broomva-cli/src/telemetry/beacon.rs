@@ -13,7 +13,11 @@ use crate::telemetry::source::{caller_string, detect_source, telemetry_disabled}
 /// row may not actually exist in the server.
 pub struct BeaconResult {
     pub id: String,
+    // Retained for downstream consumers (Claude Code skill, JSON output);
+    // currently informational on the struct itself.
+    #[allow(dead_code)]
     pub prompt_slug: String,
+    #[allow(dead_code)]
     pub prompt_version: String,
     pub posted: bool,
 }
@@ -74,11 +78,17 @@ pub async fn post_invocation_beacon(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::telemetry::TELEMETRY_ENV_LOCK;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn beacon_returns_posted_true_on_success() {
+        // Holding a std Mutex across awaits is fine in this test:
+        // tokio::test defaults to a single-threaded runtime, so the
+        // guard cannot block another thread for the test duration.
+        let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/invocations"))
@@ -97,7 +107,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn beacon_returns_posted_false_on_429() {
+        let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/invocations"))

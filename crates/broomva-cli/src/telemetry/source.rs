@@ -5,6 +5,8 @@
 
 pub const ENV_SOURCE: &str = "BROOMVA_SOURCE";
 pub const ENV_TELEMETRY_DISABLED: &str = "BROOMVA_TELEMETRY_DISABLED";
+// Consumed in Batch C/D when variables get hashed before being sent.
+#[allow(dead_code)]
 pub const ENV_RAW_VARS: &str = "BROOMVA_TELEMETRY_RAW_VARS";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,6 +45,7 @@ pub fn telemetry_disabled() -> bool {
 
 /// `true` when `BROOMVA_TELEMETRY_RAW_VARS=1` (admin opt-in to send raw
 /// variable values rather than hashed).
+#[allow(dead_code)]
 pub fn raw_vars_enabled() -> bool {
     std::env::var(ENV_RAW_VARS).ok().as_deref() == Some("1")
 }
@@ -55,13 +58,12 @@ pub fn caller_string() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    // serialize env mutation across tests to avoid flakes
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
+    use crate::telemetry::TELEMETRY_ENV_LOCK;
 
     fn with_env<F: FnOnce()>(key: &str, value: Option<&str>, f: F) {
-        let _guard = ENV_LOCK.lock().unwrap();
+        // Acquire the process-shared lock so we don't race tests in
+        // sibling modules that also touch BROOMVA_* env vars.
+        let _guard = TELEMETRY_ENV_LOCK.lock().unwrap();
         let prev = std::env::var(key).ok();
         match value {
             Some(v) => unsafe { std::env::set_var(key, v) },
