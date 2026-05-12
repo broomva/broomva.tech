@@ -1,0 +1,12 @@
+# Asset pack — treat AI generation outputs and font binaries as opaque
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.mp4  binary
+*.mov  binary
+*.m4a  binary
+*.mp3  binary
+*.wav  binary
+*.otf  binary
+*.ttf  binary
+*.zip  binary

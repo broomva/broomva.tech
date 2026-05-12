@@ -1,6 +1,7 @@
 # Anima Toroidalis — Asset Pack
 
 Production output for `docs/superpowers/specs/2026-05-11-broomva-commercial-visual-design.md`.
+Implementation plan: `docs/superpowers/plans/2026-05-11-broomva-commercial-visual-production.md`
 
 - `substrate/` — raw AI-generated substrate (Seedream 4.5 or fallback), no type
 - `hero/` — final 16:9 hero composites with type
