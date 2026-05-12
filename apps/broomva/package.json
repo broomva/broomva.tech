@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@ai-sdk-tools/store": "1.2.0",
+    "@broomva/lifegw-client": "workspace:*",
     "@ai-sdk/anthropic": "3.0.64",
     "@ai-sdk/devtools": "0.0.15",
     "@ai-sdk/gateway": "3.0.83",
