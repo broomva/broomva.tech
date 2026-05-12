@@ -5,6 +5,46 @@ REPO="broomva/broomva.tech"
 INSTALL_DIR="${BROOMVA_INSTALL_DIR:-/usr/local/bin}"
 SKIP_SKILLS="${BROOMVA_SKIP_SKILLS:-}"
 
+# ── Dynamic skill-count discovery ──
+#
+# The Broomva Stack is a living roster. Rather than hardcode a count that
+# drifts every time we add or rename a skill, we fetch the authoritative
+# source — the ROSTER array in bstack's own SKILL.md — at install time.
+#
+# Falls back gracefully to a generic phrasing if the network is unavailable
+# or the bstack repo's SKILL.md layout changes.
+BSTACK_SKILL_MD_URL="${BSTACK_SKILL_MD_URL:-https://raw.githubusercontent.com/broomva/bstack/main/SKILL.md}"
+
+get_bstack_skill_count() {
+  # Pull bstack/SKILL.md, extract the ROSTER=( … ) array, count entries.
+  # ROSTER tokens are bare lowercase identifiers separated by whitespace.
+  local count
+  count=$(
+    curl -fsSL "$BSTACK_SKILL_MD_URL" 2>/dev/null \
+      | awk '/^ROSTER=\(/{flag=1} flag{print} /\)/{if (flag) {flag=0}}' \
+      | tr -d '\n' \
+      | sed 's/.*ROSTER=(//; s/).*//' \
+      | tr ' ' '\n' \
+      | grep -cE '^[a-z][a-z0-9-]*$' \
+      || true
+  )
+  # Sanity bound — never claim < 10 or > 200 even if parsing goes sideways.
+  if [ -n "$count" ] && [ "$count" -ge 10 ] && [ "$count" -le 200 ]; then
+    echo "$count"
+  else
+    echo ""
+  fi
+}
+
+# Resolved once at script start so all three install_bstack call sites
+# use the same number (or the same fallback phrasing).
+BSTACK_SKILL_COUNT="$(get_bstack_skill_count)"
+if [ -n "$BSTACK_SKILL_COUNT" ]; then
+  BSTACK_SKILL_PHRASE="${BSTACK_SKILL_COUNT} Broomva Stack skills"
+else
+  BSTACK_SKILL_PHRASE="the Broomva Stack skill roster"
+fi
+
 # ── Colored banner ──
 
 print_banner() {
@@ -126,7 +166,7 @@ install_broomva_skill() {
   fi
 }
 
-# ── Step 3: Install bstack (Broomva Stack — 24 skills) ──
+# ── Step 3: Install bstack (Broomva Stack — count resolved dynamically) ──
 
 install_bstack() {
   if [ -n "$SKIP_SKILLS" ]; then
@@ -144,7 +184,7 @@ install_bstack() {
       # Run bootstrap to install all 24 skills
       if [ -f "$BSTACK_DIR/scripts/bootstrap.sh" ]; then
         echo ""
-        echo "  Bootstrapping 24 Broomva Stack skills..."
+        echo "  Bootstrapping ${BSTACK_SKILL_PHRASE}..."
         bash "$BSTACK_DIR/scripts/bootstrap.sh"
       fi
       return 0
@@ -165,7 +205,7 @@ install_bstack() {
       # Run bootstrap
       if [ -f "$BSTACK_DIR/scripts/bootstrap.sh" ]; then
         echo ""
-        echo "  Bootstrapping 24 Broomva Stack skills..."
+        echo "  Bootstrapping ${BSTACK_SKILL_PHRASE}..."
         bash "$BSTACK_DIR/scripts/bootstrap.sh"
       fi
     else
@@ -219,12 +259,16 @@ echo ""
 echo "  ==========================================="
 echo "  Installation complete!"
 echo ""
-echo "  Get started:"
+echo "  Get started — shell:"
 echo "    broomva setup           # Interactive setup wizard"
 echo "    broomva auth login      # Authenticate"
 echo "    broomva prompts list    # Browse prompts"
 echo "    broomva skills list     # Browse skills"
 echo "    broomva daemon start    # Start monitoring"
+echo ""
+echo "  Get started — Claude Code (substrate + canonical mode):"
+echo "    /bstack                 # Verify the substrate (16 primitives + roster)"
+echo "    /autonomous             # Engage the canonical operating mode"
 echo ""
 echo "  Life Agent OS:"
 echo "    life setup              # Configure AI providers"
