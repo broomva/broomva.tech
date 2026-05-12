@@ -4,8 +4,11 @@
  *
  * Checks:
  * 1. Required frontmatter fields (title, summary, date, tags)
- * 2. Writing posts MUST have audio (frontmatter ref + file on disk)
+ * 2. Writing posts MUST have audio (frontmatter ref + reachable file)
  * 3. Frontmatter audio/image references point to existing files
+ *    — locally under public/, OR in the Lago site-assets:public manifest
+ *      for paths under /images/writing|projects, /audio/writing|projects,
+ *      and /video/ (which are no longer committed to git).
  * 4. No frontmatter keys leaked into body content
  */
 import { readdir, readFile, access } from "node:fs/promises";
@@ -19,8 +22,78 @@ const KINDS = ["writing", "notes", "projects"];
 // Writing posts require these fields. Other kinds are more relaxed.
 const REQUIRED_WRITING_FIELDS = ["title", "summary", "date"];
 
+// Asset path prefixes whose files now live in Lago, not in public/.
+// See apps/broomva/next.config.ts rewrites + scripts/sync-assets-to-lago.ts.
+const LAGO_PREFIXES = [
+  "/images/writing/",
+  "/images/projects/",
+  "/audio/writing/",
+  "/audio/projects/",
+  "/video/",
+];
+
+const LAGO_URL = process.env.LAGO_URL || "https://api.lago.arcan.la";
+const LAGO_SESSION_NAME = "site-assets:public";
+
 let errors = 0;
 let warnings = 0;
+
+/** Set of paths present in Lago's site-assets:public manifest, or null if
+ *  the fetch failed (treated as "unknown — assume present" for Lago-managed
+ *  prefixes so CI doesn't go red purely because Lago is unreachable). */
+async function loadLagoManifest() {
+  try {
+    const sRes = await fetch(`${LAGO_URL}/v1/sessions`);
+    if (!sRes.ok) return null;
+    const sessions = await sRes.json();
+    const session = sessions.find((s) => s.name === LAGO_SESSION_NAME);
+    if (!session) return null;
+    const mRes = await fetch(
+      `${LAGO_URL}/v1/sessions/${session.session_id}/manifest?branch=main`
+    );
+    if (!mRes.ok) return null;
+    const data = await mRes.json();
+    const paths = new Set();
+    for (const entry of data.entries) {
+      if (entry.content_type !== "inode/directory") paths.add(entry.path);
+    }
+    return paths;
+  } catch {
+    return null;
+  }
+}
+
+const lagoManifest = await loadLagoManifest();
+if (lagoManifest) {
+  console.log(`ℹ  Lago manifest: ${lagoManifest.size} entries from ${LAGO_URL}`);
+} else {
+  console.log(
+    `ℹ  Lago manifest unreachable (${LAGO_URL}) — Lago-managed assets will be assumed present.`
+  );
+}
+
+/**
+ * Returns one of:
+ *   { kind: "ok" }                      — exists locally or in Lago
+ *   { kind: "missing-lago" }            — Lago-managed but not in manifest
+ *   { kind: "missing-local" }           — non-Lago and not on disk
+ *   { kind: "lago-unknown" }            — Lago-managed prefix, manifest down
+ */
+async function resolveAsset(assetPath) {
+  const onDisk = join(PUBLIC, assetPath);
+  try {
+    await access(onDisk);
+    return { kind: "ok" };
+  } catch {}
+
+  const isLagoManaged = LAGO_PREFIXES.some((p) => assetPath.startsWith(p));
+  if (!isLagoManaged) return { kind: "missing-local" };
+
+  if (!lagoManifest) return { kind: "lago-unknown" };
+  return lagoManifest.has(assetPath)
+    ? { kind: "ok" }
+    : { kind: "missing-lago" };
+}
 
 for (const kind of KINDS) {
   const dir = join(CONTENT, kind);
@@ -122,37 +195,49 @@ for (const kind of KINDS) {
         );
         errors++;
       } else {
-        const audioPath = join(PUBLIC, fm.audio);
-        try {
-          await access(audioPath);
-        } catch {
+        const res = await resolveAsset(fm.audio);
+        if (res.kind === "missing-local" || res.kind === "missing-lago") {
+          const where = res.kind === "missing-lago" ? "in Lago manifest" : "on disk";
           console.error(
-            `✗  ${kind}/${file} — audio file missing on disk: ${fm.audio}`
+            `✗  ${kind}/${file} — audio file missing ${where}: ${fm.audio}`
           );
           errors++;
+        } else if (res.kind === "lago-unknown") {
+          console.warn(
+            `⚠  ${kind}/${file} — audio not on disk and Lago manifest unreachable; assumed present: ${fm.audio}`
+          );
+          warnings++;
         }
       }
     } else if (fm.audio) {
-      // Non-writing: audio is optional but if referenced, file must exist
-      const audioPath = join(PUBLIC, fm.audio);
-      try {
-        await access(audioPath);
-      } catch {
+      // Non-writing: audio is optional but if referenced, file must resolve
+      const res = await resolveAsset(fm.audio);
+      if (res.kind === "missing-local" || res.kind === "missing-lago") {
+        const where = res.kind === "missing-lago" ? "in Lago manifest" : "on disk";
         console.error(
-          `✗  ${kind}/${file} — audio file missing: ${fm.audio}`
+          `✗  ${kind}/${file} — audio file missing ${where}: ${fm.audio}`
         );
         errors++;
+      } else if (res.kind === "lago-unknown") {
+        console.warn(
+          `⚠  ${kind}/${file} — audio not on disk and Lago manifest unreachable; assumed present: ${fm.audio}`
+        );
+        warnings++;
       }
     }
 
-    // Check image file exists (frontmatter hero image)
+    // Check image file exists (frontmatter hero image) — Lago-aware.
     if (fm.image) {
-      const imagePath = join(PUBLIC, fm.image);
-      try {
-        await access(imagePath);
-      } catch {
+      const res = await resolveAsset(fm.image);
+      if (res.kind === "missing-local" || res.kind === "missing-lago") {
+        const where = res.kind === "missing-lago" ? "in Lago manifest" : "on disk";
         console.warn(
-          `⚠  ${kind}/${file} — image file missing: ${fm.image}`
+          `⚠  ${kind}/${file} — image file missing ${where}: ${fm.image}`
+        );
+        warnings++;
+      } else if (res.kind === "lago-unknown") {
+        console.warn(
+          `⚠  ${kind}/${file} — image not on disk and Lago manifest unreachable; assumed present: ${fm.image}`
         );
         warnings++;
       }

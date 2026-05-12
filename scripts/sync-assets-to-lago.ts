@@ -29,6 +29,7 @@ const SYNC_DIRS = [
   "audio/writing",
   "images/projects",
   "audio/projects",
+  "video/writing",
 ];
 
 // MIME type detection

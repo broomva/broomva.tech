@@ -57,6 +57,14 @@
 public/search-index.json
 public/agent-knowledge.json
 
+# Media assets — served via /api/assets/[...path] from Lago,
+# uploaded by scripts/sync-assets-to-lago.ts. Never commit binaries here.
+public/images/writing/
+public/images/projects/
+public/audio/writing/
+public/audio/projects/
+public/video/
+
 # Lago/aiOS lakebase state
 .lago/
 .lake/

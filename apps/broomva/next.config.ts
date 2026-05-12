@@ -24,6 +24,30 @@ const nextConfig: NextConfig = {
       // so we serve the JWKS from `/api/auth/jwks` and rewrite the
       // canonical `.json` URL in.
       { source: "/api/auth/jwks.json", destination: "/api/auth/jwks" },
+      // Media is no longer committed under public/ — it lives in Lago and is
+      // served by /api/assets/[...path] (see route.ts). The rewrites below
+      // make legacy /images/writing/* and /audio/writing/* URLs in the
+      // content corpus continue to resolve transparently.
+      {
+        source: "/images/writing/:path*",
+        destination: "/api/assets/images/writing/:path*",
+      },
+      {
+        source: "/images/projects/:path*",
+        destination: "/api/assets/images/projects/:path*",
+      },
+      {
+        source: "/audio/writing/:path*",
+        destination: "/api/assets/audio/writing/:path*",
+      },
+      {
+        source: "/audio/projects/:path*",
+        destination: "/api/assets/audio/projects/:path*",
+      },
+      {
+        source: "/video/:path*",
+        destination: "/api/assets/video/:path*",
+      },
     ];
   },
 
