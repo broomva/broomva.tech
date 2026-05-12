@@ -234,7 +234,13 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|opengraph-image|manifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|mp4|webm|ogg|pdf)$).*)",
+    // Skip the proxy for static assets and build artifacts. The extension
+    // list intentionally includes audio (mp3/wav/m4a) and video (mp4/webm/ogg)
+    // because those resources are public — they were originally served as
+    // committed static files under public/, and after the Lago migration
+    // (apps/broomva/app/api/assets) they need to keep bypassing auth so the
+    // /audio/* and /video/* rewrites in next.config.ts can reach /api/assets.
+    "/((?!_next/static|_next/image|favicon.ico|opengraph-image|manifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|json|webmanifest|txt|mp4|webm|ogg|mp3|wav|m4a|pdf)$).*)",
   ],
 };
 
