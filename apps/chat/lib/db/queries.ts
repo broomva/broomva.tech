@@ -1817,6 +1817,14 @@ export async function getMetricsForSlugs(slugs: string[]) {
     copies: number; cli_pulls: number; skill_invokes: number; traces: number;
     runs_7d: number;
   }>();
+  // Use `IN (...)` with explicit per-value binding via sql.join — the
+  // earlier `= ANY(${slugs})` form matched nothing under
+  // drizzle-orm/postgres-js because a JS array binding doesn't serialize
+  // as a Postgres text[] literal. sql.join produces one bind per slug.
+  const slugList = sql.join(
+    slugs.map((s) => sql`${s}`),
+    sql`, `,
+  );
   const result = (await db.execute<{
     slug: string; web: number; cli: number; skill: number; api: number; runs_7d: number;
   }>(sql`
@@ -1828,7 +1836,7 @@ export async function getMetricsForSlugs(slugs: string[]) {
       COUNT(*) FILTER (WHERE source = 'api')::int AS api,
       COUNT(*) FILTER (WHERE "createdAt" >= now() - interval '7 days')::int AS runs_7d
     FROM "PromptInvocation"
-    WHERE "promptSlug" = ANY(${slugs})
+    WHERE "promptSlug" IN (${slugList})
     GROUP BY "promptSlug"
   `)) as unknown as {
     slug: string; web: number; cli: number; skill: number; api: number; runs_7d: number;
