@@ -36,6 +36,28 @@ const COOKIE_KEY = "audio-playback";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const SYNC_DEBOUNCE_MS = 5000;
 
+/**
+ * Cache-bust audio URLs after the Lago migration.
+ *
+ * Before the migration, /audio/writing/*.mp3 was served as a committed static
+ * file. While the proxy didn't yet allow .mp3 through, the path silently
+ * redirected to /login with `Cache-Control: max-age=31536000, immutable` —
+ * which browsers cached for a year. Even after the proxy fix shipped, those
+ * users keep hitting their stuck cached redirect instead of the live 302→Lago.
+ *
+ * Appending a query string forces a fresh request that misses the bad cache
+ * entry. Bump this value if a future migration creates a similar stuck-cache
+ * scenario.
+ */
+const AUDIO_CACHE_VERSION = "lago-2026-05-12";
+
+function withCacheBust(audioSrc: string): string {
+  if (!audioSrc) return audioSrc;
+  // Don't append if the caller already supplied a query string.
+  if (audioSrc.includes("?")) return audioSrc;
+  return `${audioSrc}?v=${AUDIO_CACHE_VERSION}`;
+}
+
 const AudioPlaybackContext = createContext<AudioPlaybackContextValue | null>(
   null,
 );
@@ -159,7 +181,7 @@ export function AudioPlaybackProvider({
         title: cookieState.title,
       });
       const audio = getAudio();
-      audio.src = cookieState.audioSrc;
+      audio.src = withCacheBust(cookieState.audioSrc);
       audio.currentTime = cookieState.currentTime || 0;
       setCurrentTime(cookieState.currentTime || 0);
       setDuration(cookieState.duration || 0);
@@ -180,8 +202,9 @@ export function AudioPlaybackProvider({
           title: serverState.title,
         });
         const audio = getAudio();
-        if (audio.src !== serverState.audioSrc) {
-          audio.src = serverState.audioSrc;
+        const targetSrc = withCacheBust(serverState.audioSrc);
+        if (audio.src !== targetSrc) {
+          audio.src = targetSrc;
         }
         audio.currentTime = serverState.currentTime || 0;
         setCurrentTime(serverState.currentTime || 0);
@@ -254,7 +277,7 @@ export function AudioPlaybackProvider({
       setTrack(newTrack);
 
       if (!sameSrc) {
-        audio.src = newTrack.audioSrc;
+        audio.src = withCacheBust(newTrack.audioSrc);
         audio.load();
       }
 
