@@ -47,10 +47,10 @@ jobs:
 
       - name: Generate search index
         run: bun run generate:search-index
-        working-directory: apps/chat
+        working-directory: apps/broomva
 
       - name: Verify search index
-        run: test -f apps/chat/public/search-index.json && echo "Search index OK ($(wc -c < apps/chat/public/search-index.json) bytes)"
+        run: test -f apps/broomva/public/search-index.json && echo "Search index OK ($(wc -c < apps/broomva/public/search-index.json) bytes)"
 
       - name: Lint
         run: bun run lint
@@ -79,7 +79,7 @@ jobs:
       - name: Check for asset changes
         id: changes
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'apps/chat/public/images/' 'apps/chat/public/audio/' 'apps/chat/content/' || true)
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'apps/broomva/public/images/' 'apps/broomva/public/audio/' 'apps/broomva/content/' || true)
           if [ -n "$CHANGED" ]; then
             echo "assets_changed=true" >> "$GITHUB_OUTPUT"
             echo "Changed asset files:"

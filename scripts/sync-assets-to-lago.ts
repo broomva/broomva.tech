@@ -22,13 +22,14 @@ const LAGO_URL =
   process.env.LAGO_URL || "https://lagod-production-9423.up.railway.app";
 const AUTH_SECRET = process.env.AUTH_SECRET;
 const SESSION_NAME = "site-assets:public";
-const PUBLIC_DIR = join(import.meta.dir, "../apps/chat/public");
+const PUBLIC_DIR = join(import.meta.dir, "../apps/broomva/public");
 
 const SYNC_DIRS = [
   "images/writing",
   "audio/writing",
   "images/projects",
   "audio/projects",
+  "video/writing",
 ];
 
 // MIME type detection

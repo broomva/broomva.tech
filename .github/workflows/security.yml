@@ -9,9 +9,9 @@ on:
     paths:
       - "**/package.json"
       - "**/bun.lock"
-      - "apps/chat/proxy.ts"
-      - "apps/chat/lib/auth.ts"
-      - "apps/chat/lib/utils/rate-limit.ts"
+      - "apps/broomva/proxy.ts"
+      - "apps/broomva/lib/auth.ts"
+      - "apps/broomva/lib/utils/rate-limit.ts"
 
 permissions:
   contents: read
@@ -74,25 +74,25 @@ jobs:
           echo "## Proxy Security Check" >> $GITHUB_STEP_SUMMARY
 
           # Ensure proxy.ts exists and exports proxyConfig
-          if ! grep -q "export const proxyConfig" apps/chat/proxy.ts; then
+          if ! grep -q "export const proxyConfig" apps/broomva/proxy.ts; then
             echo "::error::proxy.ts missing proxyConfig export (Next.js 16 convention)"
             exit 1
           fi
 
           # Ensure security headers are applied
-          if ! grep -q "X-Content-Type-Options" apps/chat/proxy.ts; then
+          if ! grep -q "X-Content-Type-Options" apps/broomva/proxy.ts; then
             echo "::error::proxy.ts missing X-Content-Type-Options security header"
             exit 1
           fi
 
-          if ! grep -q "Strict-Transport-Security" apps/chat/proxy.ts; then
+          if ! grep -q "Strict-Transport-Security" apps/broomva/proxy.ts; then
             echo "::error::proxy.ts missing HSTS header"
             exit 1
           fi
 
           # Count public routes for visibility
-          PUBLIC_PAGES=$(grep -c 'PUBLIC_PAGE_PREFIXES\|PUBLIC_PAGE_EXACT' apps/chat/proxy.ts || true)
-          PUBLIC_APIS=$(grep -c '/api/' apps/chat/proxy.ts || true)
+          PUBLIC_PAGES=$(grep -c 'PUBLIC_PAGE_PREFIXES\|PUBLIC_PAGE_EXACT' apps/broomva/proxy.ts || true)
+          PUBLIC_APIS=$(grep -c '/api/' apps/broomva/proxy.ts || true)
           echo "Public page entries: $PUBLIC_PAGES" >> $GITHUB_STEP_SUMMARY
           echo "Public API entries: $PUBLIC_APIS" >> $GITHUB_STEP_SUMMARY
           echo "Proxy security checks passed" >> $GITHUB_STEP_SUMMARY
