@@ -1,5 +1,8 @@
 node_modules
 dist
-src/gen
 *.log
 .turbo
+
+# Note: src/gen/ (proto codegen output from `bun run gen`) IS committed
+# so consumers — and CI — don't need buf/protoc installed to typecheck.
+# Re-run `bun run gen` after touching ../../core/life/proto/life/v1/*.proto.
