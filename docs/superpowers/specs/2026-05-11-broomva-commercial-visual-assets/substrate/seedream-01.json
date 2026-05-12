@@ -1,0 +1,22 @@
+[
+  {
+    "id": "8e1ededb-09fe-4f44-9cbc-99f5eda134a8",
+    "status": "completed",
+    "display_name": "Seedream 4.5",
+    "job_set_type": "seedream_v4_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/hf_20260512_112133_8e1ededb-09fe-4f44-9cbc-99f5eda134a8.png",
+    "created_at": 1778584893.128955,
+    "params": {
+      "prompt": "19th-century scientific monograph anatomical plate, scholarly composition, warm cream paper background, pure crisp vector linework illustration. Centered subject: a horizontally-oriented torus form rendered with precise geometric lines, showing two interleaved internal flows — long sweeping major-axis lines tracing slowly around the outer surface like vasculature, finer faster minor-axis curves circulating perpendicular. At one point along the torus, a Möbius-like cross-folded throat constriction where the surface twists and folds back on itself, accented in deep sanguine red. Trajectories drawn as clean precise vector lines in warm black ink. Empty marginalia gutters on the left and right sides as rectangular negative space. Empty header space at top center. Empty footer space at bottom center. No text, no labels, no annotations — the illustration shows the manifold only, with empty placeholder areas reserved for type compositing in post-production. Modern crisp execution, classical sensibility, no aging, no paper texture, no grain, no noise. Style register: D'Arcy Thompson's On Growth and Form meets Anthropic mechanistic-interpretability circuit visualizations.",
+      "batch_size": 1,
+      "quality": "basic",
+      "aspect_ratio": "16:9",
+      "seed": 77635,
+      "width": 2560,
+      "height": 1440,
+      "input_images": [],
+      "use_unlim": false,
+      "reference_elements": []
+    }
+  }
+]
