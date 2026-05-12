@@ -82,20 +82,42 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Path-level cache: short and revalidatable, because /images/:path*
+        // is rewritten to /api/assets/images/:path* which returns a 302 to a
+        // content-addressed Lago blob URL. If we marked these responses
+        // `immutable, max-age=1y` (the previous behaviour), any transient
+        // failure response — e.g. an auth proxy 307→/login during a
+        // migration — would be pinned in every visitor's browser cache for
+        // a year. The blob URL it redirects to is itself immutable, so the
+        // long-lived caching belongs on the blob, not on this redirect.
         source: "/images/:path*",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
+            value: "public, max-age=3600, must-revalidate",
           },
         ],
       },
       {
+        // Same reasoning as /images/:path* above. The audio narration files
+        // are large (10+ MB), so we still want the eventual blob URL cached
+        // aggressively — but that caching lives on the blob response itself,
+        // not on this path-level redirect.
         source: "/audio/:path*",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
+            value: "public, max-age=3600, must-revalidate",
+          },
+        ],
+      },
+      {
+        // Video parallels audio.
+        source: "/video/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, must-revalidate",
           },
         ],
       },

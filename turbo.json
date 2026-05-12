@@ -114,6 +114,9 @@
     },
     "check:content": {
       "cache": false
+    },
+    "check:public-asset-routes": {
+      "cache": false
     }
   }
 }

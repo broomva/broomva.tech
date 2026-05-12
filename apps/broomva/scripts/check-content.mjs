@@ -242,6 +242,57 @@ for (const kind of KINDS) {
         warnings++;
       }
     }
+
+    // ── Body media references (inline <audio>/<video>/<img> + markdown img) ──
+    // Frontmatter covers the canonical hero image and audio narration, but
+    // longer posts inline additional images, videos, and audio clips inside
+    // the body. Validate every one of those that points at a local path so
+    // a missing-from-Lago asset gets caught in CI rather than at production
+    // render time.
+    const body = bodyLines.join("\n");
+    const seenSrcs = new Set();
+    const BODY_REFS = [
+      // <video src="/...">, <audio src="/...">, <img src="/...">
+      ...body.matchAll(/<(?:audio|video|img)\b[^>]*\bsrc=["']([^"']+)["']/gi),
+      // Markdown image: ![alt](path) or ![alt](path "title")
+      ...body.matchAll(/!\[[^\]]*\]\(([^)\s"']+)/g),
+      // <source src="/..."> inside <video>/<audio>
+      ...body.matchAll(/<source\b[^>]*\bsrc=["']([^"']+)["']/gi),
+      // <video poster="/..."> — poster images are common on the bstack post
+      ...body.matchAll(/<video\b[^>]*\bposter=["']([^"']+)["']/gi),
+    ];
+    for (const match of BODY_REFS) {
+      const src = match[1];
+      // Skip remote URLs (http/https/data:/protocol-relative).
+      if (!src.startsWith("/")) continue;
+      // Skip Next.js optimized image URLs — the actual underlying asset
+      // gets verified via the frontmatter `image:` field above and via the
+      // dedicated URL probe (scripts/verify-public-asset-routes.mjs).
+      if (src.startsWith("/_next/")) continue;
+      // De-duplicate within the same file — many posts reference the same
+      // hero image in multiple sizes.
+      if (seenSrcs.has(src)) continue;
+      seenSrcs.add(src);
+
+      const res = await resolveAsset(src);
+      if (res.kind === "missing-lago") {
+        console.error(
+          `✗  ${kind}/${file} — body asset missing in Lago manifest: ${src}`
+        );
+        errors++;
+      } else if (res.kind === "missing-local") {
+        // Non-Lago-managed prefix and not on disk: hard miss
+        console.error(
+          `✗  ${kind}/${file} — body asset missing on disk: ${src}`
+        );
+        errors++;
+      } else if (res.kind === "lago-unknown") {
+        console.warn(
+          `⚠  ${kind}/${file} — body asset not on disk and Lago manifest unreachable; assumed present: ${src}`
+        );
+        warnings++;
+      }
+    }
   }
 }
 
