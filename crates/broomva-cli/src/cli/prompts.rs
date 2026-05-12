@@ -460,22 +460,22 @@ mod tests {
             EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
 
         let server = MockServer::start().await;
+        // Server emits a bare PromptDetail (no { data } wrapper) since the
+        // Phase 2.1 envelope-mismatch fix.
         Mock::given(method("GET"))
             .and(path("/api/prompts/code-review-agent"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "data": {
-                    "id": "u1",
-                    "slug": "code-review-agent",
-                    "title": "Code Review Agent",
-                    "content": "system prompt body",
-                    "summary": "Structured code review",
-                    "category": "system-prompts",
-                    "model": "claude-sonnet-4.5",
-                    "tags": ["code-review"],
-                    "visibility": "public",
-                    "createdAt": "2026-05-09T00:00:00Z",
-                    "updatedAt": "2026-05-09T00:00:00Z"
-                }
+                "id": "u1",
+                "slug": "code-review-agent",
+                "title": "Code Review Agent",
+                "content": "system prompt body",
+                "summary": "Structured code review",
+                "category": "system-prompts",
+                "model": "claude-sonnet-4.5",
+                "tags": ["code-review"],
+                "visibility": "public",
+                "createdAt": "2026-05-09T00:00:00Z",
+                "updatedAt": "2026-05-09T00:00:00Z"
             })))
             .mount(&server)
             .await;
@@ -511,17 +511,16 @@ mod tests {
         let _disabled_guard = EnvGuard::set("BROOMVA_TELEMETRY_DISABLED", "1");
 
         let server = MockServer::start().await;
+        // Server emits a bare PromptDetail (no { data } wrapper).
         Mock::given(method("GET"))
             .and(path("/api/prompts/x"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "data": {
-                    "id": "u1",
-                    "slug": "x",
-                    "title": "X",
-                    "content": "body",
-                    "tags": [],
-                    "visibility": "public"
-                }
+                "id": "u1",
+                "slug": "x",
+                "title": "X",
+                "content": "body",
+                "tags": [],
+                "visibility": "public"
             })))
             .mount(&server)
             .await;

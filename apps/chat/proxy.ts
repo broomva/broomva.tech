@@ -52,6 +52,13 @@ const PUBLIC_API_PREFIXES = [
   // with 402 Payment Required when payment is needed. Middleware must let
   // the request through so the handler can pick the right path.
   "/api/life",
+  // Prompts eval engine (Phase 1 telemetry plane). These endpoints are
+  // anonymous-OK by design — the CLI and Claude Code skill emit
+  // invocation beacons from terminals that may have no session cookie.
+  // Per-IP and per-user rate limits enforced inside each handler.
+  "/api/invocations",
+  "/api/feedback",
+  "/api/metrics",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */

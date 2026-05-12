@@ -88,8 +88,9 @@ impl BroomvaClient {
         }
         let resp = req.send().await?;
         let resp = self.check_response(resp).await?;
-        let body: ApiListResponse<PromptSummary> = resp.json().await?;
-        Ok(body.data.unwrap_or_default())
+        // Server emits a bare array (apps/chat/app/api/prompts/route.ts).
+        // The legacy ApiListResponse<T> envelope was removed; parse the array directly.
+        Ok(resp.json().await?)
     }
 
     pub async fn get_prompt(&self, slug: &str) -> BroomvaResult<PromptDetail> {
@@ -98,12 +99,8 @@ impl BroomvaClient {
             .send()
             .await?;
         let resp = self.check_response(resp).await?;
-        let body: ApiResponse<PromptDetail> = resp.json().await?;
-        body.data.ok_or_else(|| BroomvaError::Api {
-            status: 404,
-            message: format!("prompt not found: {slug}"),
-            body: None,
-        })
+        // Server emits a bare PromptDetail (apps/chat/app/api/prompts/[slug]/route.ts).
+        Ok(resp.json().await?)
     }
 
     pub async fn create_prompt(&self, req: CreatePromptRequest) -> BroomvaResult<PromptDetail> {
@@ -113,12 +110,8 @@ impl BroomvaClient {
             .send()
             .await?;
         let resp = self.check_response(resp).await?;
-        let body: ApiResponse<PromptDetail> = resp.json().await?;
-        body.data.ok_or_else(|| BroomvaError::Api {
-            status: 500,
-            message: "create returned no data".into(),
-            body: None,
-        })
+        // Server emits a bare prompt row on 201 (no { data } wrapper).
+        Ok(resp.json().await?)
     }
 
     pub async fn update_prompt(
@@ -132,12 +125,8 @@ impl BroomvaClient {
             .send()
             .await?;
         let resp = self.check_response(resp).await?;
-        let body: ApiResponse<PromptDetail> = resp.json().await?;
-        body.data.ok_or_else(|| BroomvaError::Api {
-            status: 500,
-            message: "update returned no data".into(),
-            body: None,
-        })
+        // Server emits a bare prompt row on 200 (no { data } wrapper).
+        Ok(resp.json().await?)
     }
 
     pub async fn delete_prompt(&self, slug: &str) -> BroomvaResult<()> {

@@ -2,24 +2,37 @@ use serde::{Deserialize, Serialize};
 
 // ── Prompts ──
 
+/// PromptSummary matches the shape emitted by `GET /api/prompts`
+/// (`apps/chat/app/api/prompts/route.ts`). Server uses the slug as the
+/// stable identifier and omits `id` from the response — match accordingly.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PromptSummary {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub slug: String,
     pub title: String,
     pub summary: Option<String>,
     pub category: Option<String>,
     pub model: Option<String>,
+    #[serde(default)]
     pub visibility: Option<String>,
+    /// Server emits this as `date` (mirrors updatedAt). camelCase fallback
+    /// accepted so we tolerate either source without churn.
+    #[serde(default, alias = "date")]
     pub created_at: Option<String>,
+    #[serde(default)]
     pub updated_at: Option<String>,
 }
 
+/// PromptDetail matches `GET /api/prompts/[slug]`
+/// (`apps/chat/app/api/prompts/[slug]/route.ts`). Same caveat as
+/// PromptSummary: `id` is omitted server-side.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PromptDetail {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub slug: String,
     pub title: String,
     pub content: String,
@@ -29,7 +42,9 @@ pub struct PromptDetail {
     pub version: Option<String>,
     pub tags: Option<Vec<String>>,
     pub visibility: Option<String>,
+    #[serde(default, alias = "date")]
     pub created_at: Option<String>,
+    #[serde(default)]
     pub updated_at: Option<String>,
 }
 
