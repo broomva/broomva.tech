@@ -1,0 +1,22 @@
+[
+  {
+    "id": "97450a37-65f0-4d55-8dc6-29dd7db20928",
+    "status": "completed",
+    "display_name": "Seedream 4.5",
+    "job_set_type": "seedream_v4_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/hf_20260512_112859_97450a37-65f0-4d55-8dc6-29dd7db20928.png",
+    "created_at": 1778585339.6323,
+    "params": {
+      "prompt": "Scholarly anatomical plate from a 19th-century scientific monograph, in the visual tradition of Haeckel's Kunstformen der Natur and D'Arcy Thompson's On Growth and Form. Pure crisp vector linework illustration on a perfectly flat warm cream background, hex #FBF5E9, no paper texture, no aging, no grain.\n\nCentered subject: a horizontally-oriented torus, drawn in orthographic projection with a slight elevation, no glossy 3D-render shading. The torus surface is filled with a dense field of FINE HAIRLINE trajectory traces — many delicate lines, each at uniform thin stroke weight, no thick bold spirals. The lines describe two interleaved families of flow:\n- Major-axis family: roughly twenty fine slow curves tracing slowly around the torus's outer circumference, like vasculature carefully drawn by a draftsman.\n- Minor-axis family: even finer perpendicular hatching lines circulating across the surface, denser than the major-axis family, suggesting the cross-section of the surface.\n\nSurface tonality is built from line density (engraving hatch) only, not from gradient shading. No airbrush, no smooth gray fills, no glossy highlights.\n\nAt one point along the torus, a Möbius-like cross-folded throat constriction: the surface visibly twists and pinches in a half-twist, marked in deep sanguine red (#A82A1F) at the constriction point. This is the ONLY red in the image.\n\nPlate furniture: clearly defined negative-space zones reserved for typography to be composited in post-production. A horizontal blank band at the very top (approximately 8% of canvas height) for plate header. A horizontal blank band at the very bottom (approximately 6% of canvas height) for imprint footer. Vertical blank gutters on the far left (approximately 12% of canvas width) and far right (approximately 12% of canvas width) for marginalia. These zones are pure background — perfectly empty cream, no border lines, no tick marks.\n\nAbsolutely no text, no letters, no labels, no captions anywhere in the image. The composition is pure illustration with reserved typographic negative space.\n\nStyle register: vector engraving, flat orthographic, fine hairline discipline, scholarly authority. The visual lineage is D'Arcy Thompson, Haeckel, and Vesalius. Modern execution — vector-crisp, no aging — but compositional sensibility from the 1860s scientific monograph tradition. Think the illustrated figures of a Royal Society proceedings volume.",
+      "batch_size": 1,
+      "quality": "basic",
+      "aspect_ratio": "16:9",
+      "seed": 287569,
+      "width": 2560,
+      "height": 1440,
+      "input_images": [],
+      "use_unlim": false,
+      "reference_elements": []
+    }
+  }
+]
