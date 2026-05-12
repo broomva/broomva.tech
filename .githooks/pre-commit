@@ -3,18 +3,18 @@
 #
 # Checks:
 #   1. Audio (HARD FAIL): staged .mdx files with `audio:` frontmatter must have
-#      the referenced .mp3 in apps/chat/public/.
+#      the referenced .mp3 in apps/broomva/public/.
 #   2. Audio presence (HARD FAIL): every staged writing .mdx MUST have an
 #      `audio:` field in frontmatter.
 #   3. Hero image/media (WARNING): every staged writing .mdx should contain at
 #      least one image or video reference in the body (after frontmatter).
 #   4. Image directory (WARNING): for slug X, a matching directory should exist
-#      under apps/chat/public/images/writing/.
+#      under apps/broomva/public/images/writing/.
 
 set -e
 
-CONTENT_DIR="apps/chat/content"
-PUBLIC_DIR="apps/chat/public"
+CONTENT_DIR="apps/broomva/content"
+PUBLIC_DIR="apps/broomva/public"
 IMAGES_DIR="$PUBLIC_DIR/images/writing"
 
 errors=0

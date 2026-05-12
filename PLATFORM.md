@@ -9,7 +9,7 @@ plane is private.
 
 | Path | Purpose |
 |------|---------|
-| `apps/chat` | AI chat application (Next.js) |
+| `apps/broomva` | Broomva web app (Next.js) — chat, console, workspace |
 | `packages/cli` | CLI tooling |
 | `packages/*` (future) | Shared UI, utilities, configs |
 | `turbo.json` | Build pipeline |
