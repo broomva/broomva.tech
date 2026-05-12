@@ -77,7 +77,13 @@ export function McpCreateDialog({
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const form = useForm<McpConnectorFormValues>({
-    resolver: zodResolver(mcpConnectorFormSchema),
+    // @hookform/resolvers@5.x exposes overloads for zod v3 (Zod3Type, _def.typeName)
+    // and zod v4 ($ZodType from zod/v4/core). TypeScript prefers the v3 overload
+    // even when we pass a v4 schema, producing a spurious type mismatch on
+    // `_def.typeName`. Runtime works correctly (zodResolver detects the v4 shape
+    // via `_zod.version`); the cast suppresses the inference bug.
+    // biome-ignore lint/suspicious/noExplicitAny: zod v3↔v4 overload drift workaround.
+    resolver: zodResolver(mcpConnectorFormSchema as any),
     defaultValues: {
       name: "",
       url: "",

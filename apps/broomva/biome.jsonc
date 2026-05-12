@@ -17,6 +17,7 @@
       "!**/dist/**/*",
       "!**/build/**/*",
       "!.bun-tmp/**/*",
+      "!.arcan/**/*",
       "!app/globals.css",
       "!app/(console)/**/*"
     ]

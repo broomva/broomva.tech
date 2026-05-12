@@ -60,6 +60,7 @@ export function createBrowserClient(opts: BrowserClientOptions): LifegwClient {
 export function createServerClient(opts: ServerClientOptions): LifegwClient {
   const transport = createGrpcTransport({
     baseUrl: opts.baseUrl,
+    httpVersion: "2",
     interceptors: [authInterceptor(opts.getToken)],
   });
   return {
