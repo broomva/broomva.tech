@@ -59,6 +59,11 @@ const PUBLIC_API_PREFIXES = [
   "/api/invocations",
   "/api/feedback",
   "/api/metrics",
+  // Audio narration: every blog/project post has a "Listen to post" player.
+  // The handler stores per-user resume position when signed in, but degrades
+  // to no-op for anonymous readers (`NextResponse.json(null)` on GET, 401 on
+  // POST). The proxy must let the request through so the handler can pick.
+  "/api/audio-playback",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
