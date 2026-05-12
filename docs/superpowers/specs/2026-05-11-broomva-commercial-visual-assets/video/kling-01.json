@@ -1,0 +1,26 @@
+[
+  {
+    "id": "663c8828-7138-42e9-a1c6-3795d5196319",
+    "status": "completed",
+    "display_name": "Kling 2.6 Video",
+    "job_set_type": "kling2_6",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/hf_20260512_121032_663c8828-7138-42e9-a1c6-3795d5196319.mp4",
+    "created_at": 1778587832.627444,
+    "params": {
+      "width": 1344,
+      "height": 768,
+      "prompt": "Slow contemplative camera zoom-in toward the toroidal manifold over 10 seconds, with subtle horizontal parallax drift. Trajectory lines progressively trace themselves into existence with strict geometric precision — the long sweeping major-axis lines draw in first across the outer surface like vasculature being inked, then the finer faster minor-axis curves follow perpendicular. At approximately 8 seconds the cross-folded throat constriction resolves and brightens in deep sanguine red. Pure vector linework, lines emerge as clean precise curves, absolutely no wormy biological deformation, no fluid motion, no organic warping. The camera slows to a complete stop in the final 1.5 seconds with the composition holding steady on the final stable form. Audio: soft ambient room tone of a scholar's study at night, distant irregular ticking clock, faint paper rustle. At around 4 seconds a single sustained low-string cello note fades in under the ambient and holds through to the end, never resolving into a chord or becoming melody. The final two seconds the note quiets but holds, ending in near-silence. Cinema-grade single take, no cuts, no transitions, no flash, no glitch, no chromatic aberration.",
+      "duration": 10,
+      "aspect_ratio": "16:9",
+      "cfg_scale": 0.5,
+      "sound": true,
+      "input_image": {
+        "id": "c7d07983-0c84-4864-adeb-bf99a3d4f159",
+        "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/c7d07983-0c84-4864-adeb-bf99a3d4f159_resize.jpg",
+        "type": "media_input"
+      },
+      "negative_prompt": null,
+      "motion": null
+    }
+  }
+]
