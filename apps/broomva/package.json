@@ -45,6 +45,7 @@
     "fetch:models": "bun scripts/fetch-models.ts && bun format",
     "check:links": "node scripts/check-links.mjs",
     "check:content": "node scripts/check-content.mjs",
+    "check:public-asset-routes": "node scripts/verify-public-asset-routes.mjs",
     "generate:audio": "bun scripts/generate-audio.ts"
   },
   "dependencies": {

@@ -64,6 +64,55 @@ jobs:
       - name: Validate content quality
         run: bun run check:content
 
+      # Hit real production URLs without auth headers to make sure no
+      # public asset (audio / image / video / api/audio-playback) is being
+      # accidentally gated behind the auth proxy. Catches the exact bug
+      # class shipped in #147 where the proxy matcher missed `.mp3` and
+      # silently redirected every audio request to /login.
+      #
+      # Probe target is configurable via TARGET_BASE_URL; default is
+      # https://broomva.tech so PR builds catch production regressions
+      # before a merge piles on top of them. On PR builds we keep
+      # PROBE_MAX_ATTEMPTS=1 (production should already be stable, no
+      # reason to retry); the post-deploy smoke job runs the full retry.
+      - name: Probe public asset routes
+        env:
+          PROBE_MAX_ATTEMPTS: "1"
+        run: bun run check:public-asset-routes
+
+  smoke-test-deploy:
+    name: Smoke-test production after deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [validate, sync-assets]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Give Vercel a moment to start flipping the production alias after
+      # sync-assets finishes. The probe itself retries up to 6 times with
+      # 15s back-off (configured below), so we only need a small head-start
+      # here. The combined wait covers the typical 3-7min Vercel build that
+      # the git push triggered in parallel with this workflow.
+      - name: Wait for production deploy to start
+        run: sleep 60
+
+      - name: Probe public asset routes (production)
+        env:
+          TARGET_BASE_URL: https://broomva.tech
+          PROBE_MAX_ATTEMPTS: "6"
+          PROBE_RETRY_DELAY_MS: "15000"
+        run: bun run check:public-asset-routes
+
   sync-assets:
     name: Sync assets to Lago
     runs-on: ubuntu-latest
