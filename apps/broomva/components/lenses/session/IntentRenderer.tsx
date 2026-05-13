@@ -86,5 +86,9 @@ export function IntentRenderer({ node, sid }: Props) {
   const Component: ComponentType<Props> = discriminator
     ? (INTENT_MAP[discriminator] ?? UnknownIntent)
     : UnknownIntent;
-  return <Component node={node} sid={sid} />;
+  return (
+    <div id={`intent-${node.id}`}>
+      <Component node={node} sid={sid} />
+    </div>
+  );
 }
