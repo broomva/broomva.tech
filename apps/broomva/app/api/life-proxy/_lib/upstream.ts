@@ -1,6 +1,19 @@
 import "server-only";
 import type { ProsoponEvent } from "@broomva/prosopon";
 
+// Lazy import — keeps the factory module free of DB / env imports so
+// `getUpstream` is cheap and unit-testable without booting Postgres.
+// The session-runtime facade transitively imports canonical → db; we
+// only pay that cost when the adapter is actually exercised.
+type SessionRuntimeModule = typeof import("@/lib/life-runtime/session-runtime");
+let _sessionRuntime: SessionRuntimeModule | null = null;
+async function sessionRuntime(): Promise<SessionRuntimeModule> {
+  if (!_sessionRuntime) {
+    _sessionRuntime = await import("@/lib/life-runtime/session-runtime");
+  }
+  return _sessionRuntime;
+}
+
 export interface UpstreamRuntime {
   kind: "in-process" | "lifegw";
 
@@ -40,19 +53,24 @@ export function getUpstream(): UpstreamRuntime {
 function createInProcessAdapter(): UpstreamRuntime {
   return {
     kind: "in-process",
-    async *streamSession() {
-      // Implementation lands in Task 3 once we've inspected the existing
-      // canonical runtime API. For now, throw so unwired call sites fail loudly.
-      throw new Error("in-process streamSession not yet implemented");
+    async *streamSession({ sid, fromSeq, signal }) {
+      const rt = await sessionRuntime();
+      for await (const ev of rt.streamSession({ sid, fromSeq, signal })) {
+        if (signal.aborted) break;
+        yield ev;
+      }
     },
-    async sendMessage() {
-      throw new Error("in-process sendMessage not yet implemented");
+    async sendMessage({ sid, content }) {
+      const rt = await sessionRuntime();
+      await rt.sendMessage({ sid, content });
     },
-    async approveDispatch() {
-      throw new Error("in-process approveDispatch not yet implemented");
+    async approveDispatch({ sid, dispatchId }) {
+      const rt = await sessionRuntime();
+      await rt.approveDispatch({ sid, dispatchId });
     },
-    async cancelDispatch() {
-      throw new Error("in-process cancelDispatch not yet implemented");
+    async cancelDispatch({ sid, dispatchId, reason }) {
+      const rt = await sessionRuntime();
+      await rt.cancelDispatch({ sid, dispatchId, reason });
     },
   };
 }
