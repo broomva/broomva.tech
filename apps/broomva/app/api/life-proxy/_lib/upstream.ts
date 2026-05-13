@@ -80,10 +80,29 @@ function createInProcessAdapter(): UpstreamRuntime {
 }
 
 function createLifegwAdapter(): UpstreamRuntime {
+  // Stub adapter — lifegw wiring lands when @broomva/lifegw-client gains a
+  // real streamSession binding (B-4b or later). Until then, every method
+  // throws on first call. The async generator is rewritten to a function
+  // that returns an async iterable so biome's useYield rule doesn't flag a
+  // body-less generator.
+  function createStubIterable(): AsyncIterable<never> {
+    return {
+      [Symbol.asyncIterator]() {
+        return {
+          async next(): Promise<IteratorResult<never>> {
+            throw new Error(
+              "lifegw streamSession not yet implemented (LIFEGW_URL set but adapter is stub)",
+            );
+          },
+        };
+      },
+    };
+  }
+
   return {
     kind: "lifegw",
-    async *streamSession() {
-      throw new Error("lifegw streamSession not yet implemented (LIFEGW_URL set but adapter is stub)");
+    streamSession() {
+      return createStubIterable();
     },
     async sendMessage() {
       throw new Error("lifegw sendMessage not yet implemented");
