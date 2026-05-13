@@ -17,7 +17,10 @@ interface Props {
  * onto the node intent for compositor convenience).
  */
 export function StreamIntent({ node }: Props) {
-  const intent = node.intent as {
+  // Canonical `Intent::Stream` is `{ type, id, kind }`; emitters that
+  // mirror text/done onto the node intent ship this extended shape.
+  // Cast through unknown to read both safely.
+  const intent = node.intent as unknown as {
     type?: "stream";
     kind?: "stream";
     text?: string;
@@ -32,8 +35,7 @@ export function StreamIntent({ node }: Props) {
       <div
         className="text-[15.5px] leading-[1.8] text-white/90"
         style={{
-          fontFamily:
-            "'Source Serif Pro', Charter, Cambria, Georgia, serif",
+          fontFamily: "'Source Serif Pro', Charter, Cambria, Georgia, serif",
         }}
       >
         {text}

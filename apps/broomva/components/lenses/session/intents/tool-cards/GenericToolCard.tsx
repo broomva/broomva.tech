@@ -51,9 +51,7 @@ export function GenericToolCard({ node }: Props) {
   )?.result;
   const result = legacyResult ?? attrResult;
   const ok =
-    result === undefined
-      ? undefined
-      : (result.ok ?? result.success ?? false);
+    result === undefined ? undefined : (result.ok ?? result.success ?? false);
   const status = result === undefined ? "running" : ok ? "ok" : "error";
   const output = result?.output ?? result?.payload;
   const argsJson = intent.args === undefined ? "" : JSON.stringify(intent.args);

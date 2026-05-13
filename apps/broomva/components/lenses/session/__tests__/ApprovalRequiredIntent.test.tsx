@@ -7,8 +7,7 @@ import { ApprovalRequiredIntent } from "../intents/ApprovalRequiredIntent";
 describe("ApprovalRequiredIntent", () => {
   beforeEach(() => {
     (globalThis as unknown as { fetch: typeof fetch }).fetch = vi.fn(
-      async () =>
-        new Response(JSON.stringify({ ok: true }), { status: 202 }),
+      async () => new Response(JSON.stringify({ ok: true }), { status: 202 }),
     ) as unknown as typeof fetch;
   });
   afterEach(() => {

@@ -22,7 +22,10 @@ interface Props {
  * narrowing.
  */
 export function ApprovalRequiredIntent({ node, sid }: Props) {
-  const intent = node.intent as {
+  // approval_required is not (yet) a variant of the canonical Prosopon
+  // Intent enum, so cast through unknown to land on the plan-shaped
+  // extension intent.
+  const intent = node.intent as unknown as {
     kind?: "approval_required";
     type?: "approval_required";
     dispatch_id: string;

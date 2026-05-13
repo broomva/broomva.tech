@@ -30,7 +30,8 @@ export function ProgressIntent({ node }: Props) {
           intent.total > 0
         ? intent.value / intent.total
         : null;
-  const pct = fraction === null ? null : Math.max(0, Math.min(1, fraction)) * 100;
+  const pct =
+    fraction === null ? null : Math.max(0, Math.min(1, fraction)) * 100;
   return (
     <div className="mb-[18px] flex items-center gap-3">
       {pct === null ? (
