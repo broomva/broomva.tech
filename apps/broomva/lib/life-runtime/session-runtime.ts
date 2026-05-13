@@ -23,7 +23,7 @@
  */
 
 import "server-only";
-import type { Envelope, ProsoponEvent } from "@broomva/prosopon";
+import { type Envelope, makeEnvelope } from "@broomva/prosopon";
 import {
   createLifeRuntime,
   type LifeRuntime,
@@ -36,14 +36,19 @@ import type { ConsumerIdentity } from "./types";
 // Per-session state
 // ---------------------------------------------------------------------------
 
+// Wire contract for the Session lens: the SSE handler emits FULL `Envelope`
+// frames (Prosopon's canonical wire shape — see `packages/prosopon-ts/src/codec.ts`).
+// The session-runtime owns the per-session monotonic `seq`; it rewrites the
+// envelope's `seq` / `session_id` to match this session before emission so
+// the client cursor is well-defined even when the canonical runtime emits
+// envelopes scoped to per-turn sub-sessions.
+
 interface PendingEnvelope {
   envelope: Envelope;
-  /** Monotonic seq within this session. */
-  seq: bigint;
 }
 
 interface Waiter {
-  resolve: (value: IteratorResult<ProsoponEvent>) => void;
+  resolve: (value: IteratorResult<Envelope>) => void;
   signal: AbortSignal;
 }
 
@@ -54,7 +59,7 @@ interface SessionState {
   /** Streamers currently parked waiting for a new envelope. */
   waiters: Waiter[];
   /** Monotonic seq counter. Each emitted envelope gets the next value. */
-  nextSeq: bigint;
+  nextSeq: number;
 }
 
 const SESSIONS = new Map<string, SessionState>();
@@ -66,21 +71,28 @@ function getOrCreateSession(sid: string): SessionState {
       sid,
       buffer: [],
       waiters: [],
-      nextSeq: 1n,
+      nextSeq: 1,
     };
     SESSIONS.set(sid, state);
   }
   return state;
 }
 
-function emit(state: SessionState, envelope: Envelope): void {
-  const seq = state.nextSeq;
-  state.nextSeq = seq + 1n;
-  const pending: PendingEnvelope = { envelope, seq };
+function emit(state: SessionState, inner: Envelope): void {
+  // Rewrite seq + session_id so the session lens sees a clean monotonic
+  // stream rooted at this sid. Preserve the original event + ts.
+  const envelope: Envelope = makeEnvelope({
+    session_id: state.sid,
+    seq: state.nextSeq,
+    event: inner.event,
+    ts: inner.ts,
+  });
+  state.nextSeq += 1;
+  const pending: PendingEnvelope = { envelope };
   const waiter = state.waiters.shift();
   if (waiter) {
     waiter.resolve({
-      value: pending.envelope.event as ProsoponEvent,
+      value: pending.envelope,
       done: false,
     });
   } else {
@@ -114,10 +126,15 @@ export interface StreamSessionOpts {
  * Subscribe to the envelope stream for one session. Yields buffered
  * envelopes immediately (filtered by `fromSeq`), then parks until
  * `sendMessage` pushes new ones into the queue, or `signal` aborts.
+ *
+ * Yields full `Envelope` frames — `seq` is sourced from `envelope.seq`,
+ * not from inside `envelope.event`. The session-lens hook reads the
+ * envelope's seq to advance its cursor and applies `envelope.event`
+ * to the Scene via Prosopon's `applyEvent`.
  */
 export async function* streamSession(
   opts: StreamSessionOpts,
-): AsyncGenerator<ProsoponEvent, void, unknown> {
+): AsyncGenerator<Envelope, void, unknown> {
   const { sid, fromSeq, signal } = opts;
   const state = getOrCreateSession(sid);
 
@@ -129,25 +146,23 @@ export async function* streamSession(
     if (signal.aborted) return;
     const head = state.buffer.shift();
     if (!head) break;
-    if (head.seq <= fromSeq) continue;
-    yield head.envelope.event as ProsoponEvent;
+    if (BigInt(head.envelope.seq) <= fromSeq) continue;
+    yield head.envelope;
   }
 
   // Park until a new envelope arrives or the caller aborts.
   while (!signal.aborted) {
-    const next = await new Promise<IteratorResult<ProsoponEvent>>(
-      (resolve) => {
-        const waiter: Waiter = { resolve, signal };
-        const onAbort = () => {
-          // Drop this waiter from the queue on abort.
-          const idx = state.waiters.indexOf(waiter);
-          if (idx >= 0) state.waiters.splice(idx, 1);
-          resolve({ value: undefined, done: true });
-        };
-        signal.addEventListener("abort", onAbort, { once: true });
-        state.waiters.push(waiter);
-      },
-    );
+    const next = await new Promise<IteratorResult<Envelope>>((resolve) => {
+      const waiter: Waiter = { resolve, signal };
+      const onAbort = () => {
+        // Drop this waiter from the queue on abort.
+        const idx = state.waiters.indexOf(waiter);
+        if (idx >= 0) state.waiters.splice(idx, 1);
+        resolve({ value: undefined, done: true });
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      state.waiters.push(waiter);
+    });
     if (next.done) return;
     yield next.value;
   }

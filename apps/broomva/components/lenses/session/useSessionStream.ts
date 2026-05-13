@@ -1,6 +1,11 @@
 "use client";
 
-import { applyEvent, type ProsoponEvent, type Scene } from "@broomva/prosopon";
+import {
+  applyEvent,
+  type Envelope,
+  type ProsoponEvent,
+  type Scene,
+} from "@broomva/prosopon";
 import { useEffect, useReducer, useRef, useState } from "react";
 
 const EMPTY_SCENE: Scene = {
@@ -17,22 +22,37 @@ interface State {
   lastSeq: bigint;
 }
 
-type Action = { kind: "event"; event: ProsoponEvent } | { kind: "reset" };
+type Action =
+  | { kind: "envelope"; envelope: Envelope }
+  | { kind: "event"; event: ProsoponEvent }
+  | { kind: "reset" };
 
 function reducer(state: State, action: Action): State {
   if (action.kind === "reset") {
     return { scene: EMPTY_SCENE, lastSeq: 0n };
   }
-  // Prosopon's applyEvent is pure and idempotent for older events; safe to call.
+  if (action.kind === "envelope") {
+    // Prosopon's applyEvent is pure and idempotent for older events.
+    const nextScene = applyEvent(state.scene, action.envelope.event);
+    // Envelope.seq is a JSON-safe number; route encodes bigints as strings
+    // via the BigInt replacer, but in practice the runtime emits numbers
+    // ≤ 2^53. Coerce defensively to support both.
+    const rawSeq = action.envelope.seq as unknown;
+    const seq =
+      typeof rawSeq === "bigint"
+        ? rawSeq
+        : typeof rawSeq === "number"
+          ? BigInt(rawSeq)
+          : typeof rawSeq === "string"
+            ? BigInt(rawSeq)
+            : state.lastSeq;
+    const nextSeq = seq > state.lastSeq ? seq : state.lastSeq;
+    return { scene: nextScene, lastSeq: nextSeq };
+  }
+  // Direct event dispatch (used by callers replaying local state); does
+  // not advance seq since events carry no seq of their own.
   const nextScene = applyEvent(state.scene, action.event);
-  const seq =
-    typeof (action.event as any).seq === "bigint"
-      ? (action.event as any).seq
-      : typeof (action.event as any).seq === "string"
-        ? BigInt((action.event as any).seq)
-        : state.lastSeq;
-  const nextSeq = seq > state.lastSeq ? seq : state.lastSeq;
-  return { scene: nextScene, lastSeq: nextSeq };
+  return { scene: nextScene, lastSeq: state.lastSeq };
 }
 
 export interface UseSessionStreamOptions {
@@ -73,8 +93,8 @@ export function useSessionStream(
     es.onerror = () => setConnected(false);
     es.onmessage = (ev) => {
       try {
-        const parsed = JSON.parse(ev.data) as ProsoponEvent;
-        dispatchAction({ kind: "event", event: parsed });
+        const parsed = JSON.parse(ev.data) as Envelope;
+        dispatchAction({ kind: "envelope", envelope: parsed });
       } catch {
         // ignore malformed frames
       }

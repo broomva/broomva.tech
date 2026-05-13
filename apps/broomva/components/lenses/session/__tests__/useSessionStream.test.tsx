@@ -51,11 +51,18 @@ describe("useSessionStream", () => {
     const { result } = renderHook(() => useSessionStream({ sid: "abc" }));
     act(() => {
       MockEventSource.instances[0].emit({
-        type: "scene_reset",
-        seq: "5",
-        ts: Date.now(),
+        version: 1,
         session_id: "abc",
-        scene: { id: "abc", nodes: [], signals: {}, meta: {} },
+        seq: 5,
+        ts: new Date().toISOString(),
+        event: {
+          type: "scene_reset",
+          scene: {
+            id: "abc",
+            root: { id: "root", intent: { type: "prose", text: "" } },
+            signals: {},
+          },
+        },
       });
     });
     await waitFor(() => expect(result.current.lastSeq).toBe(5n));

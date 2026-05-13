@@ -1,5 +1,5 @@
 import "server-only";
-import type { ProsoponEvent } from "@broomva/prosopon";
+import type { Envelope } from "@broomva/prosopon";
 
 // Lazy import — keeps the factory module free of DB / env imports so
 // `getUpstream` is cheap and unit-testable without booting Postgres.
@@ -17,12 +17,16 @@ async function sessionRuntime(): Promise<SessionRuntimeModule> {
 export interface UpstreamRuntime {
   kind: "in-process" | "lifegw";
 
-  /** Open a stream of Prosopon envelopes for a session, starting at fromSeq. */
+  /**
+   * Open a stream of Prosopon envelopes for a session, starting at fromSeq.
+   * Yields full `Envelope` frames — `seq` and `session_id` live on the
+   * envelope, not on the inner `ProsoponEvent`.
+   */
   streamSession(opts: {
     sid: string;
     fromSeq: bigint;
     signal: AbortSignal;
-  }): AsyncIterable<ProsoponEvent>;
+  }): AsyncIterable<Envelope>;
 
   sendMessage(opts: { sid: string; content: string }): Promise<void>;
   approveDispatch(opts: { sid: string; dispatchId: string }): Promise<void>;
