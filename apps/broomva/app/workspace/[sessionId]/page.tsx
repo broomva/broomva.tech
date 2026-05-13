@@ -1,25 +1,34 @@
+import { SessionLensClient } from "@/components/lenses/session/SessionLensClient";
+
 interface SessionPageProps {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ seq?: string }>;
 }
 
 /**
- * Per-session page. v1 is a placeholder — the actual Session lens (Prosopon
- * compositor + WS streaming via lifegw) lands in Plan B / PR 4.
+ * Per-session page. Server Component reads `sessionId` from params and an
+ * optional `?seq=N` cursor from searchParams, then hands off to the
+ * Client Component that owns the SSE connection + Prosopon reducer.
+ *
+ * Note: the URL hash (`#seq=N`) the client writes after each event is
+ * client-side only and cannot be read in a Server Component. The
+ * `?seq=N` query string is supported as an SSR-friendly alternative
+ * for direct-navigation resume; if absent we default to 0n and the
+ * upstream replays from the beginning of the session.
  */
-export default async function SessionPage({ params }: SessionPageProps) {
+export default async function SessionPage({
+  params,
+  searchParams,
+}: SessionPageProps) {
   const { sessionId } = await params;
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 px-8 py-20">
-      <h1
-        className="text-[22px] tracking-tight"
-        style={{ fontFamily: "CalSans, ui-sans-serif, system-ui" }}
-      >
-        Session
-      </h1>
-      <p className="font-mono text-[12px] opacity-60">{sessionId}</p>
-      <p className="max-w-[40ch] text-center text-[13px] opacity-60">
-        Session lens lands in Plan B. This is the placeholder.
-      </p>
-    </div>
-  );
+  const { seq } = await searchParams;
+  const initialSeq = ((): bigint => {
+    if (!seq) return 0n;
+    try {
+      return BigInt(seq);
+    } catch {
+      return 0n;
+    }
+  })();
+  return <SessionLensClient sid={sessionId} initialSeq={initialSeq} />;
 }

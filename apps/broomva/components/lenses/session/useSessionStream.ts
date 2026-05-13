@@ -1,0 +1,130 @@
+"use client";
+
+import {
+  applyEvent,
+  type Envelope,
+  type ProsoponEvent,
+  type Scene,
+} from "@broomva/prosopon";
+import { useEffect, useReducer, useRef, useState } from "react";
+
+const EMPTY_SCENE: Scene = {
+  id: "",
+  root: {
+    id: "root",
+    intent: { type: "prose", text: "" },
+  },
+  signals: {},
+};
+
+interface State {
+  scene: Scene;
+  lastSeq: bigint;
+}
+
+type Action =
+  | { kind: "envelope"; envelope: Envelope }
+  | { kind: "event"; event: ProsoponEvent }
+  | { kind: "reset" };
+
+function reducer(state: State, action: Action): State {
+  if (action.kind === "reset") {
+    return { scene: EMPTY_SCENE, lastSeq: 0n };
+  }
+  if (action.kind === "envelope") {
+    // Prosopon's applyEvent is pure and idempotent for older events.
+    const nextScene = applyEvent(state.scene, action.envelope.event);
+    // Envelope.seq is a JSON-safe number; route encodes bigints as strings
+    // via the BigInt replacer, but in practice the runtime emits numbers
+    // ≤ 2^53. Coerce defensively to support both.
+    const rawSeq = action.envelope.seq as unknown;
+    const seq =
+      typeof rawSeq === "bigint"
+        ? rawSeq
+        : typeof rawSeq === "number"
+          ? BigInt(rawSeq)
+          : typeof rawSeq === "string"
+            ? BigInt(rawSeq)
+            : state.lastSeq;
+    const nextSeq = seq > state.lastSeq ? seq : state.lastSeq;
+    return { scene: nextScene, lastSeq: nextSeq };
+  }
+  // Direct event dispatch (used by callers replaying local state); does
+  // not advance seq since events carry no seq of their own.
+  const nextScene = applyEvent(state.scene, action.event);
+  return { scene: nextScene, lastSeq: state.lastSeq };
+}
+
+export interface UseSessionStreamOptions {
+  sid: string;
+  /** Initial sequence cursor; default 0n. Read from URL hash by caller. */
+  initialSeq?: bigint;
+}
+
+export interface UseSessionStreamResult {
+  scene: Scene;
+  lastSeq: bigint;
+  connected: boolean;
+  dispatch: (event: ProsoponEvent) => void;
+}
+
+/**
+ * Opens an SSE connection to /api/life-proxy/sse/[sid] and reduces incoming
+ * Prosopon envelopes into a Scene via applyEvent. Mirrors lastSeq to the
+ * URL hash so reload picks up the cursor.
+ */
+export function useSessionStream(
+  opts: UseSessionStreamOptions,
+): UseSessionStreamResult {
+  const { sid, initialSeq = 0n } = opts;
+  const [state, dispatchAction] = useReducer(reducer, {
+    scene: EMPTY_SCENE,
+    lastSeq: initialSeq,
+  });
+  const [connected, setConnected] = useState(false);
+  const seqRef = useRef(initialSeq);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = `/api/life-proxy/sse/${encodeURIComponent(sid)}?from_seq=${seqRef.current.toString()}`;
+    const es = new EventSource(url);
+
+    es.onopen = () => setConnected(true);
+    es.onerror = () => setConnected(false);
+    es.onmessage = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.data) as Envelope;
+        dispatchAction({ kind: "envelope", envelope: parsed });
+      } catch {
+        // ignore malformed frames
+      }
+    };
+
+    return () => {
+      es.close();
+    };
+  }, [sid]);
+
+  // Mirror lastSeq → URL hash whenever it advances. replaceState avoids
+  // polluting history.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (state.lastSeq <= 0n) return;
+    seqRef.current = state.lastSeq;
+    const newHash = `#seq=${state.lastSeq.toString()}`;
+    if (window.location.hash !== newHash) {
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}${newHash}`,
+      );
+    }
+  }, [state.lastSeq]);
+
+  return {
+    scene: state.scene,
+    lastSeq: state.lastSeq,
+    connected,
+    dispatch: (event) => dispatchAction({ kind: "event", event }),
+  };
+}

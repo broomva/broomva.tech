@@ -1,0 +1,14 @@
+.cursor {
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  margin-left: 1px;
+  vertical-align: middle;
+  background: var(--ag-ai-blue);
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
