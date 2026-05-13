@@ -1,12 +1,31 @@
 import type { SceneNode } from "@broomva/prosopon";
 import type { ComponentType } from "react";
 import { ApprovalRequiredIntent } from "./intents/ApprovalRequiredIntent";
+import { AudioIntent } from "./intents/AudioIntent";
+import { ChoiceIntent } from "./intents/ChoiceIntent";
+import { CitationIntent } from "./intents/CitationIntent";
+import { CodeIntent } from "./intents/CodeIntent";
+import { ConfirmIntent } from "./intents/ConfirmIntent";
+import { CustomIntent } from "./intents/CustomIntent";
+import { DividerIntent } from "./intents/DividerIntent";
+import { EntityRefIntent } from "./intents/EntityRefIntent";
+import { FieldIntent } from "./intents/FieldIntent";
+import { FormationIntent } from "./intents/FormationIntent";
+import { GroupIntent } from "./intents/GroupIntent";
+import { ImageIntent } from "./intents/ImageIntent";
+import { InputIntent } from "./intents/InputIntent";
+import { LinkIntent } from "./intents/LinkIntent";
+import { LocusIntent } from "./intents/LocusIntent";
+import { MathIntent } from "./intents/MathIntent";
 import { ProgressIntent } from "./intents/ProgressIntent";
 import { ProseIntent } from "./intents/ProseIntent";
+import { SectionIntent } from "./intents/SectionIntent";
+import { SignalIntent } from "./intents/SignalIntent";
 import { StreamIntent } from "./intents/StreamIntent";
 import { ToolCallIntent } from "./intents/ToolCallIntent";
 import { ToolResultIntent } from "./intents/ToolResultIntent";
 import { UnknownIntent } from "./intents/UnknownIntent";
+import { VideoIntent } from "./intents/VideoIntent";
 
 interface Props {
   node: SceneNode;
@@ -40,6 +59,25 @@ const INTENT_MAP: Record<string, ComponentType<Props>> = {
   tool_result: ToolResultIntent,
   approval_required: ApprovalRequiredIntent as ComponentType<Props>,
   progress: ProgressIntent,
+  image: ImageIntent,
+  audio: AudioIntent,
+  video: VideoIntent,
+  code: CodeIntent,
+  math: MathIntent,
+  entity_ref: EntityRefIntent,
+  link: LinkIntent,
+  citation: CitationIntent,
+  signal: SignalIntent,
+  choice: ChoiceIntent,
+  confirm: ConfirmIntent,
+  input: InputIntent,
+  field: FieldIntent,
+  section: SectionIntent,
+  group: GroupIntent,
+  divider: DividerIntent,
+  locus: LocusIntent,
+  formation: FormationIntent,
+  custom: CustomIntent,
 };
 
 export function IntentRenderer({ node, sid }: Props) {

@@ -61,4 +61,38 @@ describe("IntentRenderer", () => {
     );
     expect(screen.getByText(/fs\.read/)).toBeTruthy();
   });
+
+  it("renders ImageIntent for kind=image", () => {
+    render(
+      <IntentRenderer
+        node={
+          {
+            id: "n4",
+            intent: {
+              type: "image",
+              src: "https://example.test/a.png",
+              alt: "x",
+            },
+          } as never
+        }
+        sid={sid}
+      />,
+    );
+    expect(screen.getByRole("img")).toBeTruthy();
+  });
+
+  it("renders CodeIntent for kind=code", () => {
+    render(
+      <IntentRenderer
+        node={
+          {
+            id: "n5",
+            intent: { type: "code", language: "ts", text: "const x = 1;" },
+          } as never
+        }
+        sid={sid}
+      />,
+    );
+    expect(screen.getByText(/const x = 1;/)).toBeTruthy();
+  });
 });
