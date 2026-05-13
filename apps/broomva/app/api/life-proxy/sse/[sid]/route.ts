@@ -3,11 +3,11 @@ import type { NextRequest } from "next/server";
 import { requireSession } from "../../_lib/auth";
 import { getUpstream } from "../../_lib/upstream";
 
-// Next.js 16 with cacheComponents enabled disallows per-route `runtime` exports.
-// The handler still runs in the Node.js runtime by default for this project; SSE
-// + ReadableStream + AbortController need Node-shaped runtime and the app's
-// next.config sets this at the project level.
-export const dynamic = "force-dynamic";
+// Next.js 16 with cacheComponents enabled disallows per-route `runtime` and
+// `dynamic` exports. The handler is inherently uncacheable — it reads
+// req.signal, NextRequest.nextUrl.searchParams, and returns a streaming
+// ReadableStream — so Next 16 auto-detects it as dynamic without needing the
+// directive.
 
 /**
  * GET /api/life-proxy/sse/[sid]
