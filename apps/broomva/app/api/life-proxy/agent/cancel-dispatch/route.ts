@@ -4,7 +4,8 @@ import { z } from "zod";
 import { requireSession } from "../../_lib/auth";
 import { getUpstream } from "../../_lib/upstream";
 
-export const runtime = "nodejs";
+// Next.js 16 with cacheComponents enabled disallows per-route `runtime` exports.
+// Project-level config already targets Node.js runtime for API routes.
 
 const body = z.object({
   sid: z.string().min(1),

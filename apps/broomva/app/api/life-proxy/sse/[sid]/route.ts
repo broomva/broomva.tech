@@ -3,7 +3,10 @@ import type { NextRequest } from "next/server";
 import { requireSession } from "../../_lib/auth";
 import { getUpstream } from "../../_lib/upstream";
 
-export const runtime = "nodejs";
+// Next.js 16 with cacheComponents enabled disallows per-route `runtime` exports.
+// The handler still runs in the Node.js runtime by default for this project; SSE
+// + ReadableStream + AbortController need Node-shaped runtime and the app's
+// next.config sets this at the project level.
 export const dynamic = "force-dynamic";
 
 /**
