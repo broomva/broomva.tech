@@ -108,7 +108,34 @@ const LAYER_META: Record<string, { id: string; name: string; description: string
     description: "Domain-specific decision tools and content pipelines.",
     order: 6,
   },
+  "bstack-primitive": {
+    id: "primitive",
+    name: "Bstack Primitives",
+    description: "Workspace-governance primitives (P14–P19+): reasoning, format, orchestration, lens routing.",
+    order: 7,
+  },
+  // Fallback layer for skill repos without a bstack-* topic (the common case
+  // for newer skills, persona-* skills, content/research/strategy clusters).
+  __uncategorized__: {
+    id: "uncategorized",
+    name: "Other Skills",
+    description: "Additional broomva/* skills without an explicit bstack-* layer tag.",
+    order: 99,
+  },
 };
+
+/** Heuristic layer derivation when a repo doesn't have a bstack-* topic.
+ *  Keeps the page coherent even when topic taxonomy is inconsistent across repos. */
+function deriveLayerFromTopics(topics: string[]): string {
+  if (topics.includes("bstack-primitive")) return "bstack-primitive";
+  if (topics.some((t) => t.startsWith("bstack-"))) {
+    return topics.find((t) => t.startsWith("bstack-")) ?? "__uncategorized__";
+  }
+  // Heuristics for repos without bstack-* tags
+  if (topics.some((t) => ["agent-os", "agent-framework", "agent-runtime"].includes(t))) return "bstack-foundation";
+  if (topics.some((t) => ["agent-skill", "skills", "skills-sh"].includes(t))) return "__uncategorized__";
+  return "__uncategorized__";
+}
 
 interface SkillFrontmatter {
   name: string;
@@ -137,7 +164,7 @@ import type { BstackLayer, BstackSkill } from "@/lib/skills-data";
 
 async function fetchSkillsFromGitHub(username: string): Promise<BstackLayer[]> {
   "use cache";
-  cacheLife("weeks");
+  cacheLife("hours");
   const headers: HeadersInit = {
     Accept: "application/vnd.github+json",
   };
@@ -146,7 +173,7 @@ async function fetchSkillsFromGitHub(username: string): Promise<BstackLayer[]> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // Fetch all repos
+  // Fetch all owner repos (paginated; 100/page max from GitHub)
   const res = await fetch(
     `https://api.github.com/users/${username}/repos?type=owner&sort=pushed&direction=desc&per_page=100`,
     { headers },
@@ -155,16 +182,20 @@ async function fetchSkillsFromGitHub(username: string): Promise<BstackLayer[]> {
 
   const repos: GitHubRepo[] = await res.json();
 
-  // Filter repos that have a bstack-* topic
-  const bstackRepos = repos.filter((r) =>
-    r.topics.some((t) => t.startsWith("bstack-")),
-  );
-
-  // Fetch SKILL.md for each repo (in parallel, with concurrency limit)
-  const skills: Array<{ repo: GitHubRepo; frontmatter: SkillFrontmatter; layer: string }> = [];
+  // Canonical filter: presence of SKILL.md at repo root.
+  // Topic tags are inconsistent across the broomva org (agent-skill,
+  // agent-skills, bstack-*, or none); SKILL.md is the canonical signal
+  // a repo is a published skill.
+  //
+  // For each repo, attempt to fetch /contents/SKILL.md in parallel.
+  // Repos without SKILL.md are silently filtered out (no error noise).
+  const skillCandidates: Array<{
+    repo: GitHubRepo;
+    frontmatter: SkillFrontmatter;
+  }> = [];
 
   await Promise.all(
-    bstackRepos.map(async (repo) => {
+    repos.map(async (repo) => {
       try {
         const fileRes = await fetch(
           `https://api.github.com/repos/${username}/${repo.name}/contents/SKILL.md`,
@@ -173,48 +204,57 @@ async function fetchSkillsFromGitHub(username: string): Promise<BstackLayer[]> {
         if (!fileRes.ok) return;
 
         const fileData = await fileRes.json();
+        if (!fileData?.content) return;
+
         const content = Buffer.from(fileData.content, "base64").toString("utf-8");
         const frontmatter = parseSkillFrontmatter(content);
         if (!frontmatter) return;
 
-        const layerTopic = repo.topics.find((t) => t.startsWith("bstack-"));
-        if (!layerTopic) return;
-
-        skills.push({ repo, frontmatter, layer: layerTopic });
+        skillCandidates.push({ repo, frontmatter });
       } catch {
-        // Skip repos where SKILL.md can't be fetched
+        // Network/parse errors → skip; failure is silent by design
       }
     }),
   );
 
-  // Group by layer
+  // Group by derived layer (bstack-* topic if present, fallback heuristic)
   const layerMap = new Map<string, BstackSkill[]>();
-  for (const { repo, frontmatter, layer } of skills) {
-    const list = layerMap.get(layer) ?? [];
+  for (const { repo, frontmatter } of skillCandidates) {
+    const layerKey = deriveLayerFromTopics(repo.topics);
+    const list = layerMap.get(layerKey) ?? [];
     list.push({
       slug: repo.name,
-      name: frontmatter.name,
-      description: frontmatter.description.slice(0, 200),
+      name: frontmatter.name || repo.name,
+      description: frontmatter.description.slice(0, 240),
       installCommand: `npx skills add ${username}/${repo.name}`,
       skillsUrl: `https://skills.sh/${username}/${repo.name}`,
+      repoUrl: repo.html_url,
+      stars: repo.stargazers_count,
+      updatedAt: repo.pushed_at,
+      topics: repo.topics,
     });
-    layerMap.set(layer, list);
+    layerMap.set(layerKey, list);
   }
 
-  // Build layers in order
+  // Build layers in order, sorting skills within each layer by stars desc, then name asc
   const layers: BstackLayer[] = [];
-  const sortedTopics = [...layerMap.keys()].sort(
+  const sortedLayerKeys = [...layerMap.keys()].sort(
     (a, b) => (LAYER_META[a]?.order ?? 99) - (LAYER_META[b]?.order ?? 99),
   );
 
-  for (const topic of sortedTopics) {
-    const meta = LAYER_META[topic];
+  for (const key of sortedLayerKeys) {
+    const meta = LAYER_META[key];
     if (!meta) continue;
+    const skills = (layerMap.get(key) ?? []).sort((a, b) => {
+      const starDiff = (b.stars ?? 0) - (a.stars ?? 0);
+      if (starDiff !== 0) return starDiff;
+      return a.name.localeCompare(b.name);
+    });
     layers.push({
       id: meta.id,
       name: meta.name,
       description: meta.description,
-      skills: layerMap.get(topic) ?? [],
+      skills,
     });
   }
 
