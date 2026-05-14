@@ -97,4 +97,61 @@ describe("Composer", () => {
       (globalThis as unknown as { fetch: ReturnType<typeof vi.fn> }).fetch,
     ).not.toHaveBeenCalled();
   });
+
+  it("opens the file picker when @ is typed", async () => {
+    render(
+      <SceneContextProvider
+        value={{
+          scene: emptyScene,
+          dispatch: () => {},
+          connected: true,
+          lastSeq: 0n,
+        }}
+      >
+        <Composer sid="abc" />
+      </SceneContextProvider>,
+    );
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "@" } });
+    await waitFor(() =>
+      expect(screen.getByRole("listbox", { name: /files/i })).toBeTruthy(),
+    );
+  });
+
+  it("opens the tool picker when / is typed", async () => {
+    render(
+      <SceneContextProvider
+        value={{
+          scene: emptyScene,
+          dispatch: () => {},
+          connected: true,
+          lastSeq: 0n,
+        }}
+      >
+        <Composer sid="abc" />
+      </SceneContextProvider>,
+    );
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "/" } });
+    await waitFor(() =>
+      expect(screen.getByRole("listbox", { name: /tools/i })).toBeTruthy(),
+    );
+  });
+
+  it("opens the context picker when + context is clicked", async () => {
+    render(
+      <SceneContextProvider
+        value={{
+          scene: emptyScene,
+          dispatch: () => {},
+          connected: true,
+          lastSeq: 0n,
+        }}
+      >
+        <Composer sid="abc" />
+      </SceneContextProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /\+ context/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("dialog", { name: /add context/i })).toBeTruthy(),
+    );
+  });
 });

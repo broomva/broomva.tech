@@ -1,6 +1,14 @@
 import type { SceneNode } from "@broomva/prosopon";
 import type { ComponentType } from "react";
+import { BashCard } from "./tool-cards/BashCard";
+import { FileReadCard } from "./tool-cards/FileReadCard";
+import { FileWriteCard } from "./tool-cards/FileWriteCard";
 import { GenericToolCard } from "./tool-cards/GenericToolCard";
+import { MemoryQueryCard } from "./tool-cards/MemoryQueryCard";
+import { MemoryWriteCard } from "./tool-cards/MemoryWriteCard";
+import { PatchCard } from "./tool-cards/PatchCard";
+import { SearchResultsCard } from "./tool-cards/SearchResultsCard";
+import { TreeCard } from "./tool-cards/TreeCard";
 
 interface Props {
   node: SceneNode;
@@ -16,15 +24,14 @@ interface Props {
  * with a fallback to the plan-shaped `intent.tool`.
  */
 const TOOL_MAP: Record<string, ComponentType<Props>> = {
-  // B-4b will add entries here:
-  // "fs.read": FileReadCard,
-  // "fs.write": FileWriteCard,
-  // "fs.list":  TreeCard,
-  // "fs.search": SearchResultsCard,
-  // "fs.apply_patch": PatchCard,
-  // "memory.query": MemoryQueryCard,
-  // "memory.write": MemoryWriteCard,
-  // "bash":  BashCard,
+  "fs.read": FileReadCard,
+  "fs.write": FileWriteCard,
+  "fs.list": TreeCard,
+  "fs.search": SearchResultsCard,
+  "fs.apply_patch": PatchCard,
+  "memory.query": MemoryQueryCard,
+  "memory.write": MemoryWriteCard,
+  bash: BashCard,
 };
 
 export function ToolCallIntent({ node, sid }: Props) {
