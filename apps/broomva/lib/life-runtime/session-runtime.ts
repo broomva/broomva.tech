@@ -30,6 +30,7 @@ import {
   type RunInput,
 } from "./canonical";
 import { isProjectSlug } from "./projects";
+import { SCENE_ROOT_ID } from "./prosopon-emitter";
 import type { ConsumerIdentity } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -74,6 +75,7 @@ function getOrCreateSession(sid: string): SessionState {
       nextSeq: 1,
     };
     SESSIONS.set(sid, state);
+    seedWelcomeFiles(state);
   }
   return state;
 }
@@ -98,6 +100,99 @@ function emit(state: SessionState, inner: Envelope): void {
   } else {
     state.buffer.push(pending);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Welcome-files seed (v1 stub-mode shortcut)
+// ---------------------------------------------------------------------------
+
+/**
+ * Emit a pair of synthetic `fs.write` tool_call intents the first time a
+ * session is materialized. Gives the Files lens content to render on first
+ * connect; without the seed, the tree would always be empty in v1 because
+ * no real agent currently writes to the Soma FS.
+ *
+ * In production these would be SHA blob refs resolved via `Events.GetBlob`;
+ * for the v1 in-process stub we embed `content` + `frontmatter` directly in
+ * `intent.args`. The viewer reads them inline. The seed is idempotent per
+ * session (only fires when `state.nextSeq === 1`).
+ */
+function seedWelcomeFiles(state: SessionState): void {
+  if (state.nextSeq !== 1) return;
+  const welcome = makeEnvelope({
+    session_id: state.sid,
+    seq: state.nextSeq,
+    event: {
+      type: "node_added",
+      parent: SCENE_ROOT_ID,
+      node: {
+        id: `seed-welcome-${state.sid}`,
+        intent: {
+          type: "tool_call",
+          name: "fs.write",
+          args: {
+            path: "welcome.md",
+            content: [
+              "# Welcome",
+              "",
+              "This is your workspace. It persists across sessions.",
+              "",
+              "## What you can do here",
+              "",
+              "- Open `notes/quickstart.md` for a one-minute tour.",
+              "- Open the Session lens (dock or ⌘K) to converse with an agent.",
+              "- Anything an agent writes appears here as a real file.",
+              "",
+              "Nothing here is hidden. Every file write was an Operation, and every",
+              "Operation is reversible.",
+            ].join("\n"),
+            frontmatter: {
+              kind: "doc",
+              tags: ["welcome"],
+              created: new Date().toISOString(),
+            },
+          },
+        },
+      },
+    },
+  });
+  emit(state, welcome);
+  const quickstart = makeEnvelope({
+    session_id: state.sid,
+    seq: state.nextSeq,
+    event: {
+      type: "node_added",
+      parent: SCENE_ROOT_ID,
+      node: {
+        id: `seed-quickstart-${state.sid}`,
+        intent: {
+          type: "tool_call",
+          name: "fs.write",
+          args: {
+            path: "notes/quickstart.md",
+            content: [
+              "# Quickstart",
+              "",
+              "Three things to try:",
+              "",
+              "1. Click any file in the left rail to open it.",
+              "2. Press ⌘K and start typing to open the command palette.",
+              "3. Switch to the Session lens to talk to an agent.",
+              "",
+              "The right rail shows the outline of the current file and any",
+              "backlinks pointing at it.",
+            ].join("\n"),
+            frontmatter: {
+              kind: "doc",
+              tags: ["welcome", "quickstart"],
+              created: new Date().toISOString(),
+            },
+          },
+        },
+      },
+    },
+  });
+  emit(state, quickstart);
 }
 
 // ---------------------------------------------------------------------------
