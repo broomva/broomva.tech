@@ -4,6 +4,11 @@ export interface BstackSkill {
   description: string;
   installCommand: string;
   skillsUrl: string;
+  /** Optional enrichment from GitHub — present when sourced dynamically. */
+  repoUrl?: string;
+  stars?: number;
+  updatedAt?: string;
+  topics?: string[];
 }
 
 export interface BstackLayer {
