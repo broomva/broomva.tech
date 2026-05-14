@@ -24,13 +24,13 @@ const KIND_META: Record<
   string,
   { icon: typeof FileText; color: string; label: string }
 > = {
-  writing: { icon: NotebookPen, color: "text-blue-400", label: "Writing" },
-  notes: { icon: FileText, color: "text-emerald-400", label: "Note" },
+  writing: { icon: NotebookPen, color: "text-ai-blue", label: "Writing" },
+  notes: { icon: FileText, color: "text-accent-blue", label: "Note" },
   projects: { icon: FolderOpen, color: "text-amber-400", label: "Project" },
-  prompts: { icon: Sparkles, color: "text-purple-400", label: "Prompt" },
-  skill: { icon: Layers, color: "text-cyan-400", label: "Skill" },
+  prompts: { icon: Sparkles, color: "text-ai-blue/80", label: "Prompt" },
+  skill: { icon: Layers, color: "text-accent-blue/80", label: "Skill" },
   repo: { icon: Globe, color: "text-orange-400", label: "Repo" },
-  page: { icon: Home, color: "text-zinc-400", label: "Page" },
+  page: { icon: Home, color: "text-text-muted", label: "Page" },
 };
 
 const QUICK_LINKS = [
@@ -186,7 +186,7 @@ export function DockSearch() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.96 }}
           transition={{ duration: 0.15 }}
-          className="pointer-events-auto fixed z-50 w-80 max-w-[calc(100vw-1rem)] max-h-80 overflow-y-auto rounded-xl border border-zinc-700/60 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-xl"
+          className="glass-heavy pointer-events-auto fixed z-50 max-h-80 w-80 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border-border/60 bg-bg-surface/90 p-1.5 shadow-2xl"
           style={{
             bottom: dropdownPos.bottom,
             right: Math.max(8, dropdownPos.right),
@@ -194,7 +194,7 @@ export function DockSearch() {
         >
           {showQuickLinks && (
             <>
-              <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+              <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
                 Quick links
               </div>
               {QUICK_LINKS.map((link, i) => {
@@ -204,20 +204,20 @@ export function DockSearch() {
                     key={link.href}
                     type="button"
                     onClick={() => navigateTo(link.href)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                    className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
                       selectedIndex === i
-                        ? "bg-zinc-700/60 text-zinc-100"
-                        : "text-zinc-300 hover:bg-zinc-800/80"
+                        ? "bg-bg-elevated/70 text-text-primary"
+                        : "text-text-secondary hover:bg-bg-elevated/50 hover:text-text-primary"
                     }`}
                   >
-                    <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                    <Icon className="h-3.5 w-3.5 shrink-0 text-text-muted" />
                     <span className="text-sm">{link.label}</span>
-                    <ArrowRight className="ml-auto h-3 w-3 text-zinc-600" />
+                    <ArrowRight className="ml-auto h-3 w-3 text-text-muted/70" />
                   </button>
                 );
               })}
-              <div className="mt-1 border-t border-zinc-800 px-2 py-1.5">
-                <span className="text-[10px] text-zinc-600">
+              <div className="mt-1 border-t border-border/50 px-2 py-1.5">
+                <span className="text-[10px] text-text-muted/70">
                   ⌘K to toggle &middot; ESC to close
                 </span>
               </div>
@@ -227,18 +227,18 @@ export function DockSearch() {
           {showResults && (
             <>
               {!isReady && (
-                <div className="px-2 py-3 text-center text-xs text-zinc-500">
+                <div className="px-2 py-3 text-center text-xs text-text-muted">
                   Loading index...
                 </div>
               )}
               {isReady && results.length === 0 && query.length > 0 && (
-                <div className="px-2 py-3 text-center text-xs text-zinc-500">
+                <div className="px-2 py-3 text-center text-xs text-text-muted">
                   No results for &ldquo;{query}&rdquo;
                 </div>
               )}
               {results.length > 0 && (
                 <>
-                  <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                  <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
                     {results.length} result{results.length !== 1 && "s"}
                   </div>
                   {results.map((result, i) => {
@@ -253,10 +253,10 @@ export function DockSearch() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.03 }}
                         onClick={() => navigateTo(result.href)}
-                        className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                        className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
                           selectedIndex === i
-                            ? "bg-zinc-700/60 text-zinc-100"
-                            : "text-zinc-300 hover:bg-zinc-800/80"
+                            ? "bg-bg-elevated/70 text-text-primary"
+                            : "text-text-secondary hover:bg-bg-elevated/50 hover:text-text-primary"
                         }`}
                       >
                         <Icon
@@ -265,12 +265,12 @@ export function DockSearch() {
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm">{result.title}</div>
                           {result.summary && (
-                            <div className="truncate text-[11px] text-zinc-500">
+                            <div className="truncate text-[11px] text-text-muted">
                               {result.summary}
                             </div>
                           )}
                         </div>
-                        <span className="shrink-0 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-500">
+                        <span className="shrink-0 rounded bg-bg-elevated/70 px-1.5 py-0.5 text-[10px] text-text-muted">
                           {meta.label}
                         </span>
                       </motion.button>
@@ -278,8 +278,8 @@ export function DockSearch() {
                   })}
                 </>
               )}
-              <div className="mt-1 border-t border-zinc-800 px-2 py-1.5">
-                <span className="text-[10px] text-zinc-600">
+              <div className="mt-1 border-t border-border/50 px-2 py-1.5">
+                <span className="text-[10px] text-text-muted/70">
                   ↑↓ navigate &middot; ↵ open &middot; ESC close
                 </span>
               </div>
@@ -301,10 +301,10 @@ export function DockSearch() {
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={handleExpand}
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-zinc-700/50"
+            className="group flex size-10 items-center justify-center rounded-full transition-[background-color,transform] hover:bg-bg-elevated/60 active:scale-[0.96]"
             aria-label="Search site"
           >
-            <Search className="h-4 w-4 text-zinc-400 transition-colors group-hover:text-text-primary" />
+            <Search className="h-4 w-4 text-text-secondary transition-colors group-hover:text-text-primary" />
           </motion.button>
         ) : (
           <motion.div
@@ -315,9 +315,9 @@ export function DockSearch() {
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="relative"
           >
-            <div className="flex items-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-800/90 backdrop-blur-md">
+            <div className="glass-subtle flex items-center gap-2 rounded-xl border-border/60 bg-bg-elevated/80">
               <div className="ml-3 shrink-0">
-                <Search className="h-3.5 w-3.5 text-zinc-500" />
+                <Search className="h-3.5 w-3.5 text-text-muted" />
               </div>
               <input
                 ref={inputRef}
@@ -326,16 +326,16 @@ export function DockSearch() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search..."
-                className="h-8 flex-1 bg-transparent text-sm text-zinc-200 outline-none placeholder:text-zinc-500"
+                className="h-10 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted/70"
               />
               <motion.button
                 type="button"
                 onClick={handleCollapse}
                 whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-md hover:bg-zinc-700/50"
+                whileTap={{ scale: 0.96 }}
+                className="mr-1 flex size-10 items-center justify-center rounded-md transition-colors hover:bg-bg-hover/60"
               >
-                <X className="h-3 w-3 text-zinc-500" />
+                <X className="h-3 w-3 text-text-muted" />
               </motion.button>
             </div>
           </motion.div>

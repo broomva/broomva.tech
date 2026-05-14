@@ -32,7 +32,7 @@ export function NotesList({ entries }: NotesListProps) {
   const rest = filtered.slice(1);
 
   const pillClass = (active: boolean) =>
-    `rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm transition-all duration-200 ${
+    `rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm min-h-10 transition-[background-color,border-color,color,box-shadow,transform] duration-200 active:scale-[0.96] ${
       active
         ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
         : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"

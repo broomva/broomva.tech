@@ -41,7 +41,28 @@ const ThermodynamicGrid = ({
       active: false,
     };
 
+    const isLightTheme = () => {
+      const root = document.documentElement;
+      return root.classList.contains("light") && !root.classList.contains("dark");
+    };
+
+    let cachedLightTheme = isLightTheme();
+    const themeObserver = new MutationObserver(() => {
+      cachedLightTheme = isLightTheme();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
     const getThermalColor = (t: number) => {
+      if (cachedLightTheme) {
+        const r = Math.min(170, Math.max(0, 122 - t * 18));
+        const g = Math.min(210, Math.max(0, 136 + t * 54));
+        const b = Math.min(255, Math.max(0, 178 + t * 70));
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+
       // 0.0 = near-black (#0a0a12)
       // 0.3 = deep navy (#001a4d)
       // 0.5 = ai-blue (#0066ff)
@@ -112,7 +133,9 @@ const ThermodynamicGrid = ({
       mouse.prevX = mouse.x;
       mouse.prevY = mouse.y;
 
-      ctx.fillStyle = "#060810";
+      const lightTheme = cachedLightTheme;
+
+      ctx.fillStyle = lightTheme ? "#f2eff8" : "#060810";
       ctx.fillRect(0, 0, width, height);
 
       for (let r = 0; r < rows; r++) {
@@ -138,7 +161,7 @@ const ThermodynamicGrid = ({
             if (c % 2 === 0 && r % 2 === 0) {
               const x = c * resolution;
               const y = r * resolution;
-              ctx.fillStyle = "#0d1525";
+              ctx.fillStyle = lightTheme ? "#c9c2d8" : "#0d1525";
               ctx.fillRect(
                 x + resolution / 2 - 1,
                 y + resolution / 2 - 1,
@@ -187,6 +210,7 @@ const ThermodynamicGrid = ({
     start();
 
     return () => {
+      themeObserver.disconnect();
       stop();
       visibilityObserver.disconnect();
       document.removeEventListener("visibilitychange", handleDocumentVisibility);
@@ -200,7 +224,7 @@ const ThermodynamicGrid = ({
     <div
       ref={containerRef}
       className={cn(
-        "absolute inset-0 z-0 overflow-hidden bg-[#060810]",
+        "absolute inset-0 z-0 overflow-hidden bg-bg-deep",
         className,
       )}
       style={style}

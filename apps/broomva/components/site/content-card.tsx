@@ -18,10 +18,10 @@ export function ContentCard({
   return (
     <Link
       href={href as any}
-      className="glass-card group block"
+      className="glass-card group block transition-[border-color,box-shadow,transform] active:scale-[0.96]"
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="font-display text-xl text-text-primary transition group-hover:text-ai-blue">
+        <h3 className="text-balance font-display text-xl text-text-primary transition-colors group-hover:text-ai-blue">
           {title}
         </h3>
         {badge ? (
@@ -30,7 +30,7 @@ export function ContentCard({
           </span>
         ) : null}
       </div>
-      <p className="text-sm leading-relaxed text-text-secondary">{summary}</p>
+      <p className="text-pretty text-sm leading-relaxed text-text-secondary">{summary}</p>
       {meta ? (
         <p className="mt-4 text-xs uppercase tracking-[0.14em] text-text-muted">
           {meta}

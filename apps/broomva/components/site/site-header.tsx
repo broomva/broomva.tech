@@ -81,7 +81,7 @@ export function SiteHeader() {
           tabs={tabs}
           activeColor="text-ai-blue"
           onChange={handleChange}
-          className="border-zinc-800/50 bg-zinc-900/80 backdrop-blur-md shadow-lg"
+          className="glass-heavy border-border/50 bg-bg-surface/80 shadow-[inset_0_1px_0_oklch(1_0_0/0.06),var(--ag-shadow-lg)]"
         />
       </nav>
     </header>
