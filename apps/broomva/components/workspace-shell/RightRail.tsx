@@ -1,18 +1,24 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { RightRailFiles } from "@/components/lenses/files/RightRailFiles";
 import { RightRailSession } from "@/components/lenses/session/right-rail/RightRailSession";
 
 /**
- * Right rail — context-aware. In v1, only the Session lens has right-rail
- * content (three panels: In context, Memory mini-graph, Recent operations).
- * Other lenses (Files, Agents) will mount their own rail composition when
- * they ship.
+ * Right rail — lens-aware. When the URL carries `?file=<path>`, the Files
+ * lens is active and we mount `RightRailFiles` (Outline + Backlinks).
+ * Otherwise we fall back to `RightRailSession` (In context · Memory ·
+ * Recent operations).
  */
 export function RightRail() {
+  const params = useSearchParams();
+  const file = params.get("file");
   return (
     <aside
       aria-label="Right rail"
       className="overflow-y-auto border-l border-[color:var(--ag-border-subtle)]"
     >
-      <RightRailSession />
+      {file ? <RightRailFiles path={file} /> : <RightRailSession />}
     </aside>
   );
 }
