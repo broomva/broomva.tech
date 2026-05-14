@@ -193,6 +193,49 @@ function seedWelcomeFiles(state: SessionState): void {
     },
   });
   emit(state, quickstart);
+  const atlas = makeEnvelope({
+    session_id: state.sid,
+    seq: state.nextSeq,
+    event: {
+      type: "node_added",
+      parent: SCENE_ROOT_ID,
+      node: {
+        id: `seed-atlas-${state.sid}`,
+        intent: {
+          type: "tool_call",
+          name: "fs.write",
+          args: {
+            path: "agents/atlas/spec.md",
+            content: [
+              "# Atlas — Resident agent",
+              "",
+              "You are Atlas, the resident agent of this workspace. You introduce",
+              "the workspace to its user and respond to direct questions.",
+              "",
+              "## Boundaries",
+              "",
+              "- Read and write within this workspace only.",
+              "- Auto-snapshot every fs.write; nothing is destructive.",
+              "- Defer policy-sensitive operations to the user with an approval card.",
+            ].join("\n"),
+            frontmatter: {
+              kind: "agent_spec",
+              name: "Atlas",
+              archetype: "resident",
+              description:
+                "Resident agent of this workspace; introduces the OS and stays available for direct questions.",
+              model: "claude-sonnet-4.5",
+              grants: ["fs.read", "fs.write", "memory.read", "memory.write"],
+              approval_mode: "silent",
+              tags: ["welcome", "resident"],
+              created: new Date().toISOString(),
+            },
+          },
+        },
+      },
+    },
+  });
+  emit(state, atlas);
 }
 
 // ---------------------------------------------------------------------------
