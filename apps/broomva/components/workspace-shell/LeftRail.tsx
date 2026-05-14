@@ -1,3 +1,5 @@
+import { FilesTree } from "@/components/lenses/files/FilesTree";
+
 function RailHeading({
   children,
   count,
@@ -45,7 +47,7 @@ export function LeftRail() {
       </button>
 
       <RailHeading action="⌘O">Filesystem</RailHeading>
-      <div className="px-1 py-2 font-mono text-[11px] opacity-60">Empty.</div>
+      <FilesTree />
 
       <RailHeading>Pinned</RailHeading>
       <div className="px-1 py-2 font-mono text-[11px] opacity-60">
