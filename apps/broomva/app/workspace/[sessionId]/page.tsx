@@ -1,7 +1,10 @@
+import { headers } from "next/headers";
 import { AgentsLens } from "@/components/lenses/agents/AgentsLens";
 import { FilesLens } from "@/components/lenses/files/FilesLens";
 import { SessionLensClient } from "@/components/lenses/session/SessionLensClient";
 import { WorkspaceSession } from "@/components/lenses/session/WorkspaceSession";
+import { getSafeSession } from "@/lib/auth";
+import { registerSession } from "@/lib/workspace/session-registry";
 
 interface SessionPageProps {
   params: Promise<{ sessionId: string }>;
@@ -25,6 +28,24 @@ export default async function SessionPage({
 }: SessionPageProps) {
   const { sessionId } = await params;
   const { seq, file, lens } = await searchParams;
+
+  // Register this sid with the logged-in user's session list so it
+  // surfaces in the LeftRail sidebar. Best-effort — the page itself is
+  // not gated on auth (auth happens at the SSE/REST routes), so we
+  // swallow failures silently.
+  try {
+    const h = await headers();
+    const { data: session } = await getSafeSession({
+      fetchOptions: { headers: h },
+    });
+    const userId = session?.user?.id;
+    if (userId) {
+      registerSession(userId, sessionId);
+    }
+  } catch {
+    // Best-effort; don't block the page on registry hiccups.
+  }
+
   const initialSeq = ((): bigint => {
     if (!seq) return 0n;
     try {
