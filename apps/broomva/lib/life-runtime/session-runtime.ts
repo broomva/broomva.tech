@@ -80,6 +80,16 @@ function getOrCreateSession(sid: string): SessionState {
   return state;
 }
 
+/**
+ * Bounded retention for the per-session append-only envelope buffer.
+ * The buffer is replay-on-read (`streamSession` iterates by index and
+ * never drains), so without a bound it would grow unbounded over a
+ * long-lived process. 500 envelopes ≈ a typical session's worth of
+ * intent traffic with comfortable headroom; older envelopes are
+ * silently dropped from the head when capacity is exceeded.
+ */
+const MAX_BUFFER = 500;
+
 function emit(state: SessionState, inner: Envelope): void {
   // Rewrite seq + session_id so the session lens sees a clean monotonic
   // stream rooted at this sid. Preserve the original event + ts.
@@ -91,14 +101,20 @@ function emit(state: SessionState, inner: Envelope): void {
   });
   state.nextSeq += 1;
   const pending: PendingEnvelope = { envelope };
+  // Always push into the buffer so future subscribers / refresh can
+  // replay. Bounded retention drops oldest beyond MAX_BUFFER.
+  state.buffer.push(pending);
+  if (state.buffer.length > MAX_BUFFER) {
+    state.buffer.shift();
+  }
+  // Wake any parked waiter with the new envelope. The buffer-push above
+  // means live consumers AND future subscribers see the same envelope.
   const waiter = state.waiters.shift();
   if (waiter) {
     waiter.resolve({
-      value: pending.envelope,
+      value: envelope,
       done: false,
     });
-  } else {
-    state.buffer.push(pending);
   }
 }
 
@@ -355,16 +371,20 @@ export async function* streamSession(
   const { sid, fromSeq, signal } = opts;
   const state = getOrCreateSession(sid);
 
-  // Replay buffered envelopes whose seq is strictly greater than fromSeq.
-  // We do NOT drain the buffer — multiple subscribers per session is
-  // a future concern; for B-4a we assume a single subscriber per sid
-  // and treat the buffer as a fast-forward queue.
-  while (state.buffer.length > 0) {
+  // Replay all buffered envelopes whose seq is strictly greater than
+  // fromSeq. The buffer is append-only (see `emit` + `MAX_BUFFER`); we
+  // iterate by index so multiple subscribers and refreshes each get
+  // their own full replay from their own cursor.
+  //
+  // The previous implementation drained via `state.buffer.shift()` —
+  // the comment claimed "we do NOT drain" but the code did exactly
+  // that. After the first subscriber consumed the welcome arc, the
+  // buffer was empty and refresh showed an empty scene. Plan D fixes
+  // this and unlocks multi-tab as a side effect.
+  for (const pending of state.buffer) {
     if (signal.aborted) return;
-    const head = state.buffer.shift();
-    if (!head) break;
-    if (BigInt(head.envelope.seq) <= fromSeq) continue;
-    yield head.envelope;
+    if (BigInt(pending.envelope.seq) <= fromSeq) continue;
+    yield pending.envelope;
   }
 
   // Park until a new envelope arrives or the caller aborts.
