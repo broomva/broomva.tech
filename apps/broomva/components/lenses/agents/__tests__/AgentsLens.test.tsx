@@ -39,15 +39,15 @@ describe("AgentsLens", () => {
               type: "tool_call",
               name: "fs.write",
               args: {
-                path: "agents/atlas/spec.md",
-                frontmatter: { name: "Atlas", archetype: "resident" },
+                path: "agents/broomva/spec.md",
+                frontmatter: { name: "Broomva", archetype: "resident" },
               },
             },
           },
         ],
       },
     });
-    expect(screen.getByText("Atlas")).toBeTruthy();
+    expect(screen.getByText("Broomva")).toBeTruthy();
     expect(screen.getByText("1 installed")).toBeTruthy();
   });
 });
