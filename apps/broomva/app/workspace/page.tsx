@@ -1,33 +1,18 @@
+import { redirect } from "next/navigation";
+
 /**
- * /workspace landing — placeholder until the welcome agent ships (PR 7).
+ * /workspace landing. Bootstraps a fresh session by minting a new UUID
+ * and redirecting to `/workspace/<sid>`. The session-runtime materializes
+ * that sid the first time it's streamed, emits Broomva's welcome arc
+ * (prose intro → fs.write welcome.md → prose follow-up), and the user
+ * lands on the Session lens with content already flowing.
  *
- * Once Plan C lands, this page redirects to the user's most recent session
- * or creates a fresh one with the welcome agent.
+ * Session continuity (re-attaching to a most-recent session per the parent
+ * spec's `Identity.ListSessions` step) is deferred until the lifegw
+ * Identity RPC ships. v1 always opens a new session, which is the honest
+ * stub — `/workspace` is a "begin" gate, not a directory.
  */
-export default function WorkspaceLandingPage() {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 px-8 py-20">
-      <div
-        aria-hidden
-        className="h-10 w-10 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, var(--ag-ai-blue) 0%, transparent 70%)",
-        }}
-      />
-      <h1
-        className="max-w-[26ch] text-center text-[28px] tracking-tight"
-        style={{ fontFamily: "CalSans, ui-sans-serif, system-ui" }}
-      >
-        Welcome. Your workspace is ready.
-      </h1>
-      <p className="max-w-[40ch] text-center text-[13px] opacity-60">
-        Press{" "}
-        <kbd className="ag-glass-subtle rounded px-1.5 py-0.5 font-mono text-[11px]">
-          ⌘K
-        </kbd>{" "}
-        to start a session. Lenses light up as you and your agents work.
-      </p>
-    </div>
-  );
+export default function WorkspaceLandingPage(): never {
+  const sid = crypto.randomUUID();
+  redirect(`/workspace/${sid}`);
 }
