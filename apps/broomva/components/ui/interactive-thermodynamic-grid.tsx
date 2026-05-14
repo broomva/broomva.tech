@@ -46,8 +46,17 @@ const ThermodynamicGrid = ({
       return root.classList.contains("light") && !root.classList.contains("dark");
     };
 
+    let cachedLightTheme = isLightTheme();
+    const themeObserver = new MutationObserver(() => {
+      cachedLightTheme = isLightTheme();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
     const getThermalColor = (t: number) => {
-      if (isLightTheme()) {
+      if (cachedLightTheme) {
         const r = Math.min(170, Math.max(0, 122 - t * 18));
         const g = Math.min(210, Math.max(0, 136 + t * 54));
         const b = Math.min(255, Math.max(0, 178 + t * 70));
@@ -124,7 +133,7 @@ const ThermodynamicGrid = ({
       mouse.prevX = mouse.x;
       mouse.prevY = mouse.y;
 
-      const lightTheme = isLightTheme();
+      const lightTheme = cachedLightTheme;
 
       ctx.fillStyle = lightTheme ? "#f2eff8" : "#060810";
       ctx.fillRect(0, 0, width, height);
@@ -201,6 +210,7 @@ const ThermodynamicGrid = ({
     start();
 
     return () => {
+      themeObserver.disconnect();
       stop();
       visibilityObserver.disconnect();
       document.removeEventListener("visibilitychange", handleDocumentVisibility);
