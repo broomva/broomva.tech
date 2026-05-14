@@ -47,9 +47,9 @@ describe("useAgents", () => {
                 type: "tool_call",
                 name: "fs.write",
                 args: {
-                  path: "agents/atlas/spec.md",
+                  path: "agents/broomva/spec.md",
                   frontmatter: {
-                    name: "Atlas",
+                    name: "Broomva",
                     archetype: "resident",
                     description: "Resident agent",
                     model: "claude-sonnet-4.5",
@@ -80,11 +80,11 @@ describe("useAgents", () => {
       }),
     });
     expect(result.current).toHaveLength(2);
-    expect(result.current.map((a) => a.name)).toEqual(["Atlas", "Builder"]);
-    const atlas = result.current[0];
-    expect(atlas.archetype).toBe("resident");
-    expect(atlas.grants).toEqual(["fs.read", "fs.write"]);
-    expect(atlas.approvalMode).toBe("silent");
+    expect(result.current.map((a) => a.name)).toEqual(["Broomva", "Builder"]);
+    const broomva = result.current[0];
+    expect(broomva.archetype).toBe("resident");
+    expect(broomva.grants).toEqual(["fs.read", "fs.write"]);
+    expect(broomva.approvalMode).toBe("silent");
   });
 
   it("ignores fs.write events outside the agents/*/spec.md pattern", () => {
@@ -108,7 +108,7 @@ describe("useAgents", () => {
               intent: {
                 type: "tool_call",
                 name: "fs.write",
-                args: { path: "agents/atlas/notes.md" },
+                args: { path: "agents/broomva/notes.md" },
               },
             },
           ],

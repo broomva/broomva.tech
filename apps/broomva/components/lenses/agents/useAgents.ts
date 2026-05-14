@@ -10,7 +10,7 @@ export interface AgentSpec {
   id: string;
   /** Full spec.md path. */
   path: string;
-  /** Human display name, e.g. "Atlas". */
+  /** Human display name, e.g. "Broomva". */
   name: string;
   /** Archetype label, e.g. "resident", "engineer", "researcher". */
   archetype: string;
