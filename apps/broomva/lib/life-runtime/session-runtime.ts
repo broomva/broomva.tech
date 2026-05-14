@@ -75,7 +75,7 @@ function getOrCreateSession(sid: string): SessionState {
       nextSeq: 1,
     };
     SESSIONS.set(sid, state);
-    seedWelcomeFiles(state);
+    seedFreshSession(state);
   }
   return state;
 }
@@ -103,139 +103,218 @@ function emit(state: SessionState, inner: Envelope): void {
 }
 
 // ---------------------------------------------------------------------------
-// Welcome-files seed (v1 stub-mode shortcut)
+// Fresh-session seed (v1 stub-mode shortcut)
 // ---------------------------------------------------------------------------
 
 /**
- * Emit a pair of synthetic `fs.write` tool_call intents the first time a
- * session is materialized. Gives the Files lens content to render on first
- * connect; without the seed, the tree would always be empty in v1 because
- * no real agent currently writes to the Soma FS.
+ * Emit the v1 fresh-session payload the first time a session is materialized.
+ * Three independent emitters fire in order:
  *
- * In production these would be SHA blob refs resolved via `Events.GetBlob`;
- * for the v1 in-process stub we embed `content` + `frontmatter` directly in
- * `intent.args`. The viewer reads them inline. The seed is idempotent per
- * session (only fires when `state.nextSeq === 1`).
+ *   1. emitAgentSpec    — agents/broomva/spec.md (the resident agent's spec
+ *                          frontmatter; visible in the Agents lens)
+ *   2. emitQuickstart   — notes/quickstart.md (anonymous reference page;
+ *                          visible in the Files lens)
+ *   3. emitWelcomeArc   — Broomva's 3-beat introduction emitted as
+ *                          (prose intro → fs.write welcome.md → prose
+ *                          follow-up). Plays on the Session lens canvas
+ *                          on first paint.
+ *
+ * Idempotent per session: only fires on `state.nextSeq === 1`. Production
+ * (Plan C v1.1+) will replace this stub with a real arcan-provider-local
+ * agent that emits the same envelopes through the canonical runtime.
  */
-function seedWelcomeFiles(state: SessionState): void {
+function seedFreshSession(state: SessionState): void {
   if (state.nextSeq !== 1) return;
-  const welcome = makeEnvelope({
-    session_id: state.sid,
-    seq: state.nextSeq,
-    event: {
-      type: "node_added",
-      parent: SCENE_ROOT_ID,
-      node: {
-        id: `seed-welcome-${state.sid}`,
-        intent: {
-          type: "tool_call",
-          name: "fs.write",
-          args: {
-            path: "welcome.md",
-            content: [
-              "# Welcome",
-              "",
-              "This is your workspace. It persists across sessions.",
-              "",
-              "## What you can do here",
-              "",
-              "- Open `notes/quickstart.md` for a one-minute tour.",
-              "- Open the Session lens (dock or ⌘K) to converse with an agent.",
-              "- Anything an agent writes appears here as a real file.",
-              "",
-              "Nothing here is hidden. Every file write was an Operation, and every",
-              "Operation is reversible.",
-            ].join("\n"),
-            frontmatter: {
-              kind: "doc",
-              tags: ["welcome"],
-              created: new Date().toISOString(),
+  emitAgentSpec(state);
+  emitQuickstart(state);
+  emitWelcomeArc(state);
+}
+
+function emitAgentSpec(state: SessionState): void {
+  emit(
+    state,
+    makeEnvelope({
+      session_id: state.sid,
+      seq: state.nextSeq,
+      event: {
+        type: "node_added",
+        parent: SCENE_ROOT_ID,
+        node: {
+          id: `seed-broomva-spec-${state.sid}`,
+          intent: {
+            type: "tool_call",
+            name: "fs.write",
+            args: {
+              path: "agents/broomva/spec.md",
+              content: [
+                "# Broomva — Resident agent",
+                "",
+                "You are Broomva, the resident voice of this workspace.",
+                "You introduce the workspace and stay available for direct",
+                "questions. Your tone is calm, deliberate, useful.",
+                "",
+                "## Boundaries",
+                "",
+                "- Read and write within this workspace only.",
+                "- Auto-snapshot every fs.write; nothing is destructive.",
+                "- Defer policy-sensitive operations with an approval card.",
+              ].join("\n"),
+              frontmatter: {
+                kind: "agent_spec",
+                name: "Broomva",
+                archetype: "resident",
+                description:
+                  "Resident voice of this workspace. Introduces the OS and stays available for direct questions.",
+                model: "claude-sonnet-4.5",
+                grants: ["fs.read", "fs.write", "memory.read", "memory.write"],
+                approval_mode: "silent",
+                tags: ["welcome", "resident"],
+                created: new Date().toISOString(),
+              },
             },
           },
         },
       },
-    },
-  });
-  emit(state, welcome);
-  const quickstart = makeEnvelope({
-    session_id: state.sid,
-    seq: state.nextSeq,
-    event: {
-      type: "node_added",
-      parent: SCENE_ROOT_ID,
-      node: {
-        id: `seed-quickstart-${state.sid}`,
-        intent: {
-          type: "tool_call",
-          name: "fs.write",
-          args: {
-            path: "notes/quickstart.md",
-            content: [
-              "# Quickstart",
-              "",
-              "Three things to try:",
-              "",
-              "1. Click any file in the left rail to open it.",
-              "2. Press ⌘K and start typing to open the command palette.",
-              "3. Switch to the Session lens to talk to an agent.",
-              "",
-              "The right rail shows the outline of the current file and any",
-              "backlinks pointing at it.",
-            ].join("\n"),
-            frontmatter: {
-              kind: "doc",
-              tags: ["welcome", "quickstart"],
-              created: new Date().toISOString(),
+    }),
+  );
+}
+
+function emitQuickstart(state: SessionState): void {
+  emit(
+    state,
+    makeEnvelope({
+      session_id: state.sid,
+      seq: state.nextSeq,
+      event: {
+        type: "node_added",
+        parent: SCENE_ROOT_ID,
+        node: {
+          id: `seed-quickstart-${state.sid}`,
+          intent: {
+            type: "tool_call",
+            name: "fs.write",
+            args: {
+              path: "notes/quickstart.md",
+              content: [
+                "# Quickstart",
+                "",
+                "Three things to try:",
+                "",
+                "1. Click any file in the left rail to open it.",
+                "2. Press ⌘K and start typing to open the command palette.",
+                "3. Switch lenses via the dock or URL parameters.",
+                "",
+                "The right rail shows the outline of the current file and",
+                "any backlinks pointing at it.",
+              ].join("\n"),
+              frontmatter: {
+                kind: "doc",
+                tags: ["welcome", "quickstart"],
+                created: new Date().toISOString(),
+              },
             },
           },
         },
       },
-    },
-  });
-  emit(state, quickstart);
-  const atlas = makeEnvelope({
-    session_id: state.sid,
-    seq: state.nextSeq,
-    event: {
-      type: "node_added",
-      parent: SCENE_ROOT_ID,
-      node: {
-        id: `seed-atlas-${state.sid}`,
-        intent: {
-          type: "tool_call",
-          name: "fs.write",
-          args: {
-            path: "agents/atlas/spec.md",
-            content: [
-              "# Atlas — Resident agent",
+    }),
+  );
+}
+
+function emitWelcomeArc(state: SessionState): void {
+  // Beat 1: Broomva introduces herself.
+  emit(
+    state,
+    makeEnvelope({
+      session_id: state.sid,
+      seq: state.nextSeq,
+      event: {
+        type: "node_added",
+        parent: SCENE_ROOT_ID,
+        node: {
+          id: `seed-welcome-intro-${state.sid}`,
+          // `author` is a plan-level extension on prose; ProseIntent reads it
+          // via a local type widening. The canonical Intent::Prose only has
+          // `{ type, text }`, so cast through `never` to carry the field.
+          intent: {
+            type: "prose",
+            text: [
+              "Welcome. I'm Broomva — the resident voice of this workspace.",
               "",
-              "You are Atlas, the resident agent of this workspace. You introduce",
-              "the workspace to its user and respond to direct questions.",
-              "",
-              "## Boundaries",
-              "",
-              "- Read and write within this workspace only.",
-              "- Auto-snapshot every fs.write; nothing is destructive.",
-              "- Defer policy-sensitive operations to the user with an approval card.",
+              "A workspace is persistent. This file, your conversations with me, the agents you spawn, the memory we build — all of it survives between visits.",
             ].join("\n"),
-            frontmatter: {
-              kind: "agent_spec",
-              name: "Atlas",
-              archetype: "resident",
-              description:
-                "Resident agent of this workspace; introduces the OS and stays available for direct questions.",
-              model: "claude-sonnet-4.5",
-              grants: ["fs.read", "fs.write", "memory.read", "memory.write"],
-              approval_mode: "silent",
-              tags: ["welcome", "resident"],
-              created: new Date().toISOString(),
+            author: "agent",
+          } as never,
+        },
+      },
+    }),
+  );
+  // Beat 2: Broomva writes welcome.md (first-person authored).
+  emit(
+    state,
+    makeEnvelope({
+      session_id: state.sid,
+      seq: state.nextSeq,
+      event: {
+        type: "node_added",
+        parent: SCENE_ROOT_ID,
+        node: {
+          id: `seed-welcome-md-${state.sid}`,
+          intent: {
+            type: "tool_call",
+            name: "fs.write",
+            args: {
+              path: "welcome.md",
+              content: [
+                "# Welcome",
+                "",
+                "I'm Broomva — the resident voice of this workspace.",
+                "",
+                "A workspace is persistent. This file, your conversations with me, the agents you spawn, the memory we build — all of it survives between visits.",
+                "",
+                "## Three things to try",
+                "",
+                "- Read `notes/quickstart.md` for the one-minute tour.",
+                "- Open the Agents lens (`?lens=agents`) to see who's installed.",
+                "- Ask me anything in the Session lens.",
+                "",
+                "Nothing here is hidden. Every write I make is an Operation, and every Operation is reversible.",
+              ].join("\n"),
+              frontmatter: {
+                kind: "doc",
+                tags: ["welcome"],
+                author: "broomva",
+                created: new Date().toISOString(),
+              },
             },
           },
         },
       },
-    },
-  });
-  emit(state, atlas);
+    }),
+  );
+  // Beat 3: Broomva closes with a question.
+  emit(
+    state,
+    makeEnvelope({
+      session_id: state.sid,
+      seq: state.nextSeq,
+      event: {
+        type: "node_added",
+        parent: SCENE_ROOT_ID,
+        node: {
+          id: `seed-welcome-question-${state.sid}`,
+          intent: {
+            type: "prose",
+            text: [
+              "I wrote `welcome.md` for you while we get acquainted — you can open it from the left rail.",
+              "",
+              "Where would you like to start: a tour of the workspace, or your first question?",
+            ].join("\n"),
+            author: "agent",
+          } as never,
+        },
+      },
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------
