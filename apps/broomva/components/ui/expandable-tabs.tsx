@@ -96,17 +96,19 @@ export function ExpandableTabs({
           <Tooltip key={tab.title} open={isSelected ? false : undefined}>
             <TooltipTrigger asChild>
               <motion.button
+                type="button"
                 variants={buttonVariants}
                 initial={false}
                 animate="animate"
                 custom={isSelected}
                 onClick={() => handleSelect(index)}
                 transition={transition}
+                whileTap={{ scale: 0.96 }}
                 className={cn(
-                  "relative flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300",
+                  "relative flex min-h-10 items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300",
                   isSelected
-                    ? cn("bg-muted", activeColor)
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? cn("bg-bg-elevated/70 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]", activeColor)
+                    : "text-muted-foreground hover:bg-bg-elevated/50 hover:text-foreground",
                 )}
               >
                 <Icon size={20} />

@@ -104,7 +104,7 @@ export function PostReactions({ slug }: PostReactionsProps) {
             type="button"
             onClick={() => toggle(key)}
             aria-label={`${label}${count > 0 ? ` (${count})` : ""}`}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-all ${
+            className={`inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-[background-color,border-color,color,transform] active:scale-[0.96] ${
               active
                 ? "border-ai-blue/40 bg-ai-blue/10 text-text-primary"
                 : "border-[var(--ag-border-subtle)] bg-transparent text-text-muted hover:border-[var(--ag-border-default)] hover:text-text-secondary"

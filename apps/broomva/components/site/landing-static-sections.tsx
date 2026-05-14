@@ -60,10 +60,10 @@ export function StackSection() {
           <p className="text-xs uppercase tracking-[0.25em] text-ai-blue">
             Agent OS Stack
           </p>
-          <h2 className="mt-3 font-display text-3xl text-text-primary sm:text-4xl">
+          <h2 className="text-balance mt-3 font-display text-3xl text-text-primary sm:text-4xl">
             The stack
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
+          <p className="text-pretty mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
             10 Rust crates, 24 agent skills, 500+ tests. A control-theory-native
             ecosystem for autonomous software development.
           </p>
@@ -74,7 +74,7 @@ export function StackSection() {
                 <div className="flex h-full flex-col gap-2">
                   <Link
                     href={item.href as Route}
-                    className="group glass-card block h-full transition hover:border-ai-blue/40"
+                    className="group glass-card block h-full transition-[border-color,transform,box-shadow] active:scale-[0.96] hover:border-ai-blue/40"
                   >
                     <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ai-blue/50">
                       {String(i + 1).padStart(2, "0")}
@@ -92,7 +92,7 @@ export function StackSection() {
                   {item.demoHref && (
                     <Link
                       href={item.demoHref as Route}
-                      className="inline-flex items-center gap-1.5 self-start rounded-full border border-ai-blue/25 bg-ai-blue/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ai-blue/80 transition hover:border-ai-blue/60 hover:bg-ai-blue/10 hover:text-ai-blue"
+                      className="inline-flex min-h-10 items-center gap-1.5 self-start rounded-full border border-ai-blue/25 bg-ai-blue/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ai-blue/80 transition-[background-color,border-color,color,transform] hover:border-ai-blue/60 hover:bg-ai-blue/10 hover:text-ai-blue active:scale-[0.96]"
                     >
                       {item.demoLabel ?? "Live demo →"}
                     </Link>
@@ -119,12 +119,12 @@ export function ContentSection({
       <div>
         <ScrollReveal>
           <div className="mb-6 flex items-end justify-between">
-            <h2 className="font-display text-3xl text-text-primary">
+            <h2 className="text-balance font-display text-3xl text-text-primary">
               Latest Writing
             </h2>
             <Link
               href="/writing"
-              className="text-sm text-ai-blue transition hover:text-ai-blue/80"
+              className="inline-flex min-h-10 items-center text-sm text-ai-blue transition-colors hover:text-ai-blue/80"
             >
               Read all
             </Link>
@@ -151,12 +151,12 @@ export function ContentSection({
       <div>
         <ScrollReveal>
           <div className="mb-6 flex items-end justify-between">
-            <h2 className="font-display text-3xl text-text-primary">
+            <h2 className="text-balance font-display text-3xl text-text-primary">
               Recent Notes
             </h2>
             <Link
               href="/notes"
-              className="text-sm text-ai-blue transition hover:text-ai-blue/80"
+              className="inline-flex min-h-10 items-center text-sm text-ai-blue transition-colors hover:text-ai-blue/80"
             >
               Browse notes
             </Link>

@@ -1,6 +1,16 @@
 "use client";
 
 import type { Route } from "next";
+import {
+  ArrowRight,
+  Code2,
+  Compass,
+  Eye,
+  History,
+  Paperclip,
+  Pencil,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -20,11 +30,15 @@ const socials = [
   { href: "/links", label: "Link hub" },
 ];
 
-const suggestionPills = [
-  { icon: "pencil", label: "Write", prompt: "Help me write a " },
-  { icon: "eye", label: "Learn", prompt: "Explain how " },
-  { icon: "code", label: "Code", prompt: "Write code that " },
-  { icon: "compass", label: "Explore", prompt: "Tell me about " },
+const suggestionPills: Array<{
+  icon: LucideIcon;
+  label: string;
+  prompt: string;
+}> = [
+  { icon: Pencil, label: "Write", prompt: "Help me write a " },
+  { icon: Eye, label: "Learn", prompt: "Explain how " },
+  { icon: Code2, label: "Code", prompt: "Write code that " },
+  { icon: Compass, label: "Explore", prompt: "Tell me about " },
 ];
 
 function getTimeGreeting(): string {
@@ -32,41 +46,6 @@ function getTimeGreeting(): string {
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
-}
-
-function PillIcon({ name }: { name: string }) {
-  switch (name) {
-    case "pencil":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-          <path d="m15 5 4 4" />
-        </svg>
-      );
-    case "eye":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      );
-    case "code":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="16 18 22 12 16 6" />
-          <polyline points="8 6 2 12 8 18" />
-        </svg>
-      );
-    case "compass":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" />
-          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-        </svg>
-      );
-    default:
-      return null;
-  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -131,7 +110,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
             duration: 0.7,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="font-display text-4xl leading-[1.15] text-text-primary sm:text-5xl md:text-6xl"
+          className="text-balance font-display text-4xl leading-[1.15] text-text-primary sm:text-5xl md:text-6xl"
         >
           {firstName ? (
             <>
@@ -164,7 +143,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
             delay: 0.2,
             ease: [0.25, 0.1, 0.25, 1],
           }}
-          className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg"
+          className="text-pretty mx-auto mt-4 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg"
         >
           {firstName
             ? "How can I help you today?"
@@ -188,7 +167,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
                 <Link
                   key={item.href}
                   href={item.href as Route}
-                  className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
+                  className="inline-flex min-h-10 items-center rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)] active:scale-[0.96]"
                 >
                   {item.label}
                 </Link>
@@ -198,7 +177,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-all duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)]"
+                  className="inline-flex min-h-10 items-center rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)] active:scale-[0.96]"
                 >
                   {item.label}
                 </a>
@@ -218,7 +197,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
           }}
           className={`pointer-events-auto mx-auto w-full max-w-xl ${firstName ? "mt-10" : "mt-8"}`}
         >
-          <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-[color-mix(in_oklab,var(--ag-bg-surface)_calc(var(--ag-glass-medium)*100%),transparent)] shadow-[inset_0_1px_0_oklch(1_0_0/0.04),var(--ag-shadow-md)] backdrop-blur-[var(--ag-blur-lg)] backdrop-saturate-[1.4] backdrop-brightness-[1.05] transition-all duration-200 focus-within:border-ai-blue/40 focus-within:shadow-[inset_0_1px_0_oklch(1_0_0/0.06),0_0_24px_oklch(0.60_0.12_260/0.10)]">
+          <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-[color-mix(in_oklab,var(--ag-bg-surface)_calc(var(--ag-glass-medium)*100%),transparent)] shadow-[inset_0_1px_0_oklch(1_0_0/0.04),var(--ag-shadow-md)] backdrop-blur-[var(--ag-blur-lg)] backdrop-saturate-[1.4] backdrop-brightness-[1.05] transition-[border-color,box-shadow] duration-200 focus-within:border-ai-blue/40 focus-within:shadow-[inset_0_1px_0_oklch(1_0_0/0.06),0_0_24px_oklch(0.60_0.12_260/0.10)]">
             <textarea
               ref={inputRef}
               value={chatInput}
@@ -233,24 +212,18 @@ export function HeroSection({ userName }: { userName?: string | null }) {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-text-muted/50 transition hover:bg-bg-elevated/60 hover:text-text-secondary"
+                  className="flex size-10 items-center justify-center rounded-lg text-text-muted/50 transition-[background-color,color,transform] hover:bg-bg-elevated/60 hover:text-text-secondary active:scale-[0.96]"
                   aria-label="Attach file"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M12 5v14" />
-                    <path d="M5 12h14" />
-                  </svg>
+                  <Paperclip className="size-4" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-text-muted/50 transition hover:bg-bg-elevated/60 hover:text-text-secondary"
+                  className="flex size-10 items-center justify-center rounded-lg text-text-muted/50 transition-[background-color,color,transform] hover:bg-bg-elevated/60 hover:text-text-secondary active:scale-[0.96]"
                   aria-label="Chat history"
                   onClick={() => router.push("/chat")}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
+                  <History className="size-4" aria-hidden="true" />
                 </button>
               </div>
 
@@ -258,13 +231,10 @@ export function HeroSection({ userName }: { userName?: string | null }) {
                 type="button"
                 onClick={submitChat}
                 disabled={!chatInput.trim()}
-                className="flex size-8 items-center justify-center rounded-full bg-ai-blue/90 text-white shadow-sm transition-all hover:bg-ai-blue disabled:opacity-30 disabled:hover:bg-ai-blue/90"
+                className="flex size-10 items-center justify-center rounded-full bg-ai-blue/90 text-white shadow-sm transition-[background-color,box-shadow,opacity,transform] hover:bg-ai-blue hover:shadow-glow-blue active:scale-[0.96] disabled:opacity-30 disabled:hover:bg-ai-blue/90 disabled:hover:shadow-sm disabled:active:scale-100"
                 aria-label="Send"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 12h14" />
-                  <path d="m12 5 7 7-7 7" />
-                </svg>
+                <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -290,17 +260,20 @@ export function HeroSection({ userName }: { userName?: string | null }) {
           }}
           className="mt-5 flex flex-wrap justify-center gap-2.5 pointer-events-auto"
         >
-          {suggestionPills.map((pill) => (
-            <button
-              key={pill.label}
-              type="button"
-              onClick={() => handlePillClick(pill.prompt)}
-              className="flex items-center gap-1.5 rounded-full border border-border/40 bg-bg-elevated/30 px-4 py-2 text-xs font-medium text-text-secondary backdrop-blur-sm transition-all duration-200 hover:border-ai-blue/30 hover:bg-bg-elevated/50 hover:text-text-primary"
-            >
-              <PillIcon name={pill.icon} />
-              {pill.label}
-            </button>
-          ))}
+          {suggestionPills.map((pill) => {
+            const Icon = pill.icon;
+            return (
+              <button
+                key={pill.label}
+                type="button"
+                onClick={() => handlePillClick(pill.prompt)}
+                className="flex min-h-10 items-center gap-1.5 rounded-full border border-border/40 bg-bg-elevated/30 px-4 py-2 text-xs font-medium text-text-secondary backdrop-blur-sm transition-[background-color,border-color,color,transform] duration-200 hover:border-ai-blue/30 hover:bg-bg-elevated/50 hover:text-text-primary active:scale-[0.96]"
+              >
+                <Icon className="size-3.5" aria-hidden="true" />
+                {pill.label}
+              </button>
+            );
+          })}
         </motion.div>
       </div>
 
@@ -357,10 +330,10 @@ export function InstallSection() {
           <p className="text-xs uppercase tracking-[0.25em] text-ai-blue">
             Get Started
           </p>
-          <h2 className="mt-3 font-display text-3xl text-text-primary sm:text-4xl">
+          <h2 className="text-balance mt-3 font-display text-3xl text-text-primary sm:text-4xl">
             Install
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
+          <p className="text-pretty mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
             One command installs the Broomva CLI, the broomva.tech skill, and
             the full bstack (24 agent skills across 7 layers).
           </p>
@@ -369,9 +342,9 @@ export function InstallSection() {
             <button
               type="button"
               onClick={copy}
-              className="group glass-card flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-mono transition hover:border-ai-blue/40"
+              className="group glass-card flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-mono transition-[border-color,transform] active:scale-[0.96] hover:border-ai-blue/40"
             >
-              <code className="text-sm text-text-primary sm:text-base">
+              <code className="min-w-0 overflow-x-auto whitespace-nowrap text-sm text-text-primary sm:text-base">
                 <span className="text-text-muted">$ </span>
                 {cmd}
               </code>

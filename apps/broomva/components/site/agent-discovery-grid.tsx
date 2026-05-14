@@ -58,7 +58,7 @@ function TrustScoreBar({ score }: { score: number | null }) {
     <div className="flex items-center gap-2">
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-elevated/40">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-ai-blue/60 to-ai-blue transition-all duration-500"
+          className="h-full rounded-full bg-gradient-to-r from-ai-blue/60 to-ai-blue transition-[width] duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -173,7 +173,7 @@ function AgentCard({
 // ---------------------------------------------------------------------------
 
 function pillClass(active: boolean): string {
-  return `rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm transition-all duration-200 ${
+  return `rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm min-h-10 transition-[background-color,border-color,color,box-shadow,transform] duration-200 active:scale-[0.96] ${
     active
       ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
       : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
@@ -260,7 +260,7 @@ export function AgentDiscoveryGrid({
               onClick={() =>
                 setActiveTrustLevel(activeTrustLevel === level ? null : level)
               }
-              className={`rounded-full border px-3 py-1 text-[10px] font-medium uppercase tracking-wider transition-all duration-200 ${
+              className={`rounded-full border px-3 py-1 text-[10px] font-medium uppercase tracking-wider min-h-10 transition-[background-color,border-color,color,box-shadow,transform] duration-200 active:scale-[0.96] ${
                 activeTrustLevel === level
                   ? trustBadgeStyles[level]
                   : "border-border/30 bg-bg-elevated/20 text-text-muted hover:border-border/50"

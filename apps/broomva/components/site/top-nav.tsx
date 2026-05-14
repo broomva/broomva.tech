@@ -116,7 +116,7 @@ export function TopNav() {
         {showMobileFloater && (
           <motion.div
             key="mobile-floater"
-            className="pointer-events-auto mx-auto mb-2 flex w-fit items-center rounded-2xl border border-zinc-800/50 bg-zinc-900/80 px-4 py-2 backdrop-blur-md md:hidden"
+            className="glass-heavy pointer-events-auto mx-auto mb-2 flex w-fit items-center rounded-2xl border-border/50 bg-bg-surface/80 px-4 py-2 md:hidden"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
@@ -163,7 +163,7 @@ export function TopNav() {
                     className={
                       active
                         ? "text-ai-blue"
-                        : "text-zinc-400 transition-colors group-hover:text-text-primary"
+                        : "text-text-secondary transition-colors group-hover:text-text-primary"
                     }
                     strokeWidth={active ? 2.5 : 1.5}
                   />
@@ -186,7 +186,7 @@ export function TopNav() {
                   opacity: { duration: 0.2, delay: 0.1 },
                 }}
               >
-                <div className="mr-3 h-5 w-px shrink-0 bg-zinc-700/50" />
+                <div className="mr-3 h-5 w-px shrink-0 bg-border/60" />
                 <ContentToolbar
                   html={payload.html}
                   title={payload.title}
@@ -208,14 +208,14 @@ export function TopNav() {
                   opacity: { duration: 0.2, delay: 0.08 },
                 }}
               >
-                <div className="mr-3 h-5 w-px shrink-0 bg-zinc-700/50" />
+                <div className="mr-3 h-5 w-px shrink-0 bg-border/60" />
                 <DockAudioControls />
               </motion.div>
             )}
           </AnimatePresence>
 
           <div className="flex items-center pl-1">
-            <div className="mr-2 h-5 w-px shrink-0 bg-zinc-700/50" />
+            <div className="mr-2 h-5 w-px shrink-0 bg-border/60" />
             <DockSearch />
           </div>
         </Dock>

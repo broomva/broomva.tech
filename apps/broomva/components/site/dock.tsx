@@ -113,7 +113,7 @@ function Dock({
           mouseX.set(Infinity);
         }}
         className={cn(
-          "pointer-events-auto mx-auto flex w-fit gap-4 rounded-2xl bg-zinc-900/80 px-4 backdrop-blur-md border border-zinc-800/50",
+          "glass-heavy pointer-events-auto mx-auto flex w-fit gap-4 rounded-2xl border-border/50 bg-bg-surface/80 px-4",
           className,
         )}
         style={{ height: panelHeight }}
@@ -157,13 +157,19 @@ function DockItem({ children, className, onClick }: DockItemProps) {
       onFocus={() => isHovered.set(1)}
       onBlur={() => isHovered.set(0)}
       className={cn(
-        "relative inline-flex items-center justify-center",
+        "relative inline-flex min-h-10 items-center justify-center rounded-xl transition-transform active:scale-[0.96]",
         className,
       )}
       tabIndex={0}
       role="button"
       aria-haspopup="true"
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick?.();
+        }
+      }}
     >
       {Children.map(children, (child) =>
         cloneElement(child as React.ReactElement<Record<string, unknown>>, {
@@ -201,7 +207,7 @@ function DockLabel({ children, className, ...rest }: DockLabelProps) {
             // Anchor above parent via bottom-full (no fixed pixel offset),
             // center via inset-x-0 + mx-auto so positioning is stable even
             // while the DockItem parent's width is mid-animation.
-            "pointer-events-none absolute bottom-full inset-x-0 z-50 mx-auto mb-2 w-fit max-w-[10rem] whitespace-pre rounded-md border border-zinc-700 bg-zinc-900/95 px-2 py-0.5 text-xs text-zinc-200 shadow-md backdrop-blur-md",
+            "glass-subtle pointer-events-none absolute bottom-full inset-x-0 z-50 mx-auto mb-2 w-fit max-w-[10rem] whitespace-pre rounded-md border-border/50 px-2 py-0.5 text-xs text-text-primary shadow-md",
             className,
           )}
           role="tooltip"
