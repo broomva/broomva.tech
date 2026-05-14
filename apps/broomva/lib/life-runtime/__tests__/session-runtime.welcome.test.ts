@@ -102,11 +102,21 @@ describe("seedFreshSession", () => {
     );
   });
 
-  it("is idempotent — re-streaming the same sid does not re-emit the seed", async () => {
+  it("is idempotent — seed fires once but the buffer replays on every subscription (Plan D replay-on-read)", async () => {
     const sid = `test-idempotent-${crypto.randomUUID()}`;
     const first = await collectSeed(sid);
     const second = await collectSeed(sid);
+    // Both subscriptions see the same 5 envelopes. Plan D made the buffer
+    // append-only with replay-on-read; the seed runs once (state.nextSeq
+    // guard) but the envelopes it emitted stay buffered for refresh and
+    // multi-tab. Prior to Plan D this test asserted second.length === 0
+    // because the buffer was drained on the first read — that was the
+    // bug Plan D fixed.
     expect(first).toHaveLength(5);
-    expect(second).toHaveLength(0);
+    expect(second).toHaveLength(5);
+    // Same envelope sequence on both reads (seed didn't re-emit; buffer
+    // just replayed).
+    expect(second[0]).toEqual(first[0]);
+    expect(second[4]).toEqual(first[4]);
   });
 });
