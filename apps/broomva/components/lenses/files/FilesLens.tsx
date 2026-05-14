@@ -1,16 +1,20 @@
 "use client";
 
+import { FileViewer } from "./FileViewer";
+
 interface Props {
   file: string;
 }
 
 /**
- * Files lens center stage — placeholder; full implementation in Task 9.
+ * FilesLens — center-stage composition root. v1 ships just the viewer;
+ * the right rail (Outline + Backlinks) is mounted by `RightRail` based
+ * on the same `?file=` URL param, not by this component.
  */
 export function FilesLens({ file }: Props) {
   return (
-    <div className="p-6 font-mono text-[12px] opacity-60">
-      File viewer for <span className="opacity-90">{file}</span> (coming).
+    <div className="flex h-full flex-col">
+      <FileViewer path={file} />
     </div>
   );
 }
