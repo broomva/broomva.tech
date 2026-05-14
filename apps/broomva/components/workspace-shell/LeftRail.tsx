@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { FilesTree } from "@/components/lenses/files/FilesTree";
+import { SessionsList } from "@/components/workspace-shell/SessionsList";
 
 function RailHeading({
   children,
@@ -23,9 +25,10 @@ function RailHeading({
 /**
  * Left rail — three sections: Sessions, Filesystem, Pinned.
  *
- * All sections are placeholders in v1. Real content lands in PR 4 (Session
- * lens populates Sessions), PR 5 (Files lens populates Filesystem), and a
- * later UX pass for Pinned (currently localStorage-only).
+ * Sessions (Plan D) pulls from /api/me/sessions via SessionsList — the
+ * logged-in user's recently-touched session ids, most recent first.
+ * Filesystem (Plan B-5) renders a tree of fs.write events from the
+ * scene. Pinned remains a placeholder for v1.1.
  */
 export function LeftRail() {
   return (
@@ -33,18 +36,14 @@ export function LeftRail() {
       aria-label="Left rail"
       className="overflow-y-auto border-r border-[color:var(--ag-border-subtle)] px-3 pb-3"
     >
-      <RailHeading count={0} action="+ new">
-        Sessions
-      </RailHeading>
-      <div className="px-1 py-2 font-mono text-[11px] opacity-60">
-        No sessions yet. Open one from the dock or press <kbd>⌘K</kbd>.
-      </div>
-      <button
-        type="button"
-        className="ag-glass-subtle mt-1 w-full rounded px-1 py-1.5 text-left font-mono text-[11px] opacity-70 hover:opacity-100"
+      <RailHeading action="+ new">Sessions</RailHeading>
+      <SessionsList />
+      <Link
+        href="/workspace"
+        className="ag-glass-subtle mt-1 block w-full rounded px-1 py-1.5 text-left font-mono text-[11px] opacity-70 hover:opacity-100"
       >
-        + new session
-      </button>
+        ← my workspace
+      </Link>
 
       <RailHeading action="⌘O">Filesystem</RailHeading>
       <FilesTree />
