@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useSceneContext } from "../SceneContext";
+import { useSceneContextOptional } from "../SceneContext";
 
 export interface OpEntry {
   id: string;
@@ -52,7 +52,7 @@ function kindOf(name: string): OpEntry["kind"] {
  * subscription.
  */
 export function useRecentOps(): OpEntry[] {
-  const { scene } = useSceneContext();
+  const { scene } = useSceneContextOptional();
   return useMemo<OpEntry[]>(() => {
     const out: OpEntry[] = [];
     const walk = (n: {

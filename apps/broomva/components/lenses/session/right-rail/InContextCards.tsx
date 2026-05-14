@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useSceneContext } from "../SceneContext";
+import { useSceneContextOptional } from "../SceneContext";
 
 interface ContextCard {
   key: string;
@@ -23,7 +23,7 @@ interface ContextCard {
  * Pure client-side derivation; no extra RPCs.
  */
 export function InContextCards() {
-  const { scene } = useSceneContext();
+  const { scene } = useSceneContextOptional();
 
   const cards = useMemo<ContextCard[]>(() => {
     const found = new Map<string, ContextCard>();

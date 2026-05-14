@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useSceneContext } from "../SceneContext";
+import { useSceneContextOptional } from "../SceneContext";
 
 interface Touched {
   id: string;
@@ -17,7 +17,7 @@ interface Touched {
  * Pure SVG; no chart library. Empty state when no memory activity yet.
  */
 export function MemoryMiniGraph() {
-  const { scene } = useSceneContext();
+  const { scene } = useSceneContextOptional();
 
   const touched = useMemo<Touched[]>(() => {
     const found = new Map<string, Touched>();

@@ -8,7 +8,7 @@ import {
 } from "@broomva/prosopon";
 import { useEffect, useReducer, useRef, useState } from "react";
 
-const EMPTY_SCENE: Scene = {
+export const EMPTY_SCENE: Scene = {
   id: "",
   root: {
     id: "root",
