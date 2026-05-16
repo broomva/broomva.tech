@@ -24,27 +24,28 @@ import { createKernelClient } from "../kernel/factory";
 import { type ToolHandler } from "../kernel/in-process-client";
 import type { VmHandle } from "../kernel/types";
 import {
-  makeLifeToolHandlers,
-  RealAgentRunner,
-  type RealRunnerOptions,
-} from "../real-runner";
-import {
   getProjectConfig,
   isProjectSlug,
   type ProjectConfig,
   type ProjectSlug,
 } from "../projects";
+import {
+  makeLifeToolHandlers,
+  RealAgentRunner,
+  type RealRunnerOptions,
+} from "../real-runner";
 import type { ModuleTypeId } from "../types";
 import {
   domainEventToCanonical,
   llmPartToCanonical,
 } from "./event-translators";
-import type {
-  AgentEvent,
-  AgentSessionClient,
-  AgentSessionHealth,
-  AgentStreamInput,
-  CanonicalAgentEvent,
+import {
+  type AgentEvent,
+  type AgentSessionClient,
+  type AgentSessionHealth,
+  AgentSessionUnknownSidError,
+  type AgentStreamInput,
+  type CanonicalAgentEvent,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -78,8 +79,7 @@ export interface InProcessAgentSessionClientDeps {
 
 const DEFAULT_KERNEL_FACTORY = (deps: {
   tools: Record<string, ToolHandler>;
-}): KernelClient =>
-  createKernelClient({ tools: deps.tools });
+}): KernelClient => createKernelClient({ tools: deps.tools });
 
 /**
  * In-process `AgentSessionClient` — runs `RealAgentRunner` and emits
@@ -106,9 +106,17 @@ export class InProcessAgentSessionClient implements AgentSessionClient {
     };
   }
 
-  async *stream(
-    input: AgentStreamInput,
-  ): AsyncIterable<CanonicalAgentEvent> {
+  /**
+   * Multi-turn message ingestion. Implementation lands in Task 2 of
+   * Plan E-2. Until then, calling this on an active session throws —
+   * the per-turn path doesn't register a queue and there's no
+   * multi-turn state to push into.
+   */
+  async sendMessage(sessionId: string, _content: string): Promise<void> {
+    throw new AgentSessionUnknownSidError(sessionId);
+  }
+
+  async *stream(input: AgentStreamInput): AsyncIterable<CanonicalAgentEvent> {
     if (!isProjectSlug(input.projectSlug)) {
       yield this.canonical(0n, {
         kind: "error",
@@ -142,7 +150,8 @@ export class InProcessAgentSessionClient implements AgentSessionClient {
       ));
 
     let seq = 0n;
-    const emit = (e: AgentEvent): CanonicalAgentEvent => this.canonical(seq++, e);
+    const emit = (e: AgentEvent): CanonicalAgentEvent =>
+      this.canonical(seq++, e);
 
     yield emit({ kind: "open", sessionId: input.sessionId, vmHandle: vm });
 

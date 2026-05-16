@@ -169,6 +169,19 @@ export interface AgentStreamInput {
   capability?: TierUserCap;
   /** Aborts the stream. */
   signal?: AbortSignal;
+  /**
+   * When `true`, the returned `AsyncIterable` does NOT finish after the
+   * first turn. Instead, it parks waiting for additional user messages
+   * delivered via `client.sendMessage(sessionId, content)`. Each new
+   * message triggers another turn, with conversation history accumulated
+   * automatically. The iterable only finishes when `signal` aborts or
+   * an unrecoverable error event fires.
+   *
+   * When `false` or omitted, behavior matches the historical per-turn
+   * contract — `input.userMessage` runs to a `finish` event and the
+   * iterable closes. This is the path `canonical.ts` uses today.
+   */
+  multiTurn?: boolean;
 }
 
 /**
@@ -215,9 +228,43 @@ export interface AgentSessionClient {
   stream(input: AgentStreamInput): AsyncIterable<CanonicalAgentEvent>;
 
   /**
+   * Push a new user message into an active multi-turn session. The
+   * corresponding `stream()` iterable picks it up, runs another turn,
+   * and resumes yielding events.
+   *
+   * Throws if `sessionId` has no active multi-turn stream
+   * (`code: "agent-session.unknown_sid"`). Calling on a per-turn (non-
+   * `multiTurn`) session is also an unknown-sid error — per-turn streams
+   * do not register a queue.
+   *
+   * Resolves once the message is queued (not once the turn finishes).
+   */
+  sendMessage(sessionId: string, content: string): Promise<void>;
+
+  /**
    * Cheap reachability probe — used by the `/api/life/health` endpoint
    * to drive the Dock SIM/LIVE/COMING badges. Implementations should
    * NOT open a full agent stream; cap at 2s.
    */
   health(): Promise<AgentSessionHealth>;
+}
+
+/**
+ * Thrown by `AgentSessionClient.sendMessage` when no active multi-turn
+ * stream is registered for the given `sessionId`. Either the session
+ * never opened (race condition — caller invoked `sendMessage` before
+ * `stream()` parked), the stream already terminated (abort, error,
+ * fatal close), or the session opened in per-turn mode (no queue
+ * registered).
+ *
+ * Callers (notably the SSE handler that fans turns from the browser
+ * into the runtime) translate this into a typed envelope so the user
+ * sees a coherent "session expired" surface rather than a 500.
+ */
+export class AgentSessionUnknownSidError extends Error {
+  readonly code = "agent-session.unknown_sid";
+  constructor(sessionId: string) {
+    super(`agent-session: no active multi-turn stream for sid="${sessionId}"`);
+    this.name = "AgentSessionUnknownSidError";
+  }
 }

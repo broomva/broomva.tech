@@ -47,13 +47,16 @@ vi.mock("./in-process-client", () => {
     async *stream() {
       // No-op generator. Tests don't iterate.
     }
+    async sendMessage(_sid: string, _content: string): Promise<void> {
+      // No-op stub — factory tests don't exercise sendMessage.
+    }
   }
   return { InProcessAgentSessionClient };
 });
 
 import {
-  createAgentSessionClient,
   type CreateAgentSessionClientOverrides,
+  createAgentSessionClient,
 } from "./factory";
 
 // Cache the env we may stomp; restore in afterEach.

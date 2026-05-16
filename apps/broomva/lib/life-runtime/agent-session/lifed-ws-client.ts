@@ -33,18 +33,15 @@
  */
 
 import "server-only";
-import type {
-  ToolCall,
-  ToolResult,
-  VmHandle,
-} from "../kernel/types";
-import type {
-  AgentEvent,
-  AgentSessionClient,
-  AgentSessionHealth,
-  AgentStreamInput,
-  CanonicalAgentEvent,
-  TierUserCap,
+import type { ToolCall, ToolResult, VmHandle } from "../kernel/types";
+import {
+  type AgentEvent,
+  type AgentSessionClient,
+  type AgentSessionHealth,
+  AgentSessionUnknownSidError,
+  type AgentStreamInput,
+  type CanonicalAgentEvent,
+  type TierUserCap,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -102,20 +99,14 @@ interface WsLike {
   close(code?: number, reason?: string): void;
   addEventListener(event: "open", h: () => void): void;
   addEventListener(event: "message", h: (e: { data: unknown }) => void): void;
-  addEventListener(
-    event: "error",
-    h: (e: { message?: string }) => void,
-  ): void;
+  addEventListener(event: "error", h: (e: { message?: string }) => void): void;
   addEventListener(
     event: "close",
     h: (e: { code: number; reason: string }) => void,
   ): void;
 }
 
-export type WebSocketFactory = (
-  url: string,
-  protocols: string[],
-) => WsLike;
+export type WebSocketFactory = (url: string, protocols: string[]) => WsLike;
 
 function defaultWebSocketFactory(): WebSocketFactory {
   const g = globalThis as unknown as {
@@ -325,6 +316,15 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
     };
   }
 
+  /**
+   * Multi-turn message ingestion. Implementation lands in Task 3 of
+   * Plan E-2. Until then, calling this on an active session throws —
+   * the per-turn path doesn't register a per-sid WS map entry.
+   */
+  async sendMessage(sessionId: string, _content: string): Promise<void> {
+    throw new AgentSessionUnknownSidError(sessionId);
+  }
+
   async health(): Promise<AgentSessionHealth> {
     const url = `${this.baseUrl}/healthz`;
     const headers: Record<string, string> = {};
@@ -364,9 +364,7 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
     }
   }
 
-  async *stream(
-    input: AgentStreamInput,
-  ): AsyncIterable<CanonicalAgentEvent> {
+  async *stream(input: AgentStreamInput): AsyncIterable<CanonicalAgentEvent> {
     if (!input.capability) {
       // Spec D L4-D5 mandates a Tier-User cap on the WS upgrade.
       // Without one the gateway rejects the upgrade with 1008.
@@ -508,7 +506,12 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
             // defensive
           }
           const decoded = decodeAgentEvent(frame, input);
-          if (decoded) yield { seq, at: frame.record.at ?? new Date().toISOString(), event: decoded };
+          if (decoded)
+            yield {
+              seq,
+              at: frame.record.at ?? new Date().toISOString(),
+              event: decoded,
+            };
         } else if (frame.kind === "closing") {
           // server is about to close the stream (Spec C₃ §6.5). Don't
           // yield this — the close event will produce the finish.
