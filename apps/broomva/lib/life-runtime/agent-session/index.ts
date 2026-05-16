@@ -13,8 +13,8 @@
  */
 
 export {
-  createAgentSessionClient,
   type CreateAgentSessionClientOverrides,
+  createAgentSessionClient,
 } from "./factory";
 export {
   InProcessAgentSessionClient,
@@ -25,12 +25,13 @@ export {
   type LifedWsAgentSessionClientDeps,
   type WebSocketFactory,
 } from "./lifed-ws-client";
-export type {
-  AgentEvent,
-  AgentSessionBackendId,
-  AgentSessionClient,
-  AgentSessionHealth,
-  AgentStreamInput,
-  CanonicalAgentEvent,
-  TierUserCap,
+export {
+  type AgentEvent,
+  type AgentSessionBackendId,
+  type AgentSessionClient,
+  type AgentSessionHealth,
+  AgentSessionUnknownSidError,
+  type AgentStreamInput,
+  type CanonicalAgentEvent,
+  type TierUserCap,
 } from "./types";

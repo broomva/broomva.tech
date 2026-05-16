@@ -33,18 +33,15 @@
  */
 
 import "server-only";
-import type {
-  ToolCall,
-  ToolResult,
-  VmHandle,
-} from "../kernel/types";
-import type {
-  AgentEvent,
-  AgentSessionClient,
-  AgentSessionHealth,
-  AgentStreamInput,
-  CanonicalAgentEvent,
-  TierUserCap,
+import type { ToolCall, ToolResult, VmHandle } from "../kernel/types";
+import {
+  type AgentEvent,
+  type AgentSessionClient,
+  type AgentSessionHealth,
+  AgentSessionUnknownSidError,
+  type AgentStreamInput,
+  type CanonicalAgentEvent,
+  type TierUserCap,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -102,20 +99,14 @@ interface WsLike {
   close(code?: number, reason?: string): void;
   addEventListener(event: "open", h: () => void): void;
   addEventListener(event: "message", h: (e: { data: unknown }) => void): void;
-  addEventListener(
-    event: "error",
-    h: (e: { message?: string }) => void,
-  ): void;
+  addEventListener(event: "error", h: (e: { message?: string }) => void): void;
   addEventListener(
     event: "close",
     h: (e: { code: number; reason: string }) => void,
   ): void;
 }
 
-export type WebSocketFactory = (
-  url: string,
-  protocols: string[],
-) => WsLike;
+export type WebSocketFactory = (url: string, protocols: string[]) => WsLike;
 
 function defaultWebSocketFactory(): WebSocketFactory {
   const g = globalThis as unknown as {
@@ -201,6 +192,28 @@ export interface LifedWsAgentSessionClientDeps {
  * Lifed WebSocket-streaming agent session client. Active when
  * `LIFED_GATEWAY_URL` is set in the environment.
  */
+/**
+ * One live multi-turn WS, tracked per sid. Populated on the
+ * `multiTurn === true` path; never used by the per-turn path.
+ *
+ * `pending` carries messages that arrive via `sendMessage` before
+ * the WS reaches OPEN state OR while a turn is already in flight —
+ * they're drained one-at-a-time at turn boundaries. The initial
+ * `input.userMessage` lives in `pending` until `open` fires.
+ *
+ * `currentTurnInFlight` is the turn-boundary gate: once
+ * `sendMessage` writes a frame onto an open socket, this flips to
+ * `true` and stays `true` until the next `turn_end` event lands. The
+ * gate ensures strict FIFO turn ordering — no pipelining, no two
+ * `send_message` frames written before the first one's FINISH lands.
+ */
+interface LiveWsEntry {
+  ws: WsLike;
+  pending: string[];
+  isOpen: boolean;
+  currentTurnInFlight: boolean;
+}
+
 export class LifedWsAgentSessionClient implements AgentSessionClient {
   readonly backendId = "lifed-ws" as const;
   private readonly baseUrl: string;
@@ -208,6 +221,22 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
   private readonly healthTimeoutMs: number;
   private readonly healthTokenProducer?: () => Promise<string | undefined>;
   private readonly fetchFn: typeof fetch;
+  /**
+   * Per-sid live WS state. Only populated for the multi-turn path
+   * (per-turn streams use a single locally-scoped WS that's
+   * constructed-then-discarded inside `stream()`).
+   *
+   * Cross-turn lifecycle: lifegw + lifed keep the WS open across many
+   * `send_message` frames (Open Q 1 verdict, confirmed via Rust source
+   * inspection 2026-05-15: `lifed::services::agent::stream_session`
+   * attaches a passive fanout subscriber; `lifegw::services::ws`
+   * drives `drive_upstream_tail` which only exits on Err(status)). A
+   * per-turn FINISH event is yielded to the consumer as a turn boundary
+   * but does NOT close the WS — the iterator stays alive until the WS
+   * itself closes (abort, transport error, server-initiated 1008/4003
+   * etc.).
+   */
+  private readonly liveStreams = new Map<string, LiveWsEntry>();
 
   constructor(deps: LifedWsAgentSessionClientDeps) {
     if (!deps.baseUrl) {
@@ -325,6 +354,57 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
     };
   }
 
+  /**
+   * Push a new user message into an active multi-turn WS stream.
+   * Resolves once the frame is queued or written to the socket (not
+   * once the turn completes).
+   *
+   * Throws `AgentSessionUnknownSidError` when no multi-turn WS is
+   * registered for the given `sessionId` — either the session never
+   * opened in multi-turn mode (per-turn streams don't register an
+   * entry), or it already terminated and cleaned up. Also throws if
+   * the socket has already advanced to CLOSING/CLOSED but cleanup
+   * hasn't deleted the entry yet (race window between server-side
+   * close and the close handler firing) — without this, the bare
+   * `ws.send` below would raise a raw transport error and the SSE
+   * handler would surface a 500 instead of a typed envelope.
+   *
+   * Buffers messages that arrive before the WS reaches OPEN state
+   * AND messages that arrive while a turn is already in flight; the
+   * `open` event handler and the `turn_end` translation site drain
+   * the buffer one-at-a-time so turns serialize strictly FIFO.
+   */
+  async sendMessage(sessionId: string, content: string): Promise<void> {
+    const entry = this.liveStreams.get(sessionId);
+    if (!entry) throw new AgentSessionUnknownSidError(sessionId);
+    // Catch the "WS closed but cleanup hasn't deleted the entry yet"
+    // race. WebSocket.readyState 1 === OPEN per the WHATWG spec; 0
+    // is CONNECTING, 2 is CLOSING, 3 is CLOSED. We only write when
+    // OPEN; CONNECTING falls through to the buffered-pending path.
+    if (
+      entry.ws.readyState !== /* OPEN */ 1 &&
+      entry.ws.readyState !== /* CONNECTING */ 0
+    ) {
+      throw new AgentSessionUnknownSidError(sessionId);
+    }
+    if (!entry.isOpen) {
+      // Not yet opened — buffer until the `open` handler drains.
+      entry.pending.push(content);
+      return;
+    }
+    if (!entry.currentTurnInFlight) {
+      // Free to send immediately. Take the turn-in-flight gate so
+      // subsequent calls are forced through the pending buffer.
+      const frame: InboundFrame = { kind: "send_message", content };
+      entry.ws.send(JSON.stringify(frame));
+      entry.currentTurnInFlight = true;
+      return;
+    }
+    // A turn is already running — buffer; the turn_end translation
+    // site drains one entry on each turn boundary.
+    entry.pending.push(content);
+  }
+
   async health(): Promise<AgentSessionHealth> {
     const url = `${this.baseUrl}/healthz`;
     const headers: Record<string, string> = {};
@@ -364,9 +444,7 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
     }
   }
 
-  async *stream(
-    input: AgentStreamInput,
-  ): AsyncIterable<CanonicalAgentEvent> {
+  async *stream(input: AgentStreamInput): AsyncIterable<CanonicalAgentEvent> {
     if (!input.capability) {
       // Spec D L4-D5 mandates a Tier-User cap on the WS upgrade.
       // Without one the gateway rejects the upgrade with 1008.
@@ -375,6 +453,16 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
         "lifed-ws.no_capability",
         "LifedWsAgentSessionClient requires a Tier-User capability (input.capability)",
       );
+      return;
+    }
+
+    // Branch on multi-turn opt-in. The per-turn path stays bit-for-bit
+    // identical to today (E-2 invariant: zero behavior change for
+    // canonical.ts:254). The multi-turn path keeps the WS open across
+    // many `send_message` frames and treats per-turn FINISH as a turn
+    // boundary instead of a terminal close.
+    if (input.multiTurn === true) {
+      yield* this.streamMultiTurn(input);
       return;
     }
 
@@ -413,6 +501,7 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
     let lastSeq = 0n;
     let openErrCode: string | null = null;
     let openErrMsg: string | null = null;
+    let finishYielded = false;
 
     const cleanup = () => {
       try {
@@ -508,7 +597,14 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
             // defensive
           }
           const decoded = decodeAgentEvent(frame, input);
-          if (decoded) yield { seq, at: frame.record.at ?? new Date().toISOString(), event: decoded };
+          if (decoded) {
+            if (decoded.kind === "finish") finishYielded = true;
+            yield {
+              seq,
+              at: frame.record.at ?? new Date().toISOString(),
+              event: decoded,
+            };
+          }
         } else if (frame.kind === "closing") {
           // server is about to close the stream (Spec C₃ §6.5). Don't
           // yield this — the close event will produce the finish.
@@ -518,7 +614,294 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
       }
     } finally {
       cleanup();
-      if (openErrCode || openErrMsg) {
+      // Strict terminal-finish-once invariant: if the server already
+      // sent a FINISH frame (`finishYielded === true`) the iterator
+      // already yielded its one terminal `finish`. Subsequent close
+      // events — whether normal (1000), transient (1011/1001/4002/
+      // 4004), or terminal (1008/4003/4005) — MUST NOT double-emit
+      // a second `finish` or a paired `error` + `finish`. The contract
+      // `stream()` docstring is unambiguous: "exactly one `finish` as
+      // the terminal-and-last event."
+      if (!finishYielded) {
+        if (openErrCode || openErrMsg) {
+          yield this.canonical(++lastSeq, {
+            kind: "error",
+            code: openErrCode ?? "lifed-ws.error",
+            message: openErrMsg ?? "lifed-ws stream errored",
+          });
+          yield this.canonical(++lastSeq, {
+            kind: "finish",
+            reason: "error",
+          });
+        } else {
+          // Normal close — server didn't send FINISH; synthesize one
+          // so consumers don't hang. (Idiomatic lifed always sends
+          // FINISH; this is belt-and-suspenders.)
+          yield this.canonical(++lastSeq, {
+            kind: "finish",
+            reason: "stop",
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Multi-turn WS body. Opens a single WS that stays alive across many
+   * `send_message` frames; per-turn FINISH events are translated into
+   * `turn_end` events (the canonical turn-boundary marker — see
+   * `decodeAgentEvent`) so the iterator can keep yielding without ever
+   * emitting `finish` between turns. The terminal `finish` lands once,
+   * in the outer `finally`, when the WS truly closes.
+   *
+   * Differences from the per-turn path:
+   *   1. The initial `input.userMessage` is registered in
+   *      `liveStreams.pending` *before* the WS opens, not sent inline
+   *      in the `open` handler. This unifies the inbound write path
+   *      with `sendMessage()` and lets the turn-in-flight gate cover
+   *      the first send.
+   *   2. The frame-pump loop forwards `AGENT_EVENT_KIND_FINISH` events
+   *      to the consumer as `turn_end` (turn boundary) and does NOT
+   *      break the loop; it only breaks on close / unrecoverable
+   *      error / abort.
+   *   3. After each `turn_end` lands, the `currentTurnInFlight` gate
+   *      releases and one pending message (if any) is sent — strict
+   *      FIFO turn ordering, no pipelining.
+   *   4. The terminal `finish` is emitted once at iterator end (clean
+   *      close → "stop", abort → "aborted", error → error code).
+   *
+   * Per Open Q 1 verdict (2026-05-15, confirmed via Rust source
+   * inspection — see liveStreams docstring), lifegw + lifed keep the
+   * WS open across many `send_message` frames, so this branch is the
+   * happy path. If lifed *did* close after each FINISH, this code
+   * would observe the close and exit on the next iteration — the
+   * fallback shape is the same, just with a single-turn lifetime.
+   */
+  private async *streamMultiTurn(
+    input: AgentStreamInput,
+  ): AsyncIterable<CanonicalAgentEvent> {
+    const sid = input.sessionId;
+    if (!input.capability) {
+      // Unreachable — checked by caller — but typecheck needs it.
+      yield* this.errorThenFinish(
+        0n,
+        "lifed-ws.no_capability",
+        "LifedWsAgentSessionClient requires a Tier-User capability (input.capability)",
+      );
+      return;
+    }
+    const wsUrl = this.buildWsUrl(input);
+    const protocols = [`bearer.${input.capability.token}`];
+    let ws: WsLike;
+    try {
+      ws = this.webSocketFactory(wsUrl, protocols);
+    } catch (err) {
+      yield* this.errorThenFinish(
+        0n,
+        "lifed-ws.factory_failed",
+        `failed to construct WebSocket: ${(err as Error).message}`,
+      );
+      return;
+    }
+
+    // Register live-streams entry before any await so `sendMessage`
+    // can target this sid immediately if the SSE handler races ahead.
+    // The initial user message lives in `pending` until the WS reaches
+    // OPEN — the `open` handler drains exactly one entry and flips
+    // the turn-in-flight gate, mirroring the `sendMessage` write path.
+    const entry: LiveWsEntry = {
+      ws,
+      pending: [input.userMessage],
+      isOpen: false,
+      currentTurnInFlight: false,
+    };
+    this.liveStreams.set(sid, entry);
+
+    const queue: OutboundFrame[] = [];
+    let closed = false;
+    let resolveNext: ((v: void) => void) | null = null;
+    const wake = () => {
+      const r = resolveNext;
+      resolveNext = null;
+      r?.();
+    };
+    const waitForFrame = () =>
+      new Promise<void>((resolve) => {
+        if (queue.length > 0 || closed) return resolve();
+        resolveNext = resolve;
+      });
+
+    let lastSeq = 0n;
+    let openErrCode: string | null = null;
+    let openErrMsg: string | null = null;
+
+    const cleanup = () => {
+      try {
+        if (
+          ws.readyState !== /* CLOSED */ 3 &&
+          ws.readyState !== /* CLOSING */ 2
+        ) {
+          ws.close(CLOSE_NORMAL, "client done");
+        }
+      } catch {
+        // swallow
+      }
+    };
+
+    ws.addEventListener("open", () => {
+      entry.isOpen = true;
+      // Drain EXACTLY ONE pending entry — the first user message of the
+      // conversation. The turn-boundary gate (`currentTurnInFlight`)
+      // ensures we don't pipeline subsequent messages into lifed before
+      // the first turn's FINISH lands; any messages buffered while
+      // CONNECTING stay queued until the next `turn_end` drains them.
+      if (entry.pending.length === 0) return;
+      const content = entry.pending.shift()!;
+      const frame: InboundFrame = { kind: "send_message", content };
+      try {
+        ws.send(JSON.stringify(frame));
+        entry.currentTurnInFlight = true;
+      } catch (err) {
+        openErrCode ??= "lifed-ws.send_failed";
+        openErrMsg ??= `failed to send open frame: ${(err as Error).message}`;
+        cleanup();
+      }
+    });
+
+    ws.addEventListener("message", (e) => {
+      const text = typeof e.data === "string" ? e.data : null;
+      if (!text) return;
+      try {
+        const f = JSON.parse(text) as OutboundFrame;
+        queue.push(f);
+        wake();
+      } catch {
+        // malformed frame — drop. lifed should not produce these.
+      }
+    });
+
+    ws.addEventListener("error", (e) => {
+      openErrCode ??= "lifed-ws.transport_error";
+      openErrMsg ??= e.message ?? "websocket error";
+    });
+
+    ws.addEventListener("close", (e) => {
+      closed = true;
+      if (e.code === CLOSE_AUTH) {
+        openErrCode = "lifed-ws.auth";
+        openErrMsg = `auth failed: ${e.reason || "1008"}`;
+      } else if (e.code === CLOSE_IP_BLOCKED) {
+        openErrCode = "lifed-ws.ip_blocked";
+        openErrMsg = `ip blocked: ${e.reason || "4003"}`;
+      } else if (e.code === CLOSE_SEQUENCE_RETIRED) {
+        openErrCode = "lifed-ws.sequence_retired";
+        openErrMsg = `from_sequence retired: ${e.reason || "4005"}`;
+      } else if (TRANSIENT_CLOSE_CODES.has(e.code)) {
+        openErrCode ??= `lifed-ws.transient_${e.code}`;
+        openErrMsg ??= `transient close: ${e.reason || e.code}`;
+      } else if (e.code !== CLOSE_NORMAL) {
+        openErrCode ??= `lifed-ws.unexpected_${e.code}`;
+        openErrMsg ??= `unexpected close: ${e.reason || e.code}`;
+      }
+      wake();
+    });
+
+    // Abort wake-up — if the caller's signal fires, the wait-loop
+    // observes it on the next iteration. Without this listener, the
+    // generator would hang in waitForFrame() with no incoming frame.
+    const onAbort = () => {
+      // We don't set `closed = true` here because we want the close
+      // handler (which fires after cleanup()) to drive the canonical
+      // close-code mapping. We just wake the pump.
+      wake();
+    };
+    if (input.signal) {
+      if (input.signal.aborted) {
+        // Already aborted — fast path.
+        cleanup();
+      } else {
+        input.signal.addEventListener("abort", onAbort, { once: true });
+      }
+    }
+
+    let abortedYielded = false;
+
+    try {
+      while (!closed || queue.length > 0) {
+        if (input.signal?.aborted && !abortedYielded) {
+          yield this.canonical(lastSeq++, {
+            kind: "warning",
+            code: "lifed-ws.aborted",
+            message: "stream aborted by client",
+          });
+          abortedYielded = true;
+          // Drive a clean close — server-side will see 1000 Normal.
+          cleanup();
+        }
+        if (queue.length === 0) {
+          await waitForFrame();
+          continue;
+        }
+        const frame = queue.shift()!;
+        if (frame.kind === "agent_event") {
+          const seqStr = String(frame.seq_no);
+          const seq = parseSeqStrict(seqStr) ?? lastSeq + 1n;
+          lastSeq = seq;
+          const decoded = decodeAgentEvent(frame, input);
+          if (decoded) {
+            yield {
+              seq,
+              at: frame.record.at ?? new Date().toISOString(),
+              event: decoded,
+            };
+            // Turn-boundary handling: when the decoder translated a
+            // per-turn FINISH into `turn_end` (multi-turn mode only),
+            // release the turn-in-flight gate and drain ONE more
+            // pending message so turns serialize strictly FIFO. Doing
+            // this AFTER the yield guarantees the consumer observes
+            // `turn_end` before the next turn's tokens land.
+            if (decoded.kind === "turn_end") {
+              entry.currentTurnInFlight = false;
+              if (
+                entry.pending.length > 0 &&
+                entry.ws.readyState === /* OPEN */ 1
+              ) {
+                const next = entry.pending.shift()!;
+                const sendFrame: InboundFrame = {
+                  kind: "send_message",
+                  content: next,
+                };
+                try {
+                  entry.ws.send(JSON.stringify(sendFrame));
+                  entry.currentTurnInFlight = true;
+                } catch (err) {
+                  openErrCode ??= "lifed-ws.send_failed";
+                  openErrMsg ??= `failed to send next turn frame: ${
+                    (err as Error).message
+                  }`;
+                  cleanup();
+                }
+              }
+            }
+          }
+        } else if (frame.kind === "closing") {
+          // server is about to close the stream (Spec C₃ §6.5).
+          // Don't yield — the close event will produce the terminal
+          // finish.
+        } else if (frame.kind === "pong") {
+          // unsolicited; ignore
+        }
+      }
+    } finally {
+      input.signal?.removeEventListener("abort", onAbort);
+      this.liveStreams.delete(sid);
+      cleanup();
+      if (input.signal?.aborted) {
+        yield this.canonical(++lastSeq, {
+          kind: "finish",
+          reason: "aborted",
+        });
+      } else if (openErrCode || openErrMsg) {
         yield this.canonical(++lastSeq, {
           kind: "error",
           code: openErrCode ?? "lifed-ws.error",
@@ -529,9 +912,6 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
           reason: "error",
         });
       } else {
-        // Normal close — if the server didn't send a FINISH event,
-        // synthesize one so consumers don't hang.
-        // (Idiomatic lifed always sends FINISH; this is belt-and-suspenders.)
         yield this.canonical(++lastSeq, {
           kind: "finish",
           reason: "stop",
@@ -584,6 +964,13 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
  * JSON per Spec C₃ §6.2 sub-phase A); we extract the typed fields we
  * care about and fall through to `warning` on unknown kinds so the UI
  * keeps streaming.
+ *
+ * In multi-turn mode (`ctx.multiTurn === true`), per-turn
+ * `AGENT_EVENT_KIND_FINISH` frames translate into `turn_end` events
+ * — the contract reserves `finish` for the terminal-and-last event,
+ * which the multi-turn stream emits exactly once at iterator exit.
+ * The per-turn path keeps the historical mapping (FINISH → `finish`)
+ * so callers see a single terminal event.
  */
 function decodeAgentEvent(
   frame: Extract<OutboundFrame, { kind: "agent_event" }>,
@@ -634,6 +1021,13 @@ function decodeAgentEvent(
       };
     }
     case "AGENT_EVENT_KIND_FINISH": {
+      // Multi-turn mode: per-turn FINISH is a TURN BOUNDARY, not the
+      // terminal event. Translate to `turn_end` so the stream-loop
+      // can keep the iterator alive and surface the terminal `finish`
+      // exactly once in its `finally` block.
+      if (ctx.multiTurn === true) {
+        return { kind: "turn_end" };
+      }
       const usage = payload.usage as
         | {
             input_tokens?: number;

@@ -105,6 +105,18 @@ export type AgentEvent =
   | { kind: "warning"; code: string; message: string }
   /** Fatal error — the stream is about to close abnormally. */
   | { kind: "error"; code: string; message: string }
+  /**
+   * Fires between turns in a multi-turn session. The current turn's
+   * last events have been emitted; the iterator is parked waiting for
+   * the next `sendMessage()`. Per-turn callers (`multiTurn !== true`)
+   * never see this event — the iterator closes after `finish` instead.
+   *
+   * `turn_end` is NEVER terminal — consumers MUST keep pulling from
+   * the iterator after observing it. Both backends (`in-process`,
+   * `lifed-ws`) emit `turn_end` at turn boundaries in multi-turn mode
+   * and reserve `finish` for the one-and-only terminal event.
+   */
+  | { kind: "turn_end" }
   /** Stream finished cleanly. Always the last event. */
   | {
       kind: "finish";
@@ -169,6 +181,19 @@ export interface AgentStreamInput {
   capability?: TierUserCap;
   /** Aborts the stream. */
   signal?: AbortSignal;
+  /**
+   * When `true`, the returned `AsyncIterable` does NOT finish after the
+   * first turn. Instead, it parks waiting for additional user messages
+   * delivered via `client.sendMessage(sessionId, content)`. Each new
+   * message triggers another turn, with conversation history accumulated
+   * automatically. The iterable only finishes when `signal` aborts or
+   * an unrecoverable error event fires.
+   *
+   * When `false` or omitted, behavior matches the historical per-turn
+   * contract — `input.userMessage` runs to a `finish` event and the
+   * iterable closes. This is the path `canonical.ts` uses today.
+   */
+  multiTurn?: boolean;
 }
 
 /**
@@ -209,10 +234,31 @@ export interface AgentSessionClient {
    * - The caller's `signal` aborts.
    *
    * Implementations MUST emit events in monotonic `seq` order and
-   * MUST emit exactly one `finish` or `error` as the last event
-   * before the iterator ends.
+   * MUST emit exactly one `finish` as the terminal-and-last event
+   * before the iterator ends. (`error` may precede `finish` to carry
+   * a fatal-error code; the iterator still closes with a `finish`
+   * after the `error`.)
+   *
+   * In multi-turn mode (`input.multiTurn === true`), the stream may
+   * yield `turn_end` events between turns to mark turn boundaries.
+   * `turn_end` is NEVER terminal — `finish` remains terminal-and-last
+   * exactly as in per-turn mode. Per-turn callers never see `turn_end`.
    */
   stream(input: AgentStreamInput): AsyncIterable<CanonicalAgentEvent>;
+
+  /**
+   * Push a new user message into an active multi-turn session. The
+   * corresponding `stream()` iterable picks it up, runs another turn,
+   * and resumes yielding events.
+   *
+   * Throws if `sessionId` has no active multi-turn stream
+   * (`code: "agent-session.unknown_sid"`). Calling on a per-turn (non-
+   * `multiTurn`) session is also an unknown-sid error — per-turn streams
+   * do not register a queue.
+   *
+   * Resolves once the message is queued (not once the turn finishes).
+   */
+  sendMessage(sessionId: string, content: string): Promise<void>;
 
   /**
    * Cheap reachability probe — used by the `/api/life/health` endpoint
@@ -220,4 +266,24 @@ export interface AgentSessionClient {
    * NOT open a full agent stream; cap at 2s.
    */
   health(): Promise<AgentSessionHealth>;
+}
+
+/**
+ * Thrown by `AgentSessionClient.sendMessage` when no active multi-turn
+ * stream is registered for the given `sessionId`. Either the session
+ * never opened (race condition — caller invoked `sendMessage` before
+ * `stream()` parked), the stream already terminated (abort, error,
+ * fatal close), or the session opened in per-turn mode (no queue
+ * registered).
+ *
+ * Callers (notably the SSE handler that fans turns from the browser
+ * into the runtime) translate this into a typed envelope so the user
+ * sees a coherent "session expired" surface rather than a 500.
+ */
+export class AgentSessionUnknownSidError extends Error {
+  readonly code = "agent-session.unknown_sid";
+  constructor(sessionId: string) {
+    super(`agent-session: no active multi-turn stream for sid="${sessionId}"`);
+    this.name = "AgentSessionUnknownSidError";
+  }
 }

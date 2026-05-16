@@ -197,10 +197,15 @@ describe("event-translators — llmPartToCanonical", () => {
     });
     expect(out).toHaveLength(1);
     const ev = out[0]!;
-    if (ev.kind !== "tool_call_pending") throw new Error("expected tool_call_pending");
+    if (ev.kind !== "tool_call_pending")
+      throw new Error("expected tool_call_pending");
     expect(ev.call.callId).toBe("call-1");
     expect(ev.call.toolName).toBe("note");
-    expect(JSON.parse(ev.call.inputJson)).toEqual({ slug: "x", title: "T", body: "B" });
+    expect(JSON.parse(ev.call.inputJson)).toEqual({
+      slug: "x",
+      title: "T",
+      body: "B",
+    });
   });
 
   it("translates tool-result into tool_result", () => {
