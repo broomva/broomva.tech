@@ -8,11 +8,10 @@
 //
 // File under test: ./lifed-ws-client.ts
 
-import { describe, expect, it } from "vitest";
-
 // `lifed-ws-client.ts` begins with `import "server-only"`; stub the
 // module so it loads in node-side test environments.
-import { vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
 vi.mock("server-only", () => ({}));
 
 import { _internals } from "./lifed-ws-client";
@@ -268,9 +267,7 @@ describe("decodeAgentEvent — UNKNOWN", () => {
     });
     // The session id should be threaded into the warning message so
     // operators can correlate.
-    expect((decoded as { message: string }).message).toContain(
-      "sess-test",
-    );
+    expect((decoded as { message: string }).message).toContain("sess-test");
   });
 });
 
@@ -330,9 +327,7 @@ describe("createSession (Stage 3a)", () => {
     expect(out.createdAtUnix).toBe(1_777_900_000);
 
     // Wire-shape assertions.
-    expect(captured.url).toBe(
-      "https://lifegw.test/v1/agent/create_session",
-    );
+    expect(captured.url).toBe("https://lifegw.test/v1/agent/create_session");
     expect(captured.init?.method).toBe("POST");
     const headers = captured.init?.headers as Record<string, string>;
     expect(headers.Authorization).toBe("Bearer tok_xyz");
@@ -350,10 +345,9 @@ describe("createSession (Stage 3a)", () => {
     const captured: { body?: string } = {};
     const stubFetch: typeof fetch = async (_url, init) => {
       captured.body = init?.body as string;
-      return new Response(
-        JSON.stringify({ sid: "x", agent_id: "y" }),
-        { status: 200 },
-      );
+      return new Response(JSON.stringify({ sid: "x", agent_id: "y" }), {
+        status: 200,
+      });
     };
     const client = new Cls({
       baseUrl: "https://lifegw.test",

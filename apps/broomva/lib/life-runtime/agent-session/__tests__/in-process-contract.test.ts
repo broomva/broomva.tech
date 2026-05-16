@@ -28,9 +28,13 @@ interface ContractGlobal {
   observations: Map<
     string,
     {
+      // `history` is optional to mirror `SubstrateObservations`'s
+      // contract (WS backend leaves it undefined; see contract.ts).
+      // The InProcess fake DOES populate it, so consumers can assume
+      // a value, but the type must stay assignable.
       observedTurns: Array<{
         userMessage: string;
-        history: Array<{ role: "user" | "assistant"; content: string }>;
+        history?: Array<{ role: "user" | "assistant"; content: string }>;
       }>;
     }
   >;

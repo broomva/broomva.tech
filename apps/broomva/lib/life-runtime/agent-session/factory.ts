@@ -17,7 +17,6 @@
 
 import "server-only";
 import { resolveProjectBySlug } from "../db-seed";
-import { type AgentSessionClient } from "./types";
 import {
   InProcessAgentSessionClient,
   type InProcessAgentSessionClientDeps,
@@ -26,6 +25,7 @@ import {
   LifedWsAgentSessionClient,
   type LifedWsAgentSessionClientDeps,
 } from "./lifed-ws-client";
+import { type AgentSessionClient } from "./types";
 
 /**
  * Inputs that override the default factory behavior. Intended only
@@ -78,10 +78,7 @@ export function createAgentSessionClient(
     }
     const deps: LifedWsAgentSessionClientDeps = {
       baseUrl: lifedUrl,
-      healthTimeoutMs: parseTimeout(
-        process.env.LIFED_HEALTH_TIMEOUT_MS,
-        2_000,
-      ),
+      healthTimeoutMs: parseTimeout(process.env.LIFED_HEALTH_TIMEOUT_MS, 2_000),
       ...overrides.lifedWsDeps,
     };
     return new LifedWsAgentSessionClient(deps);
