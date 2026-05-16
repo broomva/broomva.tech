@@ -192,6 +192,21 @@ export interface LifedWsAgentSessionClientDeps {
  * Lifed WebSocket-streaming agent session client. Active when
  * `LIFED_GATEWAY_URL` is set in the environment.
  */
+/**
+ * One live multi-turn WS, tracked per sid. Populated on the
+ * `multiTurn === true` path; never used by the per-turn path.
+ *
+ * `pending` carries messages that arrive via `sendMessage` before
+ * the WS reaches OPEN state — they're drained when `open` fires.
+ * The initial `input.userMessage` lives in `pending` for the same
+ * reason: at construction time the WS isn't open yet.
+ */
+interface LiveWsEntry {
+  ws: WsLike;
+  pending: string[];
+  isOpen: boolean;
+}
+
 export class LifedWsAgentSessionClient implements AgentSessionClient {
   readonly backendId = "lifed-ws" as const;
   private readonly baseUrl: string;
@@ -199,6 +214,22 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
   private readonly healthTimeoutMs: number;
   private readonly healthTokenProducer?: () => Promise<string | undefined>;
   private readonly fetchFn: typeof fetch;
+  /**
+   * Per-sid live WS state. Only populated for the multi-turn path
+   * (per-turn streams use a single locally-scoped WS that's
+   * constructed-then-discarded inside `stream()`).
+   *
+   * Cross-turn lifecycle: lifegw + lifed keep the WS open across many
+   * `send_message` frames (Open Q 1 verdict, confirmed via Rust source
+   * inspection 2026-05-15: `lifed::services::agent::stream_session`
+   * attaches a passive fanout subscriber; `lifegw::services::ws`
+   * drives `drive_upstream_tail` which only exits on Err(status)). A
+   * per-turn FINISH event is yielded to the consumer as a turn boundary
+   * but does NOT close the WS — the iterator stays alive until the WS
+   * itself closes (abort, transport error, server-initiated 1008/4003
+   * etc.).
+   */
+  private readonly liveStreams = new Map<string, LiveWsEntry>();
 
   constructor(deps: LifedWsAgentSessionClientDeps) {
     if (!deps.baseUrl) {
@@ -317,12 +348,27 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
   }
 
   /**
-   * Multi-turn message ingestion. Implementation lands in Task 3 of
-   * Plan E-2. Until then, calling this on an active session throws —
-   * the per-turn path doesn't register a per-sid WS map entry.
+   * Push a new user message into an active multi-turn WS stream.
+   * Resolves once the frame is queued or written to the socket (not
+   * once the turn completes).
+   *
+   * Throws `AgentSessionUnknownSidError` when no multi-turn WS is
+   * registered for the given `sessionId` — either the session never
+   * opened in multi-turn mode (per-turn streams don't register an
+   * entry), or it already terminated and cleaned up.
+   *
+   * Buffers messages that arrive before the WS reaches OPEN state;
+   * the `open` event handler drains the buffer in arrival order.
    */
-  async sendMessage(sessionId: string, _content: string): Promise<void> {
-    throw new AgentSessionUnknownSidError(sessionId);
+  async sendMessage(sessionId: string, content: string): Promise<void> {
+    const entry = this.liveStreams.get(sessionId);
+    if (!entry) throw new AgentSessionUnknownSidError(sessionId);
+    if (entry.isOpen) {
+      const frame: InboundFrame = { kind: "send_message", content };
+      entry.ws.send(JSON.stringify(frame));
+      return;
+    }
+    entry.pending.push(content);
   }
 
   async health(): Promise<AgentSessionHealth> {
@@ -373,6 +419,16 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
         "lifed-ws.no_capability",
         "LifedWsAgentSessionClient requires a Tier-User capability (input.capability)",
       );
+      return;
+    }
+
+    // Branch on multi-turn opt-in. The per-turn path stays bit-for-bit
+    // identical to today (E-2 invariant: zero behavior change for
+    // canonical.ts:254). The multi-turn path keeps the WS open across
+    // many `send_message` frames and treats per-turn FINISH as a turn
+    // boundary instead of a terminal close.
+    if (input.multiTurn === true) {
+      yield* this.streamMultiTurn(input);
       return;
     }
 
@@ -535,6 +591,243 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
         // Normal close — if the server didn't send a FINISH event,
         // synthesize one so consumers don't hang.
         // (Idiomatic lifed always sends FINISH; this is belt-and-suspenders.)
+        yield this.canonical(++lastSeq, {
+          kind: "finish",
+          reason: "stop",
+        });
+      }
+    }
+  }
+
+  /**
+   * Multi-turn WS body. Opens a single WS that stays alive across many
+   * `send_message` frames; per-turn FINISH events are forwarded to the
+   * consumer as turn boundaries (so the SSE handler can persist the
+   * turn and reset its per-turn state) but the iterator stays alive.
+   *
+   * Differences from the per-turn path:
+   *   1. The initial `input.userMessage` is registered in
+   *      `liveStreams.pending` *before* the WS opens, not sent inline
+   *      in the `open` handler. This unifies the inbound write path
+   *      with `sendMessage()`.
+   *   2. The frame-pump loop forwards `AGENT_EVENT_KIND_FINISH` events
+   *      to the consumer (turn boundary) but does NOT break the loop;
+   *      it only breaks on close / unrecoverable error / abort.
+   *   3. The terminal `finish` is emitted once at iterator end (clean
+   *      close → "stop", abort → "aborted", error → error code).
+   *
+   * Per Open Q 1 verdict (2026-05-15, confirmed via Rust source
+   * inspection — see liveStreams docstring), lifegw + lifed keep the
+   * WS open across many `send_message` frames, so this branch is the
+   * happy path. If lifed *did* close after each FINISH, this code
+   * would observe the close and exit on the next iteration — the
+   * fallback shape is the same, just with a single-turn lifetime.
+   */
+  private async *streamMultiTurn(
+    input: AgentStreamInput,
+  ): AsyncIterable<CanonicalAgentEvent> {
+    const sid = input.sessionId;
+    if (!input.capability) {
+      // Unreachable — checked by caller — but typecheck needs it.
+      yield* this.errorThenFinish(
+        0n,
+        "lifed-ws.no_capability",
+        "LifedWsAgentSessionClient requires a Tier-User capability (input.capability)",
+      );
+      return;
+    }
+    const wsUrl = this.buildWsUrl(input);
+    const protocols = [`bearer.${input.capability.token}`];
+    let ws: WsLike;
+    try {
+      ws = this.webSocketFactory(wsUrl, protocols);
+    } catch (err) {
+      yield* this.errorThenFinish(
+        0n,
+        "lifed-ws.factory_failed",
+        `failed to construct WebSocket: ${(err as Error).message}`,
+      );
+      return;
+    }
+
+    // Register live-streams entry before any await so `sendMessage`
+    // can target this sid immediately if the SSE handler races ahead.
+    const entry: LiveWsEntry = {
+      ws,
+      pending: [input.userMessage],
+      isOpen: false,
+    };
+    this.liveStreams.set(sid, entry);
+
+    const queue: OutboundFrame[] = [];
+    let closed = false;
+    let resolveNext: ((v: void) => void) | null = null;
+    const wake = () => {
+      const r = resolveNext;
+      resolveNext = null;
+      r?.();
+    };
+    const waitForFrame = () =>
+      new Promise<void>((resolve) => {
+        if (queue.length > 0 || closed) return resolve();
+        resolveNext = resolve;
+      });
+
+    let lastSeq = 0n;
+    let openErrCode: string | null = null;
+    let openErrMsg: string | null = null;
+
+    const cleanup = () => {
+      try {
+        if (
+          ws.readyState !== /* CLOSED */ 3 &&
+          ws.readyState !== /* CLOSING */ 2
+        ) {
+          ws.close(CLOSE_NORMAL, "client done");
+        }
+      } catch {
+        // swallow
+      }
+    };
+
+    ws.addEventListener("open", () => {
+      entry.isOpen = true;
+      // Drain pending in arrival order. Any messages that landed via
+      // `sendMessage` before the WS opened are sent now.
+      const pending = entry.pending;
+      entry.pending = [];
+      for (const content of pending) {
+        const frame: InboundFrame = { kind: "send_message", content };
+        try {
+          ws.send(JSON.stringify(frame));
+        } catch (err) {
+          openErrCode ??= "lifed-ws.send_failed";
+          openErrMsg ??= `failed to send open frame: ${(err as Error).message}`;
+          cleanup();
+          return;
+        }
+      }
+    });
+
+    ws.addEventListener("message", (e) => {
+      const text = typeof e.data === "string" ? e.data : null;
+      if (!text) return;
+      try {
+        const f = JSON.parse(text) as OutboundFrame;
+        queue.push(f);
+        wake();
+      } catch {
+        // malformed frame — drop. lifed should not produce these.
+      }
+    });
+
+    ws.addEventListener("error", (e) => {
+      openErrCode ??= "lifed-ws.transport_error";
+      openErrMsg ??= e.message ?? "websocket error";
+    });
+
+    ws.addEventListener("close", (e) => {
+      closed = true;
+      if (e.code === CLOSE_AUTH) {
+        openErrCode = "lifed-ws.auth";
+        openErrMsg = `auth failed: ${e.reason || "1008"}`;
+      } else if (e.code === CLOSE_IP_BLOCKED) {
+        openErrCode = "lifed-ws.ip_blocked";
+        openErrMsg = `ip blocked: ${e.reason || "4003"}`;
+      } else if (e.code === CLOSE_SEQUENCE_RETIRED) {
+        openErrCode = "lifed-ws.sequence_retired";
+        openErrMsg = `from_sequence retired: ${e.reason || "4005"}`;
+      } else if (TRANSIENT_CLOSE_CODES.has(e.code)) {
+        openErrCode ??= `lifed-ws.transient_${e.code}`;
+        openErrMsg ??= `transient close: ${e.reason || e.code}`;
+      } else if (e.code !== CLOSE_NORMAL) {
+        openErrCode ??= `lifed-ws.unexpected_${e.code}`;
+        openErrMsg ??= `unexpected close: ${e.reason || e.code}`;
+      }
+      wake();
+    });
+
+    // Abort wake-up — if the caller's signal fires, the wait-loop
+    // observes it on the next iteration. Without this listener, the
+    // generator would hang in waitForFrame() with no incoming frame.
+    const onAbort = () => {
+      // We don't set `closed = true` here because we want the close
+      // handler (which fires after cleanup()) to drive the canonical
+      // close-code mapping. We just wake the pump.
+      wake();
+    };
+    if (input.signal) {
+      if (input.signal.aborted) {
+        // Already aborted — fast path.
+        cleanup();
+      } else {
+        input.signal.addEventListener("abort", onAbort, { once: true });
+      }
+    }
+
+    let abortedYielded = false;
+
+    try {
+      while (!closed || queue.length > 0) {
+        if (input.signal?.aborted && !abortedYielded) {
+          yield this.canonical(lastSeq++, {
+            kind: "warning",
+            code: "lifed-ws.aborted",
+            message: "stream aborted by client",
+          });
+          abortedYielded = true;
+          // Drive a clean close — server-side will see 1000 Normal.
+          cleanup();
+        }
+        if (queue.length === 0) {
+          await waitForFrame();
+          continue;
+        }
+        const frame = queue.shift()!;
+        if (frame.kind === "agent_event") {
+          const seqStr = String(frame.seq_no);
+          const seq = parseSeqStrict(seqStr) ?? lastSeq + 1n;
+          lastSeq = seq;
+          const decoded = decodeAgentEvent(frame, input);
+          if (decoded) {
+            yield {
+              seq,
+              at: frame.record.at ?? new Date().toISOString(),
+              event: decoded,
+            };
+            // Per-turn FINISH is a turn boundary in multi-turn mode —
+            // we yield it (so the consumer can persist the turn) but
+            // keep the iterator alive. The terminal finish lives in
+            // the outer `finally`.
+          }
+        } else if (frame.kind === "closing") {
+          // server is about to close the stream (Spec C₃ §6.5).
+          // Don't yield — the close event will produce the terminal
+          // finish.
+        } else if (frame.kind === "pong") {
+          // unsolicited; ignore
+        }
+      }
+    } finally {
+      input.signal?.removeEventListener("abort", onAbort);
+      this.liveStreams.delete(sid);
+      cleanup();
+      if (input.signal?.aborted) {
+        yield this.canonical(++lastSeq, {
+          kind: "finish",
+          reason: "aborted",
+        });
+      } else if (openErrCode || openErrMsg) {
+        yield this.canonical(++lastSeq, {
+          kind: "error",
+          code: openErrCode ?? "lifed-ws.error",
+          message: openErrMsg ?? "lifed-ws stream errored",
+        });
+        yield this.canonical(++lastSeq, {
+          kind: "finish",
+          reason: "error",
+        });
+      } else {
         yield this.canonical(++lastSeq, {
           kind: "finish",
           reason: "stop",
