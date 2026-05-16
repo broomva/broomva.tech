@@ -496,18 +496,24 @@ export class InProcessAgentSessionClient implements AgentSessionClient {
           history.push({ role: "assistant", content: assistantText });
         }
 
-        // Belt-and-suspenders: if the runner didn't emit a per-turn
-        // finish, log a warning so operators see the anomaly. Doesn't
-        // affect correctness.
-        if (!perTurnFinishSeen && exitReason === "stop") {
-          // No-op for now — the multi-turn contract doesn't require
-          // a per-turn finish; we just expect one for parity with the
-          // single-turn path. Future telemetry could surface this.
-        }
-
         if (exitReason === "error" || exitReason === "aborted") {
           break;
         }
+
+        // The turn completed cleanly — emit a `turn_end` event so the
+        // consumer (typically the SSE handler) sees an explicit turn
+        // boundary. The iterator stays alive; the next iteration parks
+        // on `nextFromQueue` waiting for the next user message.
+        //
+        // Reference: contract `stream()` docstring — "may yield
+        // `turn_end` events between turns; `finish` remains
+        // terminal-and-last." Matches the lifed-ws backend, which
+        // translates per-turn AGENT_EVENT_KIND_FINISH into `turn_end`.
+        yield emitNext({ kind: "turn_end" });
+        // (perTurnFinishSeen retained as a debug signal — under normal
+        // operation it should always be true here.)
+        void perTurnFinishSeen;
+
         // Loop and wait for the next message.
       }
     } finally {
@@ -520,6 +526,18 @@ export class InProcessAgentSessionClient implements AgentSessionClient {
             entry.resolve(QUEUE_CLOSED);
           }
         }
+      }
+      // Abort-warning parity with the per-turn path AND the lifed-ws
+      // multi-turn path — both emit a `warning` with code `<backend>
+      // .aborted` so consumers can distinguish "abort came from the
+      // client" from "transport closed unexpectedly". Without this,
+      // multi-turn InProcess silently dropped the abort signal.
+      if (exitReason === "aborted") {
+        yield emitNext({
+          kind: "warning",
+          code: "in-process.aborted",
+          message: "stream aborted by client",
+        });
       }
       // Emit exactly one terminal finish.
       yield emitNext({

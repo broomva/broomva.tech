@@ -105,6 +105,18 @@ export type AgentEvent =
   | { kind: "warning"; code: string; message: string }
   /** Fatal error — the stream is about to close abnormally. */
   | { kind: "error"; code: string; message: string }
+  /**
+   * Fires between turns in a multi-turn session. The current turn's
+   * last events have been emitted; the iterator is parked waiting for
+   * the next `sendMessage()`. Per-turn callers (`multiTurn !== true`)
+   * never see this event — the iterator closes after `finish` instead.
+   *
+   * `turn_end` is NEVER terminal — consumers MUST keep pulling from
+   * the iterator after observing it. Both backends (`in-process`,
+   * `lifed-ws`) emit `turn_end` at turn boundaries in multi-turn mode
+   * and reserve `finish` for the one-and-only terminal event.
+   */
+  | { kind: "turn_end" }
   /** Stream finished cleanly. Always the last event. */
   | {
       kind: "finish";
@@ -222,8 +234,15 @@ export interface AgentSessionClient {
    * - The caller's `signal` aborts.
    *
    * Implementations MUST emit events in monotonic `seq` order and
-   * MUST emit exactly one `finish` or `error` as the last event
-   * before the iterator ends.
+   * MUST emit exactly one `finish` as the terminal-and-last event
+   * before the iterator ends. (`error` may precede `finish` to carry
+   * a fatal-error code; the iterator still closes with a `finish`
+   * after the `error`.)
+   *
+   * In multi-turn mode (`input.multiTurn === true`), the stream may
+   * yield `turn_end` events between turns to mark turn boundaries.
+   * `turn_end` is NEVER terminal — `finish` remains terminal-and-last
+   * exactly as in per-turn mode. Per-turn callers never see `turn_end`.
    */
   stream(input: AgentStreamInput): AsyncIterable<CanonicalAgentEvent>;
 
