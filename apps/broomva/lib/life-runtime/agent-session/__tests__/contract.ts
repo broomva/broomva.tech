@@ -3,32 +3,38 @@
  * tests against every backend so per-backend test files only have
  * to wire the client factory.
  *
- * Plan E-2 (Task 4). The harness defines 7 tests:
+ * Plan E-2 (Task 4) + P20 round-1 parity fixes. The harness defines
+ * 6 cross-backend tests + 1 InProcess-only test (history accumulation,
+ * gated by `options.observesHistory`):
  *
- *   1. per-turn baseline — yields tokens + a single finish then closes.
- *   2. multi-turn: first user message runs a turn.
- *   3. multi-turn: sendMessage triggers a second turn.
- *   4. multi-turn: history accumulates across turns.
- *   5. multi-turn: abort signal terminates the loop with a single
- *      terminal finish.
+ *   1. per-turn baseline — yields tokens + a single terminal finish
+ *      then closes.
+ *   2. multi-turn: first user message runs a turn AND emits `turn_end`
+ *      (NOT `finish`) at the turn boundary — both backends.
+ *   3. multi-turn: after the first `turn_end`, a second `sendMessage`
+ *      produces a second token batch + another `turn_end` — both
+ *      backends.
+ *   4. multi-turn (InProcess-only): history accumulates across turns.
+ *   5. multi-turn: abort signal yields tokens → `warning` (code endsWith
+ *      `.aborted`) → terminal `finish` (reason `"aborted"`) — both
+ *      backends.
  *   6. multi-turn: sendMessage on unknown sid throws
  *      AgentSessionUnknownSidError.
  *   7. multi-turn: sendMessage on closed (post-abort) sid throws
  *      AgentSessionUnknownSidError.
  *
- * Backends call `runAgentSessionClientContract(suiteName, makeClient)`;
- * the harness owns describe/it blocks.
+ * Test #4 is backend-specific because lifed accumulates history
+ * server-side and the WS protocol doesn't echo it back; only the
+ * InProcess factory can observe per-turn history.
+ *
+ * Backends call `runAgentSessionClientContract(suiteName, makeClient,
+ * options?)`; the harness owns describe/it blocks.
  *
  * `makeClient` returns a freshly-constructed client AND a `script`
  * — the script encodes the deterministic events the backend's
  * underlying substrate should yield per turn. For InProcess, the
  * script is fed through a fake `RealAgentRunner`; for LifedWs, the
  * script is fed through a fake `WebSocketFactory`.
- *
- * History accumulation is verified by the script — when the harness
- * runs turn 2, the script can return a different token stream
- * based on the history it observed for that turn. The backend's
- * factory is responsible for hooking up that introspection.
  *
  * @see ../in-process-client.ts
  * @see ../lifed-ws-client.ts
@@ -111,6 +117,19 @@ export type MakeClient = (script: AgentSessionScript) => {
   observations: SubstrateObservations;
 };
 
+/**
+ * Per-backend opt-ins for tests that genuinely cannot be cross-backend.
+ *
+ * `observesHistory`: when true, the harness runs the history-accumulation
+ * test (Test #4). Only the InProcess backend can see history client-side;
+ * lifed accumulates server-side and the WS protocol doesn't echo it back.
+ * Setting this on a non-observable backend would deadlock on a false
+ * assertion, so the test is explicitly gated.
+ */
+export interface ContractOptions {
+  observesHistory?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Harness
 // ---------------------------------------------------------------------------
@@ -184,15 +203,19 @@ function tokenDeltas(events: CanonicalAgentEvent[]): string[] {
 /**
  * Single entry point. Backends call:
  *
- *   runAgentSessionClientContract("InProcessAgentSessionClient", makeInProcessClient);
+ *   runAgentSessionClientContract("InProcessAgentSessionClient", makeInProcessClient, { observesHistory: true });
+ *   runAgentSessionClientContract("LifedWsAgentSessionClient", makeLifedWsClient);
  *
  * The harness owns describe/it. Tests are self-contained — each
- * constructs a fresh client + script.
+ * constructs a fresh client + script. `options.observesHistory`
+ * gates the InProcess-only history-accumulation test.
  */
 export function runAgentSessionClientContract(
   suiteName: string,
   makeClient: MakeClient,
+  options: ContractOptions = {},
 ): void {
+  const { observesHistory = false } = options;
   describe(`${suiteName} — AgentSessionClient contract`, () => {
     // ---------------------------------------------------------------------
     // Test 1: per-turn baseline regression guard
@@ -225,10 +248,10 @@ export function runAgentSessionClientContract(
     });
 
     // ---------------------------------------------------------------------
-    // Test 2: multi-turn first turn
+    // Test 2: multi-turn first turn emits turn_end (not finish)
     // ---------------------------------------------------------------------
 
-    it("multi-turn: first user message runs a turn", async () => {
+    it("multi-turn: first user message runs a turn and emits turn_end at the boundary", async () => {
       const sid = `contract-mt-1-${Date.now()}`;
       const script: AgentSessionScript = {
         turns: [{ tokens: ["First", " turn"] }, { tokens: ["never"] }],
@@ -243,35 +266,37 @@ export function runAgentSessionClientContract(
         signal: controller.signal,
       });
 
-      // Pull events until we've seen BOTH expected tokens. The exact
-      // sequence + event count varies per backend (InProcess emits
-      // open + text_start + tokens + text_end; LifedWs emits tokens +
-      // per-turn FINISH). The contract assertion is just "the tokens
-      // arrive in order and no TERMINAL finish has fired yet".
+      // Pull events until we observe a turn_end. The substrate emits:
+      //   [open] tokens (text_start/end inserted by InProcess) … turn_end
+      // We assert the cross-backend contract: tokens land in order,
+      // followed by exactly one `turn_end`, and NO `finish` event has
+      // landed yet (the iterator stays parked for turn 2).
       const reader = iter[Symbol.asyncIterator]();
       const seen: CanonicalAgentEvent[] = [];
-      const tokens: string[] = [];
-      for (let i = 0; i < 30 && tokens.length < 2; i++) {
+      let turnEndSeen = false;
+      for (let i = 0; i < 30 && !turnEndSeen; i++) {
         const { value, done } = await reader.next();
         if (done) break;
         seen.push(value);
-        if (value.event.kind === "token") {
-          tokens.push((value.event as { delta: string }).delta);
+        if (value.event.kind === "turn_end") {
+          turnEndSeen = true;
         }
       }
-      expect(tokens).toEqual(["First", " turn"]);
+      expect(turnEndSeen).toBe(true);
+      // Tokens arrived in order — the substrate yielded both deltas
+      // before the turn boundary.
+      expect(tokenDeltas(seen)).toEqual(["First", " turn"]);
+      // Critical contract assertion: NO `finish` event fired before
+      // `turn_end`. `finish` is the terminal-and-last event; between
+      // turns the canonical marker is `turn_end`.
+      const finishesBeforeBoundary = seen.filter(
+        (e) => e.event.kind === "finish",
+      );
+      expect(finishesBeforeBoundary).toHaveLength(0);
 
-      // No TERMINAL finish has been yielded yet — multi-turn mode keeps
-      // the iterator alive. (A per-turn FINISH from the substrate IS
-      // a "finish"-kind event but is just a turn boundary; the test's
-      // strict assertion of "0 finish events seen" would only hold for
-      // backends that swallow per-turn finishes. We instead assert the
-      // weaker invariant: the iterator is STILL PARKED, i.e., the next
-      // pull does not immediately yield {done: true}.)
-      // Note: we can't synchronously prove "iterator is parked" without
-      // racing. We rely on the iterator-still-alive shape: abort + drain
-      // succeeds in a finite number of iterations. If a terminal finish
-      // had fired earlier, the iterator would have closed already.
+      // Iterator is still alive — abort + drain succeeds in finite
+      // iterations. If a terminal finish had fired earlier, the
+      // iterator would have closed already.
       controller.abort();
       let drainCount = 0;
       while (drainCount < 50) {
@@ -286,7 +311,7 @@ export function runAgentSessionClientContract(
     // Test 3: multi-turn sendMessage triggers a second turn
     // ---------------------------------------------------------------------
 
-    it("multi-turn: sendMessage triggers a second turn", async () => {
+    it("multi-turn: sendMessage after turn_end triggers a second turn that emits its own turn_end", async () => {
       const sid = `contract-mt-2-${Date.now()}`;
       const script: AgentSessionScript = {
         turns: [{ tokens: ["A"] }, { tokens: ["B"] }],
@@ -301,33 +326,45 @@ export function runAgentSessionClientContract(
         signal: controller.signal,
       });
 
-      // Pull turn 1 events first.
+      // Pull events until turn 1's `turn_end` arrives — the explicit
+      // turn-boundary marker. Both backends emit this; cross-backend
+      // contract.
       const turn1Events: CanonicalAgentEvent[] = [];
       const reader = iter[Symbol.asyncIterator]();
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 30; i++) {
         const { value, done } = await reader.next();
         if (done) break;
         turn1Events.push(value);
-        if (value.event.kind === "token" && value.event.delta === "A") {
-          // got the turn-1 token; park is about to happen.
-          break;
-        }
+        if (value.event.kind === "turn_end") break;
       }
       expect(tokenDeltas(turn1Events)).toContain("A");
+      // Exactly one turn_end and zero finishes in turn 1.
+      expect(
+        turn1Events.filter((e) => e.event.kind === "turn_end"),
+      ).toHaveLength(1);
+      expect(turn1Events.filter((e) => e.event.kind === "finish")).toHaveLength(
+        0,
+      );
 
       // Fire the second turn.
       await client.sendMessage(sid, "second");
 
-      // Pull turn 2 events.
+      // Pull events until turn 2's `turn_end` arrives.
       const turn2Events: CanonicalAgentEvent[] = [];
-      // Wait up to 10 reads for the "B" token.
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 30; i++) {
         const { value, done } = await reader.next();
         if (done) break;
         turn2Events.push(value);
-        if (value.event.kind === "token" && value.event.delta === "B") break;
+        if (value.event.kind === "turn_end") break;
       }
       expect(tokenDeltas(turn2Events)).toContain("B");
+      // Turn 2 also yields exactly one turn_end + zero finishes.
+      expect(
+        turn2Events.filter((e) => e.event.kind === "turn_end"),
+      ).toHaveLength(1);
+      expect(turn2Events.filter((e) => e.event.kind === "finish")).toHaveLength(
+        0,
+      );
 
       // Cleanup — abort and drain.
       controller.abort();
@@ -339,83 +376,87 @@ export function runAgentSessionClientContract(
     });
 
     // ---------------------------------------------------------------------
-    // Test 4: history accumulates across turns
+    // Test 4: history accumulates across turns — InProcess-only.
+    //
+    // This is a backend-specific extension, NOT a cross-backend contract.
+    // LifedWs accumulates history server-side and the WS protocol doesn't
+    // echo it back, so the WS factory has no way to observe per-turn
+    // history client-side. Gated by `options.observesHistory`.
     // ---------------------------------------------------------------------
 
-    it("multi-turn: history accumulates across turns", async () => {
-      const sid = `contract-mt-3-${Date.now()}`;
-      const script: AgentSessionScript = {
-        turns: [
-          { tokens: ["alpha"], userMessageEcho: "first" },
-          { tokens: ["beta"], userMessageEcho: "second" },
-        ],
-      };
-      const { client, observations } = makeClient(script);
-      const controller = new AbortController();
+    (observesHistory ? it : it.skip)(
+      "multi-turn: history accumulates across turns (InProcess-observable backends only)",
+      async () => {
+        const sid = `contract-mt-3-${Date.now()}`;
+        const script: AgentSessionScript = {
+          turns: [
+            { tokens: ["alpha"], userMessageEcho: "first" },
+            { tokens: ["beta"], userMessageEcho: "second" },
+          ],
+        };
+        const { client, observations } = makeClient(script);
+        const controller = new AbortController();
 
-      const iter = client.stream({
-        ...baseInput(sid),
-        userMessage: "first",
-        multiTurn: true,
-        signal: controller.signal,
-      });
-      const reader = iter[Symbol.asyncIterator]();
+        const iter = client.stream({
+          ...baseInput(sid),
+          userMessage: "first",
+          multiTurn: true,
+          signal: controller.signal,
+        });
+        const reader = iter[Symbol.asyncIterator]();
 
-      // Pull turn 1 until "alpha".
-      for (let i = 0; i < 10; i++) {
-        const { value, done } = await reader.next();
-        if (done) break;
-        if (value.event.kind === "token" && value.event.delta === "alpha") {
-          break;
+        // Pull turn 1 until "alpha".
+        for (let i = 0; i < 10; i++) {
+          const { value, done } = await reader.next();
+          if (done) break;
+          if (value.event.kind === "token" && value.event.delta === "alpha") {
+            break;
+          }
         }
-      }
 
-      // Turn 1 observed: userMessage="first", history (if observable) is empty.
-      expect(observations.observedTurns.length).toBeGreaterThanOrEqual(1);
-      expect(observations.observedTurns[0].userMessage).toBe("first");
-      // History assertions are conditional — see SubstrateObservations
-      // docstring for why the LifedWs backend leaves history undefined.
-      if (observations.observedTurns[0].history !== undefined) {
+        // Turn 1 observed: userMessage="first", history empty.
+        expect(observations.observedTurns.length).toBeGreaterThanOrEqual(1);
+        expect(observations.observedTurns[0].userMessage).toBe("first");
+        // observesHistory === true ⇒ factory must populate history.
         expect(observations.observedTurns[0].history).toEqual([]);
-      }
 
-      // Trigger turn 2.
-      await client.sendMessage(sid, "second");
+        // Trigger turn 2.
+        await client.sendMessage(sid, "second");
 
-      // Pull turn 2 until "beta".
-      for (let i = 0; i < 10; i++) {
-        const { value, done } = await reader.next();
-        if (done) break;
-        if (value.event.kind === "token" && value.event.delta === "beta") {
-          break;
+        // Pull turn 2 until "beta".
+        for (let i = 0; i < 10; i++) {
+          const { value, done } = await reader.next();
+          if (done) break;
+          if (value.event.kind === "token" && value.event.delta === "beta") {
+            break;
+          }
         }
-      }
 
-      // Turn 2 observed: userMessage="second"; history (if observable)
-      // includes turn-1's {user, assistant} pair.
-      expect(observations.observedTurns.length).toBeGreaterThanOrEqual(2);
-      expect(observations.observedTurns[1].userMessage).toBe("second");
-      if (observations.observedTurns[1].history !== undefined) {
+        // Turn 2 observed: userMessage="second"; history includes
+        // turn-1's {user, assistant} pair.
+        expect(observations.observedTurns.length).toBeGreaterThanOrEqual(2);
+        expect(observations.observedTurns[1].userMessage).toBe("second");
         expect(observations.observedTurns[1].history).toEqual([
           { role: "user", content: "first" },
           { role: "assistant", content: "alpha" },
         ]);
-      }
 
-      // Cleanup.
-      controller.abort();
-      while (true) {
-        const { done } = await reader.next();
-        if (done) break;
-      }
-    });
+        // Cleanup.
+        controller.abort();
+        while (true) {
+          const { done } = await reader.next();
+          if (done) break;
+        }
+      },
+    );
 
     // ---------------------------------------------------------------------
-    // Test 5: abort signal terminates the multi-turn loop with one
-    // terminal finish
+    // Test 5: abort signal yields tokens → warning → terminal finish.
+    // Strict cross-backend parity — same event sequence for both
+    // InProcess and LifedWs.
     // ---------------------------------------------------------------------
 
-    it("multi-turn: abort signal terminates the loop with a single terminal finish", async () => {
+    it("multi-turn: abort signal yields tokens → warning(*.aborted) → terminal finish(reason='aborted')", async () => {
       const sid = `contract-mt-4-${Date.now()}`;
       const script: AgentSessionScript = {
         turns: [{ tokens: ["x"] }, { tokens: ["y"] }],
@@ -431,27 +472,21 @@ export function runAgentSessionClientContract(
       });
 
       const reader = iter[Symbol.asyncIterator]();
-      // Pull turn 1 to completion (token + per-turn finish boundary
-      // signal) so the iterator is parked waiting for the next
-      // sendMessage. The InProcess backend doesn't surface a per-turn
-      // finish event (swallowed in the multi-turn body); the LifedWs
-      // backend DOES (the consumer needs it to persist the turn). The
-      // test accepts both: pull until we see the "x" token AND drain
-      // any subsequent non-token frames up to the next park.
+      // Pull until the "x" token lands; subsequent reads may park
+      // (InProcess) or pick up a turn_end (WS), so we don't drain past
+      // the token here.
       const turn1Events: CanonicalAgentEvent[] = [];
       for (let i = 0; i < 10; i++) {
         const { value, done } = await reader.next();
         if (done) break;
         turn1Events.push(value);
         if (value.event.kind === "token" && value.event.delta === "x") {
-          // Subsequent reads might pull a per-turn finish (WS backend)
-          // or park immediately (InProcess backend). We can't safely
-          // pull more here — the parked InProcess reader would hang.
           break;
         }
       }
+      expect(tokenDeltas(turn1Events)).toContain("x");
 
-      // Abort and drain — collect events until iterator done.
+      // Abort and drain — collect every event until iterator done.
       controller.abort();
       const remaining: CanonicalAgentEvent[] = [];
       while (true) {
@@ -460,21 +495,32 @@ export function runAgentSessionClientContract(
         remaining.push(value);
       }
 
-      // The drain may include:
-      //   - A per-turn finish event from the WS backend (reason "stop")
-      //     — this is the turn boundary the consumer would normally use
-      //     to persist the turn. Multi-turn semantics: turn-finishes ≠
-      //     stream-terminal-finishes.
-      //   - An abort warning (kind "warning", code "lifed-ws.aborted"
-      //     or "in-process.aborted").
-      //   - Exactly one TERMINAL finish (reason "aborted").
-      //
-      // We assert: at least one finish; the LAST finish is reason
-      // "aborted" (the terminal one).
+      // Exactly one TERMINAL `finish` with reason "aborted" — the
+      // contract reserves `finish` for the one-and-only terminal event.
+      // No `turn_end` event after abort (the abort path skips boundary
+      // emission and goes straight to warning + terminal finish).
       const finishes = remaining.filter((e) => e.event.kind === "finish");
-      expect(finishes.length).toBeGreaterThanOrEqual(1);
-      const terminal = finishes[finishes.length - 1];
+      expect(finishes).toHaveLength(1);
+      const terminal = finishes[0];
       expect((terminal.event as { reason: string }).reason).toBe("aborted");
+      // `finish` IS the last event (terminal-and-last invariant).
+      expect(remaining[remaining.length - 1]).toBe(terminal);
+
+      // Exactly one abort warning with a backend-suffixed code ending
+      // in `.aborted` (e.g. `in-process.aborted` or `lifed-ws.aborted`).
+      // Cross-backend parity: both surfaces emit this so consumers
+      // distinguish "abort from client" from "transport collapsed".
+      const warnings = remaining.filter(
+        (e) =>
+          e.event.kind === "warning" &&
+          (e.event as { code: string }).code.endsWith(".aborted"),
+      );
+      expect(warnings).toHaveLength(1);
+
+      // Sequence: warning lands BEFORE the terminal finish.
+      const warningIdx = remaining.indexOf(warnings[0]);
+      const finishIdx = remaining.indexOf(terminal);
+      expect(warningIdx).toBeLessThan(finishIdx);
     });
 
     // ---------------------------------------------------------------------

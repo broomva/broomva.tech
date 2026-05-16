@@ -609,7 +609,11 @@ function canonicalToRunnerYield(ev: CanonicalAgentEvent): RunnerYield[] {
     case "vigil_span":
     case "warning":
     case "approval_required":
+    case "turn_end":
       // Not currently surfaced by the legacy emitter; intentional drop.
+      // `turn_end` is the multi-turn boundary marker (Plan E-2 / PR
+      // #164); the legacy ProsoponEmitter is the per-turn path and
+      // ignores it.
       return [];
     case "open":
     case "finish":

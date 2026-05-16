@@ -24,7 +24,7 @@
  */
 
 // @vitest-environment node
-import { vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -33,6 +33,7 @@ vi.mock("server-only", () => ({}));
 
 import type { WebSocketFactory } from "../lifed-ws-client";
 import { LifedWsAgentSessionClient } from "../lifed-ws-client";
+import type { CanonicalAgentEvent } from "../types";
 import {
   type AgentSessionScript,
   type MakeClient,
@@ -190,3 +191,153 @@ const makeLifedWsClient: MakeClient = (script: AgentSessionScript) => {
 };
 
 runAgentSessionClientContract("LifedWsAgentSessionClient", makeLifedWsClient);
+
+// ---------------------------------------------------------------------------
+// Per-turn baseline regression tests for close-after-finish behavior.
+//
+// These verify the strict terminal-finish-once invariant on the
+// per-turn path: when the server already sent FINISH, a subsequent
+// close (normal OR error) MUST NOT double-emit a second `finish`.
+// Pre-fix, the per-turn finally block paired error+finish on any
+// close code even when finishYielded was already true (Codex
+// reviewer's BLOCKER #5 — "transient close after finish").
+// ---------------------------------------------------------------------------
+
+/**
+ * A tight, deterministic WS fake that emits exactly:
+ *   - one TOKEN frame (so the iterator has something to yield)
+ *   - one FINISH frame
+ *   - then a close(code) — caller chooses 1000 (normal) or 1011 (transient)
+ *
+ * Used by the close-after-finish regression tests below. The harness's
+ * `FakeWebSocket` is too message-driven for this — it auto-closes on
+ * script exhaustion, which obscures the close-code timing the test
+ * needs to control directly.
+ */
+class CloseAfterFinishFake {
+  readyState = 0; // CONNECTING
+  private handlers: FakeWsHandlers = {};
+
+  constructor(private readonly closeCode: number) {
+    queueMicrotask(() => {
+      this.readyState = 1; // OPEN
+      this.handlers.open?.();
+    });
+  }
+
+  addEventListener<K extends keyof FakeWsHandlers>(
+    event: K,
+    h: NonNullable<FakeWsHandlers[K]>,
+  ): void {
+    // biome-ignore lint/suspicious/noExplicitAny: handler union
+    (this.handlers as any)[event] = h;
+  }
+
+  send(_data: string): void {
+    queueMicrotask(() => {
+      if (this.readyState !== 1) return;
+      this.handlers.message?.({
+        data: JSON.stringify({
+          kind: "agent_event",
+          seq_no: "1",
+          record: {
+            sequence: 1,
+            at: new Date().toISOString(),
+            kind: "TOKEN",
+            payload: { text: "hi" },
+          },
+          agent_kind: "AGENT_EVENT_KIND_TOKEN",
+        }),
+      });
+      this.handlers.message?.({
+        data: JSON.stringify({
+          kind: "agent_event",
+          seq_no: "2",
+          record: {
+            sequence: 2,
+            at: new Date().toISOString(),
+            kind: "FINISH",
+            payload: { finish_reason: "stop" },
+          },
+          agent_kind: "AGENT_EVENT_KIND_FINISH",
+        }),
+      });
+      // Fire the close on the next microtask so the FINISH frame is
+      // fully processed by the client's pump loop first.
+      queueMicrotask(() => {
+        this.readyState = 3; // CLOSED
+        this.handlers.close?.({ code: this.closeCode, reason: "" });
+      });
+    });
+  }
+
+  close(_code = 1000, _reason = ""): void {
+    this.readyState = 3;
+  }
+}
+
+async function drainStream(
+  client: LifedWsAgentSessionClient,
+  sid: string,
+): Promise<CanonicalAgentEvent[]> {
+  const events: CanonicalAgentEvent[] = [];
+  const iter = client.stream({
+    sessionId: sid,
+    agentId: "user:close-after-finish",
+    projectSlug: "sentinel-property-ops",
+    history: [],
+    kernelCtx: { sessionId: sid, agentId: "user:close-after-finish" },
+    capability: { token: "fake", expiresAt: 9_999_999_999 },
+    userMessage: "hi",
+    // multiTurn omitted → per-turn path under test.
+  });
+  for await (const ev of iter) events.push(ev);
+  return events;
+}
+
+describe("LifedWsAgentSessionClient — per-turn close-after-finish parity", () => {
+  it("per-turn: server FINISH followed by normal close (1000) does NOT double-emit finish", async () => {
+    const wsFactory: WebSocketFactory = () =>
+      new CloseAfterFinishFake(1000) as unknown as ReturnType<WebSocketFactory>;
+    const client = new LifedWsAgentSessionClient({
+      baseUrl: "https://fake.lifegw.test",
+      webSocketFactory: wsFactory,
+      fetchFn: (async () => new Response("OK")) as typeof fetch,
+    });
+
+    const events = await drainStream(client, "close-after-finish-1000");
+    // Exactly one `finish` total — the server FINISH frame produced
+    // it; the normal close handler must NOT synthesize another.
+    const finishes = events.filter((e) => e.event.kind === "finish");
+    expect(finishes).toHaveLength(1);
+    // No paired `error` event either — close 1000 is clean.
+    const errors = events.filter((e) => e.event.kind === "error");
+    expect(errors).toHaveLength(0);
+    // `finish` is terminal-and-last.
+    expect(events[events.length - 1].event.kind).toBe("finish");
+  });
+
+  it("per-turn: server FINISH followed by error close (1011) does NOT double-emit terminal events", async () => {
+    const wsFactory: WebSocketFactory = () =>
+      new CloseAfterFinishFake(1011) as unknown as ReturnType<WebSocketFactory>;
+    const client = new LifedWsAgentSessionClient({
+      baseUrl: "https://fake.lifegw.test",
+      webSocketFactory: wsFactory,
+      fetchFn: (async () => new Response("OK")) as typeof fetch,
+    });
+
+    const events = await drainStream(client, "close-after-finish-1011");
+    // Exactly one `finish` total — the server FINISH frame already
+    // produced the terminal event. A subsequent transient close
+    // (1011) MUST NOT pair-emit error+finish.
+    const finishes = events.filter((e) => e.event.kind === "finish");
+    expect(finishes).toHaveLength(1);
+    // No `error` event either — once FINISH lands, the stream is
+    // contractually closed; transient transport close after that is
+    // a no-op for the consumer.
+    const errors = events.filter((e) => e.event.kind === "error");
+    expect(errors).toHaveLength(0);
+    // `finish` remains terminal-and-last.
+    expect(events[events.length - 1].event.kind).toBe("finish");
+  });
+});

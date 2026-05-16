@@ -239,4 +239,5 @@ const makeInProcessClient: MakeClient = (script: AgentSessionScript) => {
 runAgentSessionClientContract(
   "InProcessAgentSessionClient",
   makeInProcessClient,
+  { observesHistory: true },
 );
