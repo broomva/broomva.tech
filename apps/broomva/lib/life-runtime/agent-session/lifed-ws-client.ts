@@ -467,6 +467,7 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
     let lastSeq = 0n;
     let openErrCode: string | null = null;
     let openErrMsg: string | null = null;
+    let finishYielded = false;
 
     const cleanup = () => {
       try {
@@ -562,12 +563,14 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
             // defensive
           }
           const decoded = decodeAgentEvent(frame, input);
-          if (decoded)
+          if (decoded) {
+            if (decoded.kind === "finish") finishYielded = true;
             yield {
               seq,
               at: frame.record.at ?? new Date().toISOString(),
               event: decoded,
             };
+          }
         } else if (frame.kind === "closing") {
           // server is about to close the stream (Spec C₃ §6.5). Don't
           // yield this — the close event will produce the finish.
@@ -587,7 +590,7 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
           kind: "finish",
           reason: "error",
         });
-      } else {
+      } else if (!finishYielded) {
         // Normal close — if the server didn't send a FINISH event,
         // synthesize one so consumers don't hang.
         // (Idiomatic lifed always sends FINISH; this is belt-and-suspenders.)
