@@ -1,0 +1,26 @@
+[
+  {
+    "id": "c2cbd2f2-32f8-45e8-8c95-0218fbbdbcae",
+    "status": "completed",
+    "display_name": "Kling 2.6 Video",
+    "job_set_type": "kling2_6",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/hf_20260512_121311_c2cbd2f2-32f8-45e8-8c95-0218fbbdbcae.mp4",
+    "created_at": 1778587991.182348,
+    "params": {
+      "width": 1344,
+      "height": 768,
+      "prompt": "Slow contemplative camera zoom-in toward the toroidal manifold over 10 seconds, with subtle horizontal parallax drift. The composition starts wide showing the full torus and slowly tightens toward the throat region. Trajectory lines progressively trace themselves into existence with strict geometric precision — the long sweeping major-axis lines draw in first across the outer surface like drafting ink on paper, then the finer minor-axis curves follow. At approximately 8 seconds the specific curve lines at the cross-folded throat constriction take on a deep sanguine red color — the color applies only to those individual curve lines themselves, not as a glow, not as a fill, not as a bloom, not as a light source. The lines stay sharp and precise. The throat lines that were previously dark ink simply become sanguine red ink. Absolutely no filled volumes, no glowing regions, no luminous bloom, no colored fog, no radiating light. Pure technical linework throughout — lines only, no fills. The camera slows to a complete stop in the final 1.5 seconds with the composition holding steady. Audio: soft ambient room tone of a scholar's study at night, distant irregular ticking clock, faint paper rustle. At around 4 seconds a single sustained low-string cello note fades in and holds through to the end, never resolving into a chord. Cinema-grade single take, no cuts, no transitions, no chromatic aberration, no glitch.",
+      "duration": 10,
+      "aspect_ratio": "16:9",
+      "cfg_scale": 0.5,
+      "sound": true,
+      "input_image": {
+        "id": "b9bf0c4a-9ca9-4110-88fb-ad3faa5ee34d",
+        "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/b9bf0c4a-9ca9-4110-88fb-ad3faa5ee34d_resize.jpg",
+        "type": "media_input"
+      },
+      "negative_prompt": null,
+      "motion": null
+    }
+  }
+]

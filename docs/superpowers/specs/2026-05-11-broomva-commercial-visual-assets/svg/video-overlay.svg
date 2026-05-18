@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1920 1080"
+     width="1920" height="1080">
+
+  <!-- Background substrate -->
+  
+
+  <!-- =================================================
+       PLATE HEADER — top cream band
+       ================================================= -->
+  <text x="960" y="66"
+        text-anchor="middle"
+        font-family="Cardo"
+        font-size="28"
+        font-variant="small-caps"
+        letter-spacing="2.5"
+        fill="#1A1614">
+    <tspan fill="#A82A1F">PLATE&#160;I.</tspan>
+    <tspan font-style="italic" font-variant="normal" dx="10">Anima Toroidalis</tspan>
+  </text>
+
+  <!-- Sub-header line 1 -->
+  <text x="960" y="98" text-anchor="middle"
+        font-family="Cardo" font-size="16" font-style="italic"
+        fill="#1A1614">
+    Phase portrait of a recursive controlled system at stability.
+  </text>
+
+  <!-- Sub-header line 2 -->
+  <text x="960" y="120" text-anchor="middle"
+        font-family="Cardo" font-size="16" font-style="italic"
+        fill="#1A1614">
+    &#955;&#8320; = 1.455,&#160;&#955;&#8321; = 0.411,&#160;&#955;&#8322; = 0.069,&#160;&#955;&#8323; = 0.006.&#160;After Broomva (2026).
+  </text>
+
+  <!-- =================================================
+       REGION LABELS
+       ================================================= -->
+
+  <!-- haima — upper-right dome, clear cream above torus arc -->
+  <text x="1190" y="206"
+        font-family="GFS Didot" font-size="18" fill="#1A1614"
+        paint-order="stroke"
+        stroke="#FBF5E9" stroke-width="4" stroke-linejoin="round">
+    &#945;&#7991;&#956;&#945;&#160;(haima)
+  </text>
+
+  <!-- arcanum — inner aperture, left-of-center (brighter cream zone) -->
+  <!-- x=42% (1075px), y=720: brightness ~216 in inner hole -->
+  <text x="806" y="536"
+        font-family="Cardo" font-size="18" font-style="italic" fill="#A82A1F"
+        paint-order="stroke"
+        stroke="#FBF5E9" stroke-width="4" stroke-linejoin="round">
+    arcanum
+  </text>
+
+  <!-- psyche / anima — inner hole, slightly below arcanum -->
+  <text x="806" y="567"
+        font-family="GFS Didot" font-size="20" fill="#1A1614"
+        paint-order="stroke"
+        stroke="#FBF5E9" stroke-width="4" stroke-linejoin="round">
+    &#968;&#965;&#967;&#942;&#160;(psych&#275;&#160;/&#160;anima)
+  </text>
+
+  <!-- autonomos — left gutter, below theorem block, clear of torus -->
+  <text x="57" y="585"
+        font-family="GFS Didot" font-size="18" fill="#1A1614"
+        paint-order="stroke"
+        stroke="#FBF5E9" stroke-width="4" stroke-linejoin="round">
+    &#945;&#8016;&#964;&#972;&#957;&#959;&#956;&#959;&#962;
+  </text>
+  <text x="57" y="606"
+        font-family="GFS Didot" font-size="18" fill="#1A1614"
+        paint-order="stroke"
+        stroke="#FBF5E9" stroke-width="4" stroke-linejoin="round">
+    (autonomos)
+  </text>
+
+  <!-- =================================================
+       LEFT GUTTER — theorem fragment
+       ================================================= -->
+  <g font-family="Cardo" font-size="14" fill="#1A1614">
+    <text x="57" y="324" font-weight="bold">Theorem 1</text>
+    <text x="57" y="346" font-style="italic">(Composite Stability).</text>
+    <text x="57" y="375">Let f&#160;:&#160;X&#160;&#8594;&#160;X be the dynamics of a</text>
+    <text x="57" y="394">recursive controlled system over levels</text>
+    <text x="57" y="412">L&#8320;&#8230;L&#8323; with per-level Lyapunov</text>
+    <text x="57" y="431">exponents &#955;&#7522;. If &#955;&#7522;&#160;&gt;&#160;0 for all i,</text>
+    <text x="57" y="450">then the composite system is</text>
+    <text x="57" y="469">exponentially stable.&#160;&#8718;</text>
+    <text x="57" y="495" font-size="10" font-style="italic">(rcs/papers/p0-foundations, Thm.&#160;1)</text>
+  </g>
+
+  <!-- =================================================
+       RIGHT GUTTER — stability table (lower-right clean zone)
+       x=1960 (76.6%), y starting 1152 (80%)
+       ================================================= -->
+  <g font-family="Cardo" font-size="14" fill="#1A1614">
+
+    <!-- Column headers — lambda NOT in small-caps to preserve glyph -->
+    <text x="1470" y="864">
+      <tspan font-variant="small-caps" letter-spacing="1">Lvl</tspan>
+      <tspan x="1512" font-variant="small-caps" letter-spacing="1">Layer</tspan>
+      <tspan x="1665" fill="#1A1614">&#955;</tspan>
+      <tspan x="1721" font-variant="small-caps" letter-spacing="1">Stability</tspan>
+    </text>
+    <line x1="1470" y1="872" x2="1905" y2="872" stroke="#1A1614" stroke-width="0"/>
+
+    <!-- L0 -->
+    <text x="1470" y="892">
+      <tspan>L0</tspan>
+      <tspan x="1512">External plant</tspan>
+      <tspan x="1665">1.455</tspan>
+      <tspan x="1721">exponential</tspan>
+    </text>
+
+    <!-- L1 -->
+    <text x="1470" y="915">
+      <tspan>L1</tspan>
+      <tspan x="1512">Agent internal</tspan>
+      <tspan x="1665">0.411</tspan>
+      <tspan x="1721">exponential</tspan>
+    </text>
+
+    <!-- L2 -->
+    <text x="1470" y="938">
+      <tspan>L2</tspan>
+      <tspan x="1512">Meta-control (EGRI)</tspan>
+      <tspan x="1665">0.069</tspan>
+      <tspan x="1721">exponential</tspan>
+    </text>
+
+    <!-- L3 — sanguine red -->
+    <text x="1470" y="960" fill="#A82A1F">
+      <tspan>L3</tspan>
+      <tspan x="1512">Governance</tspan>
+      <tspan x="1665">0.006</tspan>
+      <tspan x="1721">narrow margin</tspan>
+    </text>
+
+    <line x1="1470" y1="968" x2="1905" y2="968" stroke="#1A1614" stroke-width="0"/>
+
+    <!-- Composite note -->
+    <text x="1470" y="986" font-style="italic">
+      Composite: &#955;&#7522;&#160;&gt;&#160;0&#160;&#8704;i&#160;&#10233;&#160;stable&#160;(Theorem&#160;1)
+    </text>
+
+  </g>
+
+  <!-- =================================================
+       IMPRINT FOOTER — bottom cream band
+       ================================================= -->
+  <text x="960" y="1039" text-anchor="middle"
+        font-family="Cardo" font-size="16"
+        font-variant="small-caps" letter-spacing="3" fill="#1A1614">
+    Building Systems That Last
+  </text>
+  <text x="960" y="1061" text-anchor="middle"
+        font-family="Cardo" font-size="12" font-style="italic" fill="#1A1614">
+    broomva.tech&#160;&#183;&#160;MMXXVI
+  </text>
+
+</svg>

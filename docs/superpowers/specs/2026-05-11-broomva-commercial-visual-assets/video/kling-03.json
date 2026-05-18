@@ -1,0 +1,26 @@
+[
+  {
+    "id": "550a5832-a8c9-4686-b9f3-98bae60ed698",
+    "status": "completed",
+    "display_name": "Kling 2.6 Video",
+    "job_set_type": "kling2_6",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/hf_20260512_121604_550a5832-a8c9-4686-b9f3-98bae60ed698.mp4",
+    "created_at": 1778588164.742908,
+    "params": {
+      "width": 1344,
+      "height": 768,
+      "prompt": "Extremely slow and contemplative camera zoom-in over 10 seconds, almost imperceptible motion, deliberate and meditative pace — the torus begins filling most of the frame and the camera drifts imperceptibly inward with a gentle horizontal parallax. The toroidal wireframe is rendered as fine technical drafting lines on an aged parchment surface. Lines are already fully drawn in the first frame. Over the duration, the dark ink lines slowly intensify in contrast and crispness as if the eye adjusts to the detail. At approximately 8 seconds, the existing red-colored trajectory curves at the throat constriction — which are already visible in the starting frame — deepen slightly in saturation. No new shapes appear. No fills. No glows. No blooms. No fog. No light emission. Just existing lines sharpening and the existing red curves deepening. The camera reaches complete stillness at 9 seconds and holds for the final 1.5 seconds. Mathematically precise vector lines, like CAD curves, absolutely no organic deformation, lines do not warp, do not breathe, do not pulse. Final 2 seconds: camera completely still, scene completely still, holding the composition for landing. Audio: very quiet night ambience, distant ticking, paper texture. A sustained cello note fades in around 4 seconds, single pitch, no melody. Cinema-grade, no cuts, no transitions, no aberration.",
+      "duration": 10,
+      "aspect_ratio": "16:9",
+      "cfg_scale": 0.5,
+      "sound": true,
+      "input_image": {
+        "id": "97b6097f-9b1b-4fac-b65c-80508c308992",
+        "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_32Qw5jZ2uaPEvC1Dh2I4KvTd2CD/97b6097f-9b1b-4fac-b65c-80508c308992_resize.jpg",
+        "type": "media_input"
+      },
+      "negative_prompt": null,
+      "motion": null
+    }
+  }
+]
