@@ -4,6 +4,10 @@ set -e
 REPO="broomva/broomva.tech"
 INSTALL_DIR="${BROOMVA_INSTALL_DIR:-/usr/local/bin}"
 SKIP_SKILLS="${BROOMVA_SKIP_SKILLS:-}"
+# Set BROOMVA_SKIP_BINARY_DOWNLOAD=1 to force the cargo-build path even when
+# a matching prebuilt release asset exists (useful for dev installs that
+# want unreleased source changes).
+SKIP_BINARY_DOWNLOAD="${BROOMVA_SKIP_BINARY_DOWNLOAD:-}"
 
 # ── Dynamic skill-count discovery ──
 #
@@ -75,63 +79,160 @@ print_banner() {
 print_banner
 
 # ── Step 1: Install the broomva CLI binary ──
+#
+# Strategy:
+#   1. If platform is supported AND BROOMVA_SKIP_BINARY_DOWNLOAD is unset,
+#      try to download a prebuilt release tarball from GitHub Releases,
+#      verify its sha256, extract, and install. Fast — no compile.
+#   2. Otherwise fall back to `cargo install broomva` (build from source).
+#
+# Naming convention matches .github/workflows/release.yml:
+#   broomva-<VERSION>-<target_label>.tar.gz
+#   broomva-<VERSION>-<target_label>.tar.gz.sha256
+# where target_label ∈ {darwin-arm64, darwin-x64, linux-x64, linux-arm64}.
+
+detect_target_label() {
+  OS="$(uname -s)"
+  ARCH="$(uname -m)"
+  case "$OS" in
+    Darwin)
+      case "$ARCH" in
+        arm64|aarch64) echo "darwin-arm64" ;;
+        x86_64|amd64)  echo "darwin-x64"   ;;
+        *) return 1 ;;
+      esac
+      ;;
+    Linux)
+      case "$ARCH" in
+        x86_64|amd64)  echo "linux-x64"   ;;
+        arm64|aarch64) echo "linux-arm64" ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+# Verify a downloaded tarball against its sha256 sidecar.
+# Prefers `sha256sum` (Linux) then `shasum -a 256` (macOS).
+verify_sha256() {
+  tarball="$1"
+  sha_file="$2"
+  expected=$(awk '{print $1}' "$sha_file")
+  if [ -z "$expected" ]; then
+    echo "  [warn] empty sha256 file — refusing to install" >&2
+    return 1
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual=$(sha256sum "$tarball" | awk '{print $1}')
+  elif command -v shasum >/dev/null 2>&1; then
+    actual=$(shasum -a 256 "$tarball" | awk '{print $1}')
+  else
+    echo "  [warn] no sha256 tool available — refusing to install unverified binary" >&2
+    return 1
+  fi
+  if [ "$expected" != "$actual" ]; then
+    echo "  [error] sha256 mismatch:" >&2
+    echo "          expected: $expected" >&2
+    echo "          actual:   $actual" >&2
+    return 1
+  fi
+  return 0
+}
+
+install_binary_from_release() {
+  target_label="$1"
+  echo "  [1/3] Looking up latest broomva release for ${target_label}..."
+
+  # Resolve latest release tag (e.g. "v0.4.1") and strip the leading 'v' for asset names.
+  TAG=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
+        | grep '"tag_name"' \
+        | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+  if [ -z "$TAG" ]; then
+    echo "  [info] no GitHub Release found yet — will try cargo install"
+    return 1
+  fi
+  VERSION="${TAG#v}"
+
+  TARBALL="broomva-${VERSION}-${target_label}.tar.gz"
+  SHA="${TARBALL}.sha256"
+  URL_TARBALL="https://github.com/${REPO}/releases/download/${TAG}/${TARBALL}"
+  URL_SHA="https://github.com/${REPO}/releases/download/${TAG}/${SHA}"
+
+  TMPDIR=$(mktemp -d)
+  if ! curl -fsSL "$URL_TARBALL" -o "$TMPDIR/$TARBALL" 2>/dev/null; then
+    echo "  [info] no prebuilt asset for ${target_label} at ${TAG} — will try cargo install"
+    rm -rf "$TMPDIR"
+    return 1
+  fi
+  if ! curl -fsSL "$URL_SHA" -o "$TMPDIR/$SHA" 2>/dev/null; then
+    echo "  [warn] missing sha256 sidecar for $TARBALL — refusing to install unverified binary"
+    rm -rf "$TMPDIR"
+    return 1
+  fi
+
+  # Verify sha256. The sidecar is `<hash>  <filename>` — we only compare the hash,
+  # and verify_sha256 hashes the file at its actual download path.
+  if ! verify_sha256 "$TMPDIR/$TARBALL" "$TMPDIR/$SHA"; then
+    rm -rf "$TMPDIR"
+    return 1
+  fi
+  echo "  [ok]  sha256 verified"
+
+  # Extract — tarballs contain a single `broomva` binary at the top level.
+  if ! tar -xzf "$TMPDIR/$TARBALL" -C "$TMPDIR" 2>/dev/null; then
+    echo "  [error] failed to extract $TARBALL"
+    rm -rf "$TMPDIR"
+    return 1
+  fi
+  if [ ! -f "$TMPDIR/broomva" ]; then
+    echo "  [error] $TARBALL did not contain a 'broomva' binary"
+    rm -rf "$TMPDIR"
+    return 1
+  fi
+  chmod +x "$TMPDIR/broomva"
+
+  if [ -w "$INSTALL_DIR" ]; then
+    mv "$TMPDIR/broomva" "$INSTALL_DIR/broomva"
+  else
+    echo "  [sudo] Installing to ${INSTALL_DIR}..."
+    sudo mv "$TMPDIR/broomva" "$INSTALL_DIR/broomva"
+  fi
+  rm -rf "$TMPDIR"
+  echo "  [ok]  broomva ${TAG} installed to ${INSTALL_DIR}/broomva (prebuilt, sha256-verified)"
+  return 0
+}
 
 install_binary() {
-  # Try cargo install first (most reliable, builds from source)
+  # Path A: prebuilt binary download (preferred — no compile).
+  if [ -z "$SKIP_BINARY_DOWNLOAD" ]; then
+    if target_label=$(detect_target_label); then
+      if install_binary_from_release "$target_label"; then
+        return 0
+      fi
+      echo "  [info] prebuilt path failed for ${target_label} — falling back to cargo"
+    else
+      echo "  [info] no prebuilt asset matches $(uname -s)/$(uname -m) — falling back to cargo"
+    fi
+  else
+    echo "  [info] BROOMVA_SKIP_BINARY_DOWNLOAD set — using cargo install path"
+  fi
+
+  # Path B: cargo install (build from source, works on any Rust-supported platform).
   if command -v cargo >/dev/null 2>&1; then
     echo "  [1/3] Installing broomva CLI via cargo..."
     if cargo install broomva 2>/dev/null; then
       echo "  [ok]  broomva CLI installed via cargo"
       return 0
     fi
-    echo "  [warn] cargo install failed, trying GitHub release..."
+    echo "  [warn] cargo install failed"
   fi
 
-  # Fallback: download pre-built binary from GitHub releases
-  OS="$(uname -s)"
-  ARCH="$(uname -m)"
-
-  case "$OS" in
-    Linux)   PLATFORM="linux" ;;
-    Darwin)  PLATFORM="macos" ;;
-    *)       echo "  [error] Unsupported OS: $OS"; return 1 ;;
-  esac
-
-  case "$ARCH" in
-    x86_64|amd64)  ARCH_SUFFIX="amd64" ;;
-    arm64|aarch64) ARCH_SUFFIX="arm64" ;;
-    *)             echo "  [error] Unsupported architecture: $ARCH"; return 1 ;;
-  esac
-
-  ARTIFACT="broomva-${PLATFORM}-${ARCH_SUFFIX}"
-
-  echo "  [1/3] Downloading broomva CLI for ${PLATFORM}/${ARCH_SUFFIX}..."
-
-  # Try broomva.tech releases first, then broomva-cli repo
-  TAG=""
-  for repo in "broomva/broomva.tech" "broomva/broomva-cli"; do
-    TAG=$(curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" 2>/dev/null | grep '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
-    if [ -n "$TAG" ]; then
-      URL="https://github.com/${repo}/releases/download/${TAG}/${ARTIFACT}"
-      TMP=$(mktemp)
-      if curl -fsSL "$URL" -o "$TMP" 2>/dev/null; then
-        chmod +x "$TMP"
-        if [ -w "$INSTALL_DIR" ]; then
-          mv "$TMP" "$INSTALL_DIR/broomva"
-        else
-          echo "  [sudo] Installing to ${INSTALL_DIR}..."
-          sudo mv "$TMP" "$INSTALL_DIR/broomva"
-        fi
-        echo "  [ok]  broomva ${TAG} installed to ${INSTALL_DIR}/broomva"
-        return 0
-      fi
-      rm -f "$TMP"
-    fi
-  done
-
-  echo "  [error] No pre-built binary found."
-  echo "  Install Rust (https://rustup.rs) and re-run, or:"
-  echo "    cargo install broomva"
+  echo "  [error] No installation path succeeded."
+  echo "  Options:"
+  echo "    - Install Rust (https://rustup.rs) and retry"
+  echo "    - Wait for a GitHub Release to ship a prebuilt for your platform"
+  echo "    - File an issue: https://github.com/${REPO}/issues"
   return 1
 }
 
