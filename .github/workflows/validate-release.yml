@@ -1,0 +1,87 @@
+name: Validate release
+
+# Mirrors bstack/.github/workflows/validate-release.yml with the addition of a
+# Cargo.toml lockstep check — broomva.tech ships a Rust crate whose version
+# field must equal root VERSION (see scripts/sync-cargo-version.sh).
+#
+# Triggers on PRs that touch VERSION, CHANGELOG.md, or the CLI Cargo.toml.
+# When VERSION changes, gates the PR on:
+#   1. VERSION is semver X.Y.Z
+#   2. VERSION monotonically increases over base
+#   3. CHANGELOG.md has a matching `## X.Y.Z` section
+#   4. crates/broomva-cli/Cargo.toml version matches VERSION
+
+on:
+  pull_request:
+    paths:
+      - VERSION
+      - CHANGELOG.md
+      - crates/broomva-cli/Cargo.toml
+
+permissions:
+  contents: read
+
+jobs:
+  version-changelog-alignment:
+    name: VERSION ↔ CHANGELOG ↔ Cargo.toml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect VERSION change
+        id: version
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          if ! git diff --name-only "$base"...HEAD | grep -qx VERSION; then
+            echo "VERSION not modified in this PR — skipping alignment checks."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          new="$(tr -d '[:space:]' < VERSION)"
+          if ! printf '%s' "$new" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error file=VERSION::VERSION '$new' is not semver X.Y.Z"
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+
+      - name: CHANGELOG has matching section
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          new="${{ steps.version.outputs.new }}"
+          if ! grep -qE "^## ${new}([[:space:]]|$)" CHANGELOG.md; then
+            echo "::error file=CHANGELOG.md::No '## ${new}' section found — every VERSION bump needs a matching CHANGELOG entry."
+            exit 1
+          fi
+          echo "  ✓ CHANGELOG.md has '## ${new}' section"
+
+      - name: VERSION moves forward
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          new="${{ steps.version.outputs.new }}"
+          old="$(git show "$base:VERSION" 2>/dev/null | tr -d '[:space:]' || echo '0.0.0')"
+          # Use sort -V for proper semver ordering (lexicographic fails on e.g. 0.10.0 vs 0.9.0).
+          highest="$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -1)"
+          if [ "$highest" != "$new" ] || [ "$old" = "$new" ]; then
+            echo "::error file=VERSION::VERSION must increase. Previous: ${old}, this PR: ${new}."
+            exit 1
+          fi
+          echo "  ✓ VERSION ${old} → ${new}"
+
+      - name: Cargo.toml in lockstep with VERSION
+        # This check runs even when VERSION didn't change, because a PR can drift
+        # Cargo.toml on its own (e.g. accidental edit) and we want to catch that
+        # at PR time rather than at release time.
+        run: |
+          set -euo pipefail
+          if [ ! -f scripts/sync-cargo-version.sh ]; then
+            echo "::warning::scripts/sync-cargo-version.sh not present yet — skipping Cargo lockstep check."
+            exit 0
+          fi
+          bash scripts/sync-cargo-version.sh --check
