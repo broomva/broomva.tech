@@ -24,6 +24,12 @@ pub struct DaemonLogger {
     path: std::path::PathBuf,
 }
 
+impl Default for DaemonLogger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DaemonLogger {
     pub fn new() -> Self {
         Self {

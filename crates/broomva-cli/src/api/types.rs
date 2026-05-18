@@ -425,7 +425,10 @@ mod telemetry_types_tests {
             metadata: None,
         };
         let json = serde_json::to_string(&req).unwrap();
-        assert!(json.contains("\"prompt_slug\":\"code-review-agent\""), "got: {json}");
+        assert!(
+            json.contains("\"prompt_slug\":\"code-review-agent\""),
+            "got: {json}"
+        );
         assert!(json.contains("\"prompt_version\":\"1.0\""), "got: {json}");
         assert!(json.contains("\"session_id\""), "got: {json}");
     }
