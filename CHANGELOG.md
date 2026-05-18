@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.2 — 2026-05-18
+
+### Re-enable linux-arm64 release build via Cross.toml
+
+Closes the linux-arm64 follow-up flagged in v0.4.1. The aarch64 target now builds green alongside the other three platforms.
+
+- **NEW** `crates/broomva-cli/Cross.toml` — cross-rs configuration for the aarch64 target. `pre-build` step `apt-get install -y libssl-dev:arm64 pkg-config` inside the cross container so `openssl-sys` has the cross-architecture libs it needs to link. Passthrough env (`OPENSSL_DIR`, `OPENSSL_LIB_DIR`, `OPENSSL_INCLUDE_DIR`, `PKG_CONFIG_ALLOW_CROSS=1`) tells the build where to find them.
+- **CHANGED** `.github/workflows/release.yml` — restored the `linux-arm64` matrix entry that was removed in v0.4.1 (PR #168). Inline comment cites the Cross.toml fix.
+
+### Expected output of the v0.4.2 release.yml run
+
+```
+v0.4.2 — auto-tagged on push:main
+  4-target matrix builds:
+    darwin-arm64  ✓
+    darwin-x64    ✓
+    linux-x64     ✓
+    linux-arm64   ✓  (newly green via Cross.toml)
+  8 assets uploaded:
+    4 × broomva-0.4.2-<target>.tar.gz
+    4 × broomva-0.4.2-<target>.tar.gz.sha256
+```
+
+### Install path
+
+`curl -fsSL https://broomva.tech/api/install | bash` from a linux-arm64 host now downloads the verified `broomva-0.4.2-linux-arm64.tar.gz` binary instead of falling back to `cargo install`.
+
 ## 0.4.1 — 2026-05-18
 
 ### Release automation: auto-tag + prebuilt CLI binaries
