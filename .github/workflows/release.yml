@@ -128,10 +128,12 @@ jobs:
             target: x86_64-unknown-linux-gnu
             target_label: linux-x64
             use_cross: false
-          - runner: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            target_label: linux-arm64
-            use_cross: true
+          # linux-arm64 deferred — `cross v0.2.5` aarch64 container is
+          # missing libssl-dev, so `openssl-sys` fails to build. Re-add
+          # this matrix entry once a Cross.toml ships with a pre-build
+          # step that apt-installs the cross deps, or once broomva-cli
+          # switches its TLS backend to rustls. Until then, linux-arm64
+          # users hit install.sh's `cargo install` fallback path.
     env:
       VERSION: ${{ needs.tag.outputs.version }}
       TAG: ${{ needs.tag.outputs.tag }}
