@@ -1,0 +1,229 @@
+name: Release on merge
+
+# Auto-tag + auto-publish GitHub Release whenever VERSION changes on main,
+# then matrix-build the broomva CLI for the four supported Unix targets and
+# upload tarballs + sha256 sums to the release as assets.
+#
+# Composes with validate-release.yml (PR gate) so this workflow trusts that
+# the merged VERSION is semver, monotonic, and matched by a CHANGELOG section.
+#
+# Idempotent: if `vX.Y.Z` already exists (e.g. tagged manually before this
+# workflow shipped) the tag job skips silently — no overwrite, no duplicate.
+# The build-cli job is gated on a newly-created tag, so existing releases
+# are not re-bombed with replacement binaries.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+
+permissions:
+  contents: write   # tag push + gh release create + asset upload
+
+concurrency:
+  group: release-on-merge
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Tag + GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      created: ${{ steps.tag_check.outputs.created }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so we can check existing tags
+
+      - name: Read VERSION
+        id: version
+        run: |
+          set -euo pipefail
+          v="$(tr -d '[:space:]' < VERSION)"
+          if ! printf '%s' "$v" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error file=VERSION::not semver X.Y.Z: '$v'"
+            exit 1
+          fi
+          echo "  version=$v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=v$v"   >> "$GITHUB_OUTPUT"
+
+      - name: Check existing tag
+        id: tag_check
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "  $tag already exists — skipping release creation."
+            echo "created=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "  $tag is new — will create."
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract release notes from CHANGELOG
+        if: steps.tag_check.outputs.created == 'true'
+        id: notes
+        run: |
+          set -euo pipefail
+          v="${{ steps.version.outputs.version }}"
+          awk -v ver="$v" '
+            $0 ~ "^## " ver "( |$)" { flag=1; next }
+            flag && /^## / { exit }
+            flag { print }
+          ' CHANGELOG.md > /tmp/release-notes.md
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "::error file=CHANGELOG.md::no '## $v' section found"
+            exit 1
+          fi
+          # Title = first `### ` heading inside the section, else fall back to vX.Y.Z.
+          title=$(awk '/^### / { sub(/^### /, ""); print; exit }' /tmp/release-notes.md)
+          [ -z "$title" ] && title="${{ steps.version.outputs.tag }}"
+          echo "  title=$title"
+          # Multi-line outputs need the heredoc form.
+          {
+            echo "title<<EOT"
+            echo "$title"
+            echo "EOT"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Tag + create GitHub Release
+        if: steps.tag_check.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          title="${{ steps.notes.outputs.title }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "$tag — $title"
+          git push origin "$tag"
+          gh release create "$tag" \
+            --title "$tag — $title" \
+            --notes-file /tmp/release-notes.md
+          echo "  released $tag (binaries follow in build-cli job)"
+
+  build-cli:
+    name: Build broomva CLI (${{ matrix.target_label }})
+    needs: tag
+    if: needs.tag.outputs.created == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            target_label: darwin-arm64
+            use_cross: false
+          - runner: macos-latest
+            target: x86_64-apple-darwin
+            target_label: darwin-x64
+            use_cross: false
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            target_label: linux-x64
+            use_cross: false
+          - runner: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            target_label: linux-arm64
+            use_cross: true
+    env:
+      VERSION: ${{ needs.tag.outputs.version }}
+      TAG: ${{ needs.tag.outputs.tag }}
+      TARGET: ${{ matrix.target }}
+      TARGET_LABEL: ${{ matrix.target_label }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # We want the tag commit, not the push commit, so the binary's
+          # commit metadata (if any) matches the release.
+          ref: ${{ needs.tag.outputs.tag }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (linux-arm64 only)
+        if: matrix.use_cross == true
+        run: cargo install cross --locked --version 0.2.5
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            crates/broomva-cli/target
+          key: cargo-${{ matrix.target }}-${{ hashFiles('crates/broomva-cli/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ matrix.target }}-
+
+      - name: Build broomva CLI
+        working-directory: crates/broomva-cli
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target "$TARGET"
+          else
+            cargo build --release --target "$TARGET"
+          fi
+
+      - name: Strip binary
+        working-directory: crates/broomva-cli
+        run: |
+          set -euo pipefail
+          bin="target/$TARGET/release/broomva"
+          if [ ! -f "$bin" ]; then
+            echo "::error::binary not found at $bin"
+            exit 1
+          fi
+          case "$RUNNER_OS" in
+            macOS) strip -x "$bin" ;;
+            Linux) strip   "$bin" ;;
+            *)
+              echo "::error::unsupported runner OS: $RUNNER_OS"
+              exit 1
+              ;;
+          esac
+          echo "  stripped $bin"
+          ls -l "$bin"
+
+      - name: Package tarball + sha256
+        id: package
+        working-directory: crates/broomva-cli
+        run: |
+          set -euo pipefail
+          bin="target/$TARGET/release/broomva"
+          stage="$(mktemp -d)"
+          tarball_name="broomva-${VERSION}-${TARGET_LABEL}.tar.gz"
+          sha_name="${tarball_name}.sha256"
+          # Stage the binary under a clean name so the tarball doesn't leak
+          # internal build paths. Tarballs contain a single file: `broomva`.
+          cp "$bin" "$stage/broomva"
+          (cd "$stage" && tar -czf "$tarball_name" broomva)
+          # sha256 — `shasum -a 256` is available on both macOS and ubuntu runners.
+          (cd "$stage" && shasum -a 256 "$tarball_name" > "$sha_name")
+          # Move artifacts into a known location next to the workspace root for
+          # the upload step. Use absolute paths because GITHUB_WORKSPACE != cwd.
+          mv "$stage/$tarball_name" "$GITHUB_WORKSPACE/$tarball_name"
+          mv "$stage/$sha_name"     "$GITHUB_WORKSPACE/$sha_name"
+          echo "  packaged: $tarball_name"
+          echo "  sha256:   $(cat "$GITHUB_WORKSPACE/$sha_name")"
+          echo "tarball=$tarball_name" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha_name"         >> "$GITHUB_OUTPUT"
+
+      - name: Upload assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tarball="${{ steps.package.outputs.tarball }}"
+          sha="${{ steps.package.outputs.sha }}"
+          gh release upload "$TAG" "$tarball" "$sha" --clobber
+          echo "  uploaded $tarball + $sha to $TAG"
