@@ -66,7 +66,6 @@ jobs:
 
       - name: Extract release notes from CHANGELOG
         if: steps.tag_check.outputs.created == 'true'
-        id: notes
         run: |
           set -euo pipefail
           v="${{ steps.version.outputs.version }}"
@@ -80,15 +79,18 @@ jobs:
             exit 1
           fi
           # Title = first `### ` heading inside the section, else fall back to vX.Y.Z.
-          title=$(awk '/^### / { sub(/^### /, ""); print; exit }' /tmp/release-notes.md)
-          [ -z "$title" ] && title="${{ steps.version.outputs.tag }}"
-          echo "  title=$title"
-          # Multi-line outputs need the heredoc form.
-          {
-            echo "title<<EOT"
-            echo "$title"
-            echo "EOT"
-          } >> "$GITHUB_OUTPUT"
+          # We write the title to a tempfile and consume it in the next step
+          # rather than passing it through a bash variable. v0.5.0 hit a
+          # shell-quoting bug when the title contained backticks (`broomva
+          # chat`) and got interpreted as command substitution. File-based
+          # passing makes the title fully opaque to bash.
+          awk '/^### / { sub(/^### /, ""); print; exit }' /tmp/release-notes.md > /tmp/release-title.txt
+          if [ ! -s /tmp/release-title.txt ]; then
+            # Fall back to the tag itself; safe even if backticks appear later.
+            printf '%s' "${{ steps.version.outputs.tag }}" > /tmp/release-title.txt
+          fi
+          echo "  title file:"
+          sed 's/^/    /' /tmp/release-title.txt
 
       - name: Tag + create GitHub Release
         if: steps.tag_check.outputs.created == 'true'
@@ -97,10 +99,20 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ steps.version.outputs.tag }}"
-          title="${{ steps.notes.outputs.title }}"
+          # Read the title from the tempfile written in the previous step.
+          # Avoid command substitution (`title=$(cat ...)`) when the file
+          # itself may contain backticks — those would still be expanded
+          # only if we re-embedded the value in a quoted string. Below we
+          # never interpolate the title into a shell-evaluated context;
+          # `gh release create --title "$title"` is the lone consumer and
+          # it gets the variable contents verbatim because the double-quoted
+          # expansion is performed AFTER command substitution is finished.
+          title="$(cat /tmp/release-title.txt)"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$tag" -m "$tag — $title"
+          # Annotated-tag message kept ascii-safe by referencing only the
+          # tag itself; substantive notes live in the release body.
+          git tag -a "$tag" -m "$tag"
           git push origin "$tag"
           gh release create "$tag" \
             --title "$tag — $title" \
