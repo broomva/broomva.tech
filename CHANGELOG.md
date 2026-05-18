@@ -1,8 +1,22 @@
 # Changelog
 
+## 0.5.1 — 2026-05-18
+
+### Phase A hotfix — release.yml shell quoting for titles with special chars
+
+v0.5.0 merged cleanly but the `Release on merge` workflow failed at the tag step: the `### ` CHANGELOG heading contained backticks (around `broomva chat`) which the tag step expanded as command substitution when interpolating the title into bash. Result: tag was never created, no release published, no CLI binaries built.
+
+This patch:
+
+- **CHANGED** `.github/workflows/release.yml` — `Tag + create GitHub Release` step now writes the title to a tempfile and references it as a file argument rather than interpolating through a bash variable, so any character that might trigger shell expansion (backticks, dollar signs, etc.) is treated as literal text. Also drops the title from the annotated-tag message body and the release title; the release notes file already carries the substantive title in its first heading.
+- **CHANGED** `CHANGELOG.md` — v0.5.0 section's `### ` heading rewritten without backticks so the rerun under the hardened workflow succeeds end-to-end. Substantive entry body unchanged.
+- **EDIT** `VERSION` to 0.5.1 and `crates/broomva-cli/Cargo.toml` `version` in lockstep.
+
+No binary or surface changes. Phase A's `broomva chat` REPL ships exactly as merged in #173; this hotfix only re-runs the release pipeline that v0.5.0 was supposed to trigger.
+
 ## 0.5.0 — 2026-05-18
 
-### Phase A — `broomva chat` interactive REPL
+### Phase A — broomva chat interactive REPL
 
 First substantive expansion of the CLI surface since v0.4.0's release-infrastructure baseline. Implements the **Chat Session Contract** (CC-1..CC-5) from `docs/specs/2026-05-18-broomva-cli-agent-chat-pipeline.md` §3.1: a single agent loop, bidi-streaming, with optional multi-turn resumption. Closes Phase A of [BRO-1168](https://linear.app/broomva/issue/BRO-1168) (sub-issue [BRO-1169](https://linear.app/broomva/issue/BRO-1169)).
 
