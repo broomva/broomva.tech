@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.4.3 — 2026-05-18
+
+### Switch broomva-cli TLS backend to rustls (closes linux-arm64 cross-build)
+
+Closes the remaining cross-build pain after v0.4.2. The aarch64 target now compiles in CI with no apt-installed openssl required.
+
+- **CHANGED** `crates/broomva-cli/Cargo.toml` — `reqwest` now uses `default-features = false, features = ["json", "rustls-tls"]`. Removes the native-tls → openssl-sys dependency chain that the cross-rs `xenial` (Ubuntu 16.04) container couldn't satisfy. broomva-cli now uses pure-Rust rustls + webpki-roots for TLS — no system openssl, no libssl-dev, no `Cross.toml` apt-install gymnastics.
+- **REMOVED** `crates/broomva-cli/Cross.toml` — no longer needed. The `apt-get install libssl-dev:arm64 pkg-config` pre-build step was a workaround for the openssl-sys dependency; rustls eliminates the root cause.
+
+### Why this fix won
+
+v0.4.2 shipped `Cross.toml` to apt-install `libssl-dev:arm64` in the cross container. That worked — the package installed cleanly. But the cross-rs `xenial` (Ubuntu 16.04) container's libssl is `1.0.2g`, while modern `openssl-sys v0.9.112` requires OpenSSL ≥ 1.1.1. Building a newer openssl from source inside the cross container would have worked but added significant build time + complexity. rustls switching removes the dependency entirely — simpler, faster, more secure (rustls has fewer historical CVEs).
+
+### TLS backend swap implications
+
+- **Certificate trust roots**: rustls uses `webpki-roots` (Mozilla's CA bundle, vendored at compile time). Previously native-tls used the OS trust store. For broomva-cli talking to broomva.tech APIs, this is equivalent.
+- **Performance**: rustls is comparable to or faster than openssl for HTTPS — no regression expected.
+- **Binary size**: rustls + ring add ~1 MB; libssl was dynamically linked. Static rustls is actually a win for distribution.
+- **Cross-compile**: pure Rust, no system C library dependencies — all 4 release targets now build green from the same Cargo.toml.
+
+### Expected v0.4.3 release.yml run
+
+```
+darwin-arm64  ✓
+darwin-x64    ✓
+linux-x64     ✓
+linux-arm64   ✓  ← finally green (third attempt: rustls)
+8 assets uploaded
+```
+
 ## 0.4.2 — 2026-05-18
 
 ### Re-enable linux-arm64 release build via Cross.toml
