@@ -1,3 +1,4 @@
+pub mod agent_stream;
 pub mod auth;
 pub mod types;
 
@@ -365,9 +366,9 @@ impl BroomvaClient {
 #[cfg(test)]
 mod telemetry_client_tests {
     use super::*;
-    use wiremock::matchers::{method, path, header, body_partial_json};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
     use serde_json::json;
+    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn test_client(base: String) -> BroomvaClient {
         BroomvaClient::new(base, Some("test-token".into()))
@@ -519,7 +520,10 @@ mod telemetry_client_tests {
             .await;
 
         let client = test_client(server.uri());
-        let m = client.get_metrics_for_slug("code-review-agent").await.unwrap();
+        let m = client
+            .get_metrics_for_slug("code-review-agent")
+            .await
+            .unwrap();
         assert_eq!(m.totals.skill_invokes, 20);
         assert!((m.feedback.rate.unwrap() - 0.75).abs() < 1e-9);
     }

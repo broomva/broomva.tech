@@ -1,11 +1,4 @@
-mod api;
-mod cli;
-mod config;
-mod daemon;
-mod error;
-mod frontmatter;
-mod telemetry;
-
+use broomva::cli;
 use clap::Parser;
 
 fn main() -> anyhow::Result<()> {

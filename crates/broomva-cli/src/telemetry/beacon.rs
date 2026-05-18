@@ -119,10 +119,7 @@ mod tests {
         // doesn't write into the developer's real ~/.broomva/session.
         let session_tmp = tempdir().unwrap();
         let session_path = session_tmp.path().join("session");
-        let _session_guard = EnvGuard::set(
-            "BROOMVA_SESSION_PATH",
-            &session_path.to_string_lossy(),
-        );
+        let _session_guard = EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
 
         let server = MockServer::start().await;
         Mock::given(method("POST"))
@@ -148,10 +145,7 @@ mod tests {
 
         let session_tmp = tempdir().unwrap();
         let session_path = session_tmp.path().join("session");
-        let _session_guard = EnvGuard::set(
-            "BROOMVA_SESSION_PATH",
-            &session_path.to_string_lossy(),
-        );
+        let _session_guard = EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
 
         let server = MockServer::start().await;
         Mock::given(method("POST"))

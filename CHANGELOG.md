@@ -1,5 +1,81 @@
 # Changelog
 
+## 0.5.0 — 2026-05-18
+
+### Phase A — `broomva chat` interactive REPL
+
+First substantive expansion of the CLI surface since v0.4.0's release-infrastructure baseline. Implements the **Chat Session Contract** (CC-1..CC-5) from `docs/specs/2026-05-18-broomva-cli-agent-chat-pipeline.md` §3.1: a single agent loop, bidi-streaming, with optional multi-turn resumption. Closes Phase A of [BRO-1168](https://linear.app/broomva/issue/BRO-1168) (sub-issue [BRO-1169](https://linear.app/broomva/issue/BRO-1169)).
+
+### Scope
+
+- One-shot: `broomva chat "<prompt>"` sends a single turn, streams the reply token-by-token, exits.
+- Interactive: `broomva chat` (no args) drops into a REPL with `rustyline` line editing + slash commands.
+- Resume: `broomva chat resume <session-id>` reloads on-disk history.jsonl and reconnects to the gateway with `from_sequence` (Spec C₃ §6.6 reconnect-by-last-seq).
+- Session housekeeping: `broomva chat sessions list`, `broomva chat sessions prune --older-than 30d --dry-run`, `broomva chat models`.
+
+### Deliverables
+
+- **NEW** `crates/broomva-cli/src/cli/chat.rs` — REPL state machine, one-shot path, resume path, `sessions list/prune`, `models` subcommand. Per-session history mirrored at `~/.broomva/sessions/<id>/history.jsonl` (one JSON object per turn: `{role, content, ts, model, session_id, seq}`).
+- **NEW** `crates/broomva-cli/src/api/agent_stream.rs` — typed WebSocket client for `lifegw /v1/agent/stream`. Bearer auth via `Sec-WebSocket-Protocol: bearer.<jwt>` subprotocol (matches Spec C₃ §6.6 wire shape — see `core/life/crates/life-runtime/lifegw/src/services/ws.rs`). Frames are tagged JSON (`OutboundFrame::{UserTurn, Cancel, Ping}` / `InboundFrame::{Token, SessionOpened, TurnComplete, TurnError}`). Unknown inbound `kind`s are dropped silently — mirrors gateway dispatcher's policy on `1003 Unsupported Data` per the Spec C₃ §6.5 amendment at `core/life/docs/superpowers/specs/2026-04-29-spec-c3-close-codes.md`. Reconnect uses Spec C₃ §6.6 jittered exponential backoff (250ms base, ±25% jitter, 8s cap, capped at 5 attempts).
+- **NEW** `crates/broomva-cli/src/tui/mod.rs` + `tui/slash.rs` — shared TUI primitives. `Renderer` trait so tests swap stdout for an in-memory buffer. `SlashCommand::parse` is a pure function recognizing `/save`, `/model <id>`, `/history`, `/clear`, `/exit` (+ `/quit`, `/q`), `/help` (+ `/h`, `/?`). ESC interrupt via `crossterm::event::poll` non-blocking — when pressed mid-stream, the renderer sends `OutboundFrame::Cancel`.
+- **NEW** `crates/broomva-cli/tests/chat_smoke.rs` — fixture-based smoke test. A `FakeStream` implementation of `AgentStream` is preloaded with `SessionOpened` + tokens + `TurnComplete` events; the test asserts the REPL state machine renders tokens via a `CapturedRenderer`, persists user + assistant entries to history.jsonl on disk, and bumps `last_seq` correctly. Avoids spinning up a real wiremock WS server — the smoke test exercises the same code path the production REPL does, but with a swap-in transport.
+- **EDIT** `crates/broomva-cli/src/cli/mod.rs` — registers `Chat`, `ChatCommand`, `ChatSessionsCommand` enum variants and dispatches to the appropriate `chat::handle_*` function. Adds three CLI flags (`--session`, `--model`, `--gateway-url`) shared across all chat modes.
+- **EDIT** `crates/broomva-cli/src/main.rs` — adds the `tui` module to the binary.
+- **EDIT** `crates/broomva-cli/src/api/mod.rs` — exposes the `agent_stream` submodule.
+- **EDIT** `crates/broomva-cli/Cargo.toml` — adds `tokio-tungstenite 0.24` (rustls-only feature set to keep the v0.4.3 cross-compile posture), `crossterm 0.28` (events-only feature, no terminal-state mutation), `rustyline 15` (file-history feature), `async-trait 0.1`, `futures-util 0.3`, `url 2`, `http 1`. Dev-deps gain `tokio` `test-util` feature + `futures-util` for the smoke test.
+- **EDIT** `VERSION` → `0.5.0` and `crates/broomva-cli/Cargo.toml` `version` field in lockstep (verified by `scripts/sync-cargo-version.sh --check`; the `validate-release.yml` CI gate enforces this on every PR).
+
+### Configuration
+
+- **Default model**: `claude-sonnet-4-6`. Override via the `--model` flag, `BROOMVA_MODEL` env var, or `~/.broomva/config.json` `defaultModel` key. Curated list of known models is surfaced by `broomva chat models` (Phase B will fetch live from lifed).
+- **Gateway URL**: defaults to `wss://lifegw.broomva.tech/v1/agent/stream`. Override via the `--gateway-url` flag, `BROOMVA_GATEWAY_URL` env var, or `~/.broomva/config.json` `gatewayUrl` key. The `CliConfig` type still ships as `camelCase`; the chat resolver reads `gatewayUrl` / `defaultModel` via the on-disk JSON so this PR does not require a typed `CliConfig` change (Phase B will widen the type).
+- **Token**: same Bearer JWT used by every other authenticated command — `broomva auth login` once and `chat` picks it up.
+
+### Invariants verified
+
+| ID | Invariant | Verified by |
+|---|---|---|
+| CC-1 | Session bound to authenticated user via `Sec-WebSocket-Protocol: bearer.<jwt>` | `TungsteniteStream::connect` writes the header; rejected at handshake by lifegw if missing/invalid |
+| CC-2 | Multi-turn sessions persist across CLI invocations (`chat resume <id>` replays history.jsonl and passes `from_sequence`) | `tests/chat_smoke.rs::resume_replays_history_and_reconnects_with_from_sequence` |
+| CC-3 | Token-level streaming (typewriter, not line-buffered) — `StdoutRenderer::write_token` flushes eagerly | `crates/broomva-cli/src/tui/mod.rs::tests::captured_renderer_records_tokens_notices_errors_in_order` |
+| CC-4 | Close codes follow Spec C₃ §6.5 — full 9-variant table | `crates/broomva-cli/src/api/agent_stream.rs::tests::close_code_from_u16_matches_spec_c3_table` + `close_code_retryable_partitioning` |
+| CC-5 | Every turn appends a `HistoryEntry` (proxy for the prompt-invocation beacon used by `/prompts pull` / `complete` / `feedback`) | `crates/broomva-cli/src/cli/chat.rs::tests::history_round_trips_through_jsonl` + smoke-test assertion. Full telemetry-beacon integration is Phase D polish per the spec. |
+
+### SLO targets
+
+- One-shot `broomva chat "hi"` p99 < 5s cold (deferred: needs live gateway env to measure; smoke test covers state transitions, not wall-clock).
+- Per-token render p99 < 50ms — `StdoutRenderer::write_token` flushes per token; no buffering between WS recv and stdout write.
+- Resume p99 < 1s to first new token — `from_sequence` is set before the first outbound `UserTurn`, so the gateway resumes mid-turn (Spec C₃ §6.6 / Sub-phase D D7).
+
+Live SLO measurement deferred to integration env (no production gateway runs in CI); the fixture-based smoke test verifies the REPL state machine, frame encoding, history persistence, and reconnect logic against the same `AgentStream` trait the production code uses.
+
+### Risks + mitigations (from spec §6 Phase A)
+
+- **WS reconnect storms on flaky networks** — `agent_stream::spawn_driver` caps at 5 attempts; backoff is jittered ±25% so concurrent CLI instances don't synchronize. After the cap, the driver surfaces a `Closed` event and the REPL exits.
+- **TUI blocks on slow tokens** — the `AgentStream` trait is async + the renderer is a separate trait; the production REPL uses an `mpsc`-style decoupling (the driver task in `spawn_driver` puts events on a 128-deep channel; the renderer drains). One connection per turn for Phase A keeps the lifecycle simple; Phase B will keep one connection across turns.
+- **History unbounded growth** — per-session JSONL written via `OpenOptions::append`; warning fires at 10MB; `chat sessions prune --older-than 30d` is shipped as part of this release. JSONL rollover (size-bounded files) deferred to Phase D polish.
+- **Slash-command injection inside user input** — slash commands are parsed only when the trimmed input starts with `/`; the `parse` function returns `Ok(None)` for non-slash input. Test: `parse_returns_none_for_regular_input`. The REPL does not interpret slash commands inside multi-line input either.
+- **Cargo dep bloat** — the new deps use `default-features = false` and pull in feature-minimal subsets (tokio-tungstenite without `native-tls`, crossterm without terminal-state mutation, rustyline without termios extras). Binary size impact measured in the first v0.5.0 release.yml run.
+
+### Design choices
+
+- **One connection per turn** (vs persistent connection across turns) — Phase A simplicity. The gateway holds the session server-side; the next turn's connection passes `from_sequence` for resume. Phase B will move to a persistent connection driven by `agent_stream::spawn_driver` once the gRPC `agent` subcommand demands long-lived sessions.
+- **`AgentStream` trait** — lets the smoke test swap in `FakeStream` without spinning up a real WS server (wiremock doesn't carry the WebSocket upgrade primitive). The trait is small (`send`, `recv`, `close`) so the abstraction cost is near-zero.
+- **History format is JSONL, not a database** — keeps the CLI dependency footprint small (no `rusqlite`) and the history grep-able by hand. The 10MB warn-threshold is a soft signal; rollover lands in Phase D.
+- **Session IDs are UUID v4** (vs the ULID mentioned in the spec) — UUID v4 is already a transitive dep via the existing `uuid 1` crate; ULID would add a new dep. The on-disk sort order is by mtime, not by ID, so we don't need ULID's k-sortability for Phase A. Phase B's `agent run` may revisit this if lifed's saga relies on ULID semantics.
+
+### Documentation
+
+- This CHANGELOG entry serves as the human-readable description; the binding architectural contract lives at `docs/specs/2026-05-18-broomva-cli-agent-chat-pipeline.md` §3.1 (Chat Session Contract) and §6 Phase A (closure phase). The spec's CC-1..CC-5 invariants map 1:1 to the test cases.
+- Subcommand surface added to the CLI naming registry (Appendix C of the spec): `chat` status moves from "Phase A planned" → "Phase A shipped".
+
+### Out of scope (deferred to Phase B)
+
+- `broomva agent` typed task invocation via lifed gRPC — Phase B (v0.6.0).
+- `broomva pipeline` declarative orchestration via Symphony — Phase C (v0.7.0).
+- Full telemetry-beacon integration (`/api/invocations` POST per session, matching the `prompts pull` / `complete` / `feedback` shape) — Phase D polish.
+- Live SLO measurement against a deployed gateway — needs `BROOMVA_LIVE_INTEGRATION=1` test lane; spec §7.2 sketches the shape.
+
 ## 0.4.4 — 2026-05-18
 
 ### Remove redundant external strip step (closes linux-arm64 for good)

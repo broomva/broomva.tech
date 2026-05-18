@@ -59,8 +59,16 @@ pub async fn handle_list(
     let rows: Vec<Vec<String>> = entries
         .iter()
         .map(|e| {
-            let slug = e.get("slug").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let slug = e
+                .get("slug")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let title = e
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let category = e
                 .get("category")
                 .and_then(|v| v.as_str())
@@ -96,7 +104,9 @@ pub async fn handle_list(
         .collect();
 
     print_table(
-        &["slug", "title", "category", "copies", "cli", "skill", "runs7d"],
+        &[
+            "slug", "title", "category", "copies", "cli", "skill", "runs7d",
+        ],
         &rows,
         format,
     );
@@ -196,8 +206,7 @@ pub async fn handle_pull(
 
     // 2. Fire the telemetry beacon — best-effort. The beacon prints a
     //    stderr warning on failure but never blocks the pull.
-    let beacon =
-        crate::telemetry::beacon::post_invocation_beacon(client, slug, &version).await;
+    let beacon = crate::telemetry::beacon::post_invocation_beacon(client, slug, &version).await;
 
     // 3. Write the prompt to disk (existing behavior preserved)
     let mut fm = std::collections::BTreeMap::new();
@@ -403,7 +412,9 @@ pub async fn handle_feedback(
         prompt_version: version.to_string(),
         signal: normalized_signal.to_string(),
         text: text.map(|s| s.to_string()),
-        source: crate::telemetry::source::detect_source().as_str().to_string(),
+        source: crate::telemetry::source::detect_source()
+            .as_str()
+            .to_string(),
     };
 
     let resp = client.create_feedback(&req).await?;
@@ -456,8 +467,7 @@ mod tests {
         let _env_guard = TELEMETRY_ENV_LOCK.lock().unwrap();
         let session_tmp = tempdir().unwrap();
         let session_path = session_tmp.path().join("session");
-        let _session_guard =
-            EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
+        let _session_guard = EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
 
         let server = MockServer::start().await;
         // Server emits a bare PromptDetail (no { data } wrapper) since the
@@ -491,7 +501,13 @@ mod tests {
         let client = BroomvaClient::new(server.uri(), None);
         let tmp = tempdir().unwrap();
         let dest = tmp.path().join("out.md");
-        let result = handle_pull(&client, "code-review-agent", Some(dest.to_str().unwrap()), false).await;
+        let result = handle_pull(
+            &client,
+            "code-review-agent",
+            Some(dest.to_str().unwrap()),
+            false,
+        )
+        .await;
         assert!(result.is_ok(), "{result:?}");
         let written = std::fs::read_to_string(&dest).unwrap();
         assert!(written.contains("Code Review Agent"));
@@ -503,8 +519,7 @@ mod tests {
         let _env_guard = TELEMETRY_ENV_LOCK.lock().unwrap();
         let session_tmp = tempdir().unwrap();
         let session_path = session_tmp.path().join("session");
-        let _session_guard =
-            EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
+        let _session_guard = EnvGuard::set("BROOMVA_SESSION_PATH", &session_path.to_string_lossy());
         // BROOMVA_TELEMETRY_DISABLED is read fresh in
         // beacon::post_invocation_beacon so the disable takes effect
         // immediately. The guard restores the var on drop — panic-safe.

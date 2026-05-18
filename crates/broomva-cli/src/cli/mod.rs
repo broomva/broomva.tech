@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod chat;
 pub mod config_cmd;
 pub mod console;
 pub mod context;
@@ -86,6 +87,70 @@ pub enum Command {
     Relay {
         #[command(subcommand)]
         action: RelayCommand,
+    },
+    /// Chat — interactive agent REPL backed by lifegw streaming.
+    ///
+    /// One-shot: `broomva chat "<prompt>"` sends a single turn, streams
+    /// the reply, and exits. Without a prompt, drops into the REPL.
+    ///
+    /// Subcommands:
+    ///   * `broomva chat resume <session-id>` — resume an existing session.
+    ///   * `broomva chat sessions [list|prune]` — manage local history.
+    ///   * `broomva chat models` — list known models.
+    ///
+    /// REPL slash commands: `/save`, `/model <id>`, `/history`, `/clear`,
+    /// `/exit`, `/help`. Press ESC to interrupt a streaming reply.
+    Chat {
+        /// One-shot prompt. Omit to enter the interactive REPL.
+        prompt: Option<String>,
+
+        /// Resume an existing session by ID (overridable per-flag).
+        #[arg(long, value_name = "ID")]
+        session: Option<String>,
+        /// Model override (defaults to ~/.broomva/config.json
+        /// `defaultModel` or `claude-sonnet-4-6`).
+        #[arg(long, value_name = "ID")]
+        model: Option<String>,
+        /// Gateway WSS URL override (defaults to BROOMVA_GATEWAY_URL or
+        /// the production gateway).
+        #[arg(long, value_name = "WSS")]
+        gateway_url: Option<String>,
+
+        #[command(subcommand)]
+        action: Option<ChatCommand>,
+    },
+}
+
+// ── Chat ──
+
+#[derive(Subcommand, Debug)]
+pub enum ChatCommand {
+    /// Resume an existing chat session by ID.
+    Resume {
+        /// Session ID returned by a previous `broomva chat`.
+        session_id: String,
+    },
+    /// Manage local session history (under ~/.broomva/sessions/).
+    Sessions {
+        #[command(subcommand)]
+        action: ChatSessionsCommand,
+    },
+    /// List known models.
+    Models,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ChatSessionsCommand {
+    /// List sessions on disk.
+    List,
+    /// Remove sessions older than the threshold.
+    Prune {
+        /// Threshold in days (default: 30).
+        #[arg(long, value_name = "DAYS", default_value_t = chat::DEFAULT_PRUNE_DAYS)]
+        older_than: u64,
+        /// Don't actually remove anything; just print what would go.
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -389,7 +454,7 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
     let api_base = config::resolve_api_base(cli.api_base.as_deref())?;
     let token = config::resolve_token(cli.token.as_deref())?;
 
-    let client = BroomvaClient::new(api_base, token);
+    let client = BroomvaClient::new(api_base, token.clone());
 
     match command {
         Command::Setup => unreachable!(),
@@ -581,6 +646,43 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             RelayCommand::Status => relay::handle_status(&client, format).await,
             RelayCommand::Sessions => relay::handle_sessions(&client, format).await,
         },
+        Command::Chat {
+            prompt,
+            session,
+            model,
+            gateway_url,
+            action,
+        } => {
+            // `token` is already resolved above from cli.token / env /
+            // config. Pass it through so chat uses the same Bearer JWT.
+            let opts = chat::ChatRunOpts {
+                prompt: prompt.clone(),
+                session_id: session.clone(),
+                model: model.clone(),
+                gateway_url: gateway_url.clone(),
+                token_override: token.clone(),
+            };
+            match action {
+                None => {
+                    if prompt.is_some() {
+                        chat::handle_one_shot(opts).await
+                    } else {
+                        chat::handle_interactive(opts).await
+                    }
+                }
+                Some(ChatCommand::Resume { session_id }) => {
+                    chat::handle_resume(opts, session_id).await
+                }
+                Some(ChatCommand::Sessions { action }) => match action {
+                    ChatSessionsCommand::List => chat::handle_list_sessions(),
+                    ChatSessionsCommand::Prune {
+                        older_than,
+                        dry_run,
+                    } => chat::handle_prune_sessions(older_than, dry_run),
+                },
+                Some(ChatCommand::Models) => chat::handle_models(),
+            }
+        }
     }
 }
 
