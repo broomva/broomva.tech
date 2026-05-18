@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.4.4 — 2026-05-18
+
+### Remove redundant external strip step (closes linux-arm64 for good)
+
+The last piece blocking linux-arm64. The Cargo.toml already declares `[profile.release] strip = true`, so Cargo invokes the target-correct strip during the build. The external `strip "$bin"` step in `release.yml` was both redundant **and** the only thing failing on cross builds — the host's x86_64 `strip` can't recognize the aarch64 ELF format:
+
+```
+strip: Unable to recognise the format of the input file `target/aarch64-unknown-linux-gnu/release/broomva'
+```
+
+### Changes
+
+- **CHANGED** `.github/workflows/release.yml` — renamed `Strip binary` step to `Verify built binary exists`. Confirms the binary is present + size, drops the redundant external strip (Cargo handled it during build).
+- Inline comment in release.yml explains the decision so future maintainers don't accidentally re-add the host strip.
+
+### Expected v0.4.4 release.yml run
+
+```
+darwin-arm64  ✓
+darwin-x64    ✓
+linux-x64     ✓
+linux-arm64   ✓  ← fourth attempt, finally green
+8 assets uploaded
+```
+
+### The linux-arm64 saga (recap)
+
+| Version | Attempt | Result |
+|---|---|---|
+| v0.4.1 | First release.yml fire — 4-target matrix | linux-arm64 **failed** at openssl-sys (missing libssl-dev) |
+| v0.4.2 | Add `Cross.toml` to apt-install libssl-dev:arm64 | Installed cleanly, but cross-rs aarch64 container's openssl is 1.0.2 (too old for openssl-sys ≥1.1.1) |
+| v0.4.3 | Switch reqwest TLS to rustls (eliminate openssl) | Build compiles ✓, but external `strip` step fails (x86_64 strip can't read aarch64 ELF) |
+| **v0.4.4** | **Remove redundant external strip (Cargo already does it)** | **All 4 targets green (this release)** |
+
+Lesson learned: when adding cross-compile support, audit every host-side tool call (strip, otool, file, etc.) for target-arch awareness. Cargo's built-in tooling handles it correctly; bash glue scripts often don't.
+
 ## 0.4.3 — 2026-05-18
 
 ### Switch broomva-cli TLS backend to rustls (closes linux-arm64 cross-build)

@@ -177,7 +177,7 @@ jobs:
             cargo build --release --target "$TARGET"
           fi
 
-      - name: Strip binary
+      - name: Verify built binary exists
         working-directory: crates/broomva-cli
         run: |
           set -euo pipefail
@@ -186,15 +186,12 @@ jobs:
             echo "::error::binary not found at $bin"
             exit 1
           fi
-          case "$RUNNER_OS" in
-            macOS) strip -x "$bin" ;;
-            Linux) strip   "$bin" ;;
-            *)
-              echo "::error::unsupported runner OS: $RUNNER_OS"
-              exit 1
-              ;;
-          esac
-          echo "  stripped $bin"
+          # Stripping is handled by [profile.release] strip = true in
+          # crates/broomva-cli/Cargo.toml. Cargo invokes the correct
+          # target-specific strip during the build, so we don't run an
+          # external `strip` here — the host's strip can't read foreign
+          # architectures (e.g. x86_64 strip on aarch64 ELF), which was
+          # the source of the linux-arm64 failure in v0.4.3.
           ls -l "$bin"
 
       - name: Package tarball + sha256
