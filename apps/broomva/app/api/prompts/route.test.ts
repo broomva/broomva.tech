@@ -236,4 +236,18 @@ describe("POST /api/prompts — admin GitHub mirror behavior", () => {
     expect(mockCommitToGitHub).not.toHaveBeenCalled();
     expect(res.headers.get("Warning")).toBeNull();
   });
+
+  test("admin + mirror THROWS → caught, 201 + githubMirror.ok=false (DB write preserved)", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockRejectedValue(new Error("ECONNREFUSED"));
+
+    const res = await POST(postReq());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.githubMirror).toEqual({
+      ok: false,
+      error: "ECONNREFUSED",
+    });
+    expect(res.headers.get("Warning")).toContain("ECONNREFUSED");
+  });
 });

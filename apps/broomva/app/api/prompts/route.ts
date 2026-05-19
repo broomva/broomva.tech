@@ -7,8 +7,8 @@ import {
   getPromptBySlug,
 } from "@/lib/db/queries";
 import { createPromptSchema } from "@/lib/prompts/validation";
-import { isAdmin, generateSlug } from "@/lib/prompts/admin";
-import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
+import { generateSlug } from "@/lib/prompts/admin";
+import { mirrorIfAdmin, mirrorWarningHeaders } from "@/lib/prompts/mirror";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 import type { UserPrompt } from "@/lib/db/schema";
 import type { ContentSummary } from "@/lib/content";
@@ -166,40 +166,13 @@ export async function POST(request: NextRequest) {
   });
 
   // Admin: commit to GitHub → triggers Vercel redeploy. Surface mirror
-  // failures to the caller — otherwise the prompt lives in DB only and
-  // never reaches the public /prompts page (MDX-backed via getContentList).
+  // failures (including throws) to the caller — otherwise the prompt lives
+  // in DB only and never reaches the public /prompts page (MDX-backed via
+  // getContentList).
   const githubMirror = await mirrorIfAdmin(userEmail, prompt);
 
   return NextResponse.json(
     { ...prompt, ...(githubMirror ? { githubMirror } : {}) },
-    {
-      status: 201,
-      headers: mirrorWarningHeaders(githubMirror),
-    },
+    { status: 201, headers: mirrorWarningHeaders(githubMirror) },
   );
-}
-
-type GithubMirrorStatus =
-  | { ok: true }
-  | { ok: false; error: string };
-
-async function mirrorIfAdmin(
-  email: string | undefined | null,
-  prompt: Parameters<typeof commitPromptToGitHub>[0],
-): Promise<GithubMirrorStatus | null> {
-  if (!isAdmin(email)) return null;
-  const ghResult = await commitPromptToGitHub(prompt);
-  if (ghResult.success) return { ok: true };
-  const error = ghResult.error ?? "unknown";
-  console.error("GitHub commit failed:", error);
-  return { ok: false, error };
-}
-
-function mirrorWarningHeaders(
-  status: GithubMirrorStatus | null,
-): Record<string, string> {
-  if (!status || status.ok) return {};
-  return {
-    Warning: `199 - "GitHub mirror failed: ${status.error.replace(/"/g, "'")}"`,
-  };
 }

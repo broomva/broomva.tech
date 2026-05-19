@@ -7,7 +7,7 @@ import {
 } from "@/lib/db/queries";
 import { updatePromptSchema } from "@/lib/prompts/validation";
 import { isAdmin } from "@/lib/prompts/admin";
-import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
+import { mirrorIfAdmin, mirrorWarningHeaders } from "@/lib/prompts/mirror";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 export async function GET(
@@ -112,27 +112,12 @@ export async function PUT(
   }
 
   // Admin: mirror updated DB row back to MDX in the repo. Surface mirror
-  // failures — see app/api/prompts/route.ts for the rationale.
-  let githubMirror: { ok: true } | { ok: false; error: string } | null = null;
-  if (isAdmin(auth.email)) {
-    const ghResult = await commitPromptToGitHub(updated);
-    if (ghResult.success) {
-      githubMirror = { ok: true };
-    } else {
-      const error = ghResult.error ?? "unknown";
-      console.error("GitHub commit failed:", error);
-      githubMirror = { ok: false, error };
-    }
-  }
-
-  const headers: Record<string, string> = {};
-  if (githubMirror && !githubMirror.ok) {
-    headers.Warning = `199 - "GitHub mirror failed: ${githubMirror.error.replace(/"/g, "'")}"`;
-  }
+  // failures (including throws) — see app/api/prompts/route.ts.
+  const githubMirror = await mirrorIfAdmin(auth.email, updated);
 
   return NextResponse.json(
     { ...updated, ...(githubMirror ? { githubMirror } : {}) },
-    { headers },
+    { headers: mirrorWarningHeaders(githubMirror) },
   );
 }
 

@@ -208,4 +208,18 @@ describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
     expect(body.githubMirror).toBeUndefined();
     expect(mockCommitToGitHub).not.toHaveBeenCalled();
   });
+
+  test("admin + mirror THROWS → caught, 200 + githubMirror.ok=false (DB update preserved)", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockRejectedValue(new Error("ETIMEDOUT"));
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror).toEqual({
+      ok: false,
+      error: "ETIMEDOUT",
+    });
+    expect(res.headers.get("Warning")).toContain("ETIMEDOUT");
+  });
 });
