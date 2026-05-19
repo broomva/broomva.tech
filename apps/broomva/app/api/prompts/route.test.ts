@@ -27,13 +27,26 @@ vi.mock("@/lib/prompts/github-commit", () => ({
   commitPromptToGitHub: vi.fn(),
 }));
 
-import { GET } from "./route";
-import { getAllPublicPrompts, getMetricsForSlugs } from "@/lib/db/queries";
+import { GET, POST } from "./route";
+import {
+  getAllPublicPrompts,
+  getMetricsForSlugs,
+  createUserPrompt,
+  getPromptBySlug,
+} from "@/lib/db/queries";
 import { getContentList } from "@/lib/content";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
+import { isAdmin } from "@/lib/prompts/admin";
+import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
 
 const mockGetAll = vi.mocked(getAllPublicPrompts);
 const mockGetMetrics = vi.mocked(getMetricsForSlugs);
 const mockGetContentList = vi.mocked(getContentList);
+const mockCreateUserPrompt = vi.mocked(createUserPrompt);
+const mockGetPromptBySlug = vi.mocked(getPromptBySlug);
+const mockResolveAuth = vi.mocked(resolveAuth);
+const mockIsAdmin = vi.mocked(isAdmin);
+const mockCommitToGitHub = vi.mocked(commitPromptToGitHub);
 
 function makeReq(qs: string): NextRequest {
   return new NextRequest(`http://localhost/api/prompts${qs ? `?${qs}` : ""}`);
@@ -135,5 +148,92 @@ describe("GET /api/prompts", () => {
     const body = await res.json();
     expect(body[0].slug).toBe("code-review-agent");
     expect(body[1].slug).toBe("refactor-helper");
+  });
+});
+
+describe("POST /api/prompts — admin GitHub mirror behavior", () => {
+  const ADMIN_EMAIL = "admin@example.com";
+  const USER_ID = "user-1";
+
+  const POST_BODY = {
+    title: "Test Prompt",
+    content: "system: hello",
+    summary: "A test prompt",
+    category: "agent-instructions",
+  };
+
+  const CREATED_ROW = {
+    ...DB_PROMPT,
+    slug: "test-prompt",
+    title: POST_BODY.title,
+    content: POST_BODY.content,
+    summary: POST_BODY.summary,
+    category: POST_BODY.category,
+    userId: USER_ID,
+  };
+
+  function postReq(): NextRequest {
+    return new NextRequest("http://localhost/api/prompts", {
+      method: "POST",
+      body: JSON.stringify(POST_BODY),
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  beforeEach(() => {
+    mockResolveAuth.mockReset();
+    mockIsAdmin.mockReset();
+    mockCommitToGitHub.mockReset();
+    mockCreateUserPrompt.mockReset();
+    mockGetPromptBySlug.mockReset();
+
+    mockResolveAuth.mockResolvedValue({
+      userId: USER_ID,
+      email: ADMIN_EMAIL,
+    } as never);
+    mockGetPromptBySlug.mockResolvedValue(undefined as never);
+    mockCreateUserPrompt.mockResolvedValue(CREATED_ROW as never);
+  });
+
+  test("admin + mirror success → body carries githubMirror.ok=true, no Warning header", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({ success: true } as never);
+
+    const res = await POST(postReq());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.githubMirror).toEqual({ ok: true });
+    expect(res.headers.get("Warning")).toBeNull();
+  });
+
+  test("admin + mirror FAILURE → body carries githubMirror.ok=false + Warning header set", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: "GITHUB_TOKEN not set",
+    } as never);
+
+    const res = await POST(postReq());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.githubMirror).toEqual({
+      ok: false,
+      error: "GITHUB_TOKEN not set",
+    });
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    expect(warning).toContain("GitHub mirror failed");
+    expect(warning).toContain("GITHUB_TOKEN not set");
+  });
+
+  test("non-admin path → no mirror attempt, no githubMirror in body", async () => {
+    mockIsAdmin.mockReturnValue(false);
+
+    const res = await POST(postReq());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.githubMirror).toBeUndefined();
+    expect(mockCommitToGitHub).not.toHaveBeenCalled();
+    expect(res.headers.get("Warning")).toBeNull();
   });
 });

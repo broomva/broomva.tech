@@ -111,11 +111,29 @@ export async function PUT(
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 
+  // Admin: mirror updated DB row back to MDX in the repo. Surface mirror
+  // failures — see app/api/prompts/route.ts for the rationale.
+  let githubMirror: { ok: true } | { ok: false; error: string } | null = null;
   if (isAdmin(auth.email)) {
-    await commitPromptToGitHub(updated);
+    const ghResult = await commitPromptToGitHub(updated);
+    if (ghResult.success) {
+      githubMirror = { ok: true };
+    } else {
+      const error = ghResult.error ?? "unknown";
+      console.error("GitHub commit failed:", error);
+      githubMirror = { ok: false, error };
+    }
   }
 
-  return NextResponse.json(updated);
+  const headers: Record<string, string> = {};
+  if (githubMirror && !githubMirror.ok) {
+    headers.Warning = `199 - "GitHub mirror failed: ${githubMirror.error.replace(/"/g, "'")}"`;
+  }
+
+  return NextResponse.json(
+    { ...updated, ...(githubMirror ? { githubMirror } : {}) },
+    { headers },
+  );
 }
 
 export async function DELETE(

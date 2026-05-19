@@ -165,13 +165,41 @@ export async function POST(request: NextRequest) {
     deletedAt: null,
   });
 
-  // Admin: commit to GitHub → triggers Vercel redeploy
-  if (isAdmin(userEmail)) {
-    const ghResult = await commitPromptToGitHub(prompt);
-    if (!ghResult.success) {
-      console.error("GitHub commit failed:", ghResult.error);
-    }
-  }
+  // Admin: commit to GitHub → triggers Vercel redeploy. Surface mirror
+  // failures to the caller — otherwise the prompt lives in DB only and
+  // never reaches the public /prompts page (MDX-backed via getContentList).
+  const githubMirror = await mirrorIfAdmin(userEmail, prompt);
 
-  return NextResponse.json(prompt, { status: 201 });
+  return NextResponse.json(
+    { ...prompt, ...(githubMirror ? { githubMirror } : {}) },
+    {
+      status: 201,
+      headers: mirrorWarningHeaders(githubMirror),
+    },
+  );
+}
+
+type GithubMirrorStatus =
+  | { ok: true }
+  | { ok: false; error: string };
+
+async function mirrorIfAdmin(
+  email: string | undefined | null,
+  prompt: Parameters<typeof commitPromptToGitHub>[0],
+): Promise<GithubMirrorStatus | null> {
+  if (!isAdmin(email)) return null;
+  const ghResult = await commitPromptToGitHub(prompt);
+  if (ghResult.success) return { ok: true };
+  const error = ghResult.error ?? "unknown";
+  console.error("GitHub commit failed:", error);
+  return { ok: false, error };
+}
+
+function mirrorWarningHeaders(
+  status: GithubMirrorStatus | null,
+): Record<string, string> {
+  if (!status || status.ok) return {};
+  return {
+    Warning: `199 - "GitHub mirror failed: ${status.error.replace(/"/g, "'")}"`,
+  };
 }
