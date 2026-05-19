@@ -272,4 +272,24 @@ describe("POST /api/prompts — admin GitHub mirror behavior", () => {
     expect(warning).not.toMatch(/[\r\n\x00-\x1f\x7f]/); // header sanitized
     expect(warning).toContain("GitHub mirror failed");
   });
+
+  test("admin + mirror error contains non-ASCII (emoji/€) → header ASCII-safe, response NOT 500", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: "GitHub API: 500 — payment € required 🧪",
+    } as never);
+
+    // Web `Headers` rejects code points outside 0x20-0x7E with a TypeError.
+    // The header must stay ASCII-printable even when upstream errors are not.
+    const res = await POST(postReq());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.githubMirror.error).toContain("🧪"); // body preserves raw
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    // eslint-disable-next-line no-control-regex
+    expect(warning).toMatch(/^[\x20-\x7e]+$/); // strictly ASCII-printable
+    expect(warning).not.toContain("🧪");
+  });
 });

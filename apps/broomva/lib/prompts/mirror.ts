@@ -32,17 +32,20 @@ export async function mirrorIfAdmin(
   }
 }
 
-// RFC 7230 §3.2.6: header values are restricted to VCHAR + SP + HTAB.
-// Node/undici's Headers.append throws on CR/LF/NUL and other control chars
-// (TypeError: invalid header value). An upstream GitHub error string may
-// contain newlines (multi-line JSON bodies), which would 500 the route
-// during response construction — defeating the whole point of catching the
-// mirror failure. We strip the unsafe range and cap length defensively.
+// RFC 7230 §3.2.6 restricts header values to VCHAR + SP + HTAB, but Node /
+// undici's `Headers` enforces the stricter ByteString contract: any code
+// point outside 0x20-0x7E throws TypeError on append. Upstream GitHub
+// error bodies (taken raw from res.text() in github-commit.ts) can carry
+// both control chars (multi-line JSON) and non-ASCII (Unicode in error
+// messages) — either would 500 the route during response construction,
+// outside mirrorIfAdmin's catch. We replace anything outside printable
+// ASCII with '?' and cap length defensively. The full raw error remains
+// in the JSON body for callers that need it.
 const MAX_WARN_TEXT = 512;
 
 function sanitizeHeaderText(value: string): string {
   return value
-    .replace(/[\x00-\x1f\x7f]/g, " ")
+    .replace(/[^\x20-\x7e]/g, "?")
     .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')
     .slice(0, MAX_WARN_TEXT);

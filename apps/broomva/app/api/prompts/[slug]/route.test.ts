@@ -241,4 +241,22 @@ describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
     expect(warning).toBeTruthy();
     expect(warning).not.toMatch(/[\r\n\x00-\x1f\x7f]/);
   });
+
+  test("admin + mirror error with non-ASCII (€/emoji) → header ASCII-safe, no 500", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: "GitHub API: 500 — payment € required 🧪",
+    } as never);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror.error).toContain("🧪");
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    // eslint-disable-next-line no-control-regex
+    expect(warning).toMatch(/^[\x20-\x7e]+$/);
+    expect(warning).not.toContain("🧪");
+  });
 });
