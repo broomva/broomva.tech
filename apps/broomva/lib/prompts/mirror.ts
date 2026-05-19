@@ -32,18 +32,34 @@ export async function mirrorIfAdmin(
   }
 }
 
+// RFC 7230 §3.2.6: header values are restricted to VCHAR + SP + HTAB.
+// Node/undici's Headers.append throws on CR/LF/NUL and other control chars
+// (TypeError: invalid header value). An upstream GitHub error string may
+// contain newlines (multi-line JSON bodies), which would 500 the route
+// during response construction — defeating the whole point of catching the
+// mirror failure. We strip the unsafe range and cap length defensively.
+const MAX_WARN_TEXT = 512;
+
+function sanitizeHeaderText(value: string): string {
+  return value
+    .replace(/[\x00-\x1f\x7f]/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .slice(0, MAX_WARN_TEXT);
+}
+
 /**
  * Build the `Warning` response header for a failed mirror. Returns an empty
  * object when there's nothing to warn about.
  *
  * Header value follows RFC 7234 §5.5 (`warn-code SP warn-agent SP warn-text`).
- * Backslashes and double-quotes inside the error string are escaped so the
- * quoted-string parses cleanly regardless of the upstream error shape.
+ * Error text is sanitized to fit RFC 7230 §3.2.6 header rules and capped at
+ * 512 chars to avoid reverse-proxy header-size limits.
  */
 export function mirrorWarningHeaders(
   status: GithubMirrorStatus | null,
 ): Record<string, string> {
   if (!status || status.ok) return {};
-  const escaped = status.error.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  return { Warning: `199 - "GitHub mirror failed: ${escaped}"` };
+  const safe = sanitizeHeaderText(status.error);
+  return { Warning: `199 - "GitHub mirror failed: ${safe}"` };
 }

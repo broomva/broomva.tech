@@ -177,6 +177,8 @@ describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
     const body = await res.json();
     expect(body.githubMirror).toEqual({ ok: true });
     expect(res.headers.get("Warning")).toBeNull();
+    // Mirror receives the updated DB row, not the request body
+    expect(mockCommitToGitHub).toHaveBeenCalledWith(UPDATED_ROW);
   });
 
   test("admin + mirror FAILURE → body carries githubMirror.ok=false + Warning header", async () => {
@@ -221,5 +223,22 @@ describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
       error: "ETIMEDOUT",
     });
     expect(res.headers.get("Warning")).toContain("ETIMEDOUT");
+  });
+
+  test("admin + mirror error with CR/LF/control chars → header sanitized, no 500", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: "GitHub API: 500\n{\"message\":\"oops\"}\r\nx",
+    } as never);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror.ok).toBe(false);
+    expect(body.githubMirror.error).toContain("\n"); // body preserves raw
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    expect(warning).not.toMatch(/[\r\n\x00-\x1f\x7f]/);
   });
 });

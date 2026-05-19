@@ -204,6 +204,8 @@ describe("POST /api/prompts — admin GitHub mirror behavior", () => {
     const body = await res.json();
     expect(body.githubMirror).toEqual({ ok: true });
     expect(res.headers.get("Warning")).toBeNull();
+    // Mirror is called with the created DB row, not the request body
+    expect(mockCommitToGitHub).toHaveBeenCalledWith(CREATED_ROW);
   });
 
   test("admin + mirror FAILURE → body carries githubMirror.ok=false + Warning header set", async () => {
@@ -249,5 +251,25 @@ describe("POST /api/prompts — admin GitHub mirror behavior", () => {
       error: "ECONNREFUSED",
     });
     expect(res.headers.get("Warning")).toContain("ECONNREFUSED");
+  });
+
+  test("admin + mirror error contains CR/LF/control chars → header sanitized, response NOT 500", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: 'GitHub API: 422\n{"message":"Bad","status":"422"}\r\nrate-limit',
+    } as never);
+
+    // The Response construction itself must not throw; the raw error survives
+    // in the body, but the header has CR/LF stripped (RFC 7230 §3.2.6).
+    const res = await POST(postReq());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.githubMirror.ok).toBe(false);
+    expect(body.githubMirror.error).toContain("\n"); // body preserves raw
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    expect(warning).not.toMatch(/[\r\n\x00-\x1f\x7f]/); // header sanitized
+    expect(warning).toContain("GitHub mirror failed");
   });
 });
