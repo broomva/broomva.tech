@@ -1,0 +1,58 @@
+# Compose a morning briefing from yesterday's calendar, unread email,
+# and overnight Slack threads. Multi-tool, structured output.
+name: daily-briefing
+description: |
+  Generate a morning briefing in three sections: calendar, email
+  threads needing reply, and Slack channels with movement.
+input:
+  prompt: |
+    It's {{date}} morning. Produce a daily briefing covering:
+    1. Today's calendar (priorities, conflicts, transit gaps)
+    2. Unread email threads that need a reply (top 5)
+    3. Slack channels with significant movement overnight
+  variables:
+    date: ""
+agent:
+  backend: claude-opus-4-7
+  tools:
+    - gws_calendar_read
+    - gws_gmail_read
+    - gws_chat_read
+  max_cost_usd: 1.0
+  timeout_seconds: 900
+  on_timeout: partial-output
+output:
+  schema:
+    type: object
+    additionalProperties: false
+    required: [calendar, email, chat]
+    properties:
+      calendar:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [time, title]
+          properties:
+            time: { type: string }
+            title: { type: string }
+            priority: { type: string, enum: ["urgent", "high", "normal", "low"] }
+      email:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [from, subject]
+          properties:
+            from: { type: string }
+            subject: { type: string }
+            why_reply: { type: string }
+      chat:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [channel, summary]
+          properties:
+            channel: { type: string }
+            summary: { type: string }

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://broomva.tech/schemas/agent-task.v1.json",
+  "title": "broomva agent task — v1",
+  "description": "Canonical task specification consumed by `broomva agent run` (Phase B). Mirrors the Agent Invocation Contract (AC-1..AC-6) from docs/specs/2026-05-18-broomva-cli-agent-chat-pipeline.md §3.2. The CLI validates a YAML/JSON task spec against this schema BEFORE submitting to lifed; invalid specs are rejected with the collected ValidationErrors, never sent to the substrate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "input"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Human-readable task name. Surfaced in `agent list` + `agent get` output. Not used as an identifier by lifed (run_id is the ULID, server-issued)."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Optional free-form prose describing what the task does."
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt"],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The user-supplied prompt the agent receives at run start."
+        },
+        "variables": {
+          "type": "object",
+          "description": "Free-form variable bag interpolated into the prompt server-side. Schema is intentionally open — lifed validates the variable types when present.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "minLength": 1,
+          "description": "InferenceBackend identifier (e.g. `claude-opus-4-7`). Resolved server-side; client-side this is a free-form string. If unset, lifed picks the user's default."
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "description": "Allowed tool names. Empty / omitted ⇒ no tools."
+        },
+        "max_cost_usd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Client- and server-side enforced cost ceiling. Client refuses to submit if the estimated cost exceeds this value; lifed enforces the running budget per tool call via Wallet.Transfer simulation (Spec D)."
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "description": "Per-step wall-clock cap. Default is server-decided (typically 600s)."
+        },
+        "on_timeout": {
+          "type": "string",
+          "enum": ["fail", "partial-output", "retry"],
+          "description": "Behaviour when `timeout_seconds` is exceeded. `fail` aborts; `partial-output` returns whatever the model has produced; `retry` restarts the step (lifed enforces a saga-level max of 3 retries unless overridden)."
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "description": "Optional JSON Schema (any draft — verbatim handed to the output validator) for the task's output. Client validates the run's final output against this AFTER the run completes; mismatches log a verdict in run metadata.yaml.",
+          "type": "object"
+        },
+        "save_to": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Override the default output file location. Supports `{run_id}` interpolation. Default: `~/.broomva/runs/{run_id}/output.json`."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+# Summarize a GitHub PR into a structured decision log. Demonstrates
+# `tools`, `max_cost_usd`, and `output.schema` together.
+name: summarize-pr
+description: |
+  Read a GitHub PR, return a structured summary plus a decision log
+  capturing each significant choice the PR makes.
+input:
+  prompt: |
+    Read the GitHub PR at {{pr_url}} and produce a structured summary +
+    decision log. For each significant decision (architectural choice,
+    new dep, schema migration, breaking change), capture WHY in one
+    sentence with a file:line citation.
+  variables:
+    pr_url: ""
+agent:
+  backend: claude-opus-4-7
+  tools:
+    - github_read
+  max_cost_usd: 2.0
+  timeout_seconds: 600
+  on_timeout: partial-output
+output:
+  schema:
+    type: object
+    additionalProperties: false
+    required: [summary, decision_log]
+    properties:
+      summary:
+        type: string
+        minLength: 1
+      decision_log:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [decision, why]
+          properties:
+            decision: { type: string }
+            why: { type: string }
+            file: { type: string }
+            line: { type: integer, minimum: 1 }

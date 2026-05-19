@@ -1,13 +1,13 @@
 [package]
 name = "broomva"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
 repository = "https://github.com/broomva/broomva.tech"
 homepage = "https://broomva.tech"
 authors = ["Carlos Escobar-Valbuena <carlosbvalbuena@gmail.com>"]
-description = "CLI and daemon for broomva.tech — prompts, skills, context, daemon, and chat REPL"
+description = "CLI and daemon for broomva.tech — prompts, skills, context, daemon, chat REPL, and typed agent task invocation"
 readme = "README.md"
 keywords = ["broomva", "cli", "prompts", "skills", "daemon"]
 categories = ["command-line-utilities", "development-tools"]
@@ -52,6 +52,14 @@ rustyline = { version = "15", default-features = false, features = ["with-file-h
 async-trait = "0.1"
 url = "2"
 http = "1"
+# Agent (Phase B): typed task spec validation, YAML parsing, ULID run IDs.
+# `jsonschema 0.40` ships Draft 2020-12 support (used for agent-task.v1.json
+# client-side validation). `serde_yaml 0.9` reads task spec files (read-only
+# use; if Phase C needs writes we revisit). `ulid 1` for sortable per-run
+# IDs (gives us k-sortable filesystem layout under `~/.broomva/runs/`).
+jsonschema = { version = "0.40", default-features = false }
+serde_yaml = "0.9"
+ulid = "1"
 
 [dev-dependencies]
 tempfile = "3"

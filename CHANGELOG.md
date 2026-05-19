@@ -1,5 +1,85 @@
 # Changelog
 
+## 0.6.0 — 2026-05-19
+
+### Phase B — broomva agent typed task invocation
+
+Second substantive expansion of the CLI agent surface. Implements the **Agent Invocation Contract** (AC-1..AC-6) from `docs/specs/2026-05-18-broomva-cli-agent-chat-pipeline.md` §3.2: a typed, fire-and-watch agent task with structured input, declared output schema, cost-ceiling enforcement, and resumable transcripts. Closes Phase B of [BRO-1168](https://linear.app/broomva/issue/BRO-1168) (sub-issue [BRO-1170](https://linear.app/broomva/issue/BRO-1170)).
+
+Where Phase A's `broomva chat` is *one agent loop, single session, interactive*, Phase B's `broomva agent` is *one task run, typed, non-interactive* — the next composable layer above the chat surface, and a prerequisite for Phase C (`broomva pipeline`) which composes N typed tasks via Symphony.
+
+### Scope
+
+- Task lifecycle: `broomva agent run <task.yaml>` validates the spec client-side, fires a telemetry beacon, submits to `lifed.Agent.CreateSession`, watches the event stream until terminal status. `--detach` returns immediately with `run_id`.
+- Read paths: `broomva agent list` (newest-first), `broomva agent get <run-id>`, `broomva agent tail <run-id>` (resumable event stream), `broomva agent cancel <run-id>`.
+- Templates: `broomva agent templates list|show <name>|init` — bundled starter tasks (`hello`, `summarize-pr`, `update-linear`, `daily-briefing`) embedded via `include_str!` and copied to `~/.broomva/templates/` on `init`.
+- Filesystem layout: `~/.broomva/runs/<run_id>/{transcript.jsonl, output.json, metadata.yaml}`. ULID `run_id` (k-sortable; lexicographic order = chronological order).
+
+### Deliverables
+
+- **NEW** `crates/broomva-cli/src/cli/agent.rs` (876 LOC) — 6 subcommands, `AgentRunOpts` ↔ `Command::Agent` wiring, dry-run path, cost-ceiling guard, telemetry-beacon integration (reusing `BroomvaClient` from Phase A), schema-validated spec ingest.
+- **NEW** `crates/broomva-cli/src/api/lifed.rs` (674 LOC) — typed `LifedClient` trait + `LifedHttpClient` HTTP/JSON implementation. gRPC/tonic wire deferred to Phase B.1 when the lifed gateway is reachable in CI (mirrors Phase A's strategy of starting with HTTP/JSON for the same `AgentStream` interface).
+- **NEW** `crates/broomva-cli/src/api/output_validator.rs` (242 LOC) — post-run validation against task spec's `output.schema`. `OutputVerdict::{Passed, Failed { errors }, Skipped { reason }}`. Skipped when no schema declared.
+- **NEW** `crates/broomva-cli/schemas/agent-task.v1.json` — JSON Schema Draft 2020-12, embedded via `include_str!` at compile time so the validator is deterministic across install paths. `additionalProperties: false` at the root + `input` object closes the spec contract.
+- **NEW** `crates/broomva-cli/templates/{hello,summarize-pr,update-linear,daily-briefing}.task.yaml` — 4 starter task specs. `hello.task.yaml` is the minimal proof-of-roundtrip (no tools, no output schema, no cost cap); the others demonstrate `tools`, `output.schema`, and `max_cost_usd`.
+- **NEW** `crates/broomva-cli/tests/agent_task_validation.rs` — integration tests at the library boundary: 4 positive fixtures (each bundled template loads from disk and validates) + 7 negative fixtures (missing prompt, unknown top-level key, empty prompt, negative cost, zero timeout, missing name, non-object root). Closes spec §6 Phase B test-plan deliverable.
+- **EDIT** `crates/broomva-cli/src/cli/mod.rs` — registers `Command::Agent` enum variant with `AgentCommand` subcommands (Run / List / Get / Tail / Cancel / Templates). Adds three shared flags (`--lifed-url`, `--turn-timeout`, `--format`).
+- **EDIT** `crates/broomva-cli/src/api/mod.rs` — exposes `lifed` + `output_validator` submodules.
+- **EDIT** `crates/broomva-cli/Cargo.toml` — adds `jsonschema 0.40` (Draft 2020-12 validator), `serde_yaml 0.9`, `ulid 1`. Bumps `version` to `0.6.0` (in lockstep with VERSION; `validate-release.yml` gate enforces).
+
+### Phase A blockers closed
+
+The Phase A handoff (PR #173 comments) flagged 5 deferred follow-ups; Phase B closes the agent-relevant ones:
+
+- ✅ `--turn-timeout` flag — wired through `AgentRunOpts.turn_timeout_seconds` → `AgentTaskSpec.agent.timeout_seconds` override.
+- ✅ Telemetry beacons — `agent run` fires `beacon_agent_run` before lifed submission and `mark_beacon` on terminal status. Reuses Phase A's `BroomvaClient` invocation surface; no new wire shape.
+- ⚠️ `spawn_driver` wired into long-lived sessions — partial: `agent tail` uses `LifedHttpClient::stream_events` (mirrors the trait shape Phase A established for `AgentStream`), but full persistent-connection composition with Phase A's `agent_stream::spawn_driver` is Phase B.1 (requires gRPC bidi stream once tonic is wired).
+- Deferred to Phase D polish: server-assigned `session_id` echo, live SLO measurement env (`BROOMVA_LIVE_INTEGRATION=1`).
+
+### Invariants verified (AC-1..AC-6 from spec §3.2)
+
+| ID | Invariant | Verified by |
+|---|---|---|
+| AC-1 | Task spec validates against `schemas/agent-task.v1.json` before submit | `tests/agent_task_validation.rs::template_*_validates` + `cli::agent::tests::validate_task_spec_*` (10 unit + 11 integration tests cover the schema surface) |
+| AC-2 | Every run gets a ULID `run_id` + persistent transcript | `cli::agent::tests::output_save_path_*` + run-metadata round-trip; `~/.broomva/runs/<run_id>/` layout written by `handle_run` |
+| AC-3 | Cost ceiling enforced client-side before submit | `handle_run` rejects when `estimate_cost_usd(&spec) > max_cost_usd`; lifed enforces runtime budget per Spec D wallet (substrate side) |
+| AC-4 | Tool authorization respects gates | Deferred to lifed runtime (out of CLI scope); CLI surfaces the declared `tools` set without modification |
+| AC-5 | Output validates against declared `output.schema` | `api::output_validator::validate_output` + `--skip-output-validation` escape hatch; verdict logged in `metadata.yaml` |
+| AC-6 | Failed runs resumable from last successful step | `agent tail <run-id>` re-attaches to the event stream by `last_seq`; persistent transcript on disk seeds the replay |
+
+### SLO targets
+
+Targets declared per the spec; live measurement (`BROOMVA_LIVE_INTEGRATION=1`) is deferred until lifed is reachable in CI. Unit + integration suite verifies state-machine correctness rather than wall-clock.
+
+- `broomva agent run <task>` submit-to-queued p99 < 2s
+- `broomva agent tail <run-id>` first-event-to-render p99 < 500ms
+- `broomva agent list` (50 runs) p99 < 1s
+
+### Risks + mitigations
+
+- **gRPC stub vs real wire divergence** — `LifedHttpClient` is HTTP/JSON today; the `LifedClient` trait stays the abstraction Phase B.1 will swap tonic in for. Same pattern Phase A used for `AgentStream`. CHANGELOG honestly notes this; no silent stubbing.
+- **JSON Schema validator footguns** — `additionalProperties: false` at every closed-object node; `exclusiveMinimum` removed (Draft 2020-12 expects a number value, not boolean — caught at first compile and fixed pre-merge).
+- **Cost-estimate stub mistaken for real enforcement** — `ESTIMATE_USD_PER_TOKEN = 4.2e-6` is documented as a stub blended rate. Real per-model pricing lands when lifed exposes a model-pricing endpoint.
+- **`~/.broomva/runs/` unbounded growth** — known limitation; pruning lands in Phase D polish alongside `chat sessions prune`. ULID-sortable dirs make `broomva agent runs prune --older-than <duration>` mechanical.
+- **Telemetry beacon failures must never block** — `beacon_agent_run` swallows transport errors and logs; lifed submission proceeds regardless. Same posture as Phase A's beacons.
+
+### Design choices
+
+- **`run` defaults to sync** (watch the saga until terminal status) — shell-friendly, pipeable. `--detach` returns `run_id` immediately for fire-and-forget. Resolves spec §10 open question "sync vs async default".
+- **HTTP/JSON-first via `LifedHttpClient`** — matches the Phase A precedent of "ship the contract; swap the transport in a follow-up". Reduces Phase B blast radius; defers tonic + tonic-build until lifed protos are stable and CI-reachable.
+- **ULID over UUID v4** for `run_id` — k-sortable filesystem layout. Phase A used UUID v4 for `session_id` (different lifecycle); they don't cross paths.
+- **Schema validation library**: `jsonschema 0.40` with Draft 2020-12. Single validator, no multi-draft branching.
+
+### What's not in this release (Phase B.1 + Phase D)
+
+- Real gRPC/tonic wire (Phase B.1).
+- Live SLO measurement under `BROOMVA_LIVE_INTEGRATION=1` (Phase D polish).
+- `broomva agent runs prune` (Phase D polish).
+- Output-schema `format` keyword coverage beyond `string` / `number` (Phase D polish if requested).
+- Per-tool scope-token minting (gated by Spec D wallet readiness; substrate-side, not CLI).
+
+---
+
 ## 0.5.1 — 2026-05-18
 
 ### Phase A hotfix — release.yml shell quoting for titles with special chars

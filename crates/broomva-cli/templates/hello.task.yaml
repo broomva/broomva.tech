@@ -1,0 +1,10 @@
+# Minimal task — proves the round-trip without any tools, cost ceilings, or
+# output schema. Used by `broomva agent run templates/hello.task.yaml --dry-run`
+# to verify the validation pipeline.
+name: hello
+description: |
+  Smallest possible Phase B task. No tools, no cost cap, no output schema.
+  The agent just produces free-form text.
+input:
+  prompt: |
+    Say hello in three words.
