@@ -239,6 +239,7 @@ describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
     expect(body.githubMirror.error).toContain("\n"); // body preserves raw
     const warning = res.headers.get("Warning");
     expect(warning).toBeTruthy();
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: header sanitization assertion targets RFC 7230 §3.2.6 forbidden range
     expect(warning).not.toMatch(/[\r\n\x00-\x1f\x7f]/);
   });
 
@@ -255,7 +256,7 @@ describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
     expect(body.githubMirror.error).toContain("🧪");
     const warning = res.headers.get("Warning");
     expect(warning).toBeTruthy();
-    // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: assertion bounds header to printable ASCII (Headers ByteString contract)
     expect(warning).toMatch(/^[\x20-\x7e]+$/);
     expect(warning).not.toContain("🧪");
   });
