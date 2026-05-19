@@ -1,0 +1,39 @@
+# Post a structured update to a Linear issue. Shows the `linear_write`
+# tool path + a strict output schema requiring the new state to be one
+# of a fixed set.
+name: update-linear
+description: |
+  Read a Linear issue, then post a status comment + transition the
+  issue's state. Useful for closing the loop after `summarize-pr`.
+input:
+  prompt: |
+    Post an update to Linear issue {{linear_issue}} based on the PR
+    summary at {{summary_url}}. Transition the issue to the target
+    state if all referenced checks pass.
+  variables:
+    linear_issue: ""
+    summary_url: ""
+    target_state: "In Review"
+agent:
+  backend: claude-sonnet-4-6
+  tools:
+    - linear_read
+    - linear_write
+  max_cost_usd: 0.5
+  timeout_seconds: 300
+  on_timeout: fail
+output:
+  schema:
+    type: object
+    additionalProperties: false
+    required: [issue, new_state, comment_url]
+    properties:
+      issue:
+        type: string
+        pattern: "^[A-Z]+-[0-9]+$"
+      new_state:
+        type: string
+        enum: ["Backlog", "Todo", "In Progress", "In Review", "Done", "Cancelled"]
+      comment_url:
+        type: string
+        format: uri

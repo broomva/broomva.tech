@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod auth;
 pub mod chat;
 pub mod config_cmd;
@@ -118,6 +119,93 @@ pub enum Command {
 
         #[command(subcommand)]
         action: Option<ChatCommand>,
+    },
+    /// Agent — typed task invocation via lifed (Phase B).
+    ///
+    /// `broomva agent run <task.yaml>` validates the spec client-side,
+    /// fires a telemetry beacon, submits to `lifed.Agent.CreateSession`,
+    /// and watches the event stream until the saga terminates.
+    ///
+    /// Filesystem layout: each run produces
+    /// `~/.broomva/runs/<run_id>/{transcript.jsonl, output.json, metadata.yaml}`.
+    Agent {
+        #[command(subcommand)]
+        action: AgentCommand,
+        /// lifed base URL override (e.g. `https://lifed.broomva.tech`).
+        #[arg(long, value_name = "URL", global = true)]
+        lifed_url: Option<String>,
+        /// Per-step timeout (seconds) override. Applied to `agent.timeout_seconds`.
+        #[arg(long, value_name = "SECS", global = true)]
+        turn_timeout: Option<u64>,
+    },
+}
+
+// ── Agent (Phase B) ──
+
+#[derive(Subcommand, Debug)]
+pub enum AgentCommand {
+    /// Submit a typed task. `broomva agent run task.yaml` validates +
+    /// submits + watches until terminal.
+    Run {
+        /// Path to a YAML task spec (omit when --inline is set).
+        task: Option<std::path::PathBuf>,
+        /// Inline JSON task spec (mutually exclusive with TASK).
+        #[arg(long, value_name = "JSON")]
+        inline: Option<String>,
+        /// Watch the event stream until terminal (default = sync).
+        #[arg(long, default_value_t = true)]
+        watch: bool,
+        /// Submit + return immediately (overrides --watch).
+        #[arg(long)]
+        detach: bool,
+        /// Validate the task spec and print the cost estimate without submitting.
+        #[arg(long)]
+        dry_run: bool,
+        /// Client-side cost cap (USD). Overrides `agent.max_cost_usd` in spec.
+        #[arg(long, value_name = "USD")]
+        max_cost: Option<f64>,
+        /// Skip post-run output schema validation.
+        #[arg(long)]
+        skip_output_validation: bool,
+    },
+    /// List recent runs (newest first).
+    List {
+        /// Filter by status.
+        #[arg(long, value_parser = ["queued", "running", "completed", "failed", "cancelled"])]
+        status: Option<String>,
+        /// Limit row count (server-side default ~50).
+        #[arg(long)]
+        limit: Option<u32>,
+    },
+    /// Show a single run.
+    Get { run_id: String },
+    /// Tail the event stream of an in-flight run.
+    Tail {
+        run_id: String,
+        /// Resume from a specific event sequence (Phase B.1).
+        #[arg(long, value_name = "SEQ")]
+        from_sequence: Option<u64>,
+    },
+    /// Cancel a run.
+    Cancel { run_id: String },
+    /// Manage bundled + user task templates.
+    Templates {
+        #[command(subcommand)]
+        action: AgentTemplatesCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AgentTemplatesCommand {
+    /// List bundled + user templates.
+    List,
+    /// Print one template to stdout.
+    Show { name: String },
+    /// Copy bundled templates into ~/.broomva/templates/.
+    Init {
+        /// Overwrite any existing user-template files.
+        #[arg(long)]
+        force: bool,
     },
 }
 
@@ -683,6 +771,80 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 Some(ChatCommand::Models) => chat::handle_models(),
             }
         }
+        Command::Agent {
+            action,
+            lifed_url,
+            turn_timeout,
+        } => {
+            let opts = agent::AgentRunOpts {
+                lifed_url: lifed_url.clone(),
+                token: token.clone(),
+                format,
+                turn_timeout_seconds: turn_timeout,
+                broomva_client: BroomvaClient::new(
+                    config::resolve_api_base(cli.api_base.as_deref())?,
+                    token.clone(),
+                ),
+            };
+            match action {
+                AgentCommand::Run {
+                    task,
+                    inline,
+                    watch,
+                    detach,
+                    dry_run,
+                    max_cost,
+                    skip_output_validation,
+                } => {
+                    if task.is_none() && inline.is_none() {
+                        return Err(crate::error::BroomvaError::User(
+                            "agent run requires either <task.yaml> or --inline '<json>'".into(),
+                        ));
+                    }
+                    let task_path = task.unwrap_or_else(|| std::path::PathBuf::from(""));
+                    agent::handle_run(
+                        opts,
+                        task_path,
+                        inline,
+                        watch,
+                        detach,
+                        dry_run,
+                        max_cost,
+                        skip_output_validation,
+                    )
+                    .await
+                }
+                AgentCommand::List { status, limit } => {
+                    let status_enum = status.as_deref().map(parse_run_status).transpose()?;
+                    agent::handle_list(opts, status_enum, limit).await
+                }
+                AgentCommand::Get { run_id } => agent::handle_get(opts, run_id).await,
+                AgentCommand::Tail {
+                    run_id,
+                    from_sequence,
+                } => agent::handle_tail(opts, run_id, from_sequence).await,
+                AgentCommand::Cancel { run_id } => agent::handle_cancel(opts, run_id).await,
+                AgentCommand::Templates { action } => match action {
+                    AgentTemplatesCommand::List => agent::handle_templates_list(),
+                    AgentTemplatesCommand::Show { name } => agent::handle_templates_show(name),
+                    AgentTemplatesCommand::Init { force } => agent::handle_templates_init(force),
+                },
+            }
+        }
+    }
+}
+
+fn parse_run_status(s: &str) -> BroomvaResult<crate::api::lifed::RunStatus> {
+    use crate::api::lifed::RunStatus;
+    match s {
+        "queued" => Ok(RunStatus::Queued),
+        "running" => Ok(RunStatus::Running),
+        "completed" => Ok(RunStatus::Completed),
+        "failed" => Ok(RunStatus::Failed),
+        "cancelled" => Ok(RunStatus::Cancelled),
+        other => Err(crate::error::BroomvaError::User(format!(
+            "unknown status: {other}"
+        ))),
     }
 }
 
