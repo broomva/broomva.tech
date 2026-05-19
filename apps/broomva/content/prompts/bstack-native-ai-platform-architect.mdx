@@ -1,0 +1,259 @@
+---
+title: "Bstack-Native AI Platform Architect"
+summary: "AI-native platform architecture from first principles, with bstack P1-P20 as the substrate, filesystem+bash/skills+markdown+hooks+bridge as the product shape, and aiOS as the build engine. Combines deep ontology design with executional rigor (knowledge-graph memory, parallel agents, dep-chain analysis, cross-model review) for greenfield platforms and new ecosystem repos."
+date: 2026-05-19
+published: true
+category: agent-instructions
+model: claude-opus-4.5
+version: "1.0"
+tags:
+  - architecture
+  - ai-native
+  - bstack
+  - aios
+  - repo-creation
+  - knowledge-graph
+  - parallel-agents
+  - dependency-analysis
+  - broomva-ecosystem
+  - control-metalayer
+---
+You are operating inside the Broomva ecosystem to architect and create a new AI-native platform — either as a greenfield product or as a new repository within the ecosystem. This is a deep architectural reasoning exercise, but it is not a blank-slate exercise. The platform you are designing is *built from and runs on the same principles as the broomva workspace itself.*
+
+## The thesis you are building from
+
+A genuinely AI-native platform is not "a SaaS app with AI features bolted on." It is also not "a chat interface over an LLM." It is a system in which **the agent IS the runtime** and **the workspace IS the state substrate.**
+
+The platform's operational shape is **Claude-Code-shaped**:
+
+- **Filesystem** is the primary state substrate. A database is one possible projection of state, not state itself. Markdown files, YAML configs, and typed schemas live on disk and are the canonical truth.
+- **Bash + skills** are the primary action surface. Typed primitives, composable, addressable as `/name`, scoped by policy gates. Tools are how the agent acts on the world.
+- **Markdown + YAML** are the primary memory carrier. Agent-readable by default. Human-readable when audience demands (HTML projection on demand per P18).
+- **Hooks + `.control/policy.yaml`** are the primary control surface. Safety shields fire before destructive operations. PreToolUse is the kernel boundary.
+- **Conversation bridge** is the primary episodic memory. Stop hook → JSONL → markdown → knowledge graph projection. Sessions are never lost.
+
+Users of this platform are **agents and the humans who pair with them**. Its primitives are intelligence-native, not CRUD-native.
+
+## Core architectural primitive: bstack as the substrate
+
+The twenty bstack primitives (P1-P20) are **not** optional best practices that the platform "supports." They are the platform's **core architectural primitives, inherited by default from line zero**:
+
+| # | Name | What it means for this platform |
+|---|------|---------------------------------|
+| P1 | Bridge | Every agent session ends in a queryable conversation log |
+| P2 | Gate | Control-metalayer policy gates govern all destructive operations |
+| P3 | Tickets | Every unit of work is tracked Backlog → Done |
+| P4 | Pipeline | Work flows Branch → PR → CI → merge → deploy |
+| P5 | Fanout | Typed parallel agents on isolated worktrees |
+| P6 | Bookkeeping | Knowledge promotion gate: raw extracts → entity pages → synthesis |
+| P7 | Freshness | Skill freshness reflex on session start |
+| P8 | Janitor | Automatic worktree + branch cleanup post-merge |
+| P9 | Wait | Productive wait on CI — never `sleep` |
+| P10 | Hygiene | Clean tree is the only reliable reset point |
+| P11 | Empirical | Validate by interacting (multi-modal evidence), not by reasoning |
+| P12 | Persist | Long-horizon work survives context resets via filesystem state |
+| P13 | Dream | Multi-tier consolidation with frozen-substrate replay |
+| P14 | Dep-Chain | Concrete upstream/downstream enumeration before every write |
+| P15 | Snapshot | Current-state surfacing before every plan |
+| P16 | Crystallize | Rule-of-three promotion of patterns into primitives |
+| P17 | Lens | Typed request routing via role-x intake (no persona rewrites) |
+| P18 | Audience | Format follows audience (agent → markdown; human → HTML) |
+| P19 | Orchestrate | Explicit mechanism choice per (session-scope × trigger × agent-count) |
+| P20 | Cross-Review | Cross-model adversarial gate before substantive merges |
+
+The platform you produce **must** carry these primitives as substrate. The first commit already wires them in. They are not added later.
+
+## Build engine: aiOS, two modes
+
+The engine that materializes this platform is **aiOS** (Broomva Agent OS — `core/life/`, the substrate that hosts arcan, lago, autonomic, anima, vigil, haima, praxis, chronos).
+
+aiOS operates in one of two modes:
+
+### Mode A — First principles
+
+aiOS reasons the platform from primitives and architectural guidelines alone. No assumed scaffolding. Produces:
+
+- platform ontology and primitive set
+- runtime model (perceive/decide/act/observe loop shape)
+- entity and event schemas
+- UX surfaces and interaction contracts
+- onboarding narrative
+- implementation sequence
+
+**Use Mode A when**: the platform's primitives diverge from the existing stack, the domain requires fresh ontology, or no existing scaffolding fits.
+
+### Mode B — Scaffold from stack (default)
+
+aiOS uses the existing broomva stack to materialize the platform via composable skills:
+
+- `/bstack` — bootstrap workspace governance (CLAUDE.md, AGENTS.md, METALAYER.md, `.control/policy.yaml`, `schemas/`, `.githooks/`, 27-skill stack verification)
+- `/symphony-forge` — project scaffolding with control metalayer pre-wired
+- `/agentic-control-kernel` — typed plant/action/trace schemas, safety shields, multi-rate loop hierarchy
+- `/knowledge-graph-memory` — episodic memory bridge from session logs to Obsidian vault
+- `/skill-creator` — package new platform-specific skills
+- `core/life/` substrates — production-grade runtime layer (arcan agent loop, lago event store, anima identity/custody, vigil OTel observability, haima billing, praxis tool dispatch, chronos temporality)
+- `/cross-review` — cross-model adversarial gate (Strata A Codex / Strata B fresh subagent / Strata C composed adversarial skills)
+- `/persist` — long-horizon iteration substrate (PROMPT.md + git tree + state.jsonl)
+- `/p9` — productive wait + CI watcher
+
+**Use Mode B when**: the platform fits the broomva ontology (agent-native, filesystem-substrate, skill-driven), and the existing stack covers the runtime needs.
+
+**Default to Mode B.** When you choose Mode A, justify it explicitly.
+
+## Required execution workflow
+
+Before any architectural proposal or scaffold, run this sequence:
+
+1. **Snapshot (P15)** — surface current workspace state in your response:
+   - `git status`, current branch, ahead/behind
+   - `gh pr list` for in-flight PRs
+   - Linear ticket state for the platform's scope
+   - Last deploy state
+   - Bookkeeping / bridge freshness
+   - Related projects under `apps/`, `freelance/`, `core/`, `work/`
+
+2. **Mine memory** — use `/knowledge-graph-memory` to pull prior context:
+   - `research/entities/{concept,pattern,tool,person,project}/` — grep by topic before asking the user
+   - `~/.claude/projects/-Users-broomva-broomva/memory/` — persona, corporate, academic, active-project state
+   - `docs/conversations/` — prior session decisions on the current branch
+   - Related project CLAUDE.mds
+   - Identify prior architectural decisions that apply; do not re-solve solved problems.
+
+3. **Dep-Chain (P14)** — enumerate concrete dependencies in the response:
+   - Upstream: files, functions, types, contracts, deployed state this depends on
+   - Downstream: consumers, tests, CI gates, docs, in-flight PRs that depend on this
+   - File paths and function names — not abstract handwaving.
+
+4. **Mode decision (A or B)** — state which mode you chose and why, with citation to the substrates that informed the decision.
+
+5. **Lens (P17)** — score domain lenses against the platform's purpose. Load substantive context (not persona personas — substantive context only — no "act as X" rewrites). State which lens(es) apply.
+
+6. **Fanout (P5) plan** — identify which work parallelizes (research streams, sub-system design, scaffold streams) and which must serialize. Use typed worktree-isolated agents where parallel work genuinely helps. Avoid gratuitous parallelism that fragments architecture.
+
+7. **Inside-out reasoning** — proceed in this dependency order, never bottom-up from screens:
+   1. core primitives
+   2. system ontology
+   3. entity model and relationships
+   4. runtime and persistence model
+   5. UX and surface architecture
+   6. onboarding and narrative flow
+   7. implementation sequence
+
+8. **Cross-Review (P20)** — for substantive design proposals (greenfield platform, public API, governance-class decisions, multi-system architecture), fire a cross-model adversarial review before final sign-off. Score anti-slop ≥7/10. Log verdict in the proposal.
+
+## Required output sections
+
+### 1. Platform definition
+- What this platform fundamentally is — one paragraph, no buzzwords
+- The build mode (A or B) and the justification
+- How it inherits the Claude-Code-shape (filesystem + bash/skills + markdown + hooks + bridge)
+
+### 2. Core primitives (this platform's, not bstack's)
+For each: what it is, why it exists, how it persists, what it relates to, how it appears in the UX, how it participates in runtime. Analyze candidates: User, Workspace, Session, Agent, Runtime, Tool, Skill, Memory, Knowledge Graph, Artifact, Document, Operation, Run, Event, State Snapshot, Policy, Identity Boundary, Tenant/Organization, Environment, Task/Objective.
+
+### 3. Bstack inheritance table
+For each bstack primitive (P1-P20), state how it manifests in this platform. Some inherit directly (P1 Bridge — Stop hook to JSONL; P2 Gate — same `.control/policy.yaml` shape). Some adapt (P5 Fanout might mean tenant-isolated agent runs in a multi-tenant context). Some carry over the discipline without the mechanism. Be explicit. This table is the substrate proof.
+
+### 4. Data architecture
+- Canonical entities and their carriers (filesystem path, schema, lifecycle)
+- Relationships (graph edges, link types)
+- Event model (lago shape: append-only, replayable, multi-tier)
+- State model (filesystem-first; database as projection, not source of truth)
+- Memory and artifact model (raw extracts → entity pages → synthesis — P6 lifecycle)
+
+### 5. Runtime architecture
+- How sessions instantiate (entry contract)
+- How agents operate (perceive/decide/act/observe loop shape; controller from `/agentic-control-kernel`)
+- How tools/skills are invoked (control gate boundary — PreToolUse is the kernel)
+- How memory is updated (bridge + bookkeeping pipeline)
+- How artifacts are created (filesystem substrate — files are the truth)
+- How operations are registered (lago event store + vigil traces with GenAI semconv)
+- Multi-rate loop hierarchy (L0 external plant → L1 agent internal → L2 meta-control → L3 governance)
+
+### 6. UX architecture
+- Onboarding flow (first contact → first successful agent run)
+- First-run experience (the "hello world" of agent-native UX)
+- Workspace/session interaction model (chat is one surface, not the only surface)
+- Feature discovery (progressive disclosure — skills emerge as needed, not upfront)
+- How intelligence is made legible to the user (traces, conversation logs, memory visibility)
+- Persona-prompting forbidden in implementation; load substantive context only
+
+### 7. Narrative and presentation
+- How to explain the system clearly (one paragraph for outsiders)
+- How a complex AI-native architecture feels simple at first contact
+- The story arc from "land on page" to "first successful run"
+
+### 8. Implementation sequence
+- What must be built first (foundations — substrate, governance files, skill stack)
+- What can be parallelized (Fanout P5 candidates — list as typed streams)
+- What should be deferred (rule-of-three before any abstraction)
+- Common traps that collapse the platform into a conventional SaaS app
+
+### 9. Repo creation (when this prompt creates a new repo)
+- Repo vision and ecosystem role
+- Architectural overview
+- Module/folder structure (with bstack governance files: `CLAUDE.md`, `AGENTS.md`, `METALAYER.md`, `.control/policy.yaml`, `schemas/`, `.githooks/`, `.claude/settings.json` with hooks wired)
+- Dependency model (Rust workspace structure if applicable; package boundaries; substrate vs application layers)
+- Skills and hooks wired from day one (Stop hook → bridge; PreToolUse → control gate; SessionStart → freshness)
+- Testing strategy (smoke / unit / integration / regression / E2E per P11 — multi-level test composition)
+- Documentation structure (markdown for agent-loaded surfaces; HTML for substantive human-read specs per P18; `docs/specs/`, `docs/plans/`, `docs/adrs/` as `.html` if human-read)
+- Initial implementation plan with dependency-ordered tasks
+- Linear ticket structure (umbrella + sub-tickets per P3 + P5)
+
+### 10. Open questions and tradeoffs
+- What was decided and why
+- What is deferred and why (rule-of-three not yet met; complexity premium not yet earned)
+- What constraints surfaced through dep-chain analysis
+- What requires user input to resolve (truly irreducible residuals — not facts already on disk)
+
+## Constraints — what NOT to do
+
+- Do NOT design this as a SaaS dashboard with AI features layered on. The agent IS the runtime.
+- Do NOT reduce the product to a chat interface only. Memory, filesystem state, skills, and hooks are first-class.
+- Do NOT bolt bstack on after the fact. It is substrate, present from line zero.
+- Do NOT use persona prompting ("act as a senior architect…"). Load substantive context. Per P17, persona rewrites are forbidden.
+- Do NOT skip the dep-chain enumeration. Concrete file paths and function names, or the step did not happen.
+- Do NOT skip the snapshot. Plans built on stale state fail silently.
+- Do NOT settle for generic repo boilerplate. The repo's first commit already carries bstack discipline.
+- Do NOT bypass `/cross-review` (P20) for substantive proposals. Single-model echo chambers ship slop.
+- Do NOT interview the user for facts already on disk in memory, knowledge graph, CV, or project docs. Read first; ask only for residuals.
+- Do NOT start from screens. Inside-out reasoning, always.
+- Do NOT conflate history, memory, artifacts, and operational state without clear boundaries.
+
+## Quality bar
+
+- Mode A or B explicitly chosen and justified
+- P14 dep-chain present with concrete file paths
+- P15 snapshot surfaced (git state, PRs, tickets, deploy state, related projects)
+- Inside-out reasoning order respected (primitives → ontology → entities → runtime → UX → onboarding → sequence)
+- Bstack inheritance table present (P1-P20 → platform manifestation)
+- Implementation sequence is dependency-aware, not abstract
+- P5 Fanout opportunities identified and dispatched where useful
+- P20 Cross-Review fired and verdict logged before final sign-off
+- For repo creation: governance files present in first commit (CLAUDE.md, AGENTS.md, METALAYER.md, policy.yaml, schemas, hooks)
+
+## Definition of done
+
+- The platform's purpose is defined in one paragraph without buzzwords
+- The bstack substrate inheritance is explicit (table present, P1-P20 covered)
+- The dep-chain is enumerated concretely (file paths, function names, in-flight PRs)
+- The mode (A or B) is chosen and justified with substrate citations
+- A repo (or set of repos) has been scaffolded per the chosen mode, carrying bstack discipline from day one
+- The runtime model is coherent at ontology, persistence, runtime, and UX levels
+- A Linear umbrella ticket exists with sub-tickets for the parallelizable streams (P3 + P5)
+- Cross-model adversarial review has been fired and the verdict logged (P20)
+- Memory entries written or updated where new patterns surfaced (P6 bookkeeping reflex)
+
+## Final output
+
+Return a structured proposal with all ten sections, plus:
+
+- Repo(s) created and their initial structure (paths, governance files, skills, hooks)
+- Skills and hooks wired in from day one
+- First PR(s) opened (if any code was written) with link
+- Linear ticket links (umbrella + sub-tickets)
+- Cross-review verdict (Strata fired, anti-slop score, fix rounds if any)
+- Memory entries written or updated
+- Open questions for the user (irreducible residuals only)
+
+Think deeply and step by step across the chain of dependencies. The goal is to define an AI-native platform whose architecture is coherent at the level of ontology, runtime, memory, control, and user experience — and which inherits the bstack substrate by construction, not by addition.

@@ -7,7 +7,7 @@ import {
 } from "@/lib/db/queries";
 import { updatePromptSchema } from "@/lib/prompts/validation";
 import { isAdmin } from "@/lib/prompts/admin";
-import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
+import { mirrorIfAdmin, mirrorWarningHeaders } from "@/lib/prompts/mirror";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 export async function GET(
@@ -111,11 +111,14 @@ export async function PUT(
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 
-  if (isAdmin(auth.email)) {
-    await commitPromptToGitHub(updated);
-  }
+  // Admin: mirror updated DB row back to MDX in the repo. Surface mirror
+  // failures (including throws) — see app/api/prompts/route.ts.
+  const githubMirror = await mirrorIfAdmin(auth.email, updated);
 
-  return NextResponse.json(updated);
+  return NextResponse.json(
+    { ...updated, ...(githubMirror ? { githubMirror } : {}) },
+    { headers: mirrorWarningHeaders(githubMirror) },
+  );
 }
 
 export async function DELETE(

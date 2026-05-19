@@ -21,13 +21,24 @@ vi.mock("@/lib/prompts/github-commit", () => ({
   commitPromptToGitHub: vi.fn(),
 }));
 
-import { GET } from "./route";
-import { getPromptBySlug, getPromptMetrics } from "@/lib/db/queries";
+import { GET, PUT } from "./route";
+import {
+  getPromptBySlug,
+  getPromptMetrics,
+  updateUserPrompt,
+} from "@/lib/db/queries";
 import { getContentBySlug } from "@/lib/content";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
+import { isAdmin } from "@/lib/prompts/admin";
+import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
 
 const mockGetPrompt = vi.mocked(getPromptBySlug);
 const mockGetMetrics = vi.mocked(getPromptMetrics);
 const mockGetContent = vi.mocked(getContentBySlug);
+const mockUpdateUserPrompt = vi.mocked(updateUserPrompt);
+const mockResolveAuth = vi.mocked(resolveAuth);
+const mockIsAdmin = vi.mocked(isAdmin);
+const mockCommitToGitHub = vi.mocked(commitPromptToGitHub);
 
 const SLUG = "code-review-agent";
 
@@ -124,5 +135,129 @@ describe("GET /api/prompts/[slug]", () => {
     mockGetContent.mockResolvedValue(null);
     const res = await GET(makeReq(), { params: Promise.resolve({ slug: SLUG }) });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
+  const ADMIN_EMAIL = "admin@example.com";
+  const UPDATED_ROW = {
+    ...dbPromptRow,
+    title: "Updated Title",
+  };
+
+  function putReq(): Request {
+    return new Request(`http://localhost/api/prompts/${SLUG}`, {
+      method: "PUT",
+      body: JSON.stringify({ title: "Updated Title" }),
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  beforeEach(() => {
+    mockGetPrompt.mockReset();
+    mockUpdateUserPrompt.mockReset();
+    mockResolveAuth.mockReset();
+    mockIsAdmin.mockReset();
+    mockCommitToGitHub.mockReset();
+
+    mockResolveAuth.mockResolvedValue({
+      userId: dbPromptRow.userId,
+      email: ADMIN_EMAIL,
+    } as never);
+    mockGetPrompt.mockResolvedValue(dbPromptRow as never);
+    mockUpdateUserPrompt.mockResolvedValue(UPDATED_ROW as never);
+  });
+
+  test("admin + mirror success → body carries githubMirror.ok=true, no Warning header", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({ success: true } as never);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror).toEqual({ ok: true });
+    expect(res.headers.get("Warning")).toBeNull();
+    // Mirror receives the updated DB row, not the request body
+    expect(mockCommitToGitHub).toHaveBeenCalledWith(UPDATED_ROW);
+  });
+
+  test("admin + mirror FAILURE → body carries githubMirror.ok=false + Warning header", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: "GITHUB_TOKEN not set",
+    } as never);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror).toEqual({
+      ok: false,
+      error: "GITHUB_TOKEN not set",
+    });
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    expect(warning).toContain("GitHub mirror failed");
+    expect(warning).toContain("GITHUB_TOKEN not set");
+  });
+
+  test("non-admin owner update → no mirror, no githubMirror field", async () => {
+    mockIsAdmin.mockReturnValue(false);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror).toBeUndefined();
+    expect(mockCommitToGitHub).not.toHaveBeenCalled();
+  });
+
+  test("admin + mirror THROWS → caught, 200 + githubMirror.ok=false (DB update preserved)", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockRejectedValue(new Error("ETIMEDOUT"));
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror).toEqual({
+      ok: false,
+      error: "ETIMEDOUT",
+    });
+    expect(res.headers.get("Warning")).toContain("ETIMEDOUT");
+  });
+
+  test("admin + mirror error with CR/LF/control chars → header sanitized, no 500", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: "GitHub API: 500\n{\"message\":\"oops\"}\r\nx",
+    } as never);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror.ok).toBe(false);
+    expect(body.githubMirror.error).toContain("\n"); // body preserves raw
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: header sanitization assertion targets RFC 7230 §3.2.6 forbidden range
+    expect(warning).not.toMatch(/[\r\n\x00-\x1f\x7f]/);
+  });
+
+  test("admin + mirror error with non-ASCII (€/emoji) → header ASCII-safe, no 500", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCommitToGitHub.mockResolvedValue({
+      success: false,
+      error: "GitHub API: 500 — payment € required 🧪",
+    } as never);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror.error).toContain("🧪");
+    const warning = res.headers.get("Warning");
+    expect(warning).toBeTruthy();
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: assertion bounds header to printable ASCII (Headers ByteString contract)
+    expect(warning).toMatch(/^[\x20-\x7e]+$/);
+    expect(warning).not.toContain("🧪");
   });
 });

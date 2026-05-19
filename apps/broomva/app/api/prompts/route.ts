@@ -7,8 +7,8 @@ import {
   getPromptBySlug,
 } from "@/lib/db/queries";
 import { createPromptSchema } from "@/lib/prompts/validation";
-import { isAdmin, generateSlug } from "@/lib/prompts/admin";
-import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
+import { generateSlug } from "@/lib/prompts/admin";
+import { mirrorIfAdmin, mirrorWarningHeaders } from "@/lib/prompts/mirror";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 import type { UserPrompt } from "@/lib/db/schema";
 import type { ContentSummary } from "@/lib/content";
@@ -165,13 +165,14 @@ export async function POST(request: NextRequest) {
     deletedAt: null,
   });
 
-  // Admin: commit to GitHub → triggers Vercel redeploy
-  if (isAdmin(userEmail)) {
-    const ghResult = await commitPromptToGitHub(prompt);
-    if (!ghResult.success) {
-      console.error("GitHub commit failed:", ghResult.error);
-    }
-  }
+  // Admin: commit to GitHub → triggers Vercel redeploy. Surface mirror
+  // failures (including throws) to the caller — otherwise the prompt lives
+  // in DB only and never reaches the public /prompts page (MDX-backed via
+  // getContentList).
+  const githubMirror = await mirrorIfAdmin(userEmail, prompt);
 
-  return NextResponse.json(prompt, { status: 201 });
+  return NextResponse.json(
+    { ...prompt, ...(githubMirror ? { githubMirror } : {}) },
+    { status: 201, headers: mirrorWarningHeaders(githubMirror) },
+  );
 }
