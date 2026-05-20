@@ -28,6 +28,7 @@ broomva.tech is the personal platform of Carlos D. Escobar-Valbuena. It serves a
 - \`GET /api/chat\` — AI chat endpoint (authenticated)
 - \`GET /sitemap.xml\` — Full sitemap
 - \`GET /llms-full.txt\` — Extended documentation for LLMs
+- \`GET /<kind>/<slug>.md\` — Raw markdown for any content page (kind: writing, projects, notes, prompts)
 
 ## Key Topics
 

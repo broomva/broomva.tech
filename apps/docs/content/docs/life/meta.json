@@ -1,4 +1,20 @@
 {
   "title": "Life Agent OS",
-  "pages": ["overview", "anima", "arcan", "lago", "praxis", "autonomic", "nous", "haima", "spaces", "vigil"]
+  "pages": [
+    "overview",
+    "---Core Subsystems---",
+    "anima",
+    "arcan",
+    "lago",
+    "praxis",
+    "autonomic",
+    "nous",
+    "haima",
+    "spaces",
+    "vigil",
+    "---New in v0.3---",
+    "chronos",
+    "inference",
+    "lifegw"
+  ]
 }

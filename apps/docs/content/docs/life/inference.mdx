@@ -1,0 +1,157 @@
+---
+title: Inference
+description: The InferenceBackend trait layer — the runtime contract for agent-loop compute. Hardware vendors compete underneath.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+# Inference
+
+Inference is the compute contract layer of the Agent OS. It defines the `InferenceBackend` trait — the interface every hardware and software inference backend must implement to serve agent-loop compute. The Life Agent OS owns this contract; hardware vendors (Apple Silicon, CUDA, Groq, Tenstorrent) compete underneath it.
+
+The strategic positioning: **the POSIX of agent silicon**. POSIX did not build operating systems — it owned the interface that every OS had to implement. CUDA is NVIDIA's moat not because Nvidia builds great GPUs, but because it owns the runtime contract that every ML framework targets. Spec E is the same play applied to agent-loop compute.
+
+<Callout type="info">
+  **Spec E, E-Sub-A shipped.** `inference-core` and `life-inference` are on `main` with 24 passing tests. The `InProcessInferenceBackend` (in-process dev backend) is real. All remaining backends — `inference-mlx`, `inference-vllm`, `inference-vigil`, `inference-autonomic`, `inference-conformance` — are planned in subsequent sub-phases.
+</Callout>
+
+## Biological analogy
+
+Inference corresponds to the **motor cortex / neuromuscular junction** in biological systems. The motor cortex issues movement commands through a standard electrochemical contract that every muscle fiber implements, regardless of which muscle group is being activated. The cortex does not care whether the signal goes to a bicep or a quadricep — the contract is uniform.
+
+`InferenceBackend` plays the same role: the kernel (the motor cortex) issues a `StepContext` through a standard Rust trait. Whether the step runs on an M4 Max via MLX, a CUDA cluster via vLLM, or an in-process mock during testing, the kernel sees identical behavior. The backend is the muscle; the trait is the neuromuscular junction.
+
+## Architecture
+
+Inference is structured as two shipped crates today, with five more planned:
+
+| Crate | Status | Role |
+|-------|--------|------|
+| `inference-core` | Shipped (E-Sub-A) | `InferenceBackend` trait, `StepContext`, `Token`, `CloseCode`, `InferenceError`, `BackendCapabilities`, routing types |
+| `life-inference` | Shipped (E-Sub-A) | `InProcessInferenceBackend`, `InMemoryKvCache`, `InferenceRouter`, workspace integration |
+| `inference-mlx` | Planned (E-Sub-B) | Apple Silicon backend via MLX |
+| `inference-vllm` | Planned (E-Sub-C) | CUDA backend via vLLM |
+| `inference-vigil` | Planned (E-Sub-D) | 15-series metrics instrumentation |
+| `inference-autonomic` | Planned (E-Sub-E) | Lago-backed `KvCache` replacing `InMemoryKvCache` |
+| `inference-conformance` | Planned (E-Sub-F) | Full conformance test battery for all backends |
+
+## The `InferenceBackend` trait
+
+```rust
+pub trait InferenceBackend: Send + Sync {
+    /// Stable identifier — e.g. "mlx", "vllm", "groq", "tt-wormhole".
+    /// Must be unique per deployment. Used in routing, metrics, and logs.
+    fn backend_id(&self) -> &str;
+
+    /// Cheap static query. Called frequently; must not block.
+    fn capabilities(&self) -> &BackendCapabilities;
+
+    /// Execute one model step. Returns a token stream that closes with
+    /// `Token::Done` on success or `InferenceError::Backend { code }` on failure.
+    fn step<'a>(
+        &'a self,
+        ctx: StepContext<'a>,
+    ) -> Pin<Box<dyn Stream<Item = Result<Token, InferenceError>> + Send + 'a>>;
+}
+```
+
+`step` is the only non-trivial method. It accepts a `StepContext` (the compiled prompt, KV cache handle, routing hint, budget constraints) and returns a token stream. Consumers iterate the stream and accumulate tokens until they see `Token::Done` or an error.
+
+### `BackendCapabilities`
+
+```rust
+pub struct BackendCapabilities {
+    pub supports_tool_use: bool,
+    pub supports_speculative_decoding: bool,
+    pub max_context_tokens: u32,
+    pub supports_streaming: bool,
+}
+```
+
+The default implementation of `supports_speculative_decoding` panics with a clear message. This is a deliberate lock: L5-D3 in the Spec E locked decisions. The `#[should_panic]` test in `inprocess_smoke` anchors this contract.
+
+### `CloseCode`
+
+The close codes are **distinct** from lifegw §6.5 wire codes numerically, though they represent the same semantic categories:
+
+| Code | Meaning |
+|------|---------|
+| `Normal` | Inference completed successfully |
+| `UnsupportedFrame` | The backend received a message type it cannot process |
+| `Deadline` | Budget limit (token, time, or cost) exceeded |
+| `KvEvicted` | The KV cache entry for this session was evicted — reconnect required |
+| `ToolAwait` | Tool call pending — caller must execute via Praxis and reconnect |
+
+### `ToolAwait` — the reconnect pattern
+
+`ToolAwait` is the most important close code for agent-loop compute. When a model produces a tool call, the backend cannot continue inference until the tool result is known. Rather than blocking, the backend closes the stream with `CloseCode::ToolAwait` and includes the tool call in the final `InferenceError`. The caller:
+
+<Steps>
+  <Step>
+    Receives `CloseCode::ToolAwait` on the stream. The error payload contains the pending tool call(s).
+  </Step>
+  <Step>
+    Dispatches the tool call to **Praxis** — the canonical tool execution engine. Praxis executes the tool and returns a result.
+  </Step>
+  <Step>
+    Reconnects to the same backend (or a new backend via the router), providing the original `StepContext` plus the tool result appended to the message history.
+  </Step>
+  <Step>
+    The backend resumes inference from where it left off, using the KV cache if the `session_id` is still live in the cache.
+  </Step>
+</Steps>
+
+This pattern means inference backends never need to know about Praxis, MCP, or any tool implementation. The agent loop in Arcan orchestrates the reconnect. The backend is stateless between reconnects.
+
+## Routing
+
+`InferenceRouter` distributes requests across multiple registered backends:
+
+```rust
+let mut router = InferenceRouter::new();
+router.register(InProcessInferenceBackend::new("mock"));
+// future: router.register(MlxBackend::new(mlx_config));
+// future: router.register(VllmBackend::new(vllm_config));
+
+let stream = router.step(ctx).await?;
+```
+
+Routing decisions use `RoutingHint` (caller preference) and `WorkloadClass` (the classification of the current request — interactive, batch, speculative). The router selects the backend that best matches the workload class given current backend capabilities and load.
+
+## KV cache
+
+`InMemoryKvCache` is the E-Sub-A reference implementation. It stores KV entries keyed by `(session_id, backend_id)` with a configurable capacity and LRU eviction. When eviction occurs, the backend emits `CloseCode::KvEvicted` on the next step request for that session.
+
+`inference-autonomic` (E-Sub-E) will replace `InMemoryKvCache` with a Lago-backed durable cache. Anima rotation events become KV invalidation signals — when an agent rotates its identity, its cached KV state is automatically purged.
+
+## Locked decisions (E-Sub-A)
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| L5-D1 | Separate `crates/inference/` cluster, sibling of `anima/` and `autonomic/` | Clean dependency boundary; inference has no business knowing about identity or policy |
+| L5-D2 | Lago-backed KvCache by default (planned E-Sub-E) | Durability across backend restarts; pairs with Lago replay |
+| L5-D3 | Speculative decoding opt-in, default impl panics | Prevents silent fallback to slow path; forces explicit capability declaration |
+| L5-D4 | Spec C₃ §6.5 close codes — distinct from lifegw codes | Clean interface; lifegw codes are wire-level, `CloseCode` is semantic |
+| L5-D5 | Tool dispatch escapes to Praxis via `ToolAwait` reconnect | Backends stay stateless; tool knowledge lives in Arcan/Praxis |
+| L5-D6 | Anima-scoped KV (`session_id` keyed) — composes with Spec D rotation | Identity rotation = cache invalidation without extra plumbing |
+| L5-D7 | Dynamic backend selection per call via `RoutingHint` | Workload-class routing; interactive vs batch vs speculative can use different hardware |
+| L5-D8 | Public spec publication deferred post-Phase-1 | Establish the contract inside the Life OS first; publish when the conformance battery exists |
+
+## Test coverage
+
+At E-Sub-A ship: 24 tests — 20 unit tests for core types and routing logic, 1 conformance scaffold test, and 3 `inprocess_smoke` tests including the `#[should_panic]` lock for L5-D3 (speculative decoding default-impl panic contract). All 14 CI checks passed: Test Linux (11m), Test macOS (13m), Build Release (24m), Lint (4m), MSRV (4m), Security Audit (3m), plus 8 fast-path checks.
+
+## Relation to other subsystems
+
+| Subsystem | Relationship |
+|-----------|-------------|
+| **Arcan** | Arcan's provider layer (today: Anthropic, OpenAI-compatible, Mock) will migrate to `InferenceBackend` backends. Arcan orchestrates the `ToolAwait` reconnect loop. |
+| **Anima** | Anima rotation events invalidate KV cache entries. `inference-autonomic` (E-Sub-E) wires this signal. The `session_id` key is Anima-scoped. |
+| **Praxis** | Praxis executes tool calls when the backend emits `CloseCode::ToolAwait`. Inference backends never call Praxis directly — Arcan mediates. |
+| **Vigil** | `inference-vigil` (E-Sub-D) instruments all backend calls with 15-series metrics: tokens/sec, time-to-first-token, KV hit rate, close code distribution. |
+| **Lago** | `inference-autonomic` (E-Sub-E) backs the KV cache with Lago for durability across restarts. |
+
+<Callout type="info">
+  **Strategic note.** The Spec E contract is positioned as the bid for "POSIX of agent silicon" — own the runtime contract, hardware vendors compete underneath. The same play that made CUDA NVIDIA's moat. The contract is intentionally minimal at E-Sub-A: `backend_id`, `capabilities`, and `step`. Everything else (routing, caching, metrics, conformance) layers on top without touching the trait surface.
+</Callout>

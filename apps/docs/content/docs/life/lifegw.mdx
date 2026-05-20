@@ -1,0 +1,264 @@
+---
+title: lifegw
+description: The edge gateway daemon — terminates TLS, verifies identity JWTs, mints capability tokens, and proxies RPCs to lifed.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+# lifegw
+
+lifegw (Life Gateway) is the stateless, internet-facing edge daemon of the Life Agent OS. It sits at the boundary between the public internet and the privileged `lifed` daemon, handling all concerns that belong at the network edge: TLS termination, identity JWT verification, capability token minting, rate limiting, and WebSocket session establishment.
+
+`lifed` never touches the internet. `lifegw` never touches privileged state. The two daemons communicate exclusively over a Unix domain socket.
+
+<Callout type="info">
+  **Spec C₃ shipped.** lifegw is fully implemented across M7 and the lifegw-specific wave. 199 integration tests pass (151 unit + 19 anima_custody + 29 others). All Anima custody routes, the WebSocket stream endpoint, JWKS-based auth, rate limiting, and the admin plane UDS are live on `main`.
+</Callout>
+
+## Position in the topology
+
+```
+Internet
+    │  TLS 1.3 (rustls)
+    ▼
+ lifegw   ← stateless, unprivileged, horizontally scalable
+    │  Unix Domain Socket
+    ▼
+  lifed   ← privileged, stateful, manages substrate connections
+    │
+    ├── chronosd    (temporal substrate)
+    ├── animad      (identity substrate, via soma UDS)
+    ├── lago        (event journal)
+    ├── haima       (payments)
+    └── vigil       (observability)
+```
+
+lifegw knows nothing about agents, sessions, or substrate state. It knows how to verify a JWT, mint a scoped capability token, and forward a request. That is the entirety of its job.
+
+## Public endpoints
+
+| Surface | URL |
+|---------|-----|
+| Canonical | `https://life.broomva.tech` |
+| Railway alias | `https://lifegw-production.up.railway.app` |
+| Health | `https://life.broomva.tech/healthz` |
+
+Both URLs front the same lifegw deployment on Railway (TLS termination at Railway's edge → Caddy in-container → lifegw HTTPS on `127.0.0.1:8443`). The `life.broomva.tech` CNAME points at Railway's edge; Let's Encrypt issues the cert on Railway's side. Use the canonical URL in client code; the Railway alias is for diagnostics.
+
+## Stack
+
+| Component | Technology |
+|-----------|-----------|
+| HTTP server | axum |
+| TLS | rustls (TLS 1.3 only — TLS 1.2 disabled) |
+| gRPC proxy | tonic-web (Connect protocol) |
+| JWT verification | JWKS (ES256) via `JwksCache` |
+| WebSocket | axum WS upgrade + bidi pump |
+| Rate limiting | Token-bucket per-user + per-IP |
+| Admin plane | Unix domain socket + `SO_PEERCRED` |
+
+## Routes
+
+### Health
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/healthz` | GET | Probes upstream `lifed` reachability. Returns 200 only if lifed responds on the UDS. |
+
+### Auth bootstrap
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/life/v1/auth/bootstrap` | POST | Mint a Tier-2 capability token from a verified Tier-1 bearer. Body: `{"user_id": "<user>"}`. Returns `{"access_token", "token_type", "user_id", "expires_in", "expires_at"}` (15-minute TTL). Use this when a non-agent route needs an explicit Tier-2 cap. The `/v1/agent/*` routes auto-mint internally and do NOT require a pre-bootstrap. |
+
+### Anima custody
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/anima/custody/sign_auth` | POST | Sign an auth challenge with the agent's Ed25519 auth key. |
+| `/anima/custody/sign_wallet` | POST | Sign an EVM transaction with the agent's secp256k1 wallet key. |
+| `/anima/custody/get_auth_pubkey` | POST | Retrieve the public Ed25519 auth key. |
+| `/anima/custody/get_wallet_pubkey` | POST | Retrieve the public secp256k1 wallet key. |
+| `/anima/custody/mint_session_cap` | POST | Mint a 15-minute Tier-User capability token for session use. |
+| `/anima/custody/enroll_passkey` | POST | WebAuthn passkey enrollment. |
+
+### Agent
+
+The chat surface is a **two-phase flow** — `create_session` returns a server-issued `sid`, then the WSS upgrade attaches a stream to that session. The session id passed in the WS query string is the canonical handle for resumability.
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/v1/agent/create_session` | POST | Create a chat session. Body: `{"user_id", "project_id", "label"?, "resume_sid"?}` (`#[serde(deny_unknown_fields)]`). Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`. Server-issued `sid` is the canonical session id — use it on the WSS upgrade below. |
+| `/v1/agent/stream` | GET → WS upgrade | WebSocket upgrade. Query params: `?sid=<sid>&last_seq_no=<n>`. `sid` comes from `create_session`; `last_seq_no` is the last `agent_event.seq_no` the client received (omit on first connect; pass on reconnect to replay events from that point). |
+
+<Callout type="warn">
+  **Per-route scope enforcement.** Each Anima custody route enforces a scope intersection check. A `TierUserCap` with `anima.user.sign_auth` scope cannot call `/anima/custody/sign_wallet`. `claims.sub` is bound to `body.user_id` — a token issued for user A cannot be used to sign on behalf of user B.
+</Callout>
+
+## Authentication
+
+### Tier-1: Identity JWTs
+
+Incoming requests carry a Tier-1 JWT — an ES256 JWT issued by the Vercel identity provider (or a dev-mode HS256 token). lifegw verifies these against a JWKS endpoint:
+
+```
+JwksCache → fetch JWKS → verify ES256 signature → extract claims
+```
+
+`JwksCache` uses a `FlightCoalescer` cohort pattern — concurrent requests for a JWKS refresh coalesce into a single fetch, preventing thundering-herd cache misses. The cache is updated atomically.
+
+### Tier-2: Capability tokens
+
+After verifying a Tier-1 JWT, lifegw can mint a Tier-2 capability token via `TierUserMinter`:
+
+- **Audience**: `anima.user-cap`
+- **TTL**: 15 minutes
+- **Scope**: per-route (e.g. `anima.user.sign_auth`, `anima.user.sign_wallet`)
+- **Subject binding**: `claims.sub` must match `body.user_id` on every request
+
+`TierUserMinter` is a sibling of `Tier2Minter` (which mints service-to-service capability tokens). Both use the same `KmsSigner` trait, which abstracts over `StaticKeystore`, `VaultTransit`, `AwsKms`, and `GcpKms`.
+
+### WebSocket bearer auth
+
+WebSocket connections carry their JWT via the `Sec-WebSocket-Protocol: bearer.<jwt>` subprotocol header. The subprotocol value is parsed by lifegw before the upgrade completes. Invalid bearer values (malformed characters, oversized tokens) are rejected with a 400 before the WebSocket handshake.
+
+```
+Client: Sec-WebSocket-Protocol: bearer.eyJhbGciOiJFUzI1NiJ9...
+lifegw: parse → verify → upgrade → open bidi stream
+```
+
+## Rate limiting
+
+Token-bucket rate limiting is applied at two levels:
+
+| Level | Bucket key | Behavior |
+|-------|-----------|---------|
+| Per-user | `claims.sub` from verified JWT | Limits authenticated users independently of source IP |
+| Per-IP | Remote socket address | Limits unauthenticated or pre-auth requests |
+
+Rate limit responses return `HTTP 429` with a `Retry-After` header. The token bucket parameters (capacity, refill rate) are configurable in `lifegw.toml`.
+
+## Chat session flow
+
+Chat is a two-phase wire: HTTP `create_session` followed by a WSS upgrade attached to the returned `sid`. Native clients (Rust, server-to-server) authenticate via `Authorization: Bearer <jwt>`; browser clients authenticate via the `Sec-WebSocket-Protocol: bearer.<jwt>` subprotocol (browsers cannot set arbitrary headers on `WebSocket` constructors).
+
+<Steps>
+  <Step>
+    **Create session.** `POST /v1/agent/create_session` with `Authorization: Bearer <tier1-jwt>` and JSON body `{"user_id", "project_id", "label"?, "resume_sid"?}`. lifegw's middleware verifies the Tier-1 JWT, mints a Tier-2 cap internally, and forwards to lifed over the UDS. Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`.
+  </Step>
+  <Step>
+    **Upgrade.** `GET /v1/agent/stream?sid=<sid>&last_seq_no=<n>` with `Upgrade: websocket` headers. Native: same `Authorization: Bearer <jwt>` header. Browser: `Sec-WebSocket-Protocol: bearer.<jwt>` subprotocol.
+  </Step>
+  <Step>
+    lifegw verifies the bearer, applies rate limits, returns `101 Switching Protocols`, and opens a bidi pump to lifed.
+  </Step>
+  <Step>
+    Client sends `WireOutbound::SendMessage` envelopes; server emits `WireInbound::AgentEvent { seq_no, record, agent_kind }` envelopes. `agent_kind` ∈ `{TOKEN, FINISH, ERROR, TOOL_CALL_PENDING, TOOL_RESULT, APPROVAL_REQUIRED, HIBERNATE}` — token deltas live in `record.payload.text`.
+  </Step>
+  <Step>
+    On disconnect, reconnect with the same `sid` and `last_seq_no=<last_received_seq_no>`. lifegw forwards to lifed, which replays events from that point. No events are lost across reconnects.
+  </Step>
+</Steps>
+
+### Wire envelope shapes
+
+| Direction | Variants |
+|-----------|----------|
+| `WireOutbound` (client → server) | `SendMessage`, `ApproveDispatch`, `CancelDispatch`, `Ping`, `Close` |
+| `WireInbound` (server → client) | `AgentEvent { seq_no, record, agent_kind }`, `Pong`, `Closing` |
+
+`agent_kind` enum (server-emitted):
+
+| Kind | Meaning |
+|------|---------|
+| `TOKEN` | Streaming token delta — append `record.payload.text` to the current message |
+| `FINISH` | Turn complete — current message is final |
+| `ERROR` | Turn failed — `record.payload` carries the error |
+| `TOOL_CALL_PENDING` | Agent invoked a tool; arguments in `record.payload` |
+| `TOOL_RESULT` | Tool finished — result in `record.payload` |
+| `APPROVAL_REQUIRED` | Server is waiting for an `ApproveDispatch` from the client |
+| `HIBERNATE` | Server idled the session; reconnect to resume |
+
+### Authentication shape per route
+
+| Route | What the client sends | What lifegw does internally |
+|-------|----------------------|-----------------------------|
+| `/life/v1/auth/bootstrap` | `Authorization: Bearer <tier1>` | Mints a Tier-2 cap, returns it in the response body |
+| `/v1/agent/*` (incl. `/create_session`, `/stream`) | `Authorization: Bearer <tier1>` (native) **or** `Sec-WebSocket-Protocol: bearer.<tier1>` (browser, WS only) | Middleware auto-mints a Tier-2 cap from the Tier-1 and forwards the rewritten `Authorization` header to lifed over the UDS |
+| `/anima/custody/*` | `Authorization: Bearer <tier2>` (explicit; obtain via `/life/v1/auth/bootstrap` first) | Verifies the Tier-2 cap and intersects per-route scope (see callout above) |
+
+The pump handles:
+- **Heartbeats**: 30-second ping/pong interval. 3 missed pongs close the connection with `CloseCode::ProtocolError`.
+- **Unknown frames**: rejected immediately with `CloseCode::UnsupportedFrame` (close code 1003 per Spec C₃ §6.5).
+- **Unknown frame characters**: bearer subprotocol values with control characters or non-ASCII are rejected before the upgrade.
+
+## Admin plane
+
+lifegw exposes a Unix domain socket for privileged management operations:
+
+```
+/run/life/lifegw-admin.sock
+```
+
+Authentication uses `SO_PEERCRED` — the kernel verifies the connecting process's UID/GID. Only processes in the `life-runtime` group are admitted. This is enforced via `getgrouplist` with a negative cache for failed lookups. Group-lookup failures are fail-closed (admission denied, not granted).
+
+The admin plane supports:
+- JWKS cache flush (force re-fetch from provider)
+- Rate limit bucket inspection
+- Graceful drain (stop accepting new connections, finish active streams)
+- TLS certificate hot-swap via shared `CertReloader`
+
+## Security properties
+
+| Property | Implementation |
+|----------|---------------|
+| TLS 1.3 only | rustls cipher suite configuration — TLS 1.2 removed |
+| Multi-audience JWT verification | `JwksCache::verify_capability_token` verifies `aud` against the expected audience per route — a token issued for one route cannot be replayed on another |
+| Per-route scope intersection | Middleware checks that the token's scope set intersects the route's required scope set; empty intersection → 403 |
+| Subject binding | `claims.sub` from the JWT must equal `body.user_id` in the request body — prevents cross-user impersonation |
+| Upstream error sanitization | `sanitize_upstream` strips `tonic::Status` internals from 502 responses — the soma UDS path is never leaked in error bodies |
+| Per-RPC timeout | `tokio::time::timeout(10s)` wraps every upstream RPC — hung lifed connections do not hold client connections open indefinitely |
+| Input validation | `validate_user_id` rejects empty, oversized, and control-character-containing user IDs; `deny_unknown_fields` on all request bodies |
+
+## Configuration
+
+lifegw is configured via `lifegw.toml`:
+
+```toml
+[tls]
+cert_path = "/etc/life/lifegw.crt"
+key_path  = "/etc/life/lifegw.key"
+# CertReloader polls every 5s — certificate rotation is hot-swap, no restart required
+
+[auth]
+jwks_url = "https://your-vercel-project.vercel.app/.well-known/jwks.json"
+dev_mode  = false  # true: accept HS256 dev tokens without JWKS verification
+
+[rate_limit]
+per_user_capacity = 100
+per_user_refill_per_sec = 10
+per_ip_capacity = 200
+per_ip_refill_per_sec = 20
+
+[lifed]
+uds_path = "/run/life/lifed.sock"
+
+[admin]
+uds_path = "/run/life/lifegw-admin.sock"
+group    = "life-runtime"
+```
+
+<Callout type="info">
+  **TLS certificate rotation.** The `CertReloader` polls for certificate changes every 5 seconds and hot-swaps the TLS acceptor via an `Arc`-wrapped shared reference. Existing connections continue with the old certificate; new connections use the new certificate. No process restart is required for certificate renewal.
+</Callout>
+
+## Relation to other subsystems
+
+| Subsystem | Relationship |
+|-----------|-------------|
+| **lifed** | lifegw is the public face of lifed. All privileged operations (agent sessions, substrate state, saga management) live in lifed. lifegw forwards via UDS after auth. |
+| **Anima** | The Anima custody routes are the primary stateful surface lifegw exposes. `animad` (the Anima daemon, running inside lifed's trust boundary via soma UDS) handles the actual key operations. |
+| **Haima** | Not directly wired to lifegw. Payment operations go through lifed after lifegw verifies the JWT. |
+| **Vigil** | `lifegw` emits OTLP spans and metrics for every request — JWT verification latency, upstream RPC latency, rate limit hit rate, WS connection duration. |
+| **Spec J** | Spec J (`ANTHROPIC_BASE_URL=lifegw`) routes Claude Code's Anthropic API calls through lifegw, making every Claude Code session anima-bound, lago-event-sourced, vigil-instrumented, and haima-billed. |
