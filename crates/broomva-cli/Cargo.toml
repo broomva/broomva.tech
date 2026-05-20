@@ -1,3 +1,7 @@
+# BRO-1183 (2026-05-19): bumped to 0.7.0 because `create_prompt` /
+# `update_prompt` now return `PromptPushResponse` (named struct) instead of
+# `PromptDetail`. Source-breaking lib-target change → minor bump on a pre-1.0
+# crate per cargo convention.
 [package]
 name = "broomva"
 # BRO-1183 (2026-05-19): bumped to 0.7.0 because `create_prompt` /
