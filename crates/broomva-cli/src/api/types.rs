@@ -394,6 +394,16 @@ pub struct TokenResponse {
     /// Agent info (present when registering as agent)
     #[serde(default)]
     pub agent: Option<serde_json::Value>,
+    /// BRO-1203 — ES256 Tier-1 JWT for production lifegw. The Better
+    /// Auth `access_token` above is HS256 and is rejected by
+    /// `life.broomva.tech` with `missing kid in JWT header`. Servers
+    /// before v0.8.1 omit this field entirely → deserializes to None.
+    #[serde(default)]
+    pub lifegw_token: Option<String>,
+    /// Epoch seconds when `lifegw_token` expires. Spec C₃ §5.4 caps
+    /// Tier-1 capability tokens at 15 minutes.
+    #[serde(default)]
+    pub lifegw_token_expires_at: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
