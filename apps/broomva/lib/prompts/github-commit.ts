@@ -1,3 +1,5 @@
+import yaml from "js-yaml";
+
 const GITHUB_OWNER = "broomva";
 const GITHUB_REPO = "broomva.tech";
 const PROMPTS_PATH = "apps/broomva/content/prompts";
@@ -71,7 +73,23 @@ export async function commitPromptToGitHub(prompt: {
   return { success: true };
 }
 
-function buildMdx(prompt: {
+/**
+ * Build the MDX text for a prompt, with frontmatter serialized via `js-yaml`.
+ *
+ * BRO-1182: An earlier implementation built the YAML frontmatter by
+ * hand-rolling `title: "${prompt.title}"` style template literals. If any
+ * incoming string contained `"`, `\`, or a newline (which user-authored
+ * prompt titles routinely do), the resulting YAML was malformed. Downstream,
+ * `gray-matter` (see `apps/broomva/lib/content.ts`) would silently drop the
+ * frontmatter, the prompt would vanish from `/prompts`, and the GitHub
+ * mirror PUT would still return `{ok: true}` — making the failure invisible
+ * end-to-end. The fix is to serialize via a proper YAML emitter so quoting,
+ * escaping, and block-vs-flow style are chosen correctly by the emitter
+ * instead of the caller.
+ *
+ * Exported for unit testing (round-trip via `gray-matter.matter()`).
+ */
+export function buildMdx(prompt: {
   title: string;
   content: string;
   summary?: string | null;
@@ -86,41 +104,59 @@ function buildMdx(prompt: {
   }> | null;
   links?: Array<{ label: string; url: string }> | null;
 }): string {
-  const lines: string[] = ["---"];
-  lines.push(`title: "${prompt.title}"`);
-  lines.push(`summary: "${prompt.summary ?? ""}"`);
-  lines.push(`date: ${new Date().toISOString().split("T")[0]}`);
-  lines.push("published: true");
+  // Build frontmatter as an object in the canonical key order. js-yaml's
+  // `dump` preserves insertion order, so this reproduces the layout of the
+  // existing 31 MDX files under `content/prompts/` for the common case.
+  const frontmatter: Record<string, unknown> = {};
+  frontmatter.title = prompt.title;
+  frontmatter.summary = prompt.summary ?? "";
+  frontmatter.date = new Date().toISOString().split("T")[0];
+  frontmatter.published = true;
 
-  if (prompt.category) lines.push(`category: ${prompt.category}`);
-  if (prompt.model) lines.push(`model: ${prompt.model}`);
-  lines.push(`version: "${prompt.version ?? "1.0"}"`);
+  if (prompt.category) frontmatter.category = prompt.category;
+  if (prompt.model) frontmatter.model = prompt.model;
+  frontmatter.version = prompt.version ?? "1.0";
 
   if (prompt.tags?.length) {
-    lines.push("tags:");
-    for (const tag of prompt.tags) lines.push(`  - ${tag}`);
+    frontmatter.tags = prompt.tags;
   }
 
   if (prompt.variables?.length) {
-    lines.push("variables:");
-    for (const v of prompt.variables) {
-      lines.push(`  - name: ${v.name}`);
-      lines.push(`    description: "${v.description}"`);
-      if (v.default) lines.push(`    default: "${v.default}"`);
-    }
+    frontmatter.variables = prompt.variables.map((v) => {
+      const entry: Record<string, string> = {
+        name: v.name,
+        description: v.description,
+      };
+      // Preserve prior contract: only emit `default` when it's truthy. The
+      // old hand-rolled implementation used `if (v.default)` which drops
+      // empty strings, null, and undefined alike. Keep that to make the
+      // YAML-serialization migration a pure bugfix for hostile characters
+      // (the BRO-1182 failure mode) without expanding the field surface.
+      if (v.default) entry.default = v.default;
+      return entry;
+    });
   }
 
   if (prompt.links?.length) {
-    lines.push("links:");
-    for (const l of prompt.links) {
-      lines.push(`  - label: "${l.label}"`);
-      lines.push(`    url: "${l.url}"`);
-    }
+    frontmatter.links = prompt.links.map((l) => ({
+      label: l.label,
+      url: l.url,
+    }));
   }
 
-  lines.push("---");
-  lines.push("");
-  lines.push(prompt.content);
-  lines.push("");
-  return lines.join("\n");
+  // `lineWidth: -1` disables line folding (we want stable round-trips, not
+  // pretty wrapping). `noRefs: true` disables YAML anchors/aliases — they
+  // would confuse downstream consumers that don't expect them. `quotingType`
+  // is "double" with `forceQuotes: false` so the emitter chooses the safest
+  // quoting per value (plain when safe, double-quoted with escapes when not).
+  // `noCompatMode: true` lets the emitter use modern YAML 1.2 quoting rules.
+  const yamlBody = yaml.dump(frontmatter, {
+    lineWidth: -1,
+    noRefs: true,
+    quotingType: '"',
+    forceQuotes: false,
+    noCompatMode: true,
+  });
+
+  return `---\n${yamlBody}---\n\n${prompt.content}\n`;
 }
