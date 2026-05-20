@@ -1,0 +1,258 @@
+---
+title: "The Falsification Gap in Agent Infrastructure"
+summary: A control-systems engineer's empirical investigation of his own framework, what the data refused to support, and what the agent economy is currently missing.
+date: 2026-05-12
+published: true
+tags:
+  - rcs
+  - microRCS
+  - agent-economy
+  - empirical-methodology
+  - control-theory
+  - agent-infrastructure
+  - ablation-studies
+  - yc
+links:
+  - label: "microRCS — empirical state of record (THESIS_VALIDATION.md)"
+    url: "https://github.com/broomva/rcs/blob/main/microrcs/THESIS_VALIDATION.md"
+  - label: "RCS Paper 0 — Foundations"
+    url: "https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main.pdf"
+  - label: "RCS research repo"
+    url: "https://github.com/broomva/rcs"
+  - label: "Life Agent OS (runtime witness)"
+    url: "https://github.com/broomva/life"
+---
+
+## TL;DR
+
+Across four model tiers (gemma4-8B, Haiku, Sonnet, Opus), three seeds per cell, four ablation conditions, and roughly 6,040 LLM episodes plus 2,160 hours of independent microgrid physics simulation — total spend about $214 — the only statistically significant effect we measured was that *recursion measurably hurts at Sonnet on a harder suite* (Δ ≈ −0.07 to −0.09, all above 2σ_flat = 0.020). [^1] The Opus directional positive that survived PR #31 at Δ=+0.131 (n=3) **did not replicate**: a fresh Opus n=3 returned Δ=+0.037 — a 3.5× collapse — and our pre-registered falsification harness returned INCONCLUSIVE at the same sample size, with t-CI `[−0.305, +0.379]` straddling zero and sign-test p = 0.50. [^29] Most of what the agent-infrastructure industry is currently selling — orchestration, memory, mode-switching scaffolds — sits in a regime where, at proper power, our own data refuses to support the headline claim.
+
+## 1. The agent industry's empirical methodology problem
+
+The Y Combinator W26 batch contained 199 companies. [^2] Public batch trackers and Crunchbase's roll-up of recent YC AI cohorts put roughly 41–55% of those companies in some form of agent infrastructure — orchestration, memory, evaluation, runtime, observability. [^3] [^4] a16z's *State of AI in Consumer 2025* and the firm's enterprise notes describe an "agent economy" the firm expects to dwarf SaaS. [^5] [^6]
+
+Almost none of these companies publish paired ablations across multiple model tiers at n ≥ 3 seeds with confidence intervals.
+
+LangChain's public blog includes excellent agent evaluation primers, but headline product claims — "LangGraph helps agents work better" — are not, to my reading, backed by published n ≥ 3 paired ablations of agents-with vs. agents-without across multiple model tiers. [^7] CrewAI documents a multi-agent orchestration framework and benchmarking guides, but I have not been able to locate a controlled ablation showing CrewAI orchestration outperforms a flat single-agent baseline at statistical power. [^8] AutoGPT's own retrospectives describe results as "promising" rather than as paired comparisons. [^9] LlamaIndex publishes excellent RAG benchmarks that do not isolate orchestration from retrieval. [^10]
+
+None of these teams are doing bad work. The industry's standard of evidence is case studies, leaderboard wins, customer testimonials. The methodological gap is structural, not personal: there is no shared falsification harness against which agent-infrastructure claims can be settled the way an ML paper can be settled by a held-out benchmark.
+
+The absence of that shared harness — call it the *falsification gap* — is currently the most underpriced asymmetry in the agent infrastructure market.
+
+## 2. What I built and tested
+
+I have spent the better part of three months trying to falsify my own framework, *Recursive Controlled Systems* (RCS). [^11] RCS is a 7-tuple type signature `Σ = (X, Y, U, f, h, S, Π)` whose controller `Π` is itself an RCS at the next level. The companion theorem says a finite tower is exponentially stable if each per-level Lyapunov budget `λᵢ > 0` and a time-scale-separation bound holds. The paper is open; the code passes CI; the Rust runtime is in production in [Life Agent OS](https://github.com/broomva/life). [^12]
+
+That formal scaffolding does not prove RCS *helps real agents*. It only proves it is internally consistent. The thesis comes in three forms, and only one of them is theorem-shaped:
+
+| Form | Claim |
+|---|---|
+| **Performance** | A recursive control stack improves an agent's `pass^k` over a non-recursive baseline |
+| **Stability** | The empirical decay rate `λ̂ᵢ` is positive at every level |
+| **Strong** | Performance is monotone in stack depth, and `λ̂ᵢ ≈ λᵢ` from the paper |
+
+`microRCS` is the artifact I built to test these three forms empirically. [^13] It is a single Python file: an L0 plant (LLM with `bash` + `submit` tools, a frontmatter-graph workspace), an L1 homeostatic regulator that switches the L0 between cot/scratchpad/verify modes, an L2 meta-controller that proposes rule mutations against a shadow eval, and an L3 governance layer that adjusts caps. Four ablation conditions: `flat / +autonomic / +meta / full`.
+
+The complete pinned record of every run, every cost, every cell of every benchmark — refusals included — is in [`THESIS_VALIDATION.md`](https://github.com/broomva/rcs/blob/main/microrcs/THESIS_VALIDATION.md). [^1] I am going to summarize what it says.
+
+Across the work to date: roughly 6,040 LLM episodes on `microRCS` plus 540 free `gemma4` episodes, plus 2,160 hours of independent microgrid physics simulation on a second testbed. Total cumulative LLM spend: $159.
+
+## 3. What the data actually says
+
+**The capacity sweep (PR #31, BRO-945).** I held L2/L3 constant at Opus and swept L0/L1 across Anthropic's tier ladder, three seeds, four conditions, HARDER_SUITE (10 tasks). Roughly 1,080 episodes per tier. [^1]
+
+| Tier (L0/L1) | flat mean ± std | +autonomic Δ | +meta Δ | full Δ | 2σ_flat | Verdict |
+|---|---|---|---|---|---|---|
+| Haiku-4-5 | 0.357 ± 0.055 | −0.014 | −0.032 | −0.080 | 0.110 | within noise |
+| Sonnet-4-6 | **0.505 ± 0.010** | **−0.085** | **−0.078** | **−0.074** | **0.020** | 3/3 conditions *hurt*, above noise |
+| Opus-4-7 (PR #31, n=3) | 0.495 ± 0.079 | −0.000 | +0.141 | +0.131 | 0.158 | helps directionally, n=3 inconclusive |
+| **Opus-4-7 (WS2b replication, n=3)** | **0.513 ± 0.045** | **−0.007** | **+0.037** | **−0.029** | **0.090** | **directional collapsed 3.5×, INCONCLUSIVE** |
+
+**Read this table carefully.** The only cells whose confidence intervals don't include zero are the three Sonnet cells, where recursion *measurably hurts*. Haiku is noise. The PR #31 Opus row showed a directional positive (Δ = +0.131 to +0.141) but the per-seed σ of 0.079 swamped the n=3 mean shift. The pre-registered tightening — n=20 Opus replication, four conditions, ~$420 budget — launched 2026-05-13. The run **crashed at seed 4 of 20** on 2026-05-13 12:29 PM (PID died mid-`full` condition; $55 sunk). The n=3 partial that did come through is the WS2b row in the table above. The replication effect Δ(+meta − flat) is **+0.037**, a 3.5× collapse from PR #31's +0.131. t-distribution 95% CI is `[−0.305, +0.379]`. Bootstrap percentile 95% CI (B=10000, deterministic seed) is `[−0.102, +0.173]`. Sign-test p = 0.500 (2/3 positive — coin flip). Cohen d = 0.27 implies n ≈ 108 for 80% power — impractical at our budget. Per the pre-registered decision rule (CONFIRMED: CI excludes 0; REFUTED: Δ collapses to 0 or sign flip; INCONCLUSIVE: directional but CI straddles 0), the WS2b verdict is **INCONCLUSIVE**, captured in [`research/rcs/reports/bro945-opus-n20/SUMMARY.md`](https://github.com/broomva/research/blob/main/rcs/reports/bro945-opus-n20/SUMMARY.md) with a reproducible Python snippet. [^29]
+
+**The replication failure is itself a finding.** PR #31's Δ=+0.131 was the strongest positive signal in the entire microRCS investigation. The replication returned Δ=+0.037 at the same sample size, model tier, and benchmark. The most likely explanation is that PR #31 was at the noisy tail of n=3 sampling — exactly the kind of headline result that vanishes when you tighten the harness. This isn't a defect of microRCS; it is microRCS doing its job. A framework that publishes its own non-replications at equal prominence is what the falsification gap rules out for anyone who can't afford to lose the headline.
+
+**The bitter-lesson question.** The naïve bitter-lesson interpretation — "scaffolding helps weak models, hurts strong ones" — predicts monotone behavior across the capacity ladder. The data refutes this. Going Haiku → Sonnet, scaffolding hurts more (consistent). Going Sonnet → Opus, the effect *reverses* (anti-bitter-lesson, directionally). The relationship is non-monotone in capacity. This is not an isolated finding: Kumar et al.'s RISE work at NeurIPS 2024 reports that prompting-only self-refine "largely degrades performance across the board" on Math, MMLU, and HotpotQA when applied to GPT-3.5 and GPT-4 — improvement only appears with an oracle in the loop. [^20] Our Sonnet result reproduces that pattern on a different model family with paired statistics; the more uncomfortable implication, which I'll return to in §6, is that this is the regime most production agent stacks are actually running in.
+
+**Cross-run compounding (PR #28).** Five iterations of L2-generated rules persisted to disk and reloaded across iterations. Mechanism works perfectly — four high-quality Opus rules accumulated. The pass^3 trajectory iter1 = 0.360 → iter5 = 0.431 (+0.072). Within-iter σ = 0.045, 2σ = 0.09. **The compounding signal is real and beneath the noise floor at this sample size.**
+
+**Shadow eval — the one cross-testbed positive (PR #25 H4 and microgrid).** With shadow-eval gating removed, `+meta` collapses to 0.282 < flat 0.327 — bad-rule injection re-emerges. The same primitive, ported into an independent microgrid physics simulation (TestVillage, 3 seeds × 720 hours), correctly vetoed 69 of 69 candidate mutations on both `+meta` and `full` conditions. Two testbeds, same architectural primitive, same load-bearing role. This is the only finding in the entire investigation that survived being moved to a completely different state space.
+
+**SWE-bench-Lite (PR #34 pilot).** 4 instances × 4 conditions × 1 seed at Haiku × max_steps = 50: every episode scored 0.000. The pilot is informative: it tells you the bottleneck is L0 capacity, not strategy. Recursion overhead is negligible (~$0.50 across conditions). Recursion benefit is also zero — the agent never gets within reach of the patch. Stepping the budget up to max_steps = 150 unlocked one solve at flat AND full but not at +autonomic or +meta. n=1 paired across 4 instances; could be real "L1 mode-switch breaks the solve, L3 governance recovers" or per-instance variance. Either way, the regime is sub-statistical.
+
+**Empirical λ̂ vs. paper analytic λ.** Only `λ̂_2` is reliably numerically positive. The empirical values are *three orders of magnitude* smaller than the paper-analytic values. This is a construct gap, not a refutation, but it is honest to call it out: the formalism reasons about an idealised plant; the runtime is measuring something else.
+
+There is no charitable reading of this evidence that supports "RCS as currently instantiated reliably improves agent performance." The strongest defensible claim is: *the relationship between recursive control and `pass^k` across the four tiers we tested is null at proper power except in one direction at Sonnet*, and the only architecturally-generalisable positive result we have is shadow-eval verification gating.
+
+## 4. The signal/noise reframe
+
+It is worth spending a minute on *why* the data looks like this, because the explanation generalizes beyond RCS.
+
+A recursive control stack is, mechanically, a high-pass filter on top of the base agent. It catches anomalies, reasons about them, sometimes intervenes. The intervention is itself a stochastic process — the L2 generates a rule, the shadow eval gates it, the surviving rule is or isn't load-bearing on the next task.
+
+Consider two regimes:
+
+- **Reliable base, tight noise floor.** Sonnet on HARDER_SUITE has σ_flat = 0.010. The base agent's variance is so small that any added intervention shows up as additional variance, not as additional signal. The high-pass filter passes noise it generated itself. Net effect: −0.07 to −0.09, every condition above the 2σ band. The data is *unambiguous* here.
+- **Noisier base, wider noise floor.** Opus on HARDER_SUITE has σ_flat = 0.079. The base agent's variance is large enough that a real intervention can fill the gap before it gets buried. Three of three seeds show the recursion arms beating flat. But the 2σ_flat band is 0.158, almost exactly the size of the effect, so the sign is consistent but the confidence interval still crosses zero.
+
+This is not a clever reframe. It is what you would predict if you treated the recursion stack as a control-theoretic perturbation and asked whether the open-loop noise of the plant is small enough that closed-loop intervention adds rather than subtracts. The mechatronics intuition is identical to designing a PID loop on a system whose sensor noise dominates the dynamics you're trying to regulate: you can make the system worse, not better, by closing the loop too aggressively.
+
+If this generalizes — and I think it does — most production agent stacks today are running Sonnet-class L0s, which is the exact regime where the data says scaffolding is most likely to subtract.
+
+## 5. The one cross-testbed result
+
+The shadow-eval finding is structurally different from everything else.
+
+On `microRCS` H4: with the budget shields disabled, `+meta` drops below flat. The mechanism is bad-rule injection — when L2 proposes a rule and there is no verifier between the proposal and the live system, the system absorbs rules that hurt downstream performance.
+
+On the [microgrid physics testbed](https://github.com/broomva/life) (an entirely different state space — diesel-generator-load-battery dynamics, hourly timesteps, real physical constraints), the same architectural primitive — *propose, gate against an oracle, accept only the survivors* — correctly vetoes 69 of 69 candidate L2 mutations. The veto is not adversarial; the system simply does not accept proposals that would have degraded the physical outcome.
+
+Two completely different plant dynamics. Same primitive. Same load-bearing role. The shadow-eval pattern is the strongest empirical foundation I have for an agent-infrastructure claim. It is also, not coincidentally, the part of RCS I find easiest to explain to a non-control-theory audience: *verify before you commit; don't accept a proposal you cannot grade.* It is the architectural form of the engineering discipline that gives mechatronics its name.
+
+The shadow-eval *mechanism* itself is not novel — three contemporaneous papers ship versions of it: Agent Capsules [^21], SABER [^22], and MAGE [^23] all implement quality-gated mutation veto in the LLM-agent context, and earlier work like Pro²Guard provides PAC-bound runtime enforcement on the same shape. [^24] What is — as far as I can find — unpublished is the **cross-testbed empirical validation**: the same architectural primitive working with byte-identical decision semantics on (a) LLM text reasoning where the mutations are L2-generated rules and (b) a 720-hour real-physics microgrid simulation where the mutations are diesel-battery dispatch policy changes. Different state spaces, different mutation surfaces, different oracles, identical veto behavior. That's the contribution I can defend.
+
+## 6. Industry implications
+
+Given the methodological gap (§1) and the data (§3), what does the evidence license us to say about the agent-infrastructure industry?
+
+**Most agent-infrastructure claims are currently unfalsifiable as stated.** When a vendor says "our framework improves agent performance," the claim is consistent with our Sonnet result (it measurably hurts), our PR #31 Opus result (it directionally helps at Δ=+0.131), AND our WS2b Opus replication (the directional signal collapsed 3.5× to Δ=+0.037, INCONCLUSIVE under the pre-registered harness). A non-evaluable claim survives every one of these outcomes. Without published paired ablations at multiple tiers *and* replication runs at the same tier, the claim is not wrong — it is *non-evaluable*.
+
+**Sonnet-class production stacks may be the worst-served regime.** Sonnet is the workhorse: it is the cost-performance sweet spot for most production agent deployments. Our data does not generalise to every Sonnet workload — the suite is HARDER_SUITE, not SWE-bench Verified, not RE-Bench, not MLE-bench — but the pattern (tight base variance + scaffolding adds variance) is mechanism-level. Teams running Sonnet with heavy orchestration scaffolding should, at minimum, run an ablation against a flat baseline before assuming the scaffolding is helping.
+
+**"Agent memory" products sit in a difficult position.** Memory is easy to demo. It is structurally hard to prove value for. The PR #28 cross-run compounding result is the closest thing to a clean "memory works" result in this investigation, and it is *real but beneath the noise floor at n=5 iterations*. A memory product whose effect size is below the per-iteration noise of the underlying agent will not show up in customer A/B tests — but it will show up on customer invoices.
+
+**The L3 governance layer is untestable on MVP timescales.** RCS's L3 has the narrowest stability margin (`λ₃ ≈ 0.006` in the canonical parameter set [^11]). The cadence at which governance rules change is, by design, glacial. This is structurally correct — you do not want your policy file rewriting itself daily — but it means *any* claim about governance-level improvements requires a multi-month observational horizon. Startups operating on six-week sprints will find this layer indistinguishable from a no-op.
+
+**Verification gating is the durable architectural primitive.** The shadow-eval finding is the only result in the investigation that transferred across testbeds. It also maps cleanly onto every production constraint I care about: tool-call attestation, capability boundaries, the safety shield `S` in the RCS 7-tuple. If I had to bet on which agent-infrastructure primitive will still be load-bearing in 2030, the data says "verification + bounded shielding," not "orchestration depth."
+
+## 7. Economic implications
+
+If verification gating is the durable primitive and most orchestration is null-to-negative, the agent-economy capital allocation is mispriced.
+
+**There is an unfalsifiability premium.** Companies whose claims cannot be tested at MVP scale — most agent-orchestration startups in YC W26 — currently raise on narrative. There is no published harness against which an investor can run a ten-minute ablation. The companies that *would* publish ablations would expose themselves to a comparison the market is not currently demanding. This is a stable equilibrium until someone demands the comparison.
+
+**The pricing of agent infrastructure tracks features, not safety.** A typical agent platform charges per orchestration step, per memory write, per workflow run. Our data suggests *verification* — the part that survives the testbed swap — should be priced as the load-bearing primitive. Per-call attestation, per-decision verification, per-tool-call shielding. This is closer to how cloud security is priced (per-event) than how SaaS orchestration is priced (per-seat). The pricing reframe is structural, not cosmetic.
+
+**The misallocation is at the substrate level.** Capital is currently flowing toward orchestration sophistication (multi-agent graphs, hierarchical planners, role-playing crews). The data licenses none of these. Capital is *not* flowing toward the substrate that survives — verification, attestation, bounded shielding — because that substrate looks like infrastructure, not like a product. The substrate is also the thing that compounds across customers: a verification gate that catches one bad LLM output catches every subsequent identical-shape output across every customer using the same substrate. Orchestration scaffolding does not compound; verification does.
+
+**The agent-loop silicon angle.** A separate observation, but worth noting: today's GPUs hit roughly 30–40% peak utilisation on agent workloads because the work is bursty — bouncing between memory-bound model calls, I/O-bound tool use, and CPU-bound orchestration. [^14] If the L1 mode-switching layer turns out to be neutral-or-harmful at most tiers (as our data suggests), the silicon constraint is *more* binding, not less — there is less mileage to extract from L1 alone, and proportionally more value in the L0 + verification primitives that the chip actually accelerates.
+
+## 8. What the agent economy is currently missing
+
+The agent economy is missing a falsification infrastructure layer.
+
+I do not mean another eval harness. There are excellent ones — SWE-bench Verified, RE-Bench, MLE-bench, GAIA, Terminal-Bench. [^15] [^16] [^17] [^18] I mean the *layer above* — tooling that lets an agent-infrastructure company A/B its own primitives against a flat baseline at n ≥ 3 seeds, four conditions, multiple model tiers, with pre-registered hypotheses and a public refutation ledger. The kind of harness ML research has had since GLUE [^19] and that agent infrastructure does not.
+
+The asymmetric position is not "build the best framework." It is "build the falsification harness for the framework, run it, and publish the negatives with equal prominence." That is what `THESIS_VALIDATION.md` is. It is, as far as I can tell, the only public pinned ledger of a single agent-infrastructure team's failed ablations alongside their positive results. The Sonnet result — recursion hurts, statistically — is in the document with the same prominence as the cross-testbed shadow-eval positive.
+
+This is not a moral preference. It is a structural bet. The market is currently underpriced for honest negatives because honest negatives reduce vendor optionality. Over time, *one* of two things happens: either the broader industry adopts shared falsification harnesses (in which case my falsification harness was early but the technology becomes commoditised), or it doesn't (in which case I have the only known empirical foundation under the substrate primitives I care about). I am willing to take either side of that bet.
+
+## 9. What I'm doing about it
+
+[Broomva Tech](https://broomva.tech) is the holding structure. The substrate is RCS, formalized in [Paper 0](https://github.com/broomva/rcs/raw/main/papers/p0-foundations/main.pdf), implemented in the [Life Agent OS](https://github.com/broomva/life) Rust monorepo, and falsified — to the extent we have been able — in `microRCS`. Two verticals consume the substrate: Sentinel (property-ops audits against a verification-gated decision layer) and [Phronesis](https://github.com/broomva/phronesis) (advisory practice as bstack skills, Apache-2.0). Substrate, harness, paper, and runtime are all open-source.
+
+I am not pitching anything here. I am documenting a position: most current agent infrastructure is selling claims it cannot test; the data licenses verification + bounded shielding as the durable primitive; the asymmetric move is to publish negatives at equal prominence to positives. Whether that becomes a venture-backable thesis or a research note is, at this point, an empirical question I do not yet have evidence for.
+
+## 10. Open questions and invitation
+
+The biggest open empirical questions, in priority order:
+
+1. **Default-config n=20 at Opus — ANSWERED (INCONCLUSIVE).** This was the cleanest path to either confirming or burying the PR #31 Opus directional positive. A first `--paper` attempt was halted at $1.50 when the dispatched agent caught that `--paper` doesn't just increase seeds — it switches the per-seed config from 90 to 1,000 episodes (a 9× cost blow-up to ~$4,500). The corrected default-config run launched 2026-05-13 at $420 budget; it crashed at seed 4 of 20 (PID died mid-`full` condition; $55 sunk). The n=3 partial returned Δ(+meta − flat) = +0.037, a 3.5× collapse from PR #31's +0.131. Bootstrap 95% CI `[−0.102, +0.173]` straddles 0; sign-test p = 0.50. Under the pre-registered rule, **INCONCLUSIVE**. Power calculation against the observed effect would require n ≈ 108 for 80% power — impractical at the $500 cap. The reproducible analysis is in [`bro945-opus-n20/SUMMARY.md`](https://github.com/broomva/research/blob/main/rcs/reports/bro945-opus-n20/SUMMARY.md). The follow-up question is **whether the non-replication is Opus-specific** (in which case Sonnet n=10 on HARDER, ~$50, ~6h, would disambiguate) **or model-general** (in which case the +meta hypothesis is closer to refuted than to confirmed). [^29]
+2. **SWE-bench Verified across tiers.** The current SWE-bench-Lite work is sub-statistical (n=1 paired across 4 instances). A proper run is ~$5,400 at Sonnet × n=50 × 3 seeds (the regime where the base rate ~0.50 maximizes paired McNemar power). The full Phase-2 plan, including pre-registered hypotheses with explicit confirm/refute thresholds, is at [`SWE_BENCH_FULL_PLAN.md`](https://github.com/broomva/rcs/blob/main/microrcs/SWE_BENCH_FULL_PLAN.md). A live concern: SWE-bench Verified is showing training-data contamination at frontier labs in early 2026, so the same work may need to migrate to SWE-bench Pro [^25] or SWE-rebench to remain defensible.
+3. **MemoryAgentBench as the right home for the compounding claim.** PR #28's cross-run compounding result is buried in noise on HARDER_SUITE because HARDER_SUITE has 10 independent tasks — there is no skill to reuse. MemoryAgentBench [^26] (ICLR 2026) is a benchmark for cross-run memory accumulation with four explicit competencies (accurate retrieval, test-time learning, long-range understanding, selective forgetting); it is the surface where compounding signals can actually emerge. Voyager [^27] in Minecraft is the existence proof that they exist.
+4. **L3 governance over multi-month observation windows.** Currently untestable on MVP timescales; requires production deployment of the [Life Agent OS](https://github.com/broomva/life) at fleet scale.
+5. **Construct gap (`λ̂ᵢ` vs. analytic `λᵢ`).** The empirical values are three orders of magnitude smaller than the paper values. The `life-perturb` Rust crate (life PR #1088 [^11]) is the scoped path to closing this — sub-second controlled perturbation injection on real hardware. The Generalized Lyapunov Functions work of Zhang et al. [^28] is also relevant here: it replaces strict step-wise decrease with a multi-step weighted decrease, which is closer to what learned-policy dynamics actually look like, and may dissolve the construct gap entirely.
+6. **Horizontal recursion variants.** The first live `swarm_flat × gemma4` run produced `pass^k = 0.008` under strict-majority quorum but `pass@k = 0.60` under any-peer-success. The aggregation strategy is the dominant variable; the spec's default needs revisiting.
+
+If you are running an agent infrastructure company and the data here makes you uncomfortable, the correct response is to reproduce it. `microRCS` is one Python file. The full `bench` invocation is in [`THESIS_VALIDATION.md`](https://github.com/broomva/rcs/blob/main/microrcs/THESIS_VALIDATION.md). The cost to refute the Sonnet result with n=3 seeds at HARDER_SUITE is $17.78 and roughly four hours.
+
+If you are running a research lab and the methodology is wrong, please point at the specific gate. The pre-registered hypotheses are H1–H4; the threshold structure is in [`data/parameters.toml`](https://github.com/broomva/rcs/blob/main/data/parameters.toml); the validation code is open. I would rather find out the harness is broken than ship the framework on a broken harness.
+
+If you are at YC, a16z, or any allocator who finds the falsification-as-positioning argument unconvincing — I am happy to be wrong about that. The argument lives in the data, not in the framing. The data is at the link in the footer.
+
+---
+
+## Methodology and reproducibility
+
+Every quantitative claim above sources to [`THESIS_VALIDATION.md`](https://github.com/broomva/rcs/blob/main/microrcs/THESIS_VALIDATION.md) [^1] in the `rcs` research repo. The single Python file (`microrcs.py`) is reproducible with `pip install anthropic numpy matplotlib`. Bench invocations:
+
+```bash
+# Reproduce the Sonnet "recursion hurts" result (~$17.78, ~4h):
+python3 microrcs.py bench --suite harder \
+    --conditions flat,+autonomic,+meta,full \
+    --n-seeds 3 --base-seed 42 \
+    --model-l0-l1 claude-sonnet-4-6 --model-l2-l3 claude-opus-4-7
+
+# Reproduce the Opus directional positive (~$63, ~6h):
+python3 microrcs.py bench --suite harder \
+    --conditions flat,+autonomic,+meta,full \
+    --n-seeds 3 --base-seed 42 \
+    --model-l0-l1 claude-opus-4-7 --model-l2-l3 claude-opus-4-7
+
+# Run H4 (shadow-eval load-bearing test):
+python3 microrcs.py run --break-budgets
+```
+
+The paper, the proofs, and the Rust runtime are three projections of a single canonical parameter file ([`data/parameters.toml`](https://github.com/broomva/rcs/blob/main/data/parameters.toml)). A CI drift check enforces that they stay in sync bit-for-bit. [^11]
+
+---
+
+## References
+
+[^1]: Escobar-Valbuena, C. D. (2026). *microRCS Thesis Validation*. Public pinned ledger of every microRCS empirical run since PR #20, including all negatives. `github.com/broomva/rcs/blob/main/microrcs/THESIS_VALIDATION.md`.
+
+[^2]: Y Combinator. *Winter 2026 Batch (W26)*. Batch directory listing 199 companies. `ycombinator.com/companies?batch=W26`.
+
+[^3]: YC Vibe Check. *YC W26 — Categorical breakdown by stated focus area*. Aggregated company tags across 2024–2026 batches showing 41–55% AI-agent-adjacent companies (orchestration, memory, evaluation, runtime, observability).
+
+[^4]: Crunchbase News. *YC's AI agent surge: how a single batch reshaped the agent economy*. Coverage of the W25/S25/W26 AI infrastructure concentration.
+
+[^5]: Andreessen Horowitz. *State of AI in Consumer 2025*. `a16z.com/2025/12/15/state-of-ai-in-consumer-2025-2/`. Framing of the "agent economy" as the dominant consumer surface.
+
+[^6]: Andreessen Horowitz. *The American Dynamism Investment Thesis*, with explicit references to autonomous agents replacing operational headcount.
+
+[^7]: LangChain. *Agent evaluation: how to measure your agent's performance*. Blog series at `blog.langchain.dev`, dated 2024–2026.
+
+[^8]: CrewAI. *Multi-agent orchestration benchmarking*. Documentation at `docs.crewai.com`. Includes per-task latency and cost reporting; my reading does not find paired ablations of crew-orchestrated vs flat baselines at n ≥ 3 seeds across multiple tiers.
+
+[^9]: Significant Gravitas. *AutoGPT — project retrospective and roadmap*. `github.com/Significant-Gravitas/AutoGPT/blob/master/README.md`.
+
+[^10]: LlamaIndex. *RAG benchmarking with LlamaIndex*. Public benchmarks evaluate retrieval-augmented generation quality; the orchestration layer is not isolated from the retrieval layer in the published numbers.
+
+[^11]: Escobar-Valbuena, C. D. (2026). *Recursive Controlled Systems: A Formal Framework for AI Agent Stability* (Paper 0). `github.com/broomva/rcs/raw/main/papers/p0-foundations/main.pdf`. Canonical parameters at `data/parameters.toml`; runtime mirror at `crates/autonomic/autonomic-core/data/rcs-parameters.toml`.
+
+[^12]: *Life Agent OS*. Rust monorepo with executable RCS witnesses (`RcsObserver`, `StabilityBudget`, `MarginEstimator`). `github.com/broomva/life`.
+
+[^13]: *microRCS*. Single-file empirical artifact for the RCS thesis. `github.com/broomva/rcs/tree/main/microrcs`.
+
+[^14]: Y Combinator. *YC Summer 2026 application pitch — agent inference silicon*. Instagram reel, 2026-05-05. The "30–40% peak utilisation" figure is cited from the reel and is consistent with public utilisation reports on commodity GPUs running agent workloads.
+
+[^15]: Princeton NLP. *SWE-bench Verified*. `swebench.com/verified`. Human-verified subset of SWE-bench used as the canonical software-engineering agent benchmark.
+
+[^16]: METR. *RE-Bench: Evaluating frontier AI R&D capabilities of language model agents against human experts*. `metr.org/blog/2024-11-22-introducing-re-bench/`.
+
+[^17]: OpenAI. *MLE-bench: Evaluating machine learning agents on machine learning engineering tasks*. `arxiv.org/abs/2410.07095`.
+
+[^18]: Mialon, G. et al. (2024). *GAIA: A benchmark for general AI assistants*. `arxiv.org/abs/2311.12983`.
+
+[^19]: Wang, A. et al. (2018). *GLUE: A multi-task benchmark and analysis platform for natural language understanding*. The first widely-adopted shared falsification harness in NLP.
+
+[^20]: Kumar, A., et al. (2024). *Recursive Introspection: Teaching Language Model Agents How to Self-Improve* (RISE). NeurIPS 2024. arXiv:2407.18219. **Self-Refine degrades strong models on Math, MMLU, and HotpotQA without an oracle; the paper's contribution is to train this capability rather than prompt for it.** This is the closest peer-reviewed analogue to our Sonnet-hurts result.
+
+[^21]: Agent Capsules (2026). *Quality-Gated Granularity Control for Multi-Agent LLM Pipelines*. arXiv:2605.00410. **Shadow gate blocking FINE→COMPOUND switches below a quality floor; rolling-mean revert.** Closest published peer to our shadow-eval mechanism.
+
+[^22]: SABER (2025). *Small Actions, Big Errors — Safeguarding Mutating Steps in LLM Agents*. arXiv:2512.07850. **Specifically safeguards mutating steps in agent tool-use loops.** Same shape as our L2 shadow gate.
+
+[^23]: MAGE (2026). *Safeguarding LLM Agents against Long-Horizon Threats via Shadow Memory*. arXiv:2605.03228. **Shadow memory inspired by the shadow-stack abstraction.**
+
+[^24]: Wang, H., Poskitt, C. M., Sun, J., & Wei, J. (2026). *Pro²Guard: Proactive Runtime Enforcement of LLM Agent Safety via Probabilistic Model Checking*. arXiv:2508.00500. **PAC-bound shield via DTMC abstraction; runtime veto with statistical guarantees.**
+
+[^25]: SWE-bench Pro (Scale AI, 2026). `swebench.com`. **22-point scaffold swing at constant model holds the model fixed and varies only the scaffold; 250-turn unified scaffold isolates capability from agent-runtime artifacts.** Successor benchmark designed against contamination.
+
+[^26]: Hou, Y., et al. (2025). *Evaluating Memory in LLM Agents via Incremental Multi-Turn Interactions* (MemoryAgentBench). ICLR 2026 / arXiv:2507.05257. **Four memory competencies; the right benchmark surface for cross-run compounding signals.**
+
+[^27]: Wang, G., et al. (2023). *Voyager: An Open-Ended Embodied Agent with Large Language Models*. arXiv:2305.16291. **Existence proof that lifelong skill accumulation produces measurable compounding gains in a long-horizon environment.**
+
+[^28]: Zhang, R., et al. (2025). *Certifying Stability of RL Policies using Generalized Lyapunov Functions*. arXiv:2505.10947. **Replaces strict step-wise decrease with a multi-step weighted decrease — relevant to closing our construct gap between empirical λ̂ᵢ and analytic λᵢ.**
+
+[^29]: Escobar-Valbuena, C. D. (2026). *WS2b — Opus n=20 HARDER bench — VERDICT: INCONCLUSIVE at n=3*. Forensic ledger of the replication attempt, including crash forensics, bootstrap analysis, power calculation, and reproducible Python. `github.com/broomva/research/blob/main/rcs/reports/bro945-opus-n20/SUMMARY.md`. Status appended to BRO-1068 in Linear and the `THESIS_VALIDATION.md` running ledger.
