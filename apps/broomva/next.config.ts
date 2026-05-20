@@ -126,24 +126,11 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      {
-        source: "/api/:path*",
-        headers: [
-          {
-            key: "Access-Control-Allow-Origin",
-            value: "https://broomva.tech",
-          },
-          {
-            key: "Access-Control-Allow-Methods",
-            value: "GET, POST, PUT, DELETE, OPTIONS",
-          },
-          {
-            key: "Access-Control-Allow-Headers",
-            value: "Content-Type, Authorization",
-          },
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-        ],
-      },
+      // CORS on /api/* is now handled by `middleware.ts` (dynamic Origin
+      // echo against an allowlist). Static headers can only emit a single
+      // `Access-Control-Allow-Origin` value, which can't serve both
+      // broomva.tech and additional first-party callers like the
+      // broomva.github.io OSS demos.
     ];
   },
 
