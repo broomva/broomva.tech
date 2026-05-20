@@ -758,6 +758,13 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 gateway_url: gateway_url.clone(),
                 token_override: token.clone(),
                 ca_cert_path: cli.cacert.clone(),
+                // BRO-1189 — `user` / `project` are not yet exposed as
+                // dedicated CLI flags (kept out of the Phase B.1 PR to
+                // keep the flag surface focused). Callers pin them via
+                // `BROOMVA_USER_ID` + `BROOMVA_PROJECT_ID` env vars or
+                // by relying on the dev-token-shortcut derivation.
+                user_id_override: None,
+                project_id_override: None,
             };
             match action {
                 None => {

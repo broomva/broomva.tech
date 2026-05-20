@@ -1,56 +1,234 @@
-//! Client for the lifed daemon — Spec D's 4-step `Agent.CreateSession`
-//! saga + Spec C₃ `StreamSession` events.
+//! lifed/lifegw client surfaces — Phase B.1.
 //!
-//! ## Wire shape (Phase B — interface)
+//! # Two surfaces in one file (BRO-1189)
 //!
-//! The spec at `docs/specs/2026-05-18-broomva-cli-agent-chat-pipeline.md` §6
-//! Phase B reserves the right to ship this surface as either:
+//! Phase B (v0.6.x) shipped a `LifedClient` trait + `LifedHttpClient`
+//! impl that talked to a *hypothetical* `/v1/lifed/agent/...` HTTP/JSON
+//! proxy. Empirical probing against `lumen-smoke` (BRO-1189) showed the
+//! real lifegw mounts a different surface:
 //!
-//!   1. A `tonic` gRPC client driving the canonical proto from
-//!      `~/broomva/core/life/crates/lifed/proto/`, OR
-//!   2. An HTTP/JSON shim talking to a `tonic-web` (or hand-rolled)
-//!      reverse-proxy in front of the same gRPC server.
+//! * **Chat-session create** — HTTP POST `/v1/agent/create_session`
+//!   on lifegw (Tier-1 Bearer; body `{user_id, project_id, label?,
+//!   resume_sid?}`; returns `{sid, agent_id, user_id, project_id,
+//!   created_at_unix}`). Defined at
+//!   `~/broomva/core/life/crates/life-runtime/lifegw/src/services/agent_http.rs`.
+//! * **Chat streaming** — WebSocket upgrade at `/v1/agent/stream` on
+//!   lifegw (Tier-1 Bearer in `Authorization` header *or*
+//!   `Sec-WebSocket-Protocol: bearer.<jwt>`; `?sid=<sid>` query;
+//!   `?last_seq_no=<u64>` query for resume). Frames are JSON with
+//!   `serde(tag = "kind", rename_all = "snake_case")`. Defined at
+//!   `~/broomva/core/life/crates/life-runtime/lifegw/src/services/ws.rs`.
+//! * **Typed task invocations (`broomva agent`)** — no HTTP/JSON
+//!   surface on lifegw or lifed today. lifed only speaks gRPC over UDS.
+//!   The legacy `LifedClient` trait is preserved below behind a
+//!   "returns Unsupported" impl so `cli/agent.rs` keeps compiling; a
+//!   real `broomva agent` wire contract is filed as a follow-up
+//!   (BRO-1190).
 //!
-//! Phase B ships **option 2** — HTTP/JSON over `reqwest` to four
-//! hypothetical endpoints under `<lifed_base>/v1/lifed/...`. Reasons:
+//! # Surface split for Phase B.1
 //!
-//!   * The lifed gateway used by `broomva agent` against a deployed
-//!     stack is not reachable in broomva.tech CI today (the runtime
-//!     contract lives in `broomva/life`, a sibling repo). Pulling
-//!     `tonic` + `prost` + `tonic-build` adds ~120-180 MB to the build
-//!     and a non-trivial build-script dep just to compile dead code.
-//!   * The trait + HTTP shim shape ships the **client-side
-//!     architectural contract** (run lifecycle, frame shape, cancel
-//!     semantics) without committing to a transport. Phase B.1 swaps
-//!     the inner `LifedHttpClient` body for tonic once the lifegw is
-//!     reachable in CI; the trait signature is stable.
-//!   * `wiremock` (already a dev-dep) handles HTTP/JSON natively but
-//!     does NOT carry WebSocket or gRPC primitives. Phase B's tests
-//!     run against the HTTP shim end-to-end without skipping the
-//!     transport layer.
-//!
-//! ## Trait shape
-//!
-//! [`LifedClient`] is the single seam between `cli/agent.rs` and the
-//! substrate. Real production wiring (HTTPS to lifed via tonic-web)
-//! and the in-memory test fake (`FakeLifedClient` in
-//! `tests/agent_task_validation.rs`) implement the same trait, so the
-//! CLI handler is transport-agnostic.
+//! * [`LifegwChatClient`] — the **new** surface used by
+//!   `cli/chat.rs` via `api::agent_stream::connect`. Talks to the real
+//!   lifegw `/v1/agent/create_session` endpoint over HTTPS with the
+//!   existing TLS dev-cert seam from BRO-1186.
+//! * [`LifedClient`] / [`LifedHttpClient`] — the **legacy** trait and
+//!   impl used by `cli/agent.rs`. Every method returns
+//!   [`BroomvaError::Unsupported`]. `cli/agent.rs` continues to pass
+//!   the schema-validation phase (the parts BRO-1189 deems in-scope)
+//!   and then surfaces the unsupported error cleanly when it tries to
+//!   dispatch. BRO-1190 will replace this with the real wire once
+//!   lifed exposes one.
 
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::error::{BroomvaError, BroomvaResult};
 
-// ── Wire shape ──────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
+// SECTION 1 — Real `LifegwChatClient` (BRO-1189 / Phase B.1)
+// ───────────────────────────────────────────────────────────────────
+
+/// Default lifegw base URL when no override is supplied. Production
+/// callers point `LIFEGW_BASE_URL` (or the `--gateway-url` flag,
+/// resolved in `chat.rs`) at the staging or production deployment.
+pub const DEFAULT_LIFEGW_BASE_URL: &str = "https://lifegw.broomva.tech";
+
+/// Per-HTTP-call deadline for the chat-session create. Matches the
+/// gateway-side `UPSTREAM_RPC_TIMEOUT` (10s in `agent_http.rs`) — anything
+/// slower is almost certainly a stuck saga and worth surfacing rather
+/// than hanging the CLI.
+pub const CREATE_SESSION_TIMEOUT: Duration = Duration::from_secs(12);
+
+/// Body shape for POST `/v1/agent/create_session` — mirror of
+/// `lifegw::services::agent_http::CreateSessionBody`. Field names + the
+/// `deny_unknown_fields` posture are pinned by lifegw; bodies that
+/// drift out of sync surface as 422 with the canonical error string.
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateChatSessionBody {
+    /// Tier-1 subject — MUST match the bearer's `sub` claim or lifegw
+    /// returns 403. In dev with `dev-token-for-{user_id}` shortcuts,
+    /// this is the `{user_id}` suffix.
+    pub user_id: String,
+    /// Project namespace lifed uses to scope the routing-cache entry.
+    /// Pinned per session; "default" is acceptable for one-off chats.
+    pub project_id: String,
+    /// Optional human-readable label propagated to lifed (e.g. the
+    /// chat session ULID on the CLI side).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Optional sid to resume from. When set, lifed re-attaches the
+    /// existing session rather than running the create-session saga
+    /// again. Lifegw's `deny_unknown_fields` is strict — only emit
+    /// when actually resuming.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resume_sid: Option<String>,
+}
+
+/// Response shape from POST `/v1/agent/create_session`. Mirror of
+/// `lifegw::services::agent_http::CreateSessionResp`. The `sid` is the
+/// short string the client carries on the subsequent
+/// `wss://.../v1/agent/stream?sid=<sid>` upgrade.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CreateChatSessionResp {
+    pub sid: String,
+    pub agent_id: String,
+    pub user_id: String,
+    pub project_id: String,
+    /// Unix-seconds — server clock; the CLI doesn't compute relative
+    /// times against this but it's useful for tracing + telemetry.
+    pub created_at_unix: i64,
+}
+
+/// Client for the lifegw chat-session create endpoint. Carries the
+/// Tier-1 bearer + an optional TLS dev-cert path (BRO-1186 seam).
+///
+/// One client may be reused across multiple chat sessions — the inner
+/// `reqwest::Client` pools connections so multi-turn / multi-session
+/// CLIs only pay handshake cost once.
+pub struct LifegwChatClient {
+    base_url: String,
+    token: Option<String>,
+    http: reqwest::Client,
+}
+
+impl LifegwChatClient {
+    /// Build a client with production TLS roots only. Use
+    /// [`LifegwChatClient::with_dev_cert`] for `lumen-smoke` /
+    /// self-signed staging gateways.
+    pub fn new(base_url: String, token: Option<String>) -> Self {
+        Self {
+            base_url,
+            token,
+            http: reqwest::Client::builder()
+                .timeout(CREATE_SESSION_TIMEOUT)
+                .connect_timeout(Duration::from_secs(10))
+                .build()
+                .expect("reqwest client builder"),
+        }
+    }
+
+    /// Build a client that appends `ca_cert_path` (PEM) to the webpki
+    /// trust store. BRO-1186 seam — reuses
+    /// [`crate::api::tls::load_extra_root_cert`].
+    pub fn with_dev_cert(
+        base_url: String,
+        token: Option<String>,
+        ca_cert_path: Option<&Path>,
+    ) -> BroomvaResult<Self> {
+        let mut builder = reqwest::Client::builder()
+            .timeout(CREATE_SESSION_TIMEOUT)
+            .connect_timeout(Duration::from_secs(10));
+        if let Some(path) = ca_cert_path {
+            let cert = crate::api::tls::load_extra_root_cert(path)?;
+            builder = builder.add_root_certificate(cert);
+        }
+        let http = builder
+            .build()
+            .map_err(|e| BroomvaError::User(format!("reqwest client builder failed: {e}")))?;
+        Ok(Self {
+            base_url,
+            token,
+            http,
+        })
+    }
+
+    fn url(&self, path: &str) -> String {
+        format!(
+            "{base}{sep}{path}",
+            base = self.base_url.trim_end_matches('/'),
+            sep = if path.starts_with('/') { "" } else { "/" }
+        )
+    }
+
+    /// Hit POST `/v1/agent/create_session` and return the parsed
+    /// response. Maps lifegw's typed error envelope to
+    /// [`BroomvaError`] so the chat REPL can surface a useful message.
+    ///
+    /// On 401, returns [`BroomvaError::AuthRequired`] — the chat REPL
+    /// uses that to prompt `broomva auth login`. On 422, returns
+    /// [`BroomvaError::Api`] with the lifegw-side body verbatim
+    /// (already operator-friendly; e.g. "unknown field 'name'").
+    pub async fn create_chat_session(
+        &self,
+        body: &CreateChatSessionBody,
+    ) -> BroomvaResult<CreateChatSessionResp> {
+        let mut req = self
+            .http
+            .post(self.url("/v1/agent/create_session"))
+            .json(body);
+        if let Some(tok) = &self.token {
+            req = req.header("Authorization", format!("Bearer {tok}"));
+        }
+        let resp = req.send().await.map_err(|e| {
+            BroomvaError::User(format!(
+                "create_chat_session: HTTP transport failed: {e} — \
+                 is lifegw reachable at {}?",
+                self.base_url
+            ))
+        })?;
+        let status = resp.status();
+        if status.as_u16() == 401 {
+            return Err(BroomvaError::AuthRequired);
+        }
+        if !status.is_success() {
+            let code = status.as_u16();
+            let body_text = resp.text().await.unwrap_or_default();
+            return Err(BroomvaError::Api {
+                status: code,
+                message: format!("lifegw POST /v1/agent/create_session: HTTP {code}"),
+                body: Some(body_text),
+            });
+        }
+        let parsed: CreateChatSessionResp = resp.json().await.map_err(|e| {
+            BroomvaError::User(format!(
+                "create_chat_session: response is not the expected JSON: {e}"
+            ))
+        })?;
+        Ok(parsed)
+    }
+}
+
+// ───────────────────────────────────────────────────────────────────
+// SECTION 2 — Legacy `broomva agent` surface (deprecated, BRO-1190)
+// ───────────────────────────────────────────────────────────────────
+//
+// These types were introduced in Phase B against a hypothetical lifed
+// HTTP/JSON proxy. Empirical probing in BRO-1189 showed lifed only
+// exposes gRPC over UDS — there is no HTTP/JSON surface to talk to,
+// even via lifegw (which only forwards `/v1/agent/*` chat routes, not
+// typed task RPCs).
+//
+// The trait + types are preserved so `cli/agent.rs` compiles and its
+// schema-validation paths (which are correct + tested) stay live. The
+// HTTP impl is replaced with one that fails fast — every method
+// returns `BroomvaError::Unsupported` with a pointer at BRO-1190.
 
 /// Per-run identifier — the ULID lifed assigns on `Agent.CreateSession`.
 pub type RunId = String;
 
 /// The task definition handed to `Agent.CreateSession`. Mirrors the
-/// fields from `schemas/agent-task.v1.json` after validation but
-/// before any client-side enrichment (no run_id yet).
+/// fields from `schemas/agent-task.v1.json` after validation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentTaskSpec {
     pub name: String,
@@ -84,8 +262,6 @@ pub struct AgentConfig {
     pub on_timeout: Option<OnTimeout>,
 }
 
-/// Behaviour when `timeout_seconds` is exceeded. Matches the
-/// `agent.on_timeout` enum in `agent-task.v1.json`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum OnTimeout {
@@ -102,9 +278,7 @@ pub struct AgentOutput {
     pub save_to: Option<String>,
 }
 
-/// Reply from `Agent.CreateSession`. lifed assigns `run_id` (ULID),
-/// optional `session_id` (ULID), and the queued `status` (`queued` for
-/// fresh saga, `running` if execution started before reply).
+/// Reply from `Agent.CreateSession` (legacy shape, kept for compile).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSessionResponse {
     pub run_id: RunId,
@@ -113,8 +287,6 @@ pub struct CreateSessionResponse {
     pub status: RunStatus,
 }
 
-/// State machine vertices used by both lifed and the CLI listing /
-/// tail commands. Mirrors the lifed saga states.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RunStatus {
@@ -141,43 +313,36 @@ impl RunStatus {
     }
 }
 
-/// Single event emitted by `lifed.StreamSession`. Shape mirrors the
-/// proto's `oneof event` but flattened to a tagged enum so JSON serde
-/// stays straightforward.
+/// Single event emitted by `lifed.StreamSession` (legacy shape).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RunEvent {
-    /// Saga transitioned state (queued → running, running → completed, etc).
     StatusChanged {
         status: RunStatus,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message: Option<String>,
     },
-    /// Agent called a tool.
     ToolCall {
         name: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         args: Option<serde_json::Value>,
     },
-    /// Tool returned a result (success or failure encoded inside the value).
     ToolResult {
         name: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         result: Option<serde_json::Value>,
     },
-    /// Free-form reasoning the model emitted between tool calls.
-    Reasoning { text: String },
-    /// Model output token (when the agent streams a final answer).
-    Output { text: String },
-    /// Wallet ledger entry for cost tracking.
+    Reasoning {
+        text: String,
+    },
+    Output {
+        text: String,
+    },
     Cost {
         usd: f64,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         component: Option<String>,
     },
-    /// Terminal event — the saga finished and lifed will not emit more
-    /// events. Carries the final structured output if the model
-    /// produced one.
     Done {
         status: RunStatus,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -187,7 +352,7 @@ pub enum RunEvent {
     },
 }
 
-/// Summary row returned by `Agent.ListSessions`.
+/// Summary row returned by `Agent.ListSessions` (legacy shape).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunSummary {
     pub run_id: RunId,
@@ -200,7 +365,7 @@ pub struct RunSummary {
     pub cost_usd: Option<f64>,
 }
 
-/// Detailed row returned by `Agent.GetSession`.
+/// Detailed row returned by `Agent.GetSession` (legacy shape).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunDetail {
     pub run_id: RunId,
@@ -217,10 +382,7 @@ pub struct RunDetail {
     pub error: Option<String>,
 }
 
-// ── LifedClient trait ───────────────────────────────────────────────
-
-/// Boxed stream of [`RunEvent`] used by `tail`. Returns `Ok(None)`
-/// on graceful exhaustion (lifed sent its terminal `Done`).
+/// Boxed stream of [`RunEvent`].
 pub type RunEventStream = Box<dyn RunEventReader + Send>;
 
 #[async_trait::async_trait]
@@ -228,35 +390,19 @@ pub trait RunEventReader {
     async fn next(&mut self) -> BroomvaResult<Option<RunEvent>>;
 }
 
-/// Single seam between `cli/agent.rs` and the lifed substrate.
-/// Production code uses [`LifedHttpClient`]; tests swap a fake.
+/// Legacy trait — `broomva agent` calls these. BRO-1189 keeps them
+/// compiling but every method returns
+/// [`BroomvaError::Unsupported`]. Real impl tracked under BRO-1190.
 #[async_trait::async_trait]
 pub trait LifedClient: Send + Sync {
-    /// Spec D's 4-step saga (CreateAgent → OpenLagoNamespace →
-    /// BindWallet → RegisterAnimaSession). Returns the assigned
-    /// `run_id` once the saga is queued.
     async fn create_session(&self, spec: &AgentTaskSpec) -> BroomvaResult<CreateSessionResponse>;
-
-    /// Stream lifecycle events for an in-flight run. Caller polls
-    /// `next` until `Ok(None)` or a terminal `RunEvent::Done`.
-    /// `from_sequence` lets the caller resume after a transport blip
-    /// (Phase B.1; today this is a no-op for the HTTP shim).
     async fn stream_session(
         &self,
         run_id: &RunId,
         from_sequence: Option<u64>,
     ) -> BroomvaResult<RunEventStream>;
-
-    /// Cancel a run. Returns the new status (typically `Cancelled` if
-    /// the run was still in-flight, or the existing terminal status
-    /// when the call lost the race).
     async fn cancel_session(&self, run_id: &RunId) -> BroomvaResult<RunStatus>;
-
-    /// Look up a single run by id.
     async fn get_session(&self, run_id: &RunId) -> BroomvaResult<RunDetail>;
-
-    /// List recent runs, newest first. `status` filters when set.
-    /// `limit` defaults server-side (typically 50).
     async fn list_sessions(
         &self,
         status: Option<RunStatus>,
@@ -264,235 +410,283 @@ pub trait LifedClient: Send + Sync {
     ) -> BroomvaResult<Vec<RunSummary>>;
 }
 
-// ── Production impl — HTTP/JSON shim ────────────────────────────────
-
-/// `LifedClient` backed by `reqwest`. Talks to a hypothetical lifed
-/// HTTP/JSON proxy mounted under `<lifed_base>/v1/lifed/...`. Phase B
-/// ships this with the explicit caveat (CHANGELOG + module docs above)
-/// that the underlying gRPC wire isn't actually reachable until Phase B.1.
+/// Legacy `LifedClient` impl. Every method fails fast with
+/// [`BroomvaError::Unsupported`] until BRO-1190 ships a real wire.
+///
+/// The struct is preserved (rather than removed) so `cli/agent.rs`
+/// compiles, the templates / schema / dry-run paths still work, and
+/// the user gets a clean operator message instead of a misleading
+/// "connection refused" against the fictional `/v1/lifed/...` routes
+/// the Phase B code used to invent.
+#[derive(Debug)]
 pub struct LifedHttpClient {
+    /// Captured for future use by the BRO-1190 real client. Today
+    /// these are inert.
+    #[allow(dead_code)]
     base_url: String,
+    #[allow(dead_code)]
     token: Option<String>,
-    http: reqwest::Client,
+    #[allow(dead_code)]
+    ca_cert_path: Option<PathBuf>,
 }
 
 impl LifedHttpClient {
-    /// Build the client. `base_url` is typically read from
-    /// `~/.broomva/config.json` `lifedBaseUrl` or `BROOMVA_LIFED_URL`.
-    ///
-    /// Production CA verification is the default. Use
-    /// [`LifedHttpClient::with_dev_cert`] when targeting a local lifed
-    /// daemon with a self-signed cert (BRO-1186 lumen-smoke workflow).
     pub fn new(base_url: String, token: Option<String>) -> Self {
         Self {
             base_url,
             token,
-            http: reqwest::Client::builder()
-                .timeout(Duration::from_secs(30))
-                .connect_timeout(Duration::from_secs(10))
-                .build()
-                .expect("reqwest client builder"),
+            ca_cert_path: None,
         }
     }
 
-    /// Constructor variant that appends an extra root CA cert (PEM) to
-    /// the trust store. Use this when targeting a self-signed dev
-    /// stack (lumen-smoke `https://127.0.0.1:8443`). Production
-    /// roots remain trusted; the only change is one extra accepted
-    /// chain. BRO-1186.
-    ///
-    /// `ca_cert_path` may be `None` — in that case the client behaves
-    /// identically to [`LifedHttpClient::new`]. Returns
-    /// [`BroomvaError::User`] when the path is set but the PEM is
-    /// missing or malformed (fail loudly, never silently).
     pub fn with_dev_cert(
         base_url: String,
         token: Option<String>,
         ca_cert_path: Option<&Path>,
     ) -> BroomvaResult<Self> {
-        let mut builder = reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .connect_timeout(Duration::from_secs(10));
-        if let Some(path) = ca_cert_path {
-            let cert = crate::api::tls::load_extra_root_cert(path)?;
-            builder = builder.add_root_certificate(cert);
-        }
-        let http = builder
-            .build()
-            .map_err(|e| BroomvaError::User(format!("reqwest client builder failed: {e}")))?;
         Ok(Self {
             base_url,
             token,
-            http,
+            ca_cert_path: ca_cert_path.map(|p| p.to_path_buf()),
         })
-    }
-
-    fn url(&self, path: &str) -> String {
-        format!(
-            "{base}{sep}{path}",
-            base = self.base_url.trim_end_matches('/'),
-            sep = if path.starts_with('/') { "" } else { "/" }
-        )
-    }
-
-    fn req(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
-        let mut b = self.http.request(method, self.url(path));
-        if let Some(tok) = &self.token {
-            b = b.header("Authorization", format!("Bearer {tok}"));
-        }
-        b
-    }
-
-    async fn check(&self, resp: reqwest::Response) -> BroomvaResult<reqwest::Response> {
-        let status = resp.status();
-        if status.as_u16() == 401 {
-            return Err(BroomvaError::AuthRequired);
-        }
-        if !status.is_success() {
-            let code = status.as_u16();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(BroomvaError::Api {
-                status: code,
-                message: format!("lifed HTTP {code}"),
-                body: Some(body),
-            });
-        }
-        Ok(resp)
     }
 }
 
+const BRO_1190_MSG: &str = "`broomva agent` substrate wire is not implemented in v0.8.0 — \
+     lifed only exposes gRPC over UDS and has no HTTP/JSON proxy yet. \
+     The schema-validation + dry-run paths still work \
+     (`broomva agent run --dry-run task.yaml`). \
+     Real wire tracked at https://linear.app/broomva/issue/BRO-1190.";
+
 #[async_trait::async_trait]
 impl LifedClient for LifedHttpClient {
-    async fn create_session(&self, spec: &AgentTaskSpec) -> BroomvaResult<CreateSessionResponse> {
-        let resp = self
-            .req(reqwest::Method::POST, "/v1/lifed/agent/create-session")
-            .json(spec)
-            .send()
-            .await?;
-        let resp = self.check(resp).await?;
-        Ok(resp.json().await?)
+    async fn create_session(&self, _spec: &AgentTaskSpec) -> BroomvaResult<CreateSessionResponse> {
+        Err(BroomvaError::Unsupported(BRO_1190_MSG.to_string()))
     }
 
     async fn stream_session(
         &self,
-        run_id: &RunId,
-        from_sequence: Option<u64>,
+        _run_id: &RunId,
+        _from_sequence: Option<u64>,
     ) -> BroomvaResult<RunEventStream> {
-        let mut path = format!("/v1/lifed/agent/{run_id}/stream");
-        if let Some(seq) = from_sequence {
-            path.push_str(&format!("?from_sequence={seq}"));
-        }
-        // NDJSON-over-HTTP shim — each line is one RunEvent. Real
-        // implementation will switch to a streaming gRPC response in
-        // Phase B.1; the trait shape stays identical.
-        let resp = self.req(reqwest::Method::GET, &path).send().await?;
-        let resp = self.check(resp).await?;
-        let bytes = resp.bytes().await?;
-        let buffered = parse_ndjson_events(&bytes)?;
-        Ok(Box::new(BufferedEventStream::new(buffered)))
+        Err(BroomvaError::Unsupported(BRO_1190_MSG.to_string()))
     }
 
-    async fn cancel_session(&self, run_id: &RunId) -> BroomvaResult<RunStatus> {
-        let resp = self
-            .req(
-                reqwest::Method::POST,
-                &format!("/v1/lifed/agent/{run_id}/cancel"),
-            )
-            .send()
-            .await?;
-        let resp = self.check(resp).await?;
-        let body: serde_json::Value = resp.json().await?;
-        // Accept either { "status": "cancelled" } or { "run_id": .., "status": .. }
-        body.get("status")
-            .and_then(|v| serde_json::from_value::<RunStatus>(v.clone()).ok())
-            .ok_or_else(|| BroomvaError::User("cancel response missing `status`".into()))
+    async fn cancel_session(&self, _run_id: &RunId) -> BroomvaResult<RunStatus> {
+        Err(BroomvaError::Unsupported(BRO_1190_MSG.to_string()))
     }
 
-    async fn get_session(&self, run_id: &RunId) -> BroomvaResult<RunDetail> {
-        let resp = self
-            .req(reqwest::Method::GET, &format!("/v1/lifed/agent/{run_id}"))
-            .send()
-            .await?;
-        let resp = self.check(resp).await?;
-        Ok(resp.json().await?)
+    async fn get_session(&self, _run_id: &RunId) -> BroomvaResult<RunDetail> {
+        Err(BroomvaError::Unsupported(BRO_1190_MSG.to_string()))
     }
 
     async fn list_sessions(
         &self,
-        status: Option<RunStatus>,
-        limit: Option<u32>,
+        _status: Option<RunStatus>,
+        _limit: Option<u32>,
     ) -> BroomvaResult<Vec<RunSummary>> {
-        let mut req = self.req(reqwest::Method::GET, "/v1/lifed/agent");
-        if let Some(s) = status {
-            req = req.query(&[("status", s.label())]);
-        }
-        if let Some(n) = limit {
-            req = req.query(&[("limit", n.to_string())]);
-        }
-        let resp = req.send().await?;
-        let resp = self.check(resp).await?;
-        Ok(resp.json().await?)
+        Err(BroomvaError::Unsupported(BRO_1190_MSG.to_string()))
     }
 }
 
-// ── Buffered NDJSON event stream ────────────────────────────────────
-
-struct BufferedEventStream {
-    events: std::collections::VecDeque<RunEvent>,
-}
-
-impl BufferedEventStream {
-    fn new(events: Vec<RunEvent>) -> Self {
-        Self {
-            events: events.into(),
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl RunEventReader for BufferedEventStream {
-    async fn next(&mut self) -> BroomvaResult<Option<RunEvent>> {
-        Ok(self.events.pop_front())
-    }
-}
-
-fn parse_ndjson_events(bytes: &[u8]) -> BroomvaResult<Vec<RunEvent>> {
-    let s = std::str::from_utf8(bytes)
-        .map_err(|e| BroomvaError::User(format!("lifed event stream not UTF-8: {e}")))?;
-    let mut out = Vec::new();
-    for (idx, line) in s.lines().enumerate() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        match serde_json::from_str::<RunEvent>(line) {
-            Ok(evt) => out.push(evt),
-            Err(e) => {
-                // Forward-compat: skip unknown event kinds rather than
-                // bailing on the whole stream. Mirrors the policy on
-                // `lifegw` for unknown ws frames (Spec C₃ §6.5).
-                tracing::warn!("lifed event line {} unparseable, skipping: {e}", idx + 1);
-            }
-        }
-    }
-    Ok(out)
-}
-
-// ── Tests ───────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
+// Tests
+// ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
-    use wiremock::matchers::{header, method, path};
+    use wiremock::matchers::{body_json, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    fn test_client(base: String) -> LifedHttpClient {
-        LifedHttpClient::new(base, Some("test-token".into()))
+    // ── New surface — `LifegwChatClient` (BRO-1189) ────────────────
+
+    fn chat_client(base: String) -> LifegwChatClient {
+        LifegwChatClient::new(base, Some("dev-token-for-test-user-1".into()))
     }
 
-    fn simple_spec() -> AgentTaskSpec {
-        AgentTaskSpec {
+    fn alice_body() -> CreateChatSessionBody {
+        CreateChatSessionBody {
+            user_id: "test-user-1".into(),
+            project_id: "smoke".into(),
+            label: Some("b1-probe".into()),
+            resume_sid: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn create_chat_session_posts_body_and_returns_sid() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/agent/create_session"))
+            .and(header("Authorization", "Bearer dev-token-for-test-user-1"))
+            .and(body_json(json!({
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "label": "b1-probe"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "sid": "01HXYZ-sid",
+                "agent_id": "agent-01HXYZ",
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "created_at_unix": 1779283104i64
+            })))
+            .mount(&server)
+            .await;
+
+        let c = chat_client(server.uri());
+        let resp = c.create_chat_session(&alice_body()).await.unwrap();
+        assert_eq!(resp.sid, "01HXYZ-sid");
+        assert_eq!(resp.agent_id, "agent-01HXYZ");
+        assert_eq!(resp.user_id, "test-user-1");
+    }
+
+    #[tokio::test]
+    async fn create_chat_session_propagates_401_as_auth_required() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/agent/create_session"))
+            .respond_with(ResponseTemplate::new(401).set_body_json(json!({
+                "error": "invalid Tier-1: auth: decode header: InvalidToken"
+            })))
+            .mount(&server)
+            .await;
+
+        let c = chat_client(server.uri());
+        match c.create_chat_session(&alice_body()).await {
+            Err(BroomvaError::AuthRequired) => {}
+            other => panic!("expected AuthRequired, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_chat_session_surfaces_422_body_verbatim() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/agent/create_session"))
+            .respond_with(ResponseTemplate::new(422).set_body_string(
+                "Failed to deserialize the JSON body into the target type: \
+                 name: unknown field `name`, expected one of `user_id`, `project_id`, \
+                 `label`, `resume_sid`",
+            ))
+            .mount(&server)
+            .await;
+
+        let c = chat_client(server.uri());
+        match c.create_chat_session(&alice_body()).await {
+            Err(BroomvaError::Api {
+                status,
+                body: Some(body),
+                ..
+            }) => {
+                assert_eq!(status, 422);
+                assert!(body.contains("unknown field `name`"), "{body}");
+            }
+            other => panic!("expected Api 422, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_chat_session_resume_omits_field_when_absent() {
+        // BRO-1189 — lifegw uses `deny_unknown_fields` AND treats
+        // `resume_sid: null` differently from "absent". We
+        // `skip_serializing_if = "Option::is_none"` to avoid sending
+        // a null-valued field that future lifegw versions might
+        // reject.
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/agent/create_session"))
+            // Match the EXACT body — note no `resume_sid` key.
+            .and(body_json(json!({
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "label": "b1-probe"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "sid": "ok",
+                "agent_id": "agent-ok",
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "created_at_unix": 1779283104i64
+            })))
+            .mount(&server)
+            .await;
+
+        let c = chat_client(server.uri());
+        let resp = c.create_chat_session(&alice_body()).await.unwrap();
+        assert_eq!(resp.sid, "ok");
+    }
+
+    #[tokio::test]
+    async fn create_chat_session_resume_emits_field_when_present() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/agent/create_session"))
+            .and(body_json(json!({
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "label": "b1-probe",
+                "resume_sid": "prior-sid"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "sid": "resumed",
+                "agent_id": "agent-resumed",
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "created_at_unix": 1779283104i64
+            })))
+            .mount(&server)
+            .await;
+
+        let body = CreateChatSessionBody {
+            user_id: "test-user-1".into(),
+            project_id: "smoke".into(),
+            label: Some("b1-probe".into()),
+            resume_sid: Some("prior-sid".into()),
+        };
+        let c = chat_client(server.uri());
+        let resp = c.create_chat_session(&body).await.unwrap();
+        assert_eq!(resp.sid, "resumed");
+    }
+
+    #[tokio::test]
+    async fn create_chat_session_transport_failure_returns_user_error() {
+        // Hit an obviously-unreachable host so connect fails fast.
+        let c = LifegwChatClient::new(
+            "http://192.0.2.0:1".into(),
+            Some("dev-token-for-test-user-1".into()),
+        );
+        match c.create_chat_session(&alice_body()).await {
+            Err(BroomvaError::User(s)) => {
+                assert!(s.contains("HTTP transport failed"), "{s}");
+                assert!(s.contains("is lifegw reachable"), "{s}");
+            }
+            other => panic!("expected transport User error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn create_chat_session_body_omits_optional_when_absent() {
+        let body = CreateChatSessionBody {
+            user_id: "alice".into(),
+            project_id: "p".into(),
+            label: Some("l".into()),
+            resume_sid: None,
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        // resume_sid omitted, label present
+        assert!(!json.contains("resume_sid"), "{json}");
+        assert!(json.contains("\"label\":\"l\""), "{json}");
+    }
+
+    // ── Legacy surface — every method returns Unsupported ──────────
+
+    #[tokio::test]
+    async fn legacy_create_session_returns_unsupported() {
+        let c = LifedHttpClient::new("https://lifed.broomva.tech".into(), Some("t".into()));
+        let spec = AgentTaskSpec {
             name: "test".into(),
             description: None,
             input: AgentInput {
@@ -501,161 +695,35 @@ mod tests {
             },
             agent: None,
             output: None,
-        }
-    }
-
-    #[tokio::test]
-    async fn create_session_posts_spec_and_returns_run_id() {
-        let server = MockServer::start().await;
-        Mock::given(method("POST"))
-            .and(path("/v1/lifed/agent/create-session"))
-            .and(header("Authorization", "Bearer test-token"))
-            .respond_with(ResponseTemplate::new(201).set_body_json(json!({
-                "run_id": "01HXYZ",
-                "status": "queued"
-            })))
-            .mount(&server)
-            .await;
-
-        let c = test_client(server.uri());
-        let resp = c.create_session(&simple_spec()).await.unwrap();
-        assert_eq!(resp.run_id, "01HXYZ");
-        assert_eq!(resp.status, RunStatus::Queued);
-    }
-
-    #[tokio::test]
-    async fn create_session_propagates_401_as_auth_required() {
-        let server = MockServer::start().await;
-        Mock::given(method("POST"))
-            .and(path("/v1/lifed/agent/create-session"))
-            .respond_with(ResponseTemplate::new(401))
-            .mount(&server)
-            .await;
-
-        let c = test_client(server.uri());
-        match c.create_session(&simple_spec()).await {
-            Err(BroomvaError::AuthRequired) => {}
-            other => panic!("expected AuthRequired, got {other:?}"),
-        }
-    }
-
-    #[tokio::test]
-    async fn stream_session_parses_ndjson() {
-        let server = MockServer::start().await;
-        let body = "\
-{\"kind\":\"status_changed\",\"status\":\"running\"}
-{\"kind\":\"tool_call\",\"name\":\"github_read\"}
-{\"kind\":\"done\",\"status\":\"completed\",\"output\":{\"summary\":\"x\"}}
-";
-        Mock::given(method("GET"))
-            .and(path("/v1/lifed/agent/01HX/stream"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(body))
-            .mount(&server)
-            .await;
-
-        let c = test_client(server.uri());
-        let mut stream = c.stream_session(&"01HX".into(), None).await.unwrap();
-        let mut events = Vec::new();
-        while let Some(evt) = stream.next().await.unwrap() {
-            events.push(evt);
-        }
-        assert_eq!(events.len(), 3);
-        match &events[2] {
-            RunEvent::Done { status, output, .. } => {
-                assert_eq!(*status, RunStatus::Completed);
-                assert_eq!(
-                    output.as_ref().unwrap().get("summary").unwrap(),
-                    &json!("x")
-                );
+        };
+        match c.create_session(&spec).await {
+            Err(BroomvaError::Unsupported(s)) => {
+                assert!(s.contains("BRO-1190"), "{s}");
             }
-            other => panic!("expected Done, got {other:?}"),
+            other => panic!("expected Unsupported, got {other:?}"),
         }
     }
 
     #[tokio::test]
-    async fn stream_session_skips_unknown_kinds_for_forward_compat() {
-        let server = MockServer::start().await;
-        let body = "\
-{\"kind\":\"future_event\",\"x\":1}
-{\"kind\":\"status_changed\",\"status\":\"running\"}
-";
-        Mock::given(method("GET"))
-            .and(path("/v1/lifed/agent/01HX/stream"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(body))
-            .mount(&server)
-            .await;
-
-        let c = test_client(server.uri());
-        let mut stream = c.stream_session(&"01HX".into(), None).await.unwrap();
-        let first = stream.next().await.unwrap().unwrap();
-        assert!(matches!(first, RunEvent::StatusChanged { .. }));
-        assert!(stream.next().await.unwrap().is_none());
+    async fn legacy_stream_session_returns_unsupported() {
+        let c = LifedHttpClient::new("https://lifed.broomva.tech".into(), Some("t".into()));
+        match c.stream_session(&"01X".into(), None).await {
+            Err(BroomvaError::Unsupported(_)) => {}
+            // `Box<dyn RunEventReader>` doesn't implement Debug, so
+            // we can't `{:?}` the whole result — print a generic
+            // message instead.
+            Ok(_) => panic!("expected Unsupported, got Ok stream"),
+            Err(other) => panic!("expected Unsupported, got {other:?}"),
+        }
     }
 
     #[tokio::test]
-    async fn cancel_session_returns_new_status() {
-        let server = MockServer::start().await;
-        Mock::given(method("POST"))
-            .and(path("/v1/lifed/agent/01HX/cancel"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "run_id": "01HX",
-                "status": "cancelled"
-            })))
-            .mount(&server)
-            .await;
-
-        let c = test_client(server.uri());
-        let s = c.cancel_session(&"01HX".into()).await.unwrap();
-        assert_eq!(s, RunStatus::Cancelled);
-    }
-
-    #[tokio::test]
-    async fn get_session_returns_detail() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/v1/lifed/agent/01HX"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "run_id": "01HX",
-                "name": "t",
-                "status": "completed",
-                "created_at": "2026-05-18T00:00:00Z",
-                "completed_at": "2026-05-18T00:00:01Z",
-                "cost_usd": 0.123,
-                "output": {"summary": "yay"}
-            })))
-            .mount(&server)
-            .await;
-
-        let c = test_client(server.uri());
-        let d = c.get_session(&"01HX".into()).await.unwrap();
-        assert_eq!(d.run_id, "01HX");
-        assert_eq!(d.status, RunStatus::Completed);
-        assert_eq!(d.cost_usd, Some(0.123));
-    }
-
-    #[tokio::test]
-    async fn list_sessions_passes_query_params() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/v1/lifed/agent"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!([
-                {
-                    "run_id": "01A",
-                    "name": "alpha",
-                    "status": "completed",
-                    "created_at": "2026-05-18T00:00:00Z"
-                }
-            ])))
-            .mount(&server)
-            .await;
-
-        let c = test_client(server.uri());
-        let rows = c
-            .list_sessions(Some(RunStatus::Completed), Some(10))
-            .await
-            .unwrap();
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].name, "alpha");
+    async fn legacy_list_sessions_returns_unsupported() {
+        let c = LifedHttpClient::new("https://lifed.broomva.tech".into(), Some("t".into()));
+        match c.list_sessions(None, None).await {
+            Err(BroomvaError::Unsupported(_)) => {}
+            other => panic!("expected Unsupported, got {other:?}"),
+        }
     }
 
     #[test]

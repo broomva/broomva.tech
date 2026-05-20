@@ -214,6 +214,14 @@ pub struct ChatRunOpts {
     /// `BROOMVA_CA_CERT` env var inside `resolve`. None ⇒ production
     /// CAs only.
     pub ca_cert_path: Option<String>,
+    /// `user_id` for the lifegw `create_chat_session` body (BRO-1189).
+    /// MUST match the bearer's `sub` claim. Resolved in `resolve()`
+    /// via flag → env → token-derived → fallback.
+    pub user_id_override: Option<String>,
+    /// `project_id` for the lifegw `create_chat_session` body
+    /// (BRO-1189). Resolved in `resolve()` via flag → env → config →
+    /// default (`default`).
+    pub project_id_override: Option<String>,
 }
 
 impl ChatRunOpts {
@@ -283,16 +291,121 @@ impl ChatRunOpts {
         // production CA-only behaviour intact.
         let ca_cert_path = crate::api::tls::resolve_ca_cert_path(self.ca_cert_path.as_deref());
 
+        // BRO-1189 — user_id resolved flag → env → token-derived →
+        // sentinel default. The dev-token shortcut
+        // `dev-token-for-{user_id}` is the source of truth in
+        // lumen-smoke; real JWS tokens carry `sub` in the payload but
+        // we keep parsing out of scope for B.1 (caller must supply
+        // `--user` or `BROOMVA_USER_ID` when the token isn't a dev
+        // shortcut).
+        let user_id = self
+            .user_id_override
+            .clone()
+            .or_else(|| {
+                std::env::var("BROOMVA_USER_ID")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+            })
+            .or_else(|| token.as_ref().and_then(|t| derive_user_id_from_token(t)))
+            .unwrap_or_else(|| "default-user".to_string());
+
+        // BRO-1189 — project_id resolved flag → env → config → default.
+        let project_id = self
+            .project_id_override
+            .clone()
+            .or_else(|| {
+                std::env::var("BROOMVA_PROJECT_ID")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+            })
+            .or_else(|| {
+                cfg.as_ref().and_then(|c| {
+                    let val = serde_json::to_value(c).ok()?;
+                    val.get("projectId")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                })
+            })
+            .unwrap_or_else(|| agent_stream::DEFAULT_PROJECT_ID.to_string());
+
         Ok(AgentStreamConfig {
             gateway_url,
             token,
             session_id,
             from_sequence: None,
             model,
-            connect_timeout: Duration::from_secs(10),
+            user_id,
+            project_id,
+            resume_existing_sid: None,
+            connect_timeout: Duration::from_secs(15),
             ca_cert_path,
         })
     }
+}
+
+/// Best-effort extraction of `user_id` from a bearer token (BRO-1189).
+///
+/// Two paths:
+/// * Dev shortcut: `dev-token-for-<user_id>` → return `<user_id>`.
+/// * Real JWS: best-effort decode of the middle segment, look up
+///   `sub`. Failure returns `None` — caller falls back to flag /
+///   env / sentinel.
+pub fn derive_user_id_from_token(token: &str) -> Option<String> {
+    if let Some(user) = token.strip_prefix("dev-token-for-")
+        && !user.is_empty()
+    {
+        return Some(user.to_string());
+    }
+    // Real JWS — base64url-decode the middle segment and parse `sub`.
+    let mut segs = token.split('.');
+    let _header = segs.next()?;
+    let body_b64 = segs.next()?;
+    let _sig = segs.next()?;
+    // base64url no-pad decoder. Use the `base64` crate? Avoid: keep
+    // the helper dep-free. Pad manually.
+    let mut padded = body_b64.replace('-', "+").replace('_', "/");
+    while padded.len() % 4 != 0 {
+        padded.push('=');
+    }
+    let decoded = base64_decode_strict(&padded)?;
+    let value: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
+    value
+        .get("sub")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
+/// Standard base64 decoder shared with `derive_user_id_from_token`.
+/// Pulled into a helper so the test surface can verify it directly
+/// without going through the full token path.
+fn base64_decode_strict(s: &str) -> Option<Vec<u8>> {
+    // Use the rustls/reqwest-already-pulled base64 indirectly: we
+    // re-use `rustls_pemfile`'s internal base64 isn't public, so
+    // bring in a tiny inline decoder. Avoids a new dep.
+    // Map base64 alphabet → 6-bit value.
+    let mut out = Vec::with_capacity(s.len() * 3 / 4);
+    let mut buf: u32 = 0;
+    let mut bits: u32 = 0;
+    for c in s.bytes() {
+        let v = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => 26 + (c - b'a'),
+            b'0'..=b'9' => 52 + (c - b'0'),
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => break,
+            _ => return None,
+        };
+        buf = (buf << 6) | u32::from(v);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buf >> bits) as u8);
+            buf &= (1 << bits) - 1;
+        }
+    }
+    Some(out)
 }
 
 // ── ChatSession — the REPL state machine ─────────────────────────────
@@ -820,6 +933,8 @@ mod tests {
             std::env::remove_var("BROOMVA_MODEL");
             std::env::remove_var("BROOMVA_GATEWAY_URL");
             std::env::remove_var("BROOMVA_TOKEN");
+            std::env::remove_var("BROOMVA_USER_ID");
+            std::env::remove_var("BROOMVA_PROJECT_ID");
         }
         let opts = ChatRunOpts {
             prompt: None,
@@ -828,10 +943,62 @@ mod tests {
             gateway_url: Some("ws://localhost:1".into()),
             token_override: None,
             ca_cert_path: None,
+            user_id_override: None,
+            project_id_override: None,
         };
         let cfg = opts.resolve(None).unwrap();
         assert_eq!(cfg.model.as_deref(), Some(DEFAULT_MODEL));
         assert_eq!(cfg.gateway_url, "ws://localhost:1");
+        // BRO-1189 — project_id has a sentinel default; user_id falls
+        // back through token-derived → "default-user", but the
+        // host's `~/.broomva/config.json` may carry a real token
+        // whose `sub` becomes the user_id. We only assert the value
+        // is non-empty + that the field exists (the
+        // `derive_user_id_from_token` tests cover the actual mapping).
+        assert!(!cfg.user_id.is_empty(), "user_id resolves to a value");
+        assert_eq!(cfg.project_id, "default");
+    }
+
+    #[test]
+    fn chat_run_opts_resolve_uses_explicit_user_override() {
+        unsafe {
+            std::env::remove_var("BROOMVA_USER_ID");
+            std::env::remove_var("BROOMVA_PROJECT_ID");
+            std::env::remove_var("BROOMVA_TOKEN");
+        }
+        let opts = ChatRunOpts {
+            prompt: None,
+            session_id: None,
+            model: None,
+            gateway_url: Some("ws://localhost:1".into()),
+            token_override: None,
+            ca_cert_path: None,
+            user_id_override: Some("explicit-alice".into()),
+            project_id_override: Some("explicit-project".into()),
+        };
+        let cfg = opts.resolve(None).unwrap();
+        assert_eq!(cfg.user_id, "explicit-alice");
+        assert_eq!(cfg.project_id, "explicit-project");
+    }
+
+    #[test]
+    fn chat_run_opts_resolve_derives_user_from_dev_token() {
+        unsafe {
+            std::env::remove_var("BROOMVA_USER_ID");
+            std::env::remove_var("BROOMVA_PROJECT_ID");
+        }
+        let opts = ChatRunOpts {
+            prompt: None,
+            session_id: None,
+            model: None,
+            gateway_url: Some("ws://localhost:1".into()),
+            token_override: Some("dev-token-for-test-user-1".into()),
+            ca_cert_path: None,
+            user_id_override: None,
+            project_id_override: None,
+        };
+        let cfg = opts.resolve(None).unwrap();
+        assert_eq!(cfg.user_id, "test-user-1");
     }
 
     #[test]
@@ -846,8 +1013,66 @@ mod tests {
             gateway_url: None,
             token_override: None,
             ca_cert_path: None,
+            user_id_override: None,
+            project_id_override: None,
         };
         let cfg = opts.resolve(None).unwrap();
         assert_eq!(cfg.model.as_deref(), Some("claude-opus-4-7"));
+    }
+
+    #[test]
+    fn derive_user_id_from_dev_shortcut_returns_suffix() {
+        assert_eq!(
+            derive_user_id_from_token("dev-token-for-alice"),
+            Some("alice".to_string())
+        );
+        assert_eq!(
+            derive_user_id_from_token("dev-token-for-test-user-1"),
+            Some("test-user-1".to_string())
+        );
+    }
+
+    #[test]
+    fn derive_user_id_from_empty_dev_shortcut_returns_none() {
+        assert!(derive_user_id_from_token("dev-token-for-").is_none());
+    }
+
+    #[test]
+    fn derive_user_id_from_garbage_token_returns_none() {
+        assert!(derive_user_id_from_token("not-a-token").is_none());
+        assert!(derive_user_id_from_token("").is_none());
+    }
+
+    #[test]
+    fn derive_user_id_from_real_jws_extracts_sub() {
+        // Build a fake JWS with `sub: "carlos"` in the body. Header +
+        // signature are placeholders — we only decode the body.
+        let header = "eyJhbGciOiJFUzI1NiJ9"; // {"alg":"ES256"}
+        // {"sub":"carlos"} base64url no-pad:
+        let body = base64_url_encode(br#"{"sub":"carlos"}"#);
+        let sig = "AAA";
+        let token = format!("{header}.{body}.{sig}");
+        assert_eq!(derive_user_id_from_token(&token), Some("carlos".into()));
+    }
+
+    fn base64_url_encode(bytes: &[u8]) -> String {
+        // Tiny base64url no-pad encoder for the test.
+        const ALPHA: &[u8; 64] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        let mut out = String::new();
+        let mut buf: u32 = 0;
+        let mut bits: u32 = 0;
+        for b in bytes {
+            buf = (buf << 8) | u32::from(*b);
+            bits += 8;
+            while bits >= 6 {
+                bits -= 6;
+                out.push(ALPHA[((buf >> bits) & 0x3F) as usize] as char);
+            }
+        }
+        if bits > 0 {
+            out.push(ALPHA[((buf << (6 - bits)) & 0x3F) as usize] as char);
+        }
+        out
     }
 }

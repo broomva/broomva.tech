@@ -1,5 +1,80 @@
 # Changelog
 
+## 0.8.0 — 2026-05-20
+
+### `broomva chat` rewired to the real lifegw wire (BRO-1189)
+
+Closes [BRO-1189](https://linear.app/broomva/issue/BRO-1189). Phase B (v0.6.0) shipped `broomva chat` with a `LifedHttpClient` + `TungsteniteStream` that invented its own routes / body shapes / frame names. Empirical probing against `lumen-smoke` (and source-level audit of `~/broomva/core/life/crates/life-runtime/lifegw/src/services/{agent_http.rs,ws.rs}`) revealed three independent gaps that broke `broomva chat` end-to-end:
+
+1. **Body shape** — CLI sent `{name, input: {prompt}}`; lifegw expects `{user_id, project_id, label?, resume_sid?}` (responds with 422 `unknown field 'name'`).
+2. **Route** — CLI hit `/v1/lifed/agent/create-session`; the real path is `/v1/agent/create_session` on lifegw (lifed has no HTTP surface — only gRPC over UDS).
+3. **WS wire** — CLI used `?session=` + `?from_sequence=` query keys + invented `OutboundFrame::UserTurn` / `InboundFrame::Token` wire frames. lifegw uses `?sid=` + `?last_seq_no=` and `send_message` / `agent_event` JSON envelopes (`record.payload.text` carries the token delta; `agent_kind` = `TOKEN | FINISH | ERROR | TOOL_CALL_PENDING | TOOL_RESULT | APPROVAL_REQUIRED | HIBERNATE`).
+
+Additionally surfaced + filed:
+
+- **Lumen-smoke config gap** (NOT in this PR) — `scripts/lumen-smoke.sh` writes a `lifed.toml` with no `[auth]` section, so lifed reads the wrong JWKS path and rejects every Tier-2 lifegw mints. Manual workaround documented in the smoke runbook below; permanent fix is out-of-scope for this CLI PR and tracked separately.
+
+### Scope
+
+- **NEW** `api::lifed::LifegwChatClient` — HTTPS client for the real `POST /v1/agent/create_session` endpoint. Mirrors `lifegw::services::agent_http::CreateSessionBody` (`#[serde(deny_unknown_fields)]` posture, `skip_serializing_if` on optional fields so the strict deny doesn't blow up on null). Returns `CreateChatSessionResp { sid, agent_id, user_id, project_id, created_at_unix }`. Re-uses BRO-1186's TLS dev-cert seam for `lumen-smoke` self-signed gateways.
+- **EDIT** `api::agent_stream::TungsteniteStream` — two-phase connect: (1) HTTP POST `/v1/agent/create_session` via `LifegwChatClient`, (2) WSS upgrade `?sid=<sid>&last_seq_no=<n>` with `Authorization: Bearer <Tier-1>` header. The `Sec-WebSocket-Protocol: bearer.<jwt>` browser path stays available on the lifegw side; Rust callers use the header form (canonical).
+- **NEW** internal `api::agent_stream::wire` module — encapsulates the lifegw wire shapes (`WireOutbound { SendMessage, ApproveDispatch, CancelDispatch, Ping, Close }` + `WireInbound { AgentEvent { seq_no, record, agent_kind }, Pong, Closing }`) and translates them to the CLI's semantic types (`OutboundFrame`, `StreamEvent`). The CLI surface stays stable — `tests/chat_smoke.rs` `FakeStream` keeps working unchanged.
+- **EDIT** `api::agent_stream::AgentStreamConfig` — adds `user_id`, `project_id`, `resume_existing_sid` fields. `DEFAULT_GATEWAY_URL` changes from `wss://lifegw.broomva.tech/v1/agent/stream` (full WS URL) to `https://lifegw.broomva.tech` (base URL); `TungsteniteStream` derives both the HTTPS create-session URL and the WSS stream URL from it. Source-breaking — hence the minor bump.
+- **EDIT** `cli/chat.rs::ChatRunOpts` — adds `user_id_override` + `project_id_override` fields; `resolve()` now derives `user_id` via flag → `BROOMVA_USER_ID` env → token-derived (`dev-token-for-{user}` shortcut + best-effort `sub`-claim parse on real JWS) → fallback `default-user`. `project_id` defaults to `default`.
+- **EDIT** `api::lifed::LifedClient` (legacy) — every method now returns `BroomvaError::Unsupported` with a `BRO-1190` pointer. `broomva agent` substrate wire is filed as a separate ticket because lifed exposes no HTTP/JSON surface today (only gRPC over UDS). The schema validation + dry-run + templates paths still work — only `agent run` / `list` / `get` / `tail` / `cancel` surface the unsupported error.
+- **NEW** `error::BroomvaError::Unsupported(String)` variant for the surface-not-yet-wired pattern.
+- **NEW** AgentEvent kind routing in the wire decoder: `TOKEN` → `StreamEvent::Token`; `FINISH` → `TurnComplete`; `ERROR` → `TurnError`; `TOOL_CALL_PENDING` / `TOOL_RESULT` / `APPROVAL_REQUIRED` / `HIBERNATE` → informational tokens (`[tool_call_pending]` etc.) so the REPL operator sees activity even without a dedicated UI affordance.
+
+### Tests
+
+129 lib tests + 14 integration tests = 143 total green (was 120 pre-PR; +23 net):
+
+- `api/lifed.rs` — 9 new tests: `create_chat_session` happy path (with body match), 401→AuthRequired, 422→Api{body verbatim}, resume sid present + omitted, transport failure → User error, body shape round-trip + 3 legacy-Unsupported tests.
+- `api/agent_stream.rs::tests` — 13 new tests: real-wire `TOKEN` / `FINISH` / `ERROR` / `TOOL_CALL_PENDING` decode, empty-text-payload defensive drop, unknown agent_kind drop, `pong` / `closing` drop, legacy fixtures still decode, outbound encoder produces real `send_message` / `cancel_dispatch` / `ping`, default config sanity.
+- `cli/chat.rs::tests` — 5 new tests: `derive_user_id_from_token` dev-shortcut, empty dev-shortcut, garbage, real JWS sub-claim, default user/project on resolve.
+
+### Composition
+
+- BRO-1186 (TLS dev-cert) — `LifegwChatClient` re-uses `api::tls::load_extra_root_cert` + `build_tungstenite_connector` so no duplicate cert plumbing.
+- BRO-1183 (PromptPushResponse) — unrelated; this PR doesn't touch the prompts surface.
+
+### Manual smoke (BRO-1189 goal condition)
+
+Procedure (replicates the verbatim smoke against `lumen-smoke`):
+
+```bash
+# Terminal A — bring up lumen-smoke + patch lifed config to read the
+# lifegw JWKS path (workaround for the lumen-smoke.sh config gap).
+cd ~/broomva/core/life/.worktrees/lumen-phase-alpha-m7-w
+bash scripts/lumen-smoke.sh up
+# Append a [auth] section to lifed.toml + restart lifed only:
+cat >> /tmp/lumen-smoke/lifed.toml <<'EOF'
+
+[auth]
+jwks_path = "/tmp/lumen-smoke/run/lifegw-jwks.json"
+substrate_signing_key_path = "/tmp/lumen-smoke/run/lifed-signing-key.pem"
+substrate_jwks_publish_path = "/tmp/lumen-smoke/run/lifed-jwks.json"
+revoked_sids_path = "/tmp/lumen-smoke/run/revoked_sids.json"
+dev_signer_enabled = true
+EOF
+kill $(cat /tmp/lumen-smoke/lifed.pid)
+nohup ./.target/debug/lifed daemon --allow-mock-fallback \
+  --config /tmp/lumen-smoke/lifed.toml \
+  >> /tmp/lumen-smoke/lifed.log 2>&1 &
+
+# Terminal B — drive the new CLI.
+cd ~/broomva/broomva.tech-worktrees/cli-phase-b1
+cargo build --release -p broomva
+CA=~/broomva/core/life/.worktrees/lumen-phase-alpha-m7-w/crates/life-runtime/lifegw/dev-tls/dev-ca.pem
+target/release/broomva chat \
+  --cacert $CA \
+  --gateway-url https://127.0.0.1:8443 \
+  --token "dev-token-for-test-user-1" \
+  "say hello in three words"
+```
+
+Captured transcript in the PR body.
+
 ## 0.7.0 — 2026-05-19
 
 ### CLI surfaces GitHub-mirror failure on admin prompt push/update (BRO-1183)
