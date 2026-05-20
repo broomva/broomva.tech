@@ -64,6 +64,14 @@ const PUBLIC_API_PREFIXES = [
   // to no-op for anonymous readers (`NextResponse.json(null)` on GET, 401 on
   // POST). The proxy must let the request through so the handler can pick.
   "/api/audio-playback",
+  // Edge endpoints (BRO-1208): Anthropic Messages + OpenAI Chat Completions
+  // canonical surfaces. Both routes do their own Tier-1 JWT verification
+  // inside the handler — header bearer (BROOMVA_TOKEN / Tier-1 cap) OR
+  // Neon Auth session → minted Tier-1 — and return Anthropic/OpenAI-shape
+  // 401 JSON envelopes when auth is missing. They MUST NOT be redirected
+  // to /login because external SDK callers (curl, @anthropic-ai/sdk,
+  // openai) cannot follow HTML auth redirects.
+  "/api/v1",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
