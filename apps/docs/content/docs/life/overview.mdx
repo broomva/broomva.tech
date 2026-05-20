@@ -1,6 +1,6 @@
 ---
 title: Agent OS Architecture
-description: The Life Agent Operating System — ten subsystems modeled after biological primitives, written in Rust.
+description: The Life Agent Operating System — twelve subsystems modeled after biological primitives, written in Rust.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -9,10 +9,10 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 Life is an Agent Operating System written in Rust. It provides the runtime, persistence, regulation, finance, and networking infrastructure for autonomous AI agents. The name reflects the ambition: creating artificial life from computational primitives.
 
-The system is organized as a Rust workspace with 10 subsystems, totaling over 130,000 lines of Rust. All crates use Rust 2024 Edition with MSRV 1.85 (the Spaces WASM module uses Rust 2021 Edition as required by SpacetimeDB).
+The system is organized as a Rust workspace with 12 active subsystems across 139 crates, totaling over 286,062 lines of Rust. All crates use Rust 2024 Edition with MSRV 1.85 (the Spaces WASM module uses Rust 2021 Edition as required by SpacetimeDB).
 
 <Callout type="info">
-  **Current metrics:** v0.2.0 (Stabilization Phase) with over 4,800 test functions across 210 test files. All tests pass.
+  **Current metrics:** v0.3.0 with 4,510 test functions across 622 test files. All tests pass.
 </Callout>
 
 ## Biological analogy
@@ -22,7 +22,7 @@ Each subsystem maps to a biological system. This is not a metaphor for marketing
 | Subsystem | Biological Analog | Role |
 |-----------|-------------------|------|
 | **aiOS** | DNA | Kernel contract -- canonical types, event taxonomy, trait interfaces |
-| **Anima** | Soul | Identity -- cryptographic keys, beliefs, policy manifests |
+| **Anima** | Soul | Identity -- cryptographic keys, beliefs, policy manifests, AnimaCustody backends |
 | **Arcan** | Brain + nervous system | Agent runtime -- cognition, execution, LLM provider calls |
 | **Lago** | Bone marrow + blood cells | Persistence -- event journal, blob storage, knowledge index |
 | **Praxis** | Hands + motor system | Tool execution -- sandboxed commands, filesystem, MCP bridge |
@@ -31,17 +31,29 @@ Each subsystem maps to a biological system. This is not a metaphor for marketing
 | **Haima** | Circulatory system | Finance -- x402 payments, wallet management, per-task billing |
 | **Spaces** | Social/hive behavior | Networking -- distributed agent communication via SpacetimeDB |
 | **Vigil** | Senses + perception | Observability -- OpenTelemetry traces, GenAI metrics |
+| **Chronos** | Circadian rhythm | Temporality -- wake scheduling, trigger multiplexing, durable agendas |
+| **Inference** | Motor cortex | Compute contract -- InferenceBackend trait, KV cache, token streaming |
+
+## Infrastructure layer
+
+Two daemons sit outside the subsystem tree and form the internet-facing infrastructure:
+
+| Component | Role |
+|-----------|------|
+| **lifegw** | Stateless edge gateway — TLS termination, JWT verification, Tier-2 token minting, WebSocket upgrade |
+| **lifed** | Privileged supervisor daemon — substrate proxy saga (CreateAgent → OpenLagoNamespace → BindWallet → RegisterAnimaSession) |
 
 ## Architecture diagram
 
 ```
 aiOS (kernel contract — types, traits, event taxonomy)
   │
-  ├── Anima (identity — soul, keypairs, beliefs, policy)
+  ├── Anima (identity — soul, keypairs, AnimaCustody backends)
   │     └── anima-lago bridge → Lago
   │
   ├── Arcan (cognition + execution — agent runtime)
   │     ├── → Praxis (tool execution — sandbox + skills + MCP)
+  │     ├── → Inference (compute contract — InferenceBackend + KV cache)
   │     ├── arcan-lago bridge
   │     │     └── Lago (persistence — event journal + blob store)
   │     └── arcan-spaces bridge
@@ -49,6 +61,9 @@ aiOS (kernel contract — types, traits, event taxonomy)
   │
   ├── Autonomic (homeostasis — stability regulation)
   │     └── autonomic-lago bridge → Lago
+  │
+  ├── Chronos (temporality — wake scheduling + trigger multiplexing)
+  │     └── chronos-lago bridge → Lago
   │
   ├── Nous (metacognition — quality evaluation + LLM-as-judge)
   │     ├── nous-middleware → Arcan (inline evaluators)
@@ -58,9 +73,11 @@ aiOS (kernel contract — types, traits, event taxonomy)
   │     └── haima-lago bridge → Lago
   │
   └── Vigil (observability — OTel tracing + GenAI metrics)
+
+Internet → lifegw (TLS + JWT + rate-limit) → lifed (supervisor) → subsystem daemons
 ```
 
-All subsystems communicate through the `aios-protocol` contract defined in aiOS. Events flow through Lago's append-only journal. Bridge crates (`anima-lago`, `arcan-lago`, `autonomic-lago`, `haima-lago`, `nous-lago`) connect subsystems to the shared persistence layer. Agent identity originates from [Anima](/docs/life/anima) -- it provides the cryptographic keypairs (Ed25519 for auth, secp256k1 for economics) and the policy manifests that constrain agent behavior.
+All subsystems communicate through the `aios-protocol` contract defined in aiOS. Events flow through Lago's append-only journal. Bridge crates (`anima-lago`, `arcan-lago`, `autonomic-lago`, `haima-lago`, `nous-lago`, `chronos-lago`) connect subsystems to the shared persistence layer.
 
 ## The kernel contract (aiOS)
 
@@ -90,7 +107,7 @@ pub enum OperatingMode {
 | Cognition | `AssistantMessage`, `ToolCall`, `ToolResult` |
 | Memory | `MemoryStored`, `MemoryRetrieved` |
 | Approval | `ApprovalRequested`, `ApprovalGranted`, `ApprovalDenied` |
-| Custom | Any subsystem-specific event (Autonomic, Haima, etc.) |
+| Custom | Any subsystem-specific event (Autonomic, Haima, Chronos, etc.) |
 
 - **Capability** -- the permission model for what an agent can do
 - **SoulProfile** -- the agent's personality, goals, and constraints
@@ -109,68 +126,62 @@ The kernel defines an **8-phase tick lifecycle** that every agent execution foll
 
 ## Current state
 
-Life is in **v0.2.0 (Stabilization Phase)**.
+Life is in **v0.3.0**.
 
 ### What works end-to-end
 
 The core agent loop is fully functional. A user sends a chat message, Arcan loads the session from the Lago journal, reconstructs the state, calls an LLM provider (Anthropic, OpenAI-compatible, or Mock), executes tools through the Praxis sandbox, persists all events to redb, and streams the response via multi-format SSE. Sessions are fully replayable from the event journal.
 
-### Completed features
+lifegw is production-deployable: TLS termination, real ES256 + Vercel JWKS verification, Tier-2 capability token minting, WebSocket bidi streaming with reconnect-by-sequence, rate limiting, and AnimaCustody routes (sign, mint, enroll passkey).
 
-- Memory system (5 event types, operating-mode observer, MemoryProjection, governed tools)
-- Context compiler (typed blocks, per-block budgets, deterministic assembly)
-- Approval workflow (ApprovalGate, async pause/resume, auto-timeout)
-- Multi-provider support (Anthropic, Mock, OpenAI-compatible with retry)
-- Blob storage (SHA-256 + zstd, wired to file endpoints)
-- Default policy rules (5 rules, 3 roles, 2 hooks)
-- CLI commands (session, log, cat, branch, init)
-- AI SDK v6 streaming (UiPart enum, boundary signals, Vercel format)
-- Praxis tool engine (90 tests -- sandbox, filesystem, hashline editing, SKILL.md, MCP bridge)
+### Completed subsystems
+
+- Arcan agent runtime (cognition loop, context compiler, multi-provider support, approval workflow)
+- Lago persistence (event journal, blob storage, BM25/graph search, redb embed)
+- Praxis tool engine (sandbox, filesystem, hashline editing, SKILL.md, MCP bridge)
 - Autonomic homeostasis (economic modes, hysteresis gates, RuleSet evaluation)
 - Haima finance (x402 protocol, secp256k1 wallet, per-task billing, Lago bridge)
 - Spaces networking (11 tables, 24 reducers, 5-tier RBAC, SpacetimeDB 2.0)
-- Anima identity (AgentSelf composite, dual keypair derivation, PolicyManifest, Lago genesis events)
+- Anima identity (AnimaCustody trait, 6 backends: InProcess, VaultTransit, AwsKms, GcpKms, TPM, HardwareWallet, WebCrypto, Remote; DID multicodec 0x1200)
 - Vigil observability (OpenTelemetry-native tracing, GenAI metrics, contract-derived spans)
 - Nous metacognition (5 eval layers, inline heuristics, LLM-as-judge, Autonomic feedback)
+- Chronos temporality (M0: WakeRouter + HeartbeatTrigger, durable agenda in M1)
+- Inference compute contract (InferenceBackend trait, InProcess backend, InMemoryKvCache, Router)
+- lifegw edge gateway (TLS 1.3, JWKS ES256, rate-limit, admin plane, AnimaCustody routes, WS bidi)
 
 ### Known gaps
 
 - Branching not yet exposed (Lago supports it, Arcan defaults to "main")
 - No OS-level sandbox isolation (soft sandbox only)
 - Network isolation declared but not enforced
-- No conformance test suite across aiOS/Arcan/Lago
-- Chronos/Aegis/Mnemo not yet started
+- Inference hardware backends (MLX, vLLM, Groq, Cerebras) in future Spec E phases
+- Chronos M1 (real HttpTrigger + durable agenda) not yet started
 
 ## Running locally
-
-Each subsystem runs as an independent daemon:
 
 ```bash
 # From the life/ repository root
 
-# Start the Arcan agent runtime (port 3000)
-cd arcan && cargo run -p arcan
+# Topology A — direct (development)
+cargo run -p arcand              # Arcan agent runtime (port 3000)
+cargo run -p autonomicd          # Autonomic homeostasis (port 3002)
+cargo run -p haimad              # Haima finance (port 3003)
+cargo run -p chronosd            # Chronos wake scheduler (port 3004)
+
+# Topology B — lifegw + lifed proxy (staging / production)
+cargo run -p lifegw              # Edge gateway (TLS, port 443 / 8443)
+cargo run -p lifed               # Supervisor daemon (UDS)
+
 # With a real LLM provider:
-ANTHROPIC_API_KEY=... cargo run -p arcan
-
-# Start the Autonomic homeostasis controller (port 3002)
-cd autonomic && cargo run -p autonomicd
-
-# Start the Haima finance engine (port 3003)
-cd haima && cargo run -p haimad
-
-# Lago runs embedded within Arcan via arcan-lago bridge
-# Spaces requires a SpacetimeDB instance:
-cd spaces/spacetimedb && spacetime publish my-space
+ANTHROPIC_API_KEY=... cargo run -p arcand
+# Or point Claude Code at lifegw directly:
+ANTHROPIC_BASE_URL=https://localhost:8443 claude
 ```
 
-### Cross-project validation
+### Workspace validation
 
 ```bash
-(cd arcan && cargo fmt && cargo clippy --workspace && cargo test --workspace) && \
-(cd lago && cargo fmt && cargo clippy --workspace && cargo test --workspace) && \
-(cd autonomic && cargo fmt && cargo clippy --workspace -- -D warnings && cargo test --workspace) && \
-(cd spaces && cargo fmt && cargo clippy --workspace -- -D warnings && cargo check)
+cargo fmt --workspace && cargo clippy --workspace && cargo test --workspace
 ```
 
 ## Running as a managed deployment

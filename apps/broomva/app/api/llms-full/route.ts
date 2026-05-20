@@ -93,6 +93,7 @@ ${promptEntries.filter(Boolean).join("\n")}
 - \`GET ${config.appUrl}/sitemap.xml\` — Full sitemap with all pages and content
 - \`GET ${config.appUrl}/llms.txt\` — Concise site overview for LLMs
 - \`GET ${config.appUrl}/robots.txt\` — Crawler directives
+- \`GET ${config.appUrl}/<kind>/<slug>.md\` — Raw markdown for any content page (kind: writing, projects, notes, prompts)
 
 ## Features
 

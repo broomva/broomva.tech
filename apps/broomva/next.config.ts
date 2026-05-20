@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
     return [
       { source: "/llms.txt", destination: "/api/llms" },
       { source: "/llms-full.txt", destination: "/api/llms-full" },
+      // Stainless-style: append .md to any content URL to get the raw markdown.
+      { source: "/writing/:slug.md", destination: "/api/md/writing/:slug" },
+      { source: "/projects/:slug.md", destination: "/api/md/projects/:slug" },
+      { source: "/notes/:slug.md", destination: "/api/md/notes/:slug" },
+      { source: "/prompts/:slug.md", destination: "/api/md/prompts/:slug" },
       // lifegw's default `auth.jwks_url` points at `/api/auth/jwks.json`
       // (see `core/life/crates/life-runtime/lifegw/src/config.rs`). The
       // Neon Auth catch-all `[...path]` ate the literal-folder version

@@ -1,0 +1,151 @@
+---
+title: Chronos
+description: The temporal substrate primitive — multiplexes all agent wake sources into a single ordered event stream.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+# Chronos
+
+Chronos is the temporal substrate of the Agent OS. Every autonomous agent must answer two fundamental questions: *when should I wake?* and *what should I do when I wake?* Chronos answers the first question completely, and introduces the agenda primitive (in M1) that begins to answer the second.
+
+The name comes from the Greek god of time — not the Titan Kronos, but the philosophical personification of linear, sequential time that flows forward and cannot be reversed.
+
+<Callout type="info">
+  **Chronos is M0-shipped.** The `HeartbeatTrigger` is real and production-tested. All other trigger types (`Http`, `Cron`, `FsWatch`, `SubAgentReturn`, `Threshold`, `Webhook`) are stubbed with correct shapes and are being built out across M1–M3. The dependency isolation law — `chronos-core` depends only on `aios-protocol` — is enforced by CI.
+</Callout>
+
+## Biological analogy
+
+Chronos corresponds to the **circadian rhythm / autonomic nervous system clock** in biological systems. The circadian clock doesn't run behavior — it gates behavior by signaling when conditions are right for different kinds of activity. Chronos does the same thing for agents: it coalesces heterogeneous temporal signals from the environment (HTTP calls, file changes, sub-agent completions, heartbeats) into a single ordered wake stream that the kernel can consume without caring about the source.
+
+Just as an organism's internal clock integrates light, temperature, and metabolic signals, `WakeRouter` integrates multiple `WakeTrigger` implementations into one stream. The kernel sees a uniform `WakeEvent` regardless of whether the wake came from a webhook or a heartbeat.
+
+## Architecture
+
+Chronos is structured as four crates with strict dependency discipline:
+
+| Crate | Role |
+|-------|------|
+| `chronos-core` | Core types (`WakeEvent`, `WakeSource`, `WakeTrigger` trait, `WakeRouter`). Zero dependencies beyond `aios-protocol`. |
+| `chronos-triggers` | Concrete trigger implementations — `HeartbeatTrigger` (real), stubs for Http, Cron, FsWatch, SubAgentReturn, Threshold, Webhook. |
+| `chronos-lago` | Bridge to Lago persistence — durable wake-event journal, agenda persistence (M1). |
+| `chronosd` | The Chronos daemon binary — runs `WakeRouter`, exposes HTTP API, handles graceful shutdown. |
+
+<Callout type="warn">
+  **Dependency isolation law.** `chronos-core` must depend only on `aios-protocol`. It must not import Lago, Arcan, Autonomic, or any other Life subsystem. This is enforced by a CI script that fails the build if the dependency closure grows. The law exists to keep Chronos usable as a standalone kernel primitive without pulling the entire graph.
+</Callout>
+
+## Core types
+
+### `WakeEvent`
+
+The universal envelope for every temporal signal the kernel receives:
+
+```rust
+pub struct WakeEvent {
+    pub id: Ulid,
+    pub timestamp: SystemTime,
+    pub source: WakeSource,
+    pub payload: WakePayload,
+    pub target_session: Option<SessionId>,
+}
+```
+
+Every trigger produces a `WakeEvent`. The kernel consumes `WakeEvent` values from the stream without needing to know which trigger produced them. `target_session` is set when a wake event is addressed to a specific running session (for example, a `SubAgentReturn` knows which parent session to resume).
+
+### `WakeSource`
+
+The taxonomy of all possible wake origins:
+
+```rust
+pub enum WakeSource {
+    Heartbeat,       // Regular interval ticks — real in M0
+    Http,            // Inbound HTTP /runs call — stubbed, real in M1
+    Cron,            // Cron schedule expression — stubbed, real in M2+
+    FsWatch,         // File system change — stubbed, real in M3
+    SubAgentReturn,  // Sub-agent completed — stubbed, real in M3
+    Threshold,       // Metric crossed a threshold — stubbed, beyond M3
+    Webhook,         // External webhook delivery — stubbed, beyond M3
+}
+```
+
+### `WakeTrigger`
+
+The async trait every trigger backend implements:
+
+```rust
+pub trait WakeTrigger: Send + Sync {
+    fn source(&self) -> WakeSource;
+    fn stream(&self) -> Pin<Box<dyn Stream<Item = WakeEvent> + Send>>;
+}
+```
+
+A trigger is responsible for producing an infinite stream of `WakeEvent` values. The `WakeRouter` merges streams from all registered triggers into one ordered output.
+
+### `WakeRouter`
+
+The multiplexer that coalesces all trigger streams:
+
+```rust
+let mut router = WakeRouter::new();
+router.register(HeartbeatTrigger::new(Duration::from_secs(30)));
+// future: router.register(HttpTrigger::new(api_config));
+// future: router.register(CronTrigger::new("0 * * * *"));
+
+let mut wake_stream = router.run();
+while let Some(event) = wake_stream.next().await {
+    kernel.wake(event).await?;
+}
+```
+
+`WakeRouter::run()` spawns each trigger concurrently and selects across them with fair scheduling. A failing trigger logs the error and is dropped from the set without taking down the router.
+
+## How it works
+
+<Steps>
+  <Step>
+    **Register triggers.** At startup, `chronosd` registers all configured `WakeTrigger` implementations with the `WakeRouter`. In M0, this is just the `HeartbeatTrigger` at a configured interval.
+  </Step>
+  <Step>
+    **Multiplex.** `WakeRouter::run()` spawns each trigger in its own task and merges their output streams. The merged stream is ordered by arrival — there is no global clock re-sort. Triggers are responsible for emitting events with accurate `timestamp` values.
+  </Step>
+  <Step>
+    **Persist.** `chronos-lago` writes each `WakeEvent` to the Lago event journal via `WakeEventSink`. This gives the kernel full replay capability — if the process restarts, the journal can be scanned for missed events since the last processed ULID.
+  </Step>
+  <Step>
+    **Deliver.** The kernel receives `WakeEvent` from the router stream and dispatches to the appropriate session or schedules a new session start. With `target_session` set, the event is routed directly. Without it, the kernel uses its scheduling policy to decide what to do.
+  </Step>
+  <Step>
+    **Shut down gracefully.** `chronosd` handles SIGTERM by closing all trigger streams and draining the router. At M0 ship, graceful shutdown completes in **0.046 seconds**.
+  </Step>
+</Steps>
+
+## Milestone roadmap
+
+| Milestone | Trigger | Status |
+|-----------|---------|--------|
+| **M0** | `HeartbeatTrigger` — real, interval-based | Shipped 2026-05-13 |
+| **M1** | `HttpTrigger` — real axum server in `chronos-api` answering `/runs` | Planned |
+| **M1** | Durable per-session agenda (what the agent does when it wakes) | Planned |
+| **M3** | `FsWatchTrigger` — inotify/FSEvents integration | Planned |
+| **M3** | `SubAgentReturnTrigger` — sub-agent completion signals | Planned |
+| **Beyond** | `CronTrigger`, `WebhookTrigger`, `ThresholdTrigger` | Backlog |
+
+## Relation to other subsystems
+
+| Subsystem | Relationship |
+|-----------|-------------|
+| **Arcan** | Arcan is the agent runtime that acts on wake events. Chronos tells the kernel *when* to run; Arcan handles *what* runs. |
+| **Lago** | `chronos-lago` persists wake events to the Lago journal. The replay capability means no wake event is lost across process restarts. |
+| **Autonomic** | Autonomic governs *whether* an agent is allowed to run (budget, gating, policy). Chronos defers to Autonomic's gating decisions after producing a wake signal. |
+| **aios-protocol** | The only upstream dependency of `chronos-core`. All shared protocol types live there; Chronos never pulls subsystem crates. |
+
+## Test coverage
+
+At M0 ship: 15 Chronos-specific tests covering `HeartbeatTrigger` timing, `WakeRouter` concurrent multiplexing, SIGTERM shutdown sequence, and `WakeEvent` serialization round-trips. 315 regression tests across the full workspace remained green.
+
+<Callout type="info">
+  **M0 scope.** Chronos M0 ships the router, the type system, the dependency law, and one real trigger. The goal was to establish the shape that all future triggers conform to — not to ship all triggers. A correct heartbeat plus a complete stub set is a stronger foundation than a partial real implementation of many triggers.
+</Callout>
