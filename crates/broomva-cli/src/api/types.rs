@@ -25,9 +25,41 @@ pub struct PromptSummary {
     pub updated_at: Option<String>,
 }
 
+/// Returned by `BroomvaClient::create_prompt` and `update_prompt`. Carries
+/// the deserialized `PromptDetail` alongside the operator-facing GitHub-mirror
+/// signal (BRO-1183). A named struct keeps the API extensible — future
+/// out-of-band signals (e.g. CDN purge status) become new fields rather than
+/// another breaking tuple expansion. `prompt` derefs through field access so
+/// existing callers that only care about the body can ignore the rest.
+#[derive(Debug, Clone)]
+pub struct PromptPushResponse {
+    pub prompt: PromptDetail,
+    /// Raw `Warning` header verbatim when the server sent one. The CLI
+    /// surfaces this only when the body field is absent (older servers).
+    pub warning_header: Option<String>,
+}
+
+/// GithubMirrorStatus is the operator-facing signal emitted by the server
+/// on admin POST `/api/prompts` and PUT `/api/prompts/[slug]` (BRO-1181).
+/// Emitted as `{"ok": true}` on success or `{"ok": false, "error": "..."}`
+/// when the GitHub mirror failed. Older servers omit the field entirely;
+/// the consumer treats `None` as "no signal available" rather than success.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GithubMirrorStatus {
+    pub ok: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 /// PromptDetail matches `GET /api/prompts/[slug]`
 /// (`apps/chat/app/api/prompts/[slug]/route.ts`). Same caveat as
 /// PromptSummary: `id` is omitted server-side.
+///
+/// `github_mirror` is populated only on admin POST `/api/prompts` and
+/// PUT `/api/prompts/[slug]` responses (BRO-1181). It is `None` on GETs
+/// and against older servers — both shapes deserialize cleanly because
+/// `PromptDetail` does not set `deny_unknown_fields`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PromptDetail {
@@ -46,6 +78,12 @@ pub struct PromptDetail {
     pub created_at: Option<String>,
     #[serde(default)]
     pub updated_at: Option<String>,
+    /// Set by admin POST/PUT responses when the server attempted a GitHub
+    /// mirror. `Some({ok: true})` = mirror succeeded, `Some({ok: false,
+    /// error})` = mirror failed (DB row was still written), `None` = no
+    /// mirror attempt or older server.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_mirror: Option<GithubMirrorStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -487,6 +525,57 @@ mod telemetry_types_tests {
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("\"invocation_id\":\"abc\""));
         assert!(json.contains("\"signal\":\"thumbs_up\""));
+    }
+
+    #[test]
+    fn prompt_detail_deserializes_mirror_ok() {
+        // BRO-1183: admin POST/PUT response with successful mirror.
+        let body = r#"{
+            "slug":"x",
+            "title":"t",
+            "content":"c",
+            "githubMirror":{"ok":true}
+        }"#;
+        let p: PromptDetail = serde_json::from_str(body).unwrap();
+        assert_eq!(
+            p.github_mirror,
+            Some(GithubMirrorStatus {
+                ok: true,
+                error: None
+            })
+        );
+    }
+
+    #[test]
+    fn prompt_detail_deserializes_mirror_failure() {
+        // BRO-1183: admin POST/PUT response with failed mirror — DB write
+        // preserved but the GitHub mirror error is surfaced to the caller.
+        let body = r#"{
+            "slug":"x",
+            "title":"t",
+            "content":"c",
+            "githubMirror":{"ok":false,"error":"GITHUB_TOKEN not set"}
+        }"#;
+        let p: PromptDetail = serde_json::from_str(body).unwrap();
+        assert_eq!(
+            p.github_mirror,
+            Some(GithubMirrorStatus {
+                ok: false,
+                error: Some("GITHUB_TOKEN not set".into())
+            })
+        );
+    }
+
+    #[test]
+    fn prompt_detail_deserializes_without_mirror_field() {
+        // BRO-1183: GET response or older server — back-compat path.
+        let body = r#"{
+            "slug":"x",
+            "title":"t",
+            "content":"c"
+        }"#;
+        let p: PromptDetail = serde_json::from_str(body).unwrap();
+        assert!(p.github_mirror.is_none());
     }
 
     #[test]

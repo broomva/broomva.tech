@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.7.0 — 2026-05-19
+
+### CLI surfaces GitHub-mirror failure on admin prompt push/update (BRO-1183)
+
+Closes [BRO-1183](https://linear.app/broomva/issue/BRO-1183). The just-merged BRO-1181 server-side change (PR #176) added two operator signals to admin POST `/api/prompts` and PUT `/api/prompts/[slug]` responses — a `githubMirror: { ok, error? }` body field and a `Warning: 199 - "GitHub mirror failed: <text>"` HTTP header — but the Rust CLI consumer surfaced neither. Admin pushes that silently failed to mirror to GitHub still looked successful in the terminal; the user had to read JSON responses by hand to know whether their prompt reached the public broomva.tech page.
+
+### Scope
+
+- New operator-facing stderr line on `broomva prompts push` / `broomva prompts update` when the mirror failed:
+
+  ```
+  [broomva] WARNING: GitHub mirror failed: <reason>
+  [broomva]   The prompt was saved to the database but did NOT reach the public broomva.tech page.
+    Updated prompt: <slug>
+  ```
+
+- Stdout is unchanged — success summaries still print as before. The warning is additive on stderr, so JSON/script consumers that read stdout keep working. JSON-format callers see the `githubMirror` field embedded directly in the response.
+
+### Deliverables
+
+- **NEW** `api::types::GithubMirrorStatus { ok: bool, error: Option<String> }` (camelCase serde) and `PromptPushResponse { prompt: PromptDetail, warning_header: Option<String> }` wrapper for the create/update return path. `PromptDetail` gains `github_mirror: Option<GithubMirrorStatus>`; absence is the back-compat shape for GETs and older servers (`PromptDetail` does not set `deny_unknown_fields`).
+- **EDIT** `api::mod::BroomvaClient::create_prompt` / `update_prompt` — return type now `BroomvaResult<PromptPushResponse>`. Source-breaking lib-target change, hence the `0.6.x → 0.7.0` minor bump.
+- **NEW** `api::mod::extract_warning_header` — uses `headers.get_all(WARNING)` to handle RFC 7234 §5.5 multi-value Warning headers (multiple headers, comma-separated values inside one). Non-ASCII bytes preserved lossily via `String::from_utf8_lossy` + `tracing::warn!`; the operator signal is never silently dropped.
+- **NEW** `cli::prompts::classify_mirror_warning` — body wins over header. Header fallback requires the `GitHub mirror failed: ` prefix so unrelated 199-warnings stay silent rather than being mis-attributed to the mirror feature.
+- **NEW** `cli::prompts::surface_mirror_warning<W: io::Write>` — emits the two-line stderr message. Generic sink so handler tests can capture stderr without shelling out.
+- **NEW** `cli::prompts::parse_warning_detail` — returns `Vec<&str>` of all 199 quoted warn-texts, scanning comma-separated warn-values inside a (possibly joined) header value, skipping non-199 codes.
+- **NEW** `cli::prompts::handle_push_with_sink<W: io::Write>` — internal split of `handle_push` so the user-visible stderr path is testable. Public `handle_push` delegates with `io::stderr()`.
+
+### Tests
+
+103 lib tests + 11 integration + 6 chat smoke = 120 total green (was 111 pre-PR). New tests:
+
+- `api/types.rs` — 3 deserialize tests (mirror ok / mirror failure / absent field).
+- `cli/prompts.rs` parser — extracts envelope text, returns empty on garbage, handles multi-value header with mixed 110/199/214 warn-codes.
+- `cli/prompts.rs` classifier — prefers body, ignores header on success, falls back to header only with the mirror prefix, surfaces placeholder when `body.error` is None.
+- `cli/prompts.rs` surface — writes two lines on failure, stays silent on success.
+- `cli/prompts.rs` handler — `handle_push_writes_warning_to_stderr_sink_on_mirror_failure` (genuine regression guard — drives `handle_push_with_sink` end-to-end with a `Vec<u8>` sink and asserts the sink contains the warning lines) + silent-on-success twin.
+- Existing `create_prompt`/`update_prompt` wire tests updated to the new `PromptPushResponse` shape.
+
+### Cross-review
+
+P20 adversarial gate fired through 3 rounds against Codex GPT-5.4 (Strata A):
+
+- Round 1: REVISE 4/10 (5 deductions: tuple API break, lenient parser, silent non-ASCII, duplicated stderr, missing handler test).
+- Round 2: REVISE 6/10 (3 remaining: semver, multi-value Warning header, handler test still passed if surface_mirror_warning was removed).
+- Round 3: **APPROVE 8/10** (2 non-blocking findings logged: M = RFC quoted-string scanner not strict parser; L = no client-level get_all-multi-instance test).
+
+### Composition
+
+- **P14 Dep-Chain**: upstream = BRO-1181 server response shape, `reqwest::header::HeaderMap::get_all`, `tracing::warn!`. Downstream = admin push users (new stderr signal), no external Rust lib consumers today.
+- **P15 Snapshot**: branched from `main@4a0dbd7`; rebased onto `main@d578cfe` (BRO-1186 TLS dev-cert + 0.6.1) to pick up rustls/webpki-roots/rustls-pemfile direct deps and `api::tls` module.
+- **P20 Cross-Review**: 3 rounds executed; final APPROVE 8/10.
+
 ## 0.6.1 — 2026-05-19
 
 ### TLS dev-cert escape hatch — unblocks local lifegw dogfood

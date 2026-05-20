@@ -12,6 +12,45 @@ use reqwest::Method;
 use crate::error::{BroomvaError, BroomvaResult};
 use types::*;
 
+/// BRO-1183: server emits `Warning: 199 - "GitHub mirror failed: <text>"`
+/// when an admin POST/PUT succeeds but the GitHub mirror failed. Pull every
+/// `Warning` header value the response carries (RFC 7234 §5.5 allows a
+/// response to contain multiple `Warning` headers AND each header to carry
+/// multiple comma-separated warn-values) so the consumer can scan them all.
+///
+/// Header values are ASCII-only per RFC 7234 §5.5 (and per the BRO-1181
+/// server-side sanitization). When a buggy or hostile server sends non-ASCII
+/// bytes, the value is preserved lossily via `String::from_utf8_lossy` and a
+/// `tracing::warn!` is logged — losing the only fallback signal silently is
+/// worse than carrying a lossy representation forward.
+///
+/// Values are joined with `, ` so downstream parsers (`parse_warning_detail`)
+/// can split on `, ` and inspect each warn-value independently. Returns
+/// `None` only when no `Warning` header is present.
+fn extract_warning_header(headers: &reqwest::header::HeaderMap) -> Option<String> {
+    let parts: Vec<String> = headers
+        .get_all(reqwest::header::WARNING)
+        .iter()
+        .map(|v| match v.to_str() {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                let bytes = v.as_bytes();
+                let lossy = String::from_utf8_lossy(bytes).into_owned();
+                tracing::warn!(
+                    bytes_len = bytes.len(),
+                    "non-ASCII `Warning` header from server; using lossy UTF-8 representation"
+                );
+                lossy
+            }
+        })
+        .collect();
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(", "))
+    }
+}
+
 /// HTTP client for the broomva.tech API.
 pub struct BroomvaClient {
     base_url: String,
@@ -107,30 +146,48 @@ impl BroomvaClient {
         Ok(resp.json().await?)
     }
 
-    pub async fn create_prompt(&self, req: CreatePromptRequest) -> BroomvaResult<PromptDetail> {
+    pub async fn create_prompt(
+        &self,
+        req: CreatePromptRequest,
+    ) -> BroomvaResult<PromptPushResponse> {
         let resp = self
             .request(Method::POST, "/api/prompts")
             .json(&req)
             .send()
             .await?;
         let resp = self.check_response(resp).await?;
+        // BRO-1183: pull the `Warning` header BEFORE deserializing the body
+        // so admin callers can surface mirror failures even against older
+        // servers that haven't added `githubMirror` to the JSON body yet.
+        let warning_header = extract_warning_header(resp.headers());
         // Server emits a bare prompt row on 201 (no { data } wrapper).
-        Ok(resp.json().await?)
+        let prompt: PromptDetail = resp.json().await?;
+        Ok(PromptPushResponse {
+            prompt,
+            warning_header,
+        })
     }
 
     pub async fn update_prompt(
         &self,
         slug: &str,
         req: UpdatePromptRequest,
-    ) -> BroomvaResult<PromptDetail> {
+    ) -> BroomvaResult<PromptPushResponse> {
         let resp = self
             .request(Method::PUT, &format!("/api/prompts/{slug}"))
             .json(&req)
             .send()
             .await?;
         let resp = self.check_response(resp).await?;
+        // BRO-1183: same pattern as create_prompt — capture the `Warning`
+        // header before the body is consumed by `.json()`.
+        let warning_header = extract_warning_header(resp.headers());
         // Server emits a bare prompt row on 200 (no { data } wrapper).
-        Ok(resp.json().await?)
+        let prompt: PromptDetail = resp.json().await?;
+        Ok(PromptPushResponse {
+            prompt,
+            warning_header,
+        })
     }
 
     pub async fn delete_prompt(&self, slug: &str) -> BroomvaResult<()> {
