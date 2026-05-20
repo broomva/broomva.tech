@@ -36,6 +36,16 @@ Internet
 
 lifegw knows nothing about agents, sessions, or substrate state. It knows how to verify a JWT, mint a scoped capability token, and forward a request. That is the entirety of its job.
 
+## Public endpoints
+
+| Surface | URL |
+|---------|-----|
+| Canonical | `https://life.broomva.tech` |
+| Railway alias | `https://lifegw-production.up.railway.app` |
+| Health | `https://life.broomva.tech/healthz` |
+
+Both URLs front the same lifegw deployment on Railway (TLS termination at Railway's edge → Caddy in-container → lifegw HTTPS on `127.0.0.1:8443`). The `life.broomva.tech` CNAME points at Railway's edge; Let's Encrypt issues the cert on Railway's side. Use the canonical URL in client code; the Railway alias is for diagnostics.
+
 ## Stack
 
 | Component | Technology |
@@ -56,6 +66,12 @@ lifegw knows nothing about agents, sessions, or substrate state. It knows how to
 |-------|--------|-------------|
 | `/healthz` | GET | Probes upstream `lifed` reachability. Returns 200 only if lifed responds on the UDS. |
 
+### Auth bootstrap
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/life/v1/auth/bootstrap` | POST | Mint a Tier-2 capability token from a verified Tier-1 bearer. Body: `{"user_id": "<user>"}`. Returns `{"access_token", "token_type", "user_id", "expires_in", "expires_at"}` (15-minute TTL). Use this when a non-agent route needs an explicit Tier-2 cap. The `/v1/agent/*` routes auto-mint internally and do NOT require a pre-bootstrap. |
+
 ### Anima custody
 
 | Route | Method | Description |
@@ -67,11 +83,14 @@ lifegw knows nothing about agents, sessions, or substrate state. It knows how to
 | `/anima/custody/mint_session_cap` | POST | Mint a 15-minute Tier-User capability token for session use. |
 | `/anima/custody/enroll_passkey` | POST | WebAuthn passkey enrollment. |
 
-### Agent stream
+### Agent
+
+The chat surface is a **two-phase flow** — `create_session` returns a server-issued `sid`, then the WSS upgrade attaches a stream to that session. The session id passed in the WS query string is the canonical handle for resumability.
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `POST /v1/agent/stream` | POST → WS upgrade | WebSocket upgrade + bidirectional stream. Supports `reconnect_by_last_seq_no` for resuming after disconnect. |
+| `/v1/agent/create_session` | POST | Create a chat session. Body: `{"user_id", "project_id", "label"?, "resume_sid"?}` (`#[serde(deny_unknown_fields)]`). Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`. Server-issued `sid` is the canonical session id — use it on the WSS upgrade below. |
+| `/v1/agent/stream` | GET → WS upgrade | WebSocket upgrade. Query params: `?sid=<sid>&last_seq_no=<n>`. `sid` comes from `create_session`; `last_seq_no` is the last `agent_event.seq_no` the client received (omit on first connect; pass on reconnect to replay events from that point). |
 
 <Callout type="warn">
   **Per-route scope enforcement.** Each Anima custody route enforces a scope intersection check. A `TierUserCap` with `anima.user.sign_auth` scope cannot call `/anima/custody/sign_wallet`. `claims.sub` is bound to `body.user_id` — a token issued for user A cannot be used to sign on behalf of user B.
@@ -120,24 +139,54 @@ Token-bucket rate limiting is applied at two levels:
 
 Rate limit responses return `HTTP 429` with a `Retry-After` header. The token bucket parameters (capacity, refill rate) are configurable in `lifegw.toml`.
 
-## WebSocket stream
+## Chat session flow
 
-The `/v1/agent/stream` endpoint upgrades an HTTP POST to a WebSocket connection and establishes a bidirectional pump between the client and `lifed`:
+Chat is a two-phase wire: HTTP `create_session` followed by a WSS upgrade attached to the returned `sid`. Native clients (Rust, server-to-server) authenticate via `Authorization: Bearer <jwt>`; browser clients authenticate via the `Sec-WebSocket-Protocol: bearer.<jwt>` subprotocol (browsers cannot set arbitrary headers on `WebSocket` constructors).
 
 <Steps>
   <Step>
-    Client sends `POST /v1/agent/stream` with `Sec-WebSocket-Protocol: bearer.<jwt>` and `Upgrade: websocket` headers.
+    **Create session.** `POST /v1/agent/create_session` with `Authorization: Bearer <tier1-jwt>` and JSON body `{"user_id", "project_id", "label"?, "resume_sid"?}`. lifegw's middleware verifies the Tier-1 JWT, mints a Tier-2 cap internally, and forwards to lifed over the UDS. Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`.
   </Step>
   <Step>
-    lifegw verifies the bearer JWT, checks rate limits, and returns `101 Switching Protocols`.
+    **Upgrade.** `GET /v1/agent/stream?sid=<sid>&last_seq_no=<n>` with `Upgrade: websocket` headers. Native: same `Authorization: Bearer <jwt>` header. Browser: `Sec-WebSocket-Protocol: bearer.<jwt>` subprotocol.
   </Step>
   <Step>
-    lifegw opens a stream to `lifed` over the UDS and starts the bidi pump — frames from the client are forwarded to `lifed`; frames from `lifed` are forwarded to the client.
+    lifegw verifies the bearer, applies rate limits, returns `101 Switching Protocols`, and opens a bidi pump to lifed.
   </Step>
   <Step>
-    If the connection drops, the client reconnects with `reconnect_by_last_seq_no=<last_received_seq>`. lifegw forwards this to `lifed`, which replays events from that sequence number. No events are lost across reconnects.
+    Client sends `WireOutbound::SendMessage` envelopes; server emits `WireInbound::AgentEvent { seq_no, record, agent_kind }` envelopes. `agent_kind` ∈ `{TOKEN, FINISH, ERROR, TOOL_CALL_PENDING, TOOL_RESULT, APPROVAL_REQUIRED, HIBERNATE}` — token deltas live in `record.payload.text`.
+  </Step>
+  <Step>
+    On disconnect, reconnect with the same `sid` and `last_seq_no=<last_received_seq_no>`. lifegw forwards to lifed, which replays events from that point. No events are lost across reconnects.
   </Step>
 </Steps>
+
+### Wire envelope shapes
+
+| Direction | Variants |
+|-----------|----------|
+| `WireOutbound` (client → server) | `SendMessage`, `ApproveDispatch`, `CancelDispatch`, `Ping`, `Close` |
+| `WireInbound` (server → client) | `AgentEvent { seq_no, record, agent_kind }`, `Pong`, `Closing` |
+
+`agent_kind` enum (server-emitted):
+
+| Kind | Meaning |
+|------|---------|
+| `TOKEN` | Streaming token delta — append `record.payload.text` to the current message |
+| `FINISH` | Turn complete — current message is final |
+| `ERROR` | Turn failed — `record.payload` carries the error |
+| `TOOL_CALL_PENDING` | Agent invoked a tool; arguments in `record.payload` |
+| `TOOL_RESULT` | Tool finished — result in `record.payload` |
+| `APPROVAL_REQUIRED` | Server is waiting for an `ApproveDispatch` from the client |
+| `HIBERNATE` | Server idled the session; reconnect to resume |
+
+### Authentication shape per route
+
+| Route | What the client sends | What lifegw does internally |
+|-------|----------------------|-----------------------------|
+| `/life/v1/auth/bootstrap` | `Authorization: Bearer <tier1>` | Mints a Tier-2 cap, returns it in the response body |
+| `/v1/agent/*` (incl. `/create_session`, `/stream`) | `Authorization: Bearer <tier1>` (native) **or** `Sec-WebSocket-Protocol: bearer.<tier1>` (browser, WS only) | Middleware auto-mints a Tier-2 cap from the Tier-1 and forwards the rewritten `Authorization` header to lifed over the UDS |
+| `/anima/custody/*` | `Authorization: Bearer <tier2>` (explicit; obtain via `/life/v1/auth/bootstrap` first) | Verifies the Tier-2 cap and intersects per-route scope (see callout above) |
 
 The pump handles:
 - **Heartbeats**: 30-second ping/pong interval. 3 missed pongs close the connection with `CloseCode::ProtocolError`.
