@@ -1,10 +1,14 @@
 [package]
 name = "broomva"
-# BRO-1183 (2026-05-19): bumped to 0.7.0 because `create_prompt` /
-# `update_prompt` now return `PromptPushResponse` (named struct) instead of
-# `PromptDetail`. Source-breaking lib-target change → minor bump on a pre-1.0
-# crate per cargo convention. (Previous: 0.6.1 from BRO-1186 TLS dev-cert.)
-version = "0.7.0"
+# BRO-1189 (2026-05-20): bumped to 0.8.0 because `cli/chat.rs` +
+# `api/agent_stream.rs` + `api/lifed.rs` now talk to the REAL lifegw
+# wire (HTTP POST /v1/agent/create_session + WSS /v1/agent/stream).
+# Public types in `api::agent_stream` (AgentStreamConfig gains
+# user_id/project_id/resume_existing_sid) + `api::lifed` (new
+# LifegwChatClient + legacy LifedClient methods now return
+# Unsupported until BRO-1190). Source-breaking lib-target change →
+# minor bump. (Previous: 0.7.0 from BRO-1183 githubMirror surface.)
+version = "0.8.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
