@@ -26,6 +26,10 @@ pub async fn handle_status(client: &BroomvaClient, format: OutputFormat) -> Broo
             "authenticated": config.token.is_some(),
             "apiBase": client.base_url(),
             "tokenExpiresAt": config.token_expires_at,
+            // BRO-1203 — lifegw token state. `present`/`absent`
+            // rather than the raw token; expiry is epoch seconds.
+            "lifegwToken": if config.lifegw_token.is_some() { "present" } else { "absent" },
+            "lifegwTokenExpiresAt": config.lifegw_token_expires_at,
         });
         crate::cli::output::print_json_value(&status);
         return Ok(());
@@ -45,11 +49,35 @@ pub async fn handle_status(client: &BroomvaClient, format: OutputFormat) -> Broo
         if let Some(ref exp) = config.token_expires_at {
             print_kv("Expires", exp);
         }
+        // BRO-1203 — surface lifegw token presence so users can tell
+        // whether `broomva chat --gateway-url https://life.broomva.tech`
+        // will work without re-logging-in.
+        print_kv(
+            "Lifegw Token",
+            if config.lifegw_token.is_some() {
+                "present (ES256)"
+            } else {
+                "absent (re-run `broomva auth login` to mint)"
+            },
+        );
+        if let Some(exp) = config.lifegw_token_expires_at {
+            print_kv("Lifegw Expires", &format_lifegw_expiry(exp));
+        }
     } else {
         print_kv("Status", "not authenticated");
         println!("  Run `broomva auth login` to authenticate.");
     }
     Ok(())
+}
+
+/// Format the lifegw token expiry (epoch seconds) into a human-readable
+/// label. Returns the epoch verbatim on parse failure rather than
+/// panicking — observability never blocks login.
+fn format_lifegw_expiry(epoch_secs: u64) -> String {
+    use chrono::{DateTime, Utc};
+    DateTime::<Utc>::from_timestamp(epoch_secs as i64, 0)
+        .map(|dt| dt.to_rfc3339())
+        .unwrap_or_else(|| format!("epoch:{epoch_secs}"))
 }
 
 pub async fn handle_token() -> BroomvaResult<()> {

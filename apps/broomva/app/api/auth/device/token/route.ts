@@ -3,6 +3,7 @@ import { db } from "@/lib/db/client";
 import { deviceAuthCode, agent } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { JWT_ACCESS_EXPIRY_MS } from "@/lib/ai/vault/jwt";
+import { mintTier1ForConsumer } from "@/lib/auth/lifegw-jwt";
 import {
   checkDeviceTokenRateLimit,
   getClientIP,
@@ -151,6 +152,41 @@ async function handleTokenRequest(request: Request) {
 
       if (refreshTokenValue) {
         response.refresh_token = refreshTokenValue;
+      }
+
+      // ---------------------------------------------------------------
+      // lifegw Tier-1 ES256 JWT enrichment (BRO-1203 / B.1.e)
+      // ---------------------------------------------------------------
+      // The Better Auth `accessToken` above is HS256 — broomva.tech's
+      // own API plane accepts it, but production `lifegw` rejects it
+      // with `invalid Tier-1: auth: missing kid in JWT header`.
+      // lifegw requires an ES256 JWT signed with the key published at
+      // `/api/auth/jwks.json` (Spec C₃ §5.2). Mint one here so the CLI
+      // (and any other device-flow consumer) can hit lifegw routes
+      // immediately after login.
+      //
+      // Failure is non-fatal — login still succeeds with the HS256
+      // `access_token`; non-lifegw commands (prompts / skills /
+      // context / etc.) continue to work. Lifegw commands will fail
+      // with the original 401 until the user re-authenticates after
+      // the operator fixes the signer config.
+      if (record.userId) {
+        try {
+          const tier1 = await mintTier1ForConsumer({
+            consumer: { kind: "user", id: record.userId },
+            projectSlug: "default",
+          });
+          response.lifegw_token = tier1.token;
+          response.lifegw_token_expires_at = tier1.expiresAt;
+        } catch (err) {
+          // Logged + swallowed — mirrors the agent-enrichment posture
+          // below. The CLI's `lifegw_token` field is optional on
+          // deserialize; missing field ⇒ pre-B.1.e behaviour.
+          console.error(
+            "[device/token] mintTier1ForConsumer failed (non-fatal):",
+            err,
+          );
+        }
       }
 
       // ---------------------------------------------------------------

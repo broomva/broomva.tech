@@ -537,7 +537,29 @@ fn build_lifed_client(opts: &AgentRunOpts) -> BroomvaResult<Box<dyn LifedClient>
         .unwrap_or_else(|| DEFAULT_LIFED_BASE_URL.to_string());
     // BRO-1186: --cacert / BROOMVA_CA_CERT flows in via opts.ca_cert_path.
     let ca = crate::api::tls::resolve_ca_cert_path(opts.ca_cert_path.as_deref());
-    let client = LifedHttpClient::with_dev_cert(url, opts.token.clone(), ca.as_deref())?;
+    // BRO-1203: if the lifed/lifegw URL is a production lifegw host
+    // AND a `lifegw_token` is on disk, prefer it over the HS256 token
+    // resolved by the outer `resolve_token`. The outer `--token` /
+    // `BROOMVA_TOKEN` overrides remain authoritative — we only swap
+    // when `opts.token` is what came out of the config file.
+    //
+    // Detection: the resolved token equals the on-disk `config.token`.
+    // If it does, the operator didn't override via flag/env, so we're
+    // free to upgrade to the ES256 token for lifegw hosts.
+    let token = opts.token.clone();
+    let token = match (read_config().ok(), token) {
+        (Some(cfg), Some(t)) => {
+            if cfg.token.as_deref() == Some(t.as_str())
+                && let Some(lifegw_token) = crate::config::token_for_gateway(&url, &cfg)
+            {
+                Some(lifegw_token)
+            } else {
+                Some(t)
+            }
+        }
+        (_, t) => t,
+    };
+    let client = LifedHttpClient::with_dev_cert(url, token, ca.as_deref())?;
     Ok(Box::new(client))
 }
 

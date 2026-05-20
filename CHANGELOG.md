@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.8.1 — 2026-05-20
+
+### `broomva auth login` mints ES256 lifegw Tier-1 JWT for production lifegw (BRO-1203)
+
+Closes [BRO-1203](https://linear.app/broomva/issue/BRO-1203). v0.8.0 ([BRO-1189](https://linear.app/broomva/issue/BRO-1189)) shipped `broomva chat` against the real lifegw wire, but production lifegw at `https://life.broomva.tech` still rejected the CLI's stored token with `invalid Tier-1: auth: missing kid in JWT header`. Root cause: `broomva auth login` (RFC 8628 device-code) returned the Better Auth HS256 session JWT, but lifegw requires an ES256 JWT signed by the key published at `https://broomva.tech/api/auth/jwks.json` (Spec C₃ §5.2). The infrastructure to mint a compatible token already existed at `apps/broomva/lib/auth/lifegw-jwt.ts::mintTier1ForConsumer()` — it just wasn't wired into the device-code response.
+
+### Scope
+
+**Server-side (additive, single file)**
+
+- **EDIT** `apps/broomva/app/api/auth/device/token/route.ts` — after the `approved` branch assembles the standard RFC-8628 response object (`access_token` / `token_type` / `expires_in` / optional `refresh_token` / optional `agent`), now ALSO calls `mintTier1ForConsumer({ consumer: { kind: "user", id: record.userId }, projectSlug: "default" })` and attaches `lifegw_token` + `lifegw_token_expires_at` to the response. Failure is **non-fatal** — login still succeeds with the HS256 `access_token` (matches the agent-enrichment posture already in the file). Older CLI versions ignore the new fields entirely (forward-compat).
+
+**CLI-side (additive, 6 files)**
+
+- **EDIT** `crates/broomva-cli/src/config/types.rs` — `CliConfig` gains `lifegw_token: Option<String>` + `lifegw_token_expires_at: Option<u64>` fields (camelCase serialized). Both `#[serde(default)]` so existing `~/.broomva/config.json` files from v0.8.0 and earlier survive untouched.
+- **EDIT** `crates/broomva-cli/src/config/mod.rs` — new helpers `store_lifegw_token()`, `token_for_gateway()`, `is_lifegw_host()`. `clear_token()` (called by `broomva auth logout`) now also clears the lifegw fields. `token_for_gateway` prefers `lifegw_token` when the gateway URL host is a lifegw deployment (`life.broomva.tech`, `lifegw.broomva.tech`, `lifegw-*.up.railway.app`, or any non-loopback HTTPS host); localhost / 127.0.0.1 keep the original `token` field so `dev-token-for-*` shortcuts in `lumen-smoke` still work.
+- **EDIT** `crates/broomva-cli/src/api/types.rs` — `TokenResponse` gains `lifegw_token: Option<String>` + `lifegw_token_expires_at: Option<u64>` fields. Pre-v0.8.1 servers omit these → deserialize to None (no error).
+- **EDIT** `crates/broomva-cli/src/api/auth.rs` — `device_login()` now persists the lifegw token alongside the HS256 token. Prints a confirmation line when the lifegw token is present so operators can tell whether their server is on the new code.
+- **EDIT** `crates/broomva-cli/src/cli/chat.rs::ChatRunOpts::resolve()` — token resolution layered as: `--token` flag → `BROOMVA_TOKEN` env → `config::token_for_gateway(&gateway_url, &cfg)` (host-aware). The flag/env paths short-circuit; only the config-file fallback consults the lifegw token.
+- **EDIT** `crates/broomva-cli/src/cli/agent.rs::build_lifed_client()` — same host-aware routing for the `broomva agent` substrate path. Token override (flag/env via `opts.token`) wins; if `opts.token` equals the config's `token` field, the resolver upgrades to a lifegw equivalent for lifegw hosts.
+- **EDIT** `crates/broomva-cli/src/cli/auth.rs::handle_status()` — surface lifegw token presence + expiry in both `table` and `json` modes so operators can tell from `broomva auth status` whether they need to re-authenticate.
+
+### Tests
+
+Lib tests increase from 129 → 148 (+19 net). 14 integration tests unchanged:
+
+- `config/types.rs` — 3 new tests: round-trip camelCase serialization of the new fields, empty-object backward-compat, verbatim v0.8.0 legacy-config deserialization (no panic, new fields = None).
+- `config/mod.rs` — 6 new tests for `token_for_gateway`: prefer lifegw for production hosts (HTTPS + WSS variants), prefer `token` on `127.0.0.1` / `localhost`, graceful fallback when only legacy `token` is set, None when no credentials, Railway preview hosts (`lifegw-feat-x.up.railway.app`), malformed-URL safety.
+- `cli/chat.rs` — 2 new tests: `--token` flag wins for lifegw-host gateways, `BROOMVA_TOKEN` env wins for lifegw-host gateways. Existing 5 BRO-1189 tests still green.
+
+### Backward compatibility
+
+Fully additive. None of:
+
+- Existing `~/.broomva/config.json` files
+- Pre-v0.8.1 device/token servers
+- `--token` flag overrides
+- `BROOMVA_TOKEN` env var overrides
+- Localhost / dev-token-for-* paths
+
+… break. Worst case for an older server: `broomva chat --gateway-url https://life.broomva.tech` still fails with the original 401, exactly the way it did before this PR. Path forward is the same: re-run `broomva auth login` against the upgraded server.
+
+### Verification (post-deploy)
+
+```bash
+# Pre-PR baseline (still fails):
+TOKEN=$(jq -r '.token' ~/.broomva/config.json)
+echo "$TOKEN" | cut -d'.' -f1 | base64 -d | jq .
+# {"alg":"HS256"}  ← no kid
+
+# After Vercel deploys this server side, re-authenticate:
+broomva auth login
+broomva auth status
+# Lifegw Token   present (ES256)
+# Lifegw Expires 2026-05-20T21:42:18+00:00
+
+# Chat against production lifegw:
+broomva chat --gateway-url https://life.broomva.tech "say hello in three words"
+# (streamed reply, exit 0)
+```
+
+### Composition
+
+- BRO-1189 (lifegw wire alignment) — this PR consumes the wire surface BRO-1189 shipped; no changes to the wire / body shapes / route paths.
+- BRO-1186 (TLS dev-cert) — orthogonal; localhost path stays on `token` (dev-shortcut friendly).
+- BRO-1183 (PromptPushResponse) — orthogonal; doesn't touch prompts surface.
+
+### CI / release
+
+`release.yml` auto-fires on `push: main` when `VERSION` changes; release `v0.8.1` produces 4 platform binaries (Linux x86_64 / Linux aarch64 / macOS x86_64 / macOS aarch64).
+
 ## 0.8.0 — 2026-05-20
 
 ### `broomva chat` rewired to the real lifegw wire (BRO-1189)

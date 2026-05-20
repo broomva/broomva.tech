@@ -271,7 +271,17 @@ impl ChatRunOpts {
             })
             .or_else(|| Some(DEFAULT_MODEL.to_string()));
 
-        // token: flag → env → config.
+        // token: flag → env → config, with BRO-1203 host-aware
+        // selection between the HS256 access token (broomva.tech API)
+        // and the ES256 lifegw Tier-1 JWT (life.broomva.tech).
+        //
+        // Precedence:
+        // 1. `--token` flag — always wins (operator override).
+        // 2. `BROOMVA_TOKEN` env — always wins after flag.
+        // 3. Config — `token_for_gateway` picks the right field based
+        //    on the resolved gateway URL host. lifegw hosts get
+        //    `lifegw_token` (when present); broomva.tech / localhost
+        //    get the original `token` field.
         let token = self
             .token_override
             .clone()
@@ -280,7 +290,10 @@ impl ChatRunOpts {
                     .ok()
                     .filter(|s| !s.is_empty())
             })
-            .or_else(|| cfg.as_ref().and_then(|c| c.token.clone()));
+            .or_else(|| {
+                cfg.as_ref()
+                    .and_then(|c| crate::config::token_for_gateway(&gateway_url, c))
+            });
 
         let session_id = session_id_override
             .map(|s| s.to_string())
@@ -1019,6 +1032,43 @@ mod tests {
         let cfg = opts.resolve(None).unwrap();
         assert_eq!(cfg.model.as_deref(), Some("claude-opus-4-7"));
     }
+
+    #[test]
+    fn chat_run_opts_resolve_token_override_wins_over_config() {
+        // BRO-1203 — operator `--token` flag must always win,
+        // regardless of gateway URL host. We can't easily mock the
+        // on-disk config from inside this unit test (the resolver
+        // reads `~/.broomva/config.json`), but we CAN assert that
+        // `token_override` short-circuits everything else.
+        unsafe {
+            std::env::remove_var("BROOMVA_TOKEN");
+        }
+        let opts = ChatRunOpts {
+            prompt: None,
+            session_id: None,
+            model: None,
+            gateway_url: Some("https://life.broomva.tech".into()),
+            token_override: Some("flag-override-token".into()),
+            ca_cert_path: None,
+            user_id_override: None,
+            project_id_override: None,
+        };
+        let cfg = opts.resolve(None).unwrap();
+        assert_eq!(cfg.token.as_deref(), Some("flag-override-token"));
+    }
+
+    // NOTE — a `BROOMVA_TOKEN` env-precedence test was considered but
+    // dropped: `cargo test` runs tests in parallel, and shared
+    // process-level env vars race across threads, producing flaky
+    // assertions on dev machines whose `~/.broomva/config.json`
+    // already carries a real token. The precedence chain itself is
+    // exercised by `chat_run_opts_resolve_token_override_wins_over_config`
+    // (--token flag is the same shape as env, just one priority tier
+    // up) and the host-routing logic is fully covered by the
+    // `config::tests::token_for_gateway_*` unit tests, which DO run
+    // in process-isolation because they don't read env. The
+    // chat-side resolver delegates to `token_for_gateway` for the
+    // config-file fallback, so the chain is transitively tested.
 
     #[test]
     fn derive_user_id_from_dev_shortcut_returns_suffix() {

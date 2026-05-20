@@ -76,7 +76,18 @@ pub async fn device_login(client: &reqwest::Client, base: &str) -> BroomvaResult
             match serde_json::from_str::<TokenResponse>(&body) {
                 Ok(token) => {
                     config::store_token(&token.access_token, token.expires_at.as_deref())?;
+                    // BRO-1203 — persist the ES256 lifegw Tier-1 JWT
+                    // alongside the HS256 access token. Pre-v0.8.1
+                    // servers omit the field; older configs survive.
+                    if let Some(ref lifegw) = token.lifegw_token {
+                        config::store_lifegw_token(lifegw, token.lifegw_token_expires_at)?;
+                    }
                     println!("  Authenticated successfully.");
+                    if token.lifegw_token.is_some() {
+                        println!(
+                            "  Lifegw token (ES256) persisted — `broomva chat` against production lifegw is ready."
+                        );
+                    }
                     return Ok(token);
                 }
                 Err(e) => {

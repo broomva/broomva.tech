@@ -1,14 +1,15 @@
 [package]
 name = "broomva"
-# BRO-1189 (2026-05-20): bumped to 0.8.0 because `cli/chat.rs` +
-# `api/agent_stream.rs` + `api/lifed.rs` now talk to the REAL lifegw
-# wire (HTTP POST /v1/agent/create_session + WSS /v1/agent/stream).
-# Public types in `api::agent_stream` (AgentStreamConfig gains
-# user_id/project_id/resume_existing_sid) + `api::lifed` (new
-# LifegwChatClient + legacy LifedClient methods now return
-# Unsupported until BRO-1190). Source-breaking lib-target change →
-# minor bump. (Previous: 0.7.0 from BRO-1183 githubMirror surface.)
-version = "0.8.0"
+# BRO-1203 (2026-05-20): bumped to 0.8.1 — additive ES256 lifegw
+# Tier-1 JWT support. `CliConfig` gains `lifegw_token` +
+# `lifegw_token_expires_at` fields; `TokenResponse` deserializes
+# the same fields from the device/token endpoint; `cli/chat.rs`
+# and `cli/agent.rs` now host-route to `lifegw_token` over `token`
+# when the gateway URL points at production lifegw. Patch bump
+# because all changes are additive and backward-compatible
+# (`Option<>` fields default to None on older configs / older
+# servers). Previous: 0.8.0 from BRO-1189 lifegw wire rewrite.
+version = "0.8.1"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
