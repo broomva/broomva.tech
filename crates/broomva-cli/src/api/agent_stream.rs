@@ -22,6 +22,7 @@
 //! tungstenite implementation for an in-memory fake (see
 //! `tests/chat_smoke.rs`).
 
+use std::path::PathBuf;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -250,6 +251,12 @@ pub struct AgentStreamConfig {
     pub model: Option<String>,
     /// Connect timeout.
     pub connect_timeout: Duration,
+    /// Optional extra root CA cert (PEM) for the TLS trust store. When
+    /// set, the connector appends this cert to the webpki defaults so
+    /// dev / self-signed gateways (lumen-smoke at
+    /// `wss://127.0.0.1:8443`, regional staging stacks) are reachable
+    /// without weakening the production posture. BRO-1186.
+    pub ca_cert_path: Option<PathBuf>,
 }
 
 impl Default for AgentStreamConfig {
@@ -261,6 +268,7 @@ impl Default for AgentStreamConfig {
             from_sequence: None,
             model: None,
             connect_timeout: Duration::from_secs(10),
+            ca_cert_path: None,
         }
     }
 }
@@ -282,7 +290,11 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::handshake::client::Request;
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
+use tokio_tungstenite::{
+    MaybeTlsStream, WebSocketStream, connect_async, connect_async_tls_with_config,
+};
+
+use crate::api::tls::build_tungstenite_connector;
 
 type TungsteniteSocket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
@@ -332,16 +344,38 @@ impl TungsteniteStream {
                 .insert("Sec-WebSocket-Protocol", header_value);
         }
 
-        let connect_fut = connect_async(request);
-        let (socket, _resp) = tokio::time::timeout(config.connect_timeout, connect_fut)
-            .await
-            .map_err(|_| {
-                BroomvaError::User(format!(
-                    "gateway connect timed out after {:?}",
-                    config.connect_timeout
-                ))
-            })?
-            .map_err(|e| BroomvaError::User(format!("ws handshake failed: {e}")))?;
+        // BRO-1186 — when an extra root CA is supplied (via `--cacert`
+        // / `BROOMVA_CA_CERT`), build a rustls connector with the dev
+        // cert appended to webpki defaults and route through
+        // `connect_async_tls_with_config`. With no dev cert, drop back
+        // to `connect_async` which uses the default
+        // `rustls-tls-webpki-roots` connector — production behaviour is
+        // unchanged.
+        let custom_connector = build_tungstenite_connector(config.ca_cert_path.as_deref())?;
+
+        let (socket, _resp) = if let Some(connector) = custom_connector {
+            let fut = connect_async_tls_with_config(request, None, false, Some(connector));
+            tokio::time::timeout(config.connect_timeout, fut)
+                .await
+                .map_err(|_| {
+                    BroomvaError::User(format!(
+                        "gateway connect timed out after {:?}",
+                        config.connect_timeout
+                    ))
+                })?
+                .map_err(|e| BroomvaError::User(format!("ws handshake failed: {e}")))?
+        } else {
+            let fut = connect_async(request);
+            tokio::time::timeout(config.connect_timeout, fut)
+                .await
+                .map_err(|_| {
+                    BroomvaError::User(format!(
+                        "gateway connect timed out after {:?}",
+                        config.connect_timeout
+                    ))
+                })?
+                .map_err(|e| BroomvaError::User(format!("ws handshake failed: {e}")))?
+        };
 
         Ok(Self { socket })
     }

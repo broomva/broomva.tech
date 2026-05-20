@@ -38,6 +38,7 @@
 //! CLI handler is transport-agnostic.
 
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use std::time::Duration;
 
 use crate::error::{BroomvaError, BroomvaResult};
@@ -278,6 +279,10 @@ pub struct LifedHttpClient {
 impl LifedHttpClient {
     /// Build the client. `base_url` is typically read from
     /// `~/.broomva/config.json` `lifedBaseUrl` or `BROOMVA_LIFED_URL`.
+    ///
+    /// Production CA verification is the default. Use
+    /// [`LifedHttpClient::with_dev_cert`] when targeting a local lifed
+    /// daemon with a self-signed cert (BRO-1186 lumen-smoke workflow).
     pub fn new(base_url: String, token: Option<String>) -> Self {
         Self {
             base_url,
@@ -288,6 +293,38 @@ impl LifedHttpClient {
                 .build()
                 .expect("reqwest client builder"),
         }
+    }
+
+    /// Constructor variant that appends an extra root CA cert (PEM) to
+    /// the trust store. Use this when targeting a self-signed dev
+    /// stack (lumen-smoke `https://127.0.0.1:8443`). Production
+    /// roots remain trusted; the only change is one extra accepted
+    /// chain. BRO-1186.
+    ///
+    /// `ca_cert_path` may be `None` — in that case the client behaves
+    /// identically to [`LifedHttpClient::new`]. Returns
+    /// [`BroomvaError::User`] when the path is set but the PEM is
+    /// missing or malformed (fail loudly, never silently).
+    pub fn with_dev_cert(
+        base_url: String,
+        token: Option<String>,
+        ca_cert_path: Option<&Path>,
+    ) -> BroomvaResult<Self> {
+        let mut builder = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(10));
+        if let Some(path) = ca_cert_path {
+            let cert = crate::api::tls::load_extra_root_cert(path)?;
+            builder = builder.add_root_certificate(cert);
+        }
+        let http = builder
+            .build()
+            .map_err(|e| BroomvaError::User(format!("reqwest client builder failed: {e}")))?;
+        Ok(Self {
+            base_url,
+            token,
+            http,
+        })
     }
 
     fn url(&self, path: &str) -> String {
