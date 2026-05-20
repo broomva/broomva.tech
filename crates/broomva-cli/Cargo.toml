@@ -1,6 +1,6 @@
 [package]
 name = "broomva"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
@@ -46,6 +46,16 @@ libc = "0.2"
 # rustls-only TLS posture (no openssl) — required for the linux-arm64
 # cross-build that ships under release.yml.
 tokio-tungstenite = { version = "0.24", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
+# Dev-cert escape hatch (BRO-1186). The tree already pulls these
+# transitively via reqwest + tokio-tungstenite — we add direct deps at
+# the SAME major-version pins (`rustls 0.23`, `webpki-roots 0.26`,
+# `rustls-pemfile 2`) so cargo deduplicates and no new copies enter the
+# release binary. `rustls` is feature-pruned to `std + ring + tls12`,
+# matching the implicit posture already used by reqwest/tungstenite
+# under our rustls-tls posture (no openssl).
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+webpki-roots = "0.26"
+rustls-pemfile = "2"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 crossterm = { version = "0.28", default-features = false, features = ["events"] }
 rustyline = { version = "15", default-features = false, features = ["with-file-history"] }

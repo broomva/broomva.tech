@@ -41,6 +41,14 @@ pub struct Cli {
     #[arg(long, global = true, default_value = "table", value_enum)]
     pub format: OutputFormat,
 
+    /// Extra root CA certificate (PEM) to trust on top of webpki
+    /// defaults. Use this when targeting a self-signed dev gateway
+    /// (e.g. local lumen-smoke at `wss://127.0.0.1:8443`). Falls back
+    /// to the `BROOMVA_CA_CERT` env var. Production roots remain
+    /// trusted in all cases. BRO-1186.
+    #[arg(long, global = true, value_name = "PATH", env = "BROOMVA_CA_CERT")]
+    pub cacert: Option<String>,
+
     #[command(subcommand)]
     pub command: Option<Command>,
 }
@@ -749,6 +757,7 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 model: model.clone(),
                 gateway_url: gateway_url.clone(),
                 token_override: token.clone(),
+                ca_cert_path: cli.cacert.clone(),
             };
             match action {
                 None => {
@@ -781,6 +790,7 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 token: token.clone(),
                 format,
                 turn_timeout_seconds: turn_timeout,
+                ca_cert_path: cli.cacert.clone(),
                 broomva_client: BroomvaClient::new(
                     config::resolve_api_base(cli.api_base.as_deref())?,
                     token.clone(),

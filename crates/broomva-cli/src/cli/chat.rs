@@ -209,6 +209,11 @@ pub struct ChatRunOpts {
     pub model: Option<String>,
     pub gateway_url: Option<String>,
     pub token_override: Option<String>,
+    /// Extra root CA cert path (BRO-1186). When set, appended to the
+    /// TLS trust store for the WS handshake; falls back to
+    /// `BROOMVA_CA_CERT` env var inside `resolve`. None ⇒ production
+    /// CAs only.
+    pub ca_cert_path: Option<String>,
 }
 
 impl ChatRunOpts {
@@ -273,6 +278,11 @@ impl ChatRunOpts {
             .map(|s| s.to_string())
             .or_else(|| self.session_id.clone());
 
+        // BRO-1186 — flag wins, env fallback inside the helper. The
+        // resolver returns `None` when neither is set, which keeps the
+        // production CA-only behaviour intact.
+        let ca_cert_path = crate::api::tls::resolve_ca_cert_path(self.ca_cert_path.as_deref());
+
         Ok(AgentStreamConfig {
             gateway_url,
             token,
@@ -280,6 +290,7 @@ impl ChatRunOpts {
             from_sequence: None,
             model,
             connect_timeout: Duration::from_secs(10),
+            ca_cert_path,
         })
     }
 }
@@ -816,6 +827,7 @@ mod tests {
             model: None,
             gateway_url: Some("ws://localhost:1".into()),
             token_override: None,
+            ca_cert_path: None,
         };
         let cfg = opts.resolve(None).unwrap();
         assert_eq!(cfg.model.as_deref(), Some(DEFAULT_MODEL));
@@ -833,6 +845,7 @@ mod tests {
             model: Some("claude-opus-4-7".into()),
             gateway_url: None,
             token_override: None,
+            ca_cert_path: None,
         };
         let cfg = opts.resolve(None).unwrap();
         assert_eq!(cfg.model.as_deref(), Some("claude-opus-4-7"));

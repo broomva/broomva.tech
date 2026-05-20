@@ -1,5 +1,75 @@
 # Changelog
 
+## 0.6.1 — 2026-05-19
+
+### TLS dev-cert escape hatch — unblocks local lifegw dogfood
+
+Adds `--cacert <path>` and `BROOMVA_CA_CERT` to `broomva chat`, `broomva agent`, and every other subcommand that issues HTTP or WebSocket requests. The path is loaded as an extra root CA on top of the existing webpki-roots trust store — production CAs remain trusted; the only change is one extra accepted chain. Closes [BRO-1186](https://linear.app/broomva/issue/BRO-1186).
+
+Before this patch the `v0.6.0` CLI could not reach a local lumen-smoke `lifegw` (`https://127.0.0.1:8443`) because `reqwest` was built with `rustls-tls` (webpki defaults only) and `tokio-tungstenite` with `rustls-tls-webpki-roots`. Self-signed dev certs failed handshake with `UnknownIssuer`; `curl --cacert <path>` worked but the CLI offered no equivalent flag. With this release the dev workflow is one flag away from working end-to-end.
+
+### Scope
+
+- **CLI**: new global flag `--cacert <PATH>` (clap `global = true`, `env = BROOMVA_CA_CERT`). Available on every subcommand that opens a network connection (`chat`, `agent run`, `agent list`, `agent get`, `agent tail`, `agent cancel`, `chat resume`, …).
+- **HTTP path** (`reqwest`): when a path is supplied, the PEM is loaded via `reqwest::Certificate::from_pem` and added to the `ClientBuilder` via `add_root_certificate`. Used by `LifedHttpClient::with_dev_cert`.
+- **WS path** (`tokio-tungstenite`): when a path is supplied, a `rustls::ClientConfig` is built from webpki defaults + the dev cert, wrapped in `Connector::Rustls`, and passed to `connect_async_tls_with_config`. Used by `agent_stream::TungsteniteStream::connect`.
+- **No `--insecure` flag** by design (BRO-1186 §"Out of scope"). A future `BROOMVA_DEV_ALLOW_INSECURE=1` env-gated escape may land separately; this PR keeps the CA boundary intact.
+
+### Deliverables
+
+- **NEW** `crates/broomva-cli/src/api/tls.rs` — single seam for the dev-cert helper. Exposes `resolve_ca_cert_path` (flag > env > none), `load_extra_root_cert` (for reqwest), `build_tungstenite_connector` (for WS). 10 unit tests cover precedence, missing-file errors, malformed-PEM errors, and the empty-PEM edge case.
+- **EDIT** `crates/broomva-cli/src/api/agent_stream.rs` — adds `ca_cert_path` to `AgentStreamConfig`; `TungsteniteStream::connect` switches between `connect_async` (default) and `connect_async_tls_with_config` (when dev cert is set) without changing the steady-state production path.
+- **EDIT** `crates/broomva-cli/src/api/lifed.rs` — new `LifedHttpClient::with_dev_cert(base_url, token, ca_cert_path)` constructor preserves the existing `new(...)` signature for callers that don't need the escape hatch. `build_lifed_client` in `cli/agent.rs` now resolves the cert path and routes through `with_dev_cert`.
+- **EDIT** `crates/broomva-cli/src/cli/chat.rs` — `ChatRunOpts.ca_cert_path: Option<String>` plus resolution in `ChatRunOpts::resolve()`. Existing tests gain `ca_cert_path: None`.
+- **EDIT** `crates/broomva-cli/src/cli/agent.rs` — `AgentRunOpts.ca_cert_path: Option<String>` flows through to `build_lifed_client`.
+- **EDIT** `crates/broomva-cli/src/cli/mod.rs` — global `cacert: Option<String>` field on `Cli`; threaded into both `ChatRunOpts` and `AgentRunOpts` at dispatch time.
+- **EDIT** `crates/broomva-cli/tests/chat_smoke.rs` — fixture updates for the new `ChatRunOpts` field.
+- **EDIT** `crates/broomva-cli/Cargo.toml` — adds direct deps `rustls 0.23` (feature-pruned to `std + ring + tls12`), `webpki-roots 0.26`, `rustls-pemfile 2`. All three are already in the dep tree transitively via `reqwest` + `tokio-tungstenite` at the same major-version pins, so no new crates enter the release binary; cargo deduplicates.
+
+### Manual smoke (lumen-smoke local dogfood)
+
+```bash
+# Prereq: lumen-smoke lifegw running at https://127.0.0.1:8443. Point
+# --cacert at the issuing CA (NOT the server leaf cert) — rustls is
+# strict about CA constraints, unlike curl. For the lumen-smoke setup:
+#   dev-ca.pem  ← issuing CA, what --cacert wants
+#   cert.pem    ← server leaf, what the listener presents
+broomva chat \
+  --cacert ~/broomva/core/life/.worktrees/lumen-phase-alpha-m7-w/crates/life-runtime/lifegw/dev-tls/dev-ca.pem \
+  --gateway-url "wss://127.0.0.1:8443/v1/agent/stream" \
+  --token "dev-token-for-test-user-1" \
+  "hello"
+
+# OR via env (handy for shell-rc'd workflows):
+export BROOMVA_CA_CERT="$HOME/broomva/core/life/.worktrees/lumen-phase-alpha-m7-w/crates/life-runtime/lifegw/dev-tls/dev-ca.pem"
+export BROOMVA_TOKEN="dev-token-for-test-user-1"
+broomva chat --gateway-url "wss://127.0.0.1:8443/v1/agent/stream" "hello"
+```
+
+Before this patch: `error: ws handshake failed: IO error: invalid peer certificate: UnknownIssuer`.
+After this patch: TLS handshake succeeds against lumen-smoke; the remaining failure observed (`HTTP error: 200 OK` — gateway returned 200 on the upgrade path instead of 101 Switching Protocols) is a downstream wire-shape concern tracked under [BRO-1187](https://linear.app/broomva/issue/BRO-1187), not a TLS issue. That's the expected state for this PR.
+
+A "pointed `--cacert` at the leaf cert by mistake" still surfaces `UnknownIssuer` — the strict-rustls behaviour we want; curl would silently accept it.
+
+### Invariants verified
+
+| Invariant | Verified by |
+|---|---|
+| Production CAs remain trusted when `--cacert` is unset | `api/tls.rs::tests::build_tungstenite_connector_returns_none_without_path` + `resolve_returns_none_when_neither_set` |
+| Flag wins over env var | `api/tls.rs::tests::resolve_prefers_flag_over_env` |
+| Env var fallback works alone | `api/tls.rs::tests::resolve_falls_back_to_env` |
+| Missing file fails loudly (no silent fallback) | `api/tls.rs::tests::load_extra_root_cert_rejects_missing_file` + `build_tungstenite_connector_rejects_missing_file` |
+| Malformed PEM fails loudly | `api/tls.rs::tests::load_extra_root_cert_rejects_garbage_pem` |
+| Empty PEM (no CERTIFICATE block) fails loudly | `api/tls.rs::tests::build_tungstenite_connector_rejects_empty_pem` |
+| Valid PEM loads | `api/tls.rs::tests::load_extra_root_cert_accepts_valid_pem` + `build_tungstenite_connector_loads_valid_pem` |
+| End-to-end: dev gateway reachable | Manual smoke against lumen-smoke (see above) |
+
+### Out of scope (separate tickets)
+
+- `--insecure` blanket cert-disable flag — explicitly excluded per BRO-1186 design.
+- `LifedHttpClient` URL/body-shape alignment with the real lifed wire — [BRO-1187](https://linear.app/broomva/issue/BRO-1187).
+- Two-tier auth flow (lifegw mints user-cap from `BROOMVA_TOKEN`) — separate arc.
+
 ## 0.6.0 — 2026-05-19
 
 ### Phase B — broomva agent typed task invocation

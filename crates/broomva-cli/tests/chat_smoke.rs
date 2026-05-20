@@ -109,6 +109,7 @@ fn isolated_session(
         model: Some("claude-sonnet-4-6".into()),
         gateway_url: Some("ws://localhost:1".into()),
         token_override: Some("test-token".into()),
+        ca_cert_path: None,
     };
     let session = ChatSession::new(opts, session_id)
         .expect("ChatSession::new should succeed in isolated tmp dir");
@@ -272,6 +273,7 @@ async fn resume_replays_history_and_reconnects_with_from_sequence() {
         model: Some("claude-sonnet-4-6".into()),
         gateway_url: Some("ws://localhost:1".into()),
         token_override: Some("test-token".into()),
+        ca_cert_path: None,
     };
 
     // Pre-seed the history file as if a prior session left state.

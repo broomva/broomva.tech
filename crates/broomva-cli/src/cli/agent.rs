@@ -91,6 +91,10 @@ pub struct AgentRunOpts {
     pub format: OutputFormat,
     /// Per-turn / per-step timeout override. None ⇒ defer to spec.
     pub turn_timeout_seconds: Option<u64>,
+    /// Extra root CA cert path (BRO-1186). Used by `build_lifed_client`
+    /// to construct an HTTP client that trusts a dev/self-signed lifed
+    /// stack on top of webpki defaults. None ⇒ production CAs only.
+    pub ca_cert_path: Option<String>,
     /// API client for telemetry beacons (`/api/invocations` posts).
     pub broomva_client: crate::api::BroomvaClient,
 }
@@ -531,7 +535,10 @@ fn build_lifed_client(opts: &AgentRunOpts) -> BroomvaResult<Box<dyn LifedClient>
             })
         })
         .unwrap_or_else(|| DEFAULT_LIFED_BASE_URL.to_string());
-    Ok(Box::new(LifedHttpClient::new(url, opts.token.clone())))
+    // BRO-1186: --cacert / BROOMVA_CA_CERT flows in via opts.ca_cert_path.
+    let ca = crate::api::tls::resolve_ca_cert_path(opts.ca_cert_path.as_deref());
+    let client = LifedHttpClient::with_dev_cert(url, opts.token.clone(), ca.as_deref())?;
+    Ok(Box::new(client))
 }
 
 fn run_directory(run_id: &str) -> PathBuf {
