@@ -140,10 +140,11 @@ const nextConfig: NextConfig = {
       "./public/images/**",
     ],
   },
-  outputFileTracingIncludes: {
-    "/api/chat": ["./public/agent-knowledge.json"],
-    "/api/chat/[id]/**": ["./public/agent-knowledge.json"],
-  },
+  // outputFileTracingIncludes intentionally empty post-PR-3 (#194). The
+  // /api/chat route no longer reads public/agent-knowledge.json — the
+  // agent context is now built upstream in lifed (broomva/life). Re-add
+  // an entry here only if a route imports a non-source file at runtime
+  // that the Vercel build's tracing analysis would otherwise miss.
   experimental: {
     optimizePackageImports: [
       "react-tweet",
