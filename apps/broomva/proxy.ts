@@ -83,6 +83,81 @@ const METADATA_ROUTES = [
   "/llms-full.txt",
 ] as const;
 
+// ── CORS allowlist for /api/* (absorbed from former middleware.ts) ──────────
+//
+// Next.js 16 disallows having BOTH `middleware.ts` and `proxy.ts`. The CORS
+// allowlist that previously lived in middleware.ts is folded into proxy.ts
+// here so we keep one source of truth (Next.js will fail to build otherwise).
+//
+// Allowed origins:
+//   - https://broomva.tech (canonical)
+//   - https://www.broomva.tech (www alias)
+//   - https://broomva.github.io (GitHub Pages, e.g. alpine-cabin OSS demo)
+//   - http://localhost:* + http://127.0.0.1:* (dev only — NODE_ENV !== production)
+//
+// Set `BROOMVA_CORS_EXTRA_ORIGINS` (comma-separated) to add ad-hoc origins
+// without a redeploy (Railway/Vercel env var). Each entry must be an exact
+// origin string (`https://host[:port]`).
+//
+// Behavior:
+//   - OPTIONS preflight to /api/* → 204 with CORS headers when origin allowed,
+//     empty 204 otherwise (browser fails its end — standard CORS posture).
+//   - Other methods to /api/* → forward to handler; CORS headers appended
+//     to the final response when origin allowed.
+//   - Non-/api/* paths get no CORS treatment (HTML pages don't need it).
+
+const STATIC_ALLOWLIST = new Set([
+  "https://broomva.tech",
+  "https://www.broomva.tech",
+  "https://broomva.github.io",
+]);
+
+const ALLOWED_HEADERS = "Content-Type, Authorization, X-Requested-With";
+const ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
+const MAX_AGE_SECONDS = "600"; // 10 minutes — cache preflight cheaply
+
+function envExtraOrigins(): Set<string> {
+  const raw = process.env.BROOMVA_CORS_EXTRA_ORIGINS;
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
+function isLocalhostOrigin(origin: string): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  try {
+    const u = new URL(origin);
+    return (
+      (u.hostname === "localhost" || u.hostname === "127.0.0.1") &&
+      (u.protocol === "http:" || u.protocol === "https:")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  if (STATIC_ALLOWLIST.has(origin)) return true;
+  if (envExtraOrigins().has(origin)) return true;
+  if (isLocalhostOrigin(origin)) return true;
+  return false;
+}
+
+function applyCorsHeaders(headers: Headers, origin: string): void {
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Methods", ALLOWED_METHODS);
+  headers.set("Access-Control-Allow-Headers", ALLOWED_HEADERS);
+  headers.set("Access-Control-Allow-Credentials", "true");
+  headers.set("Access-Control-Max-Age", MAX_AGE_SECONDS);
+  // Vary so caches don't return the wrong Origin echo to a different caller.
+  headers.append("Vary", "Origin");
+}
+
 // ── Route classifiers ───────────────────────────────────────────────────────
 
 function isPublicPage(pathname: string): boolean {
@@ -108,7 +183,10 @@ function isAuthPage(pathname: string): boolean {
 
 // ── Security headers ────────────────────────────────────────────────────────
 
-function withSecurityHeaders(response?: NextResponse): NextResponse {
+function withSecurityHeaders(
+  req: NextRequest,
+  response?: NextResponse,
+): NextResponse {
   const res = response ?? NextResponse.next();
 
   res.headers.set("X-Content-Type-Options", "nosniff");
@@ -123,6 +201,18 @@ function withSecurityHeaders(response?: NextResponse): NextResponse {
     "Permissions-Policy",
     "camera=(), microphone=(self), geolocation=()",
   );
+
+  // Append dynamic CORS headers when the request targets /api/* and the
+  // request Origin is on the allowlist. Non-/api/* requests and disallowed
+  // origins get no CORS headers — the browser silently fails its end, which
+  // is the standard posture.
+  const origin = req.headers.get("origin");
+  if (
+    req.nextUrl.pathname.startsWith("/api/") &&
+    isAllowedOrigin(origin)
+  ) {
+    applyCorsHeaders(res.headers, origin as string);
+  }
 
   return res;
 }
@@ -177,6 +267,20 @@ export async function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const { pathname } = url;
 
+  // ── CORS preflight short-circuit for /api/* ────────────────────────────
+  // Return 204 before any auth check so the browser preflight completes
+  // without ever hitting the route handler or hitting the /login redirect
+  // path. Disallowed origins get an empty 204 (no CORS headers) and the
+  // browser fails its end — the standard posture for unwhitelisted origins.
+  if (req.method === "OPTIONS" && pathname.startsWith("/api/")) {
+    const origin = req.headers.get("origin");
+    const res = new NextResponse(null, { status: 204 });
+    if (isAllowedOrigin(origin)) {
+      applyCorsHeaders(res.headers, origin as string);
+    }
+    return res;
+  }
+
   // ── Wildcard subdomain detection ──────────────────────────────────────
   // If the request arrives on a tenant subdomain (e.g. acme.broomva.tech),
   // stamp the slug onto a request header so downstream code
@@ -203,7 +307,7 @@ export async function proxy(req: NextRequest) {
     isPublicPage(pathname) ||
     isPublicApiRoute(pathname)
   ) {
-    return withSecurityHeaders(nextWithTenant());
+    return withSecurityHeaders(req, nextWithTenant());
   }
 
   // Auth pages need a session check to redirect logged-in users away
@@ -219,14 +323,13 @@ export async function proxy(req: NextRequest) {
       const plan = url.searchParams.get("plan");
       if (plan && (pathname === "/login" || pathname === "/register")) {
         return withSecurityHeaders(
+          req,
           NextResponse.redirect(new URL(`/console/billing?plan=${plan}`, url)),
         );
       }
-      return withSecurityHeaders(
-        NextResponse.redirect(new URL("/", url)),
-      );
+      return withSecurityHeaders(req, NextResponse.redirect(new URL("/", url)));
     }
-    return withSecurityHeaders(nextWithTenant());
+    return withSecurityHeaders(req, nextWithTenant());
   }
 
   // Block all other routes for unauthenticated users.
@@ -235,10 +338,10 @@ export async function proxy(req: NextRequest) {
     const plan = url.searchParams.get("plan");
     const loginUrl = new URL("/login", url);
     if (plan) loginUrl.searchParams.set("plan", plan);
-    return withSecurityHeaders(NextResponse.redirect(loginUrl));
+    return withSecurityHeaders(req, NextResponse.redirect(loginUrl));
   }
 
-  return withSecurityHeaders(nextWithTenant());
+  return withSecurityHeaders(req, nextWithTenant());
 }
 
 // ── Matcher: only exclude static assets and build artifacts ─────────────────
