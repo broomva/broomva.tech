@@ -3,6 +3,7 @@ import {
   createUIMessageStream,
   JsonToSseTransformStream,
 } from "ai";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import { after } from "next/server";
@@ -17,17 +18,18 @@ import {
   type AppModelId,
   getAppModelDefinition,
 } from "@/lib/ai/app-models";
-import { createCoreChatAgent } from "@/lib/ai/core-chat-agent";
 import { determineExplicitlyRequestedTools } from "@/lib/ai/determine-explicitly-requested-tools";
 import { ChatSDKError } from "@/lib/ai/errors";
-import {
-  generateFollowupSuggestions,
-  streamFollowupSuggestions,
-} from "@/lib/ai/followup-suggestions";
-import { buildSystemPrompt } from "@/lib/ai/prompts";
 import { calculateMessagesTokens } from "@/lib/ai/token-utils";
 import { allTools } from "@/lib/ai/tools/tools-definitions";
 import type { ChatMessage, ToolName } from "@/lib/ai/types";
+import {
+  EVENT_CHAT_STARTED,
+  EVENT_CREDITS_EXHAUSTED,
+  EVENT_MESSAGE_SENT,
+  EVENT_TOOL_USED,
+} from "@/lib/analytics/events";
+import { captureServerEvent } from "@/lib/analytics/posthog";
 import {
   getAnonymousSession,
   setAnonymousSession,
@@ -36,56 +38,51 @@ import { getSafeSession } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { createAnonymousSession } from "@/lib/create-anonymous-session";
 import { CostAccumulator } from "@/lib/credits/cost-accumulator";
+import { db as tierDb } from "@/lib/db/client";
 import { canSpend, deductCredits } from "@/lib/db/credits";
 import { getMcpConnectorsByUserId } from "@/lib/db/mcp-queries";
-import { deductOrgCredits, recordUsageEvent } from "@/lib/db/usage";
 import {
   getChatById,
   getMessageById,
   getMessageCanceledAt,
-  getProjectById,
   getUserById,
   saveChat,
   saveMessage,
-  upsertUserFromSession,
   updateMessage,
   updateMessageActiveStreamId,
+  upsertUserFromSession,
 } from "@/lib/db/queries";
 import type { McpConnector } from "@/lib/db/schema";
 import { organization, organizationMember } from "@/lib/db/schema";
-import { db as tierDb } from "@/lib/db/client";
-import { eq } from "drizzle-orm";
+import { deductOrgCredits, recordUsageEvent } from "@/lib/db/usage";
 import { env } from "@/lib/env";
+import type { FeatureFlag } from "@/lib/feature-flags";
+import { getServerFeatureFlag } from "@/lib/feature-flags";
+import {
+  type CanonicalConsumeState,
+  canonicalToVercelAiSdkSse,
+  makeConsumeState,
+} from "@/lib/life-runtime/edge-adapter/canonical-to-vercel-ai-sse";
+import {
+  dispatchViaLifegw,
+  getLifegwBaseUrl,
+  type SessionClientFactory,
+} from "@/lib/life-runtime/edge-adapter/dispatch-via-lifegw";
 import { MAX_INPUT_TOKENS } from "@/lib/limits/tokens";
 import { createModuleLogger } from "@/lib/logger";
+import {
+  canSpendCredits,
+  getUpgradeMessage,
+  isModelAllowed,
+} from "@/lib/tier-access";
 import type { AnonymousSession } from "@/lib/types/anonymous";
 import { ANONYMOUS_LIMITS } from "@/lib/types/anonymous";
 import { generateUUID } from "@/lib/utils";
-import {
-  isModelAllowed,
-  canSpendCredits,
-  getUpgradeMessage,
-} from "@/lib/tier-access";
 import {
   checkAnonymousRateLimit,
   checkAuthenticatedRateLimit,
   getClientIP,
 } from "@/lib/utils/rate-limit";
-import {
-  executeViaArcan,
-  resolveArcanEndpoints,
-  markInstanceDegraded,
-} from "@/lib/arcan";
-import type { ArcanPolicySet } from "@/lib/arcan/execute";
-import { captureServerEvent } from "@/lib/analytics/posthog";
-import {
-  EVENT_CHAT_STARTED,
-  EVENT_CREDITS_EXHAUSTED,
-  EVENT_MESSAGE_SENT,
-  EVENT_TOOL_USED,
-} from "@/lib/analytics/events";
-import { getServerFeatureFlag } from "@/lib/feature-flags";
-import type { FeatureFlag } from "@/lib/feature-flags";
 import { generateTitleFromUserMessage } from "../../actions";
 import { getThreadUpToMessageId } from "./get-thread-up-to-message-id";
 
@@ -149,6 +146,18 @@ export async function getStreamContext(): Promise<ResumableStreamContext | null>
   });
 
   return globalStreamContext;
+}
+
+// ── Test seam — lifegw client factory override ───────────────────────────
+// Production code leaves this undefined and the dispatcher constructs a
+// real `LifedWsAgentSessionClient`. Tests use `__setSessionClientFactoryForTests`
+// to inject a mock so the route can run without an actual gateway.
+let testLifegwClientFactory: SessionClientFactory | undefined;
+
+export function __setSessionClientFactoryForTests(
+  factory: SessionClientFactory | undefined,
+): void {
+  testLifegwClientFactory = factory;
 }
 
 type AnonymousSessionResult =
@@ -321,7 +330,11 @@ const FLAG_GATED_TOOLS: Partial<Record<FeatureFlag, ToolName[]>> = {
   image_generation: ["generateImage"],
   web_search: ["webSearch"],
   url_retrieval: ["retrieveUrl"],
-  knowledge_graph: ["searchKnowledge", "readKnowledgeNote", "traverseKnowledge"],
+  knowledge_graph: [
+    "searchKnowledge",
+    "readKnowledgeNote",
+    "traverseKnowledge",
+  ],
 };
 
 /** The feature flags that gate premium chat tools. */
@@ -388,7 +401,12 @@ function getToolGateUpgradeMessage(toolName: ToolName): string {
 /**
  * Determines which built-in tools are allowed based on model capabilities
  * and feature flags.
- * MCP tools are handled separately in core-chat-agent.
+ *
+ * NOTE: lifegw owns server-side tool dispatch — the in-app route no
+ * longer constructs `getTools()` / `streamText`. The allow-list returned
+ * here is still useful for the explicit-request gate (the user clicking
+ * the "deepResearch" button, etc.) so we can return a 403 *before* the
+ * call hits lifegw rather than relying on lifegw's policy denial.
  */
 function determineAllowedTools({
   isAnonymous,
@@ -426,328 +444,94 @@ function determineAllowedTools({
   return allowedTools;
 }
 
-async function getSystemPrompt({
+async function finalizeMessageAndCredits({
+  assistantMessage,
+  userId,
+  organizationId,
   isAnonymous,
   chatId,
-  userName,
+  costAccumulator,
 }: {
+  assistantMessage: ChatMessage | undefined;
+  userId: string | null;
+  organizationId: string | null;
   isAnonymous: boolean;
   chatId: string;
-  userName?: string | null;
-}): Promise<string> {
-  let system = await buildSystemPrompt({
-    isAnonymous,
-    userName,
-    memoryVaultAvailable: config.features.memoryVault && !isAnonymous,
-  });
-  if (!isAnonymous) {
-    const currentChat = await getChatById({ id: chatId });
-    if (currentChat?.projectId) {
-      const project = await getProjectById({ id: currentChat.projectId });
-      if (project?.instructions) {
-        system = `${system}\n\n---\n\n## Project instructions\n\n${project.instructions}`;
+  costAccumulator: CostAccumulator;
+}): Promise<void> {
+  const log = createModuleLogger("api:chat:finalize");
+
+  try {
+    if (!assistantMessage) {
+      throw new Error("No assistant message found!");
+    }
+
+    if (!isAnonymous) {
+      await updateMessage({
+        id: assistantMessage.id,
+        chatId,
+        message: {
+          ...assistantMessage,
+          metadata: {
+            ...assistantMessage.metadata,
+            activeStreamId: null,
+          },
+        },
+      });
+    }
+
+    // Get total cost from accumulator (includes all LLM calls + external API costs)
+    const totalCost = await costAccumulator.getTotalCost();
+    const entries = costAccumulator.getEntries();
+
+    log.info({ entries }, "Cost accumulator entries");
+    log.info({ totalCost }, "Cost accumulator total cost");
+
+    // Capture tool_used if assistant message contains tool-* parts (AI SDK v6 naming)
+    if (userId && !isAnonymous) {
+      const toolParts = (assistantMessage.parts ?? []).filter(
+        (p) => typeof p.type === "string" && p.type.startsWith("tool-"),
+      );
+      if (toolParts.length > 0) {
+        captureServerEvent(userId, EVENT_TOOL_USED, {
+          chatId,
+          toolCount: toolParts.length,
+          tools: toolParts.map((p) => p.type.slice("tool-".length)),
+        });
       }
     }
-  }
-  return system;
-}
 
-async function createChatStream({
-  messageId,
-  chatId,
-  userMessage,
-  previousMessages,
-  selectedModelId,
-  explicitlyRequestedTools,
-  userId,
-  organizationId,
-  allowedTools,
-  abortController,
-  isAnonymous,
-  isNewChat,
-  timeoutId,
-  mcpConnectors,
-  streamId,
-  userName,
-  onChunk,
-}: {
-  messageId: string;
-  chatId: string;
-  userMessage: ChatMessage;
-  previousMessages: ChatMessage[];
-  selectedModelId: AppModelId;
-  explicitlyRequestedTools: ToolName[] | null;
-  userId: string | null;
-  organizationId: string | null;
-  allowedTools: ToolName[];
-  abortController: AbortController;
-  isAnonymous: boolean;
-  isNewChat: boolean;
-  timeoutId: NodeJS.Timeout;
-  mcpConnectors: McpConnector[];
-  streamId: string;
-  userName?: string | null;
-  onChunk?: () => void;
-}) {
-  const log = createModuleLogger("api:chat:stream");
-  const system = await getSystemPrompt({
-    isAnonymous,
-    chatId,
-    userName: isAnonymous ? null : userName ?? null,
-  });
+    // Deduct credits for authenticated users
+    if (userId && !isAnonymous) {
+      await deductCredits(userId, totalCost);
 
-  // Create cost accumulator to track all LLM and API costs
-  const costAccumulator = new CostAccumulator();
-
-  // Build the data stream that will emit tokens
-  const stream = createUIMessageStream<ChatMessage>({
-    execute: async ({ writer: dataStream }) => {
-      // Confirm chat persistence on first message (chat + user message are persisted before streaming begins)
-      if (isNewChat) {
-        dataStream.write({
-          id: generateUUID(),
-          type: "data-chatConfirmed",
-          data: { chatId },
-          transient: true,
+      // Deduct org-level credits (atomic — skips if org has insufficient balance)
+      if (organizationId) {
+        deductOrgCredits(organizationId, totalCost).catch((err) => {
+          log.error({ error: err }, "Failed to deduct org credits");
         });
       }
 
-      const { result, contextForLLM } = await createCoreChatAgent({
-        system,
-        userMessage,
-        previousMessages,
-        selectedModelId,
-        explicitlyRequestedTools,
+      // Record usage event (fire-and-forget, non-blocking)
+      const tokenBreakdown = costAccumulator.getTokenBreakdown();
+      recordUsageEvent({
+        organizationId: organizationId ?? undefined,
         userId,
-        budgetAllowedTools: allowedTools,
-        abortSignal: abortController.signal,
-        messageId,
+        type: "ai_tokens",
+        resource: tokenBreakdown.modelId ?? undefined,
+        inputTokens: tokenBreakdown.inputTokens,
+        outputTokens: tokenBreakdown.outputTokens,
+        costCents: totalCost,
         chatId,
-        dataStream,
-        onError: (error) => {
-          log.error({ error }, "streamText error");
-        },
-        onChunk,
-        mcpConnectors,
-        costAccumulator,
+      }).catch((err) => {
+        log.error({ error: err }, "Failed to record usage event");
       });
+    }
 
-      const initialMetadata: ChatMessage["metadata"] = {
-        createdAt: new Date(),
-        parentMessageId: userMessage.id,
-        selectedModel: selectedModelId,
-        activeStreamId: isAnonymous ? null : streamId,
-      };
-
-      dataStream.merge(
-        result.toUIMessageStream({
-          sendReasoning: true,
-          messageMetadata: ({ part }) => {
-            // send custom information to the client on start:
-            if (part.type === "start") {
-              return initialMetadata;
-            }
-
-            // when the message is finished, send additional information:
-            if (part.type === "finish") {
-              // Add main stream LLM usage to accumulator
-              if (part.totalUsage) {
-                costAccumulator.addLLMCost(
-                  selectedModelId,
-                  part.totalUsage,
-                  "main-chat",
-                );
-              }
-              return {
-                ...initialMetadata,
-                usage: part.totalUsage,
-                activeStreamId: null,
-              };
-            }
-          },
-        }),
-      );
-      await result.consumeStream();
-
-      const response = await result.response;
-      const responseMessages = response.messages;
-
-      // Generate and stream follow-up suggestions
-      if (config.features.followupSuggestions) {
-        const followupSuggestionsResult = generateFollowupSuggestions([
-          ...contextForLLM,
-          ...responseMessages,
-        ]);
-        await streamFollowupSuggestions({
-          followupSuggestionsResult,
-          writer: dataStream,
-        });
-      }
-    },
-    generateId: () => messageId,
-    onFinish: async ({ messages }) => {
-      clearTimeout(timeoutId);
-      await finalizeMessageAndCredits({
-        messages,
-        userId,
-        organizationId,
-        isAnonymous,
-        chatId,
-        costAccumulator,
-      });
-    },
-    onError: (error) => {
-      clearTimeout(timeoutId);
-      // If the stream fails, ensure the placeholder assistant message is no longer marked resumable.
-      // Otherwise the client will try to resume a stream that no longer exists and we end up with a
-      // stuck partial placeholder on reload.
-      if (!isAnonymous) {
-        after(() =>
-          Promise.resolve(
-            updateMessageActiveStreamId({
-              id: messageId,
-              activeStreamId: null,
-            }),
-          ).catch((dbError) => {
-            log.error(
-              { error: dbError },
-              "Failed to clear activeStreamId on stream error",
-            );
-          }),
-        );
-      }
-
-      log.error({ error }, "onError");
-      return "Oops, an error occured!";
-    },
-  });
-
-  return stream;
-}
-
-async function executeChatRequest({
-  chatId,
-  userMessage,
-  previousMessages,
-  selectedModelId,
-  explicitlyRequestedTools,
-  userId,
-  organizationId,
-  isAnonymous,
-  isNewChat,
-  allowedTools,
-  abortController,
-  timeoutId,
-  mcpConnectors,
-  userName,
-}: {
-  chatId: string;
-  userMessage: ChatMessage;
-  previousMessages: ChatMessage[];
-  selectedModelId: AppModelId;
-  explicitlyRequestedTools: ToolName[] | null;
-  userId: string | null;
-  organizationId: string | null;
-  isAnonymous: boolean;
-  isNewChat: boolean;
-  allowedTools: ToolName[];
-  abortController: AbortController;
-  timeoutId: NodeJS.Timeout;
-  mcpConnectors: McpConnector[];
-  userName?: string | null;
-}): Promise<Response> {
-  const log = createModuleLogger("api:chat:execute");
-  const messageId = generateUUID();
-  const streamId = generateUUID();
-
-  if (!isAnonymous) {
-    // Save placeholder assistant message immediately (needed for document creation)
-    await saveMessage({
-      id: messageId,
-      chatId,
-      message: {
-        id: messageId,
-        role: "assistant",
-        parts: [],
-        metadata: {
-          createdAt: new Date(),
-          parentMessageId: userMessage.id,
-          selectedModel: selectedModelId,
-          selectedTool: undefined,
-          activeStreamId: streamId,
-        },
-      },
-    });
+    // Note: Anonymous credits are pre-deducted before streaming starts (cookies can't be set after response begins)
+  } catch (error) {
+    log.error({ error }, "Failed to save chat or finalize credits");
   }
-
-  // Create throttled cancel check (max once per second) for authenticated users
-  const onChunk =
-    !isAnonymous && userId
-      ? throttle(async () => {
-          const canceledAt = await getMessageCanceledAt({ messageId });
-          if (canceledAt) {
-            abortController.abort();
-          }
-        }, 1000)
-      : undefined;
-
-  // Build the data stream that will emit tokens
-  const stream = await createChatStream({
-    messageId,
-    chatId,
-    userMessage,
-    previousMessages,
-    selectedModelId,
-    explicitlyRequestedTools,
-    userId,
-    organizationId,
-    allowedTools,
-    abortController,
-    isAnonymous,
-    isNewChat,
-    timeoutId,
-    mcpConnectors,
-    streamId,
-    userName,
-    onChunk,
-  });
-
-  const redisClients = await ensureRedisClients();
-  const publisher = redisClients?.publisher;
-  if (publisher) {
-    after(async () => {
-      try {
-        const keyPattern = `${config.appPrefix}:resumable-stream:rs:sentinel:${streamId}*`;
-        const keys = await publisher.keys(keyPattern);
-        if (keys.length > 0) {
-          await Promise.all(
-            keys.map((key: string) => publisher.expire(key, 300)),
-          );
-        }
-      } catch (error) {
-        log.error({ error }, "Failed to set TTL on stream keys");
-      }
-    });
-  }
-
-  const sseHeaders = {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  } as const;
-
-  const streamContext = await getStreamContext();
-  const sseStream = () => stream.pipeThrough(new JsonToSseTransformStream());
-
-  if (streamContext) {
-    log.debug("Returning resumable stream");
-    return new Response(
-      await streamContext.resumableStream(streamId, sseStream),
-      { headers: sseHeaders },
-    );
-  }
-
-  return new Response(sseStream(), { headers: sseHeaders });
 }
 
 type SessionSetupResult =
@@ -883,133 +667,411 @@ async function prepareRequestContext({
   return { previousMessages, allowedTools, error: null };
 }
 
-async function finalizeMessageAndCredits({
-  messages,
-  userId,
-  organizationId,
-  isAnonymous,
-  chatId,
-  costAccumulator,
-}: {
-  messages: ChatMessage[];
-  userId: string | null;
-  organizationId: string | null;
-  isAnonymous: boolean;
-  chatId: string;
-  costAccumulator: CostAccumulator;
-}): Promise<void> {
-  const log = createModuleLogger("api:chat:finalize");
-
-  try {
-    const assistantMessage = messages.at(-1);
-
-    if (!assistantMessage) {
-      throw new Error("No assistant message found!");
-    }
-
-    if (!isAnonymous) {
-      await updateMessage({
-        id: assistantMessage.id,
-        chatId,
-        message: {
-          ...assistantMessage,
-          metadata: {
-            ...assistantMessage.metadata,
-            activeStreamId: null,
-          },
-        },
-      });
-    }
-
-    // Get total cost from accumulator (includes all LLM calls + external API costs)
-    const totalCost = await costAccumulator.getTotalCost();
-    const entries = costAccumulator.getEntries();
-
-    log.info({ entries }, "Cost accumulator entries");
-    log.info({ totalCost }, "Cost accumulator total cost");
-
-    // Capture tool_used if assistant message contains tool-* parts (AI SDK v6 naming)
-    if (userId && !isAnonymous) {
-      const toolParts = (messages.at(-1)?.parts ?? []).filter(
-        (p) => typeof p.type === "string" && p.type.startsWith("tool-"),
-      );
-      if (toolParts.length > 0) {
-        captureServerEvent(userId, EVENT_TOOL_USED, {
-          chatId,
-          toolCount: toolParts.length,
-          tools: toolParts.map((p) => p.type.slice("tool-".length)),
-        });
+/**
+ * Extract plain user-text from a `ChatMessage`. The Vercel-AI-SDK v6
+ * `parts[]` shape may carry text + file + tool parts; lifegw expects a
+ * single user-message string so we concatenate every `text` part. File
+ * parts (images/PDFs/etc.) aren't handled in this PR — adding
+ * attachment forwarding is a follow-up once lifegw supports the
+ * `attachment_blob_ref` frame field.
+ */
+function extractUserMessageText(message: ChatMessage): string {
+  const parts = message.parts ?? [];
+  const textParts: string[] = [];
+  for (const part of parts) {
+    if (typeof part.type === "string" && part.type === "text") {
+      const text = (part as { text?: unknown }).text;
+      if (typeof text === "string" && text.length > 0) {
+        textParts.push(text);
       }
     }
-
-    // Deduct credits for authenticated users
-    if (userId && !isAnonymous) {
-      await deductCredits(userId, totalCost);
-
-      // Deduct org-level credits (atomic — skips if org has insufficient balance)
-      if (organizationId) {
-        deductOrgCredits(organizationId, totalCost).catch((err) => {
-          log.error({ error: err }, "Failed to deduct org credits");
-        });
-      }
-
-      // Record usage event (fire-and-forget, non-blocking)
-      const tokenBreakdown = costAccumulator.getTokenBreakdown();
-      recordUsageEvent({
-        organizationId: organizationId ?? undefined,
-        userId,
-        type: "ai_tokens",
-        resource: tokenBreakdown.modelId ?? undefined,
-        inputTokens: tokenBreakdown.inputTokens,
-        outputTokens: tokenBreakdown.outputTokens,
-        costCents: totalCost,
-        chatId,
-      }).catch((err) => {
-        log.error({ error: err }, "Failed to record usage event");
-      });
-    }
-
-    // Note: Anonymous credits are pre-deducted before streaming starts (cookies can't be set after response begins)
-  } catch (error) {
-    log.error({ error }, "Failed to save chat or finalize credits");
   }
+  return textParts.join("\n\n");
 }
 
 /**
- * Maps a subscription plan tier to an arcand PolicySet.
- * anonymous: heavily gated — no side-effecting capabilities, 5 events/turn
- * free:      read + search only, 15 events/turn
- * pro+:      full access, 50 events/turn
+ * Build the lifegw-routed response stream. Wraps the canonical iterator
+ * from `dispatchViaLifegw` in a `createUIMessageStream` so we can:
+ *
+ *   - Emit the existing `data-chatConfirmed` chunk on the first turn of
+ *     a new chat (chat-sync.tsx's UI reads this).
+ *   - Translate canonical agent events into Vercel-AI-SDK chunks.
+ *   - Capture the assistant message body + tool calls so the route's
+ *     persistence layer can write the finalised message to the DB
+ *     (replacing the placeholder created before streaming).
+ *   - Attach message metadata (createdAt, parentMessageId, model,
+ *     activeStreamId, usage) the same way the streamText path did.
+ *
+ * Returns an `AsyncIterableStream` of `UIMessageChunk` (same shape as
+ * `createUIMessageStream`), ready to be piped through
+ * `JsonToSseTransformStream`.
  */
-function buildArcanPolicy(plan: string): ArcanPolicySet {
-  if (plan === "anonymous") {
-    return {
-      allow_capabilities: ["fs:read:/session/**"],
-      gate_capabilities: [
-        "fs:write:**",
-        "exec:cmd:*",
-        "net:egress:*",
-        "secrets:read:*",
-      ],
-      max_events_per_turn: 5,
-      max_tool_runtime_secs: 30,
-    };
-  }
-  if (plan === "free") {
-    return {
-      allow_capabilities: ["fs:read:/session/**", "net:egress:*"],
-      gate_capabilities: ["fs:write:**", "exec:cmd:*", "secrets:read:*"],
-      max_events_per_turn: 15,
-      max_tool_runtime_secs: 30,
-    };
-  }
-  // pro / enterprise / any paid tier
-  return {
-    allow_capabilities: ["*"],
-    gate_capabilities: [],
-    max_events_per_turn: 50,
-    max_tool_runtime_secs: 60,
+async function createLifegwBackedChatStream({
+  messageId,
+  chatId,
+  userMessage,
+  selectedModelId,
+  userId,
+  anonymousSessionId,
+  organizationId,
+  abortController,
+  isAnonymous,
+  isNewChat,
+  timeoutId,
+  streamId,
+  onChunk,
+}: {
+  messageId: string;
+  chatId: string;
+  userMessage: ChatMessage;
+  selectedModelId: AppModelId;
+  userId: string | null;
+  /** Anonymous-session id — populated when `userId` is null. Used as the
+   *  `anon:<id>` subject on the Tier-0 cap so all turns in a guest
+   *  session share one consumer identity. */
+  anonymousSessionId: string | null;
+  organizationId: string | null;
+  abortController: AbortController;
+  isAnonymous: boolean;
+  isNewChat: boolean;
+  timeoutId: NodeJS.Timeout;
+  streamId: string;
+  onChunk?: () => void;
+}) {
+  const log = createModuleLogger("api:chat:stream");
+  const costAccumulator = new CostAccumulator();
+  const consumeState = makeConsumeState();
+
+  const initialMetadata: ChatMessage["metadata"] = {
+    createdAt: new Date(),
+    parentMessageId: userMessage.id,
+    selectedModel: selectedModelId,
+    activeStreamId: isAnonymous ? null : streamId,
   };
+
+  // chatId IS the sticky session id for the in-app surface — per-chat
+  // continuity is the semantics we want (one chat = one lifed session).
+  const stickySid = chatId;
+
+  // Anonymous callers mint a Tier-0 cap (`tier: "anon"`); authenticated
+  // users mint Tier-1. Both flow through the same dispatcher. We fall
+  // back to `chatId` if the anon session id is missing — that should
+  // never happen in production (`handleAnonymousSession` always
+  // produces one) but it keeps the call total before any I/O.
+  const consumer = userId
+    ? { kind: "user" as const, id: userId }
+    : { kind: "anon" as const, id: anonymousSessionId ?? chatId };
+
+  const userMessageText = extractUserMessageText(userMessage);
+
+  const stream = createUIMessageStream<ChatMessage>({
+    execute: async ({ writer: dataStream }) => {
+      // Confirm chat persistence on first message (chat + user message
+      // are persisted before streaming begins — this just signals the
+      // UI to update its sidebar)
+      if (isNewChat) {
+        dataStream.write({
+          id: generateUUID(),
+          type: "data-chatConfirmed",
+          data: { chatId },
+          transient: true,
+        });
+      }
+
+      // Open the lifegw dispatch. createSession failures surface here
+      // as a thrown error → caught by `createUIMessageStream`'s onError.
+      let dispatch: Awaited<ReturnType<typeof dispatchViaLifegw>>;
+      try {
+        dispatch = await dispatchViaLifegw({
+          stickySid,
+          userMessage: userMessageText,
+          consumer,
+          signal: abortController.signal,
+          clientFactory: testLifegwClientFactory,
+        });
+      } catch (err) {
+        log.error(
+          { err: err instanceof Error ? err.message : String(err) },
+          "dispatchViaLifegw failed",
+        );
+        // Surface as a UIMessageChunk error so chat-sync.tsx renders
+        // an inline error rather than a stream-disconnect.
+        dataStream.write({
+          type: "error",
+          errorText: `lifegw dispatch failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        });
+        return;
+      }
+
+      // Wrap the canonical iterator with a wakeup-on-progress filter
+      // that fires the cancel-check throttler on each frame the way
+      // the streamText path did via the `onChunk` callback.
+      const wrappedEvents = onChunk
+        ? wrapWithProgress(dispatch.events, onChunk)
+        : dispatch.events;
+
+      // Run the translator and merge its chunks into the writer.
+      for await (const chunk of canonicalToVercelAiSdkSse<ChatMessage>(
+        wrappedEvents,
+        {
+          fallbackTextId: messageId,
+          state: consumeState,
+        },
+      )) {
+        dataStream.write(chunk);
+      }
+
+      // After lifegw finishes, account the reported usage. The token
+      // counts come from lifegw's terminal `finish` event; cost-cents
+      // is optional (lifegw may pre-bill, leaving zero left to add).
+      if (consumeState.usage) {
+        costAccumulator.addLLMCost(
+          selectedModelId,
+          {
+            inputTokens: consumeState.usage.inputTokens ?? 0,
+            outputTokens: consumeState.usage.outputTokens ?? 0,
+          },
+          "main-chat",
+        );
+      }
+    },
+    generateId: () => messageId,
+    onFinish: async ({ responseMessage }) => {
+      clearTimeout(timeoutId);
+      // Stamp the response message's metadata with everything we know
+      // post-stream — usage, activeStreamId clear, parent + model.
+      const assistantMessage = stitchAssistantMessage({
+        responseMessage,
+        consumeState,
+        initialMetadata,
+      });
+      await finalizeMessageAndCredits({
+        assistantMessage,
+        userId,
+        organizationId,
+        isAnonymous,
+        chatId,
+        costAccumulator,
+      });
+    },
+    onError: (error) => {
+      clearTimeout(timeoutId);
+      // If the stream fails, ensure the placeholder assistant message
+      // is no longer marked resumable. Otherwise the client will try
+      // to resume a stream that no longer exists and we end up with a
+      // stuck partial placeholder on reload.
+      if (!isAnonymous) {
+        after(() =>
+          Promise.resolve(
+            updateMessageActiveStreamId({
+              id: messageId,
+              activeStreamId: null,
+            }),
+          ).catch((dbError) => {
+            log.error(
+              { error: dbError },
+              "Failed to clear activeStreamId on stream error",
+            );
+          }),
+        );
+      }
+
+      log.error({ error }, "onError");
+      return "Oops, an error occured!";
+    },
+  });
+
+  return stream;
+}
+
+/**
+ * Synthesize a `ChatMessage` to persist as the assistant turn. The
+ * Vercel-AI-SDK `responseMessage` passed to onFinish already carries
+ * the parts the client saw (text + tool + data); we just need to
+ * stamp the finalized metadata (usage, activeStreamId: null).
+ *
+ * Lifegw reports plain token counts (`{ inputTokens, outputTokens }`)
+ * but the SDK's `LanguageModelUsage` shape carries per-provider
+ * detail (cache reads, reasoning tokens). We pad the missing detail
+ * fields with `undefined` so the persisted metadata typecheck-passes
+ * without inventing data we don't actually have.
+ */
+function stitchAssistantMessage({
+  responseMessage,
+  consumeState,
+  initialMetadata,
+}: {
+  responseMessage: ChatMessage;
+  consumeState: CanonicalConsumeState;
+  initialMetadata: ChatMessage["metadata"];
+}): ChatMessage {
+  const usage = consumeState.usage
+    ? {
+        inputTokens: consumeState.usage.inputTokens,
+        outputTokens: consumeState.usage.outputTokens,
+        totalTokens:
+          (consumeState.usage.inputTokens ?? 0) +
+          (consumeState.usage.outputTokens ?? 0),
+        inputTokenDetails: {
+          noCacheTokens: undefined,
+          cacheReadTokens: undefined,
+          cacheWriteTokens: undefined,
+        },
+        outputTokenDetails: {
+          textTokens: undefined,
+          reasoningTokens: undefined,
+        },
+      }
+    : undefined;
+
+  return {
+    ...responseMessage,
+    metadata: {
+      ...initialMetadata,
+      ...responseMessage.metadata,
+      activeStreamId: null,
+      ...(usage ? { usage } : {}),
+    },
+  };
+}
+
+/**
+ * Wrap an `AsyncIterable<CanonicalAgentEvent>` so a side-effect
+ * callback fires on each yielded event. Used to thread the per-chunk
+ * cancel-check (which the streamText path used to expose via its
+ * `onChunk` option) into the lifegw event loop.
+ */
+async function* wrapWithProgress(
+  source: AsyncIterable<
+    import("@/lib/life-runtime/agent-session/types").CanonicalAgentEvent
+  >,
+  onChunk: () => void,
+): AsyncIterable<
+  import("@/lib/life-runtime/agent-session/types").CanonicalAgentEvent
+> {
+  for await (const ev of source) {
+    try {
+      onChunk();
+    } catch {
+      // swallow — cancel-check failures shouldn't abort the stream
+    }
+    yield ev;
+  }
+}
+
+async function executeChatRequest({
+  chatId,
+  userMessage,
+  selectedModelId,
+  userId,
+  anonymousSessionId,
+  organizationId,
+  isAnonymous,
+  isNewChat,
+  abortController,
+  timeoutId,
+}: {
+  chatId: string;
+  userMessage: ChatMessage;
+  selectedModelId: AppModelId;
+  userId: string | null;
+  anonymousSessionId: string | null;
+  organizationId: string | null;
+  isAnonymous: boolean;
+  isNewChat: boolean;
+  abortController: AbortController;
+  timeoutId: NodeJS.Timeout;
+}): Promise<Response> {
+  const log = createModuleLogger("api:chat:execute");
+  const messageId = generateUUID();
+  const streamId = generateUUID();
+
+  if (!isAnonymous) {
+    // Save placeholder assistant message immediately (needed for document creation)
+    await saveMessage({
+      id: messageId,
+      chatId,
+      message: {
+        id: messageId,
+        role: "assistant",
+        parts: [],
+        metadata: {
+          createdAt: new Date(),
+          parentMessageId: userMessage.id,
+          selectedModel: selectedModelId,
+          selectedTool: undefined,
+          activeStreamId: streamId,
+        },
+      },
+    });
+  }
+
+  // Create throttled cancel check (max once per second) for authenticated users
+  const onChunk =
+    !isAnonymous && userId
+      ? throttle(async () => {
+          const canceledAt = await getMessageCanceledAt({ messageId });
+          if (canceledAt) {
+            abortController.abort();
+          }
+        }, 1000)
+      : undefined;
+
+  // Build the data stream that will emit tokens
+  const stream = await createLifegwBackedChatStream({
+    messageId,
+    chatId,
+    userMessage,
+    selectedModelId,
+    userId,
+    anonymousSessionId,
+    organizationId,
+    abortController,
+    isAnonymous,
+    isNewChat,
+    timeoutId,
+    streamId,
+    onChunk,
+  });
+
+  const redisClients = await ensureRedisClients();
+  const publisher = redisClients?.publisher;
+  if (publisher) {
+    after(async () => {
+      try {
+        const keyPattern = `${config.appPrefix}:resumable-stream:rs:sentinel:${streamId}*`;
+        const keys = await publisher.keys(keyPattern);
+        if (keys.length > 0) {
+          await Promise.all(
+            keys.map((key: string) => publisher.expire(key, 300)),
+          );
+        }
+      } catch (error) {
+        log.error({ error }, "Failed to set TTL on stream keys");
+      }
+    });
+  }
+
+  const sseHeaders = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  } as const;
+
+  const streamContext = await getStreamContext();
+  const sseStream = () => stream.pipeThrough(new JsonToSseTransformStream());
+
+  if (streamContext) {
+    log.debug("Returning resumable stream");
+    return new Response(
+      await streamContext.resumableStream(streamId, sseStream),
+      { headers: sseHeaders },
+    );
+  }
+
+  return new Response(sseStream(), { headers: sseHeaders });
 }
 
 export async function POST(request: NextRequest) {
@@ -1049,11 +1111,12 @@ export async function POST(request: NextRequest) {
       return sessionSetup.error;
     }
 
-    const { userId, userName, isAnonymous, anonymousSession, modelDefinition } =
+    const { userId, isAnonymous, anonymousSession, modelDefinition } =
       sessionSetup;
 
     // ---- Tier-based model & credit gate (authenticated users only) ----
-    // userPlan is hoisted so the arcan block can build a tier-appropriate policy
+    // userPlan is hoisted so downstream checks can build a tier-appropriate
+    // policy in future PRs.
     let userPlan = "anonymous";
     let orgId: string | null = null;
     if (userId && !isAnonymous) {
@@ -1186,7 +1249,6 @@ export async function POST(request: NextRequest) {
           );
         }
       }
-
     }
 
     const contextResult = await prepareRequestContext({
@@ -1203,105 +1265,12 @@ export async function POST(request: NextRequest) {
       return contextResult.error;
     }
 
-    const { previousMessages, allowedTools } = contextResult;
-
-    // ── Arcan Agent Runtime (BRO-225) ──────────────────────────────
-    // Two-tier routing:
-    //   1. Dedicated Railway org instance (enterprise only)
-    //   2. Shared ARCAN_URL env instance (all tiers, fallback)
-    // If the dedicated instance fails health check -> mark degraded, try shared.
-    // Anonymous users skip the org lookup and go straight to the shared instance.
-    {
-      const arcanOwnerId = userId ?? anonymousSession?.id ?? null;
-      const arcanEmail = userId
-        ? ((
-            await getSafeSession({
-              fetchOptions: { headers: await headers() },
-            })
-          ).data?.user?.email ?? "")
-        : `anon-${anonymousSession?.id?.slice(0, 8)}@guest.broomva.tech`;
-
-      if (arcanOwnerId) {
-        const { dedicated, shared } = userId
-          ? await resolveArcanEndpoints(userId)
-          : {
-              dedicated: null,
-              shared: process.env.ARCAN_URL
-                ? {
-                    arcanUrl: process.env.ARCAN_URL,
-                    lagoUrl: process.env.LAGO_URL ?? null,
-                    isDedicated: false,
-                    orgId: null,
-                  }
-                : null,
-            };
-
-        const endpointsToTry = dedicated
-          ? [dedicated, shared].filter(Boolean)
-          : [shared].filter(Boolean);
-
-        for (const endpoint of endpointsToTry) {
-          if (!endpoint) continue;
-
-          const abortController = new AbortController();
-          const timeoutId = setTimeout(
-            () => abortController.abort(),
-            290_000,
-          );
-
-          // Degraded policy applied when falling back from a failed dedicated instance
-          const isDegradedFallback = endpoint === shared && dedicated !== null;
-          const policy = isDegradedFallback
-            ? { ...buildArcanPolicy(userPlan), max_events_per_turn: 10 }
-            : buildArcanPolicy(userPlan);
-
-          const arcanResponse = await executeViaArcan({
-            chatId,
-            userMessage,
-            previousMessages,
-            userId: arcanOwnerId,
-            arcanUrl: endpoint.arcanUrl,
-            userEmail: arcanEmail,
-            abortSignal: abortController.signal,
-            policy,
-          });
-
-          clearTimeout(timeoutId);
-
-          if (arcanResponse) {
-            log.info(
-              {
-                chatId,
-                anonymous: isAnonymous,
-                dedicated: endpoint.isDedicated,
-                degraded: isDegradedFallback,
-              },
-              "Routed to Arcan",
-            );
-            return arcanResponse;
-          }
-
-          // Dedicated instance unreachable — mark degraded and try shared next
-          if (endpoint.isDedicated && endpoint.orgId) {
-            log.warn(
-              {
-                chatId,
-                orgId: endpoint.orgId,
-                arcanUrl: endpoint.arcanUrl,
-              },
-              "Dedicated arcand unreachable — marking degraded, falling back to shared instance (BRO-225)",
-            );
-            await markInstanceDegraded(endpoint.orgId);
-          }
-        }
-
-        log.info("Arcan unavailable, falling back to streamText");
-      }
-    }
-
-    // ── Fallback: Direct streamText (template path) ─────────────────
-    // Used for anonymous users, or when no Arcan instance is available.
-    // Gate MCP connectors behind the mcp feature flag (BRO-393)
+    // Gate MCP-connector loading behind the mcp feature flag (BRO-393).
+    // Pre-PR-3 the resolved connectors were threaded into core-chat-agent
+    // for streamText-side tool injection; now lifegw owns server-side
+    // tool dispatch. We still gate the MCP loader so user-org config
+    // changes flow through without surprise, but the result is reserved
+    // for a future PR that forwards connector hints to lifegw.
     const mcpFlagEnabled =
       userId && !isAnonymous
         ? await getServerFeatureFlag(
@@ -1310,10 +1279,23 @@ export async function POST(request: NextRequest) {
             orgId ? { organization: orgId } : undefined,
           )
         : false;
-    const mcpConnectors: McpConnector[] =
+    const _mcpConnectors: McpConnector[] =
       config.features.mcp && mcpFlagEnabled && userId && !isAnonymous
         ? await getMcpConnectorsByUserId({ userId })
         : [];
+    void _mcpConnectors;
+
+    // ── Lifegw configuration check ─────────────────────────────────
+    // The route MUST have a configured lifegw to function; we no
+    // longer carry the streamText fallback. Surface a clear 503 if
+    // the operator forgot to set LIFED_GATEWAY_URL.
+    if (!getLifegwBaseUrl()) {
+      log.error("LIFED_GATEWAY_URL is unset; cannot dispatch chat");
+      return new Response(
+        "Chat service unavailable: lifegw is not configured. Set LIFED_GATEWAY_URL on this deployment.",
+        { status: 503 },
+      );
+    }
 
     // Create AbortController with timeout
     const abortController = new AbortController();
@@ -1324,18 +1306,14 @@ export async function POST(request: NextRequest) {
     return await executeChatRequest({
       chatId,
       userMessage,
-      previousMessages,
       selectedModelId,
-      explicitlyRequestedTools,
       userId,
+      anonymousSessionId: anonymousSession?.id ?? null,
       organizationId: orgId,
       isAnonymous,
       isNewChat,
-      allowedTools,
       abortController,
       timeoutId,
-      mcpConnectors,
-      userName: isAnonymous ? null : userName,
     });
   } catch (error) {
     log.error(
