@@ -83,6 +83,22 @@ pub struct CreateChatSessionBody {
     /// when actually resuming.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resume_sid: Option<String>,
+    /// Optional inference model the gateway should pin for the lifetime
+    /// of this session (BRO-1207, Stream B). When `Some(id)`, lifegw
+    /// stamps the model onto the routing-cache entry at session create
+    /// time; lifed then attaches the model to every `ArcanCall` it
+    /// dispatches for this `sid`. When `None`, the server's
+    /// production default applies (currently `claude-sonnet-4-6`).
+    ///
+    /// `skip_serializing_if = "Option::is_none"` keeps the wire body
+    /// byte-identical to v0.8.1 when no model is selected, so older
+    /// servers (pre-Stream-A) still accept the request — they ignore
+    /// unknown-to-them fields only when present, but since we omit on
+    /// None there is nothing for them to reject. Stream A (lifegw PR
+    /// #1406, merge `d3569bbd`) normalises empty/whitespace at the
+    /// server, so the CLI does not need to strip whitespace itself.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 /// Response shape from POST `/v1/agent/create_session`. Mirror of
@@ -512,6 +528,7 @@ mod tests {
             project_id: "smoke".into(),
             label: Some("b1-probe".into()),
             resume_sid: None,
+            model: None,
         }
     }
 
@@ -645,6 +662,7 @@ mod tests {
             project_id: "smoke".into(),
             label: Some("b1-probe".into()),
             resume_sid: Some("prior-sid".into()),
+            model: None,
         };
         let c = chat_client(server.uri());
         let resp = c.create_chat_session(&body).await.unwrap();
@@ -674,11 +692,70 @@ mod tests {
             project_id: "p".into(),
             label: Some("l".into()),
             resume_sid: None,
+            model: None,
         };
         let json = serde_json::to_string(&body).unwrap();
-        // resume_sid omitted, label present
+        // resume_sid omitted, label present, model omitted (Stream B —
+        // pre-Stream-A servers reject unknown fields, so we MUST omit
+        // when None for backward compatibility).
         assert!(!json.contains("resume_sid"), "{json}");
+        assert!(!json.contains("\"model\""), "{json}");
         assert!(json.contains("\"label\":\"l\""), "{json}");
+    }
+
+    // ── BRO-1207 (Stream B) — `model` field tests ──────────────────────
+
+    #[tokio::test]
+    async fn create_chat_session_emits_model_when_present() {
+        // Verifies the CLI actually sends `model` in the body when set.
+        // This is the load-bearing test for Stream B — Stream A's
+        // lifegw server-side test (`creates_session_with_model_field`)
+        // proves the gateway accepts it; this one proves the CLI sends it.
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/agent/create_session"))
+            .and(header("Authorization", "Bearer dev-token-for-test-user-1"))
+            .and(body_json(json!({
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "label": "b1-probe",
+                "model": "anthropic/claude-opus-4-7"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "sid": "opus-sid",
+                "agent_id": "agent-opus",
+                "user_id": "test-user-1",
+                "project_id": "smoke",
+                "created_at_unix": 1779283104i64
+            })))
+            .mount(&server)
+            .await;
+
+        let body = CreateChatSessionBody {
+            user_id: "test-user-1".into(),
+            project_id: "smoke".into(),
+            label: Some("b1-probe".into()),
+            resume_sid: None,
+            model: Some("anthropic/claude-opus-4-7".into()),
+        };
+        let c = chat_client(server.uri());
+        let resp = c.create_chat_session(&body).await.unwrap();
+        assert_eq!(resp.sid, "opus-sid");
+    }
+
+    #[test]
+    fn create_chat_session_body_serializes_model_when_some() {
+        // Direct JSON shape assertion — ensures the wire byte-string
+        // carries the model field when present.
+        let body = CreateChatSessionBody {
+            user_id: "alice".into(),
+            project_id: "p".into(),
+            label: None,
+            resume_sid: None,
+            model: Some("openai/gpt-4o".into()),
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("\"model\":\"openai/gpt-4o\""), "{json}");
     }
 
     // ── Legacy surface — every method returns Unsupported ──────────

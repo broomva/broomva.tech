@@ -1,15 +1,16 @@
 [package]
 name = "broomva"
-# BRO-1203 (2026-05-20): bumped to 0.8.1 — additive ES256 lifegw
-# Tier-1 JWT support. `CliConfig` gains `lifegw_token` +
-# `lifegw_token_expires_at` fields; `TokenResponse` deserializes
-# the same fields from the device/token endpoint; `cli/chat.rs`
-# and `cli/agent.rs` now host-route to `lifegw_token` over `token`
-# when the gateway URL points at production lifegw. Patch bump
-# because all changes are additive and backward-compatible
-# (`Option<>` fields default to None on older configs / older
-# servers). Previous: 0.8.0 from BRO-1189 lifegw wire rewrite.
-version = "0.8.1"
+# BRO-1207 (2026-05-20): bumped to 0.9.0 — per-request model selection
+# on `broomva chat`. `CreateChatSessionBody` gains an optional `model`
+# field that propagates flag → env → config → default through
+# `ChatRunOpts::resolve` to the HTTP create_session POST body.
+# Stream A (lifegw PR #1406, commit `d3569bbd`, BRO-1206) wired the
+# server side end-to-end; this CLI release is the second half. Minor
+# bump (not patch) because the `--model` flag now produces an
+# observably different runtime outcome (different LLM responds) —
+# user-visible behaviour change, additive but worth surfacing in the
+# version. Previous: 0.8.1 from BRO-1203 ES256 lifegw JWT.
+version = "0.9.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
