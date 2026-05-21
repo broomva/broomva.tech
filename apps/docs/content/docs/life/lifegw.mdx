@@ -89,7 +89,7 @@ The chat surface is a **two-phase flow** — `create_session` returns a server-i
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `/v1/agent/create_session` | POST | Create a chat session. Body: `{"user_id", "project_id", "label"?, "resume_sid"?}` (`#[serde(deny_unknown_fields)]`). Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`. Server-issued `sid` is the canonical session id — use it on the WSS upgrade below. |
+| `/v1/agent/create_session` | POST | Create a chat session. Body: `{"user_id", "project_id", "label"?, "resume_sid"?, "model"?}` (`#[serde(deny_unknown_fields)]`). `model` is the inference model id (e.g. `"anthropic/claude-opus-4-7"`, `"openai/gpt-4o"`); pinned on the routing-cache entry for the lifetime of the session. Empty / whitespace-only strings normalise to `None` server-side (Postel's-law). When omitted, the production default applies (currently `claude-sonnet-4-6`). Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`. Server-issued `sid` is the canonical session id — use it on the WSS upgrade below. |
 | `/v1/agent/stream` | GET → WS upgrade | WebSocket upgrade. Query params: `?sid=<sid>&last_seq_no=<n>`. `sid` comes from `create_session`; `last_seq_no` is the last `agent_event.seq_no` the client received (omit on first connect; pass on reconnect to replay events from that point). |
 
 <Callout type="warn">
@@ -145,7 +145,7 @@ Chat is a two-phase wire: HTTP `create_session` followed by a WSS upgrade attach
 
 <Steps>
   <Step>
-    **Create session.** `POST /v1/agent/create_session` with `Authorization: Bearer <tier1-jwt>` and JSON body `{"user_id", "project_id", "label"?, "resume_sid"?}`. lifegw's middleware verifies the Tier-1 JWT, mints a Tier-2 cap internally, and forwards to lifed over the UDS. Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`.
+    **Create session.** `POST /v1/agent/create_session` with `Authorization: Bearer <tier1-jwt>` and JSON body `{"user_id", "project_id", "label"?, "resume_sid"?, "model"?}`. lifegw's middleware verifies the Tier-1 JWT, mints a Tier-2 cap internally, and forwards to lifed over the UDS. The optional `"model"` field (e.g. `"anthropic/claude-opus-4-7"`) pins the inference model on the routing-cache entry for the lifetime of the session — every subsequent `ArcanCall` dispatched on this `sid` inherits it. Empty or whitespace-only `model` values normalise to `None` server-side; when omitted, the production default applies. Returns `{"sid", "agent_id", "user_id", "project_id", "created_at_unix"}`.
   </Step>
   <Step>
     **Upgrade.** `GET /v1/agent/stream?sid=<sid>&last_seq_no=<n>` with `Upgrade: websocket` headers. Native: same `Authorization: Bearer <jwt>` header. Browser: `Sec-WebSocket-Protocol: bearer.<jwt>` subprotocol.

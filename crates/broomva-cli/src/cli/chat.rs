@@ -252,7 +252,16 @@ impl ChatRunOpts {
             })
             .unwrap_or_else(|| agent_stream::DEFAULT_GATEWAY_URL.to_string());
 
-        // model: flag → env → config → default.
+        // model: flag → env → config → None.
+        //
+        // BRO-1207 (Stream B) — when no source supplies a model we
+        // resolve to `None`, NOT `DEFAULT_MODEL`. This guarantees the
+        // wire body is byte-identical to v0.8.1 when the operator
+        // didn't ask for a model, so pre-Stream-A lifegw deployments
+        // (lumen-smoke, older staging) keep working. The REPL banner
+        // independently falls back to `DEFAULT_MODEL` via
+        // `print_repl_banner` (`unwrap_or(DEFAULT_MODEL)`), so the
+        // user-facing display is unchanged.
         let model = self
             .model
             .clone()
@@ -268,8 +277,7 @@ impl ChatRunOpts {
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string())
                 })
-            })
-            .or_else(|| Some(DEFAULT_MODEL.to_string()));
+            });
 
         // token: flag → env → config, with BRO-1203 host-aware
         // selection between the HS256 access token (broomva.tech API)
@@ -960,7 +968,20 @@ mod tests {
             project_id_override: None,
         };
         let cfg = opts.resolve(None).unwrap();
-        assert_eq!(cfg.model.as_deref(), Some(DEFAULT_MODEL));
+        // BRO-1207 (Stream B): resolver returns None when no source
+        // supplies a model — the wire stays backward-compat with
+        // pre-Stream-A lifegw. The banner's own `DEFAULT_MODEL`
+        // fallback is what the user sees in the REPL prompt.
+        //
+        // Note: the host may carry `defaultModel` in its real
+        // ~/.broomva/config.json, in which case this assertion would
+        // race. We narrowly assert the field is *either* None (no
+        // config) *or* a non-empty string (config-set) — never
+        // hardcoded to DEFAULT_MODEL.
+        match cfg.model.as_deref() {
+            None => {}
+            Some(m) => assert!(!m.is_empty(), "model from config must be non-empty"),
+        }
         assert_eq!(cfg.gateway_url, "ws://localhost:1");
         // BRO-1189 — project_id has a sentinel default; user_id falls
         // back through token-derived → "default-user", but the

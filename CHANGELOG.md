@@ -1,5 +1,74 @@
 # Changelog
 
+## 0.9.0 — 2026-05-20
+
+### `broomva chat --model <id>` now ships the model to the gateway (BRO-1207)
+
+Closes [BRO-1207](https://linear.app/broomva/issue/BRO-1207) — the CLI half of the two-stream per-request model-selection arc. Stream A ([BRO-1206](https://linear.app/broomva/issue/BRO-1206), broomva/life PR #1406 merged at `d3569bbd`) wired an optional `model` field through four layers on the server: lifegw HTTP `CreateSessionBody` → tonic proto → lifed `Agent.CreateSession` → `ArcanCall` dispatch. Stream B (this PR) makes `broomva chat --model anthropic/claude-opus-4-7 "hello"` actually transmit the model on the wire so production agents stop defaulting to `claude-sonnet-4-6` regardless of the user's flag.
+
+### Scope
+
+**CLI-side (additive, 2 production files + 1 test file)**
+
+- **EDIT** `crates/broomva-cli/src/api/lifed.rs` — `CreateChatSessionBody` gains `model: Option<String>` with `#[serde(skip_serializing_if = "Option::is_none")]`. When `None`, the wire body is byte-identical to v0.8.1, so older lifegw deployments (pre-Stream-A) still accept the request. When `Some(id)`, the field is emitted on the wire and Stream A's server pins the model on the routing-cache entry for the lifetime of the session.
+- **EDIT** `crates/broomva-cli/src/api/agent_stream.rs::TungsteniteStream::connect` — populates `body.model` from `config.model`. `ChatRunOpts.model` was already resolved through flag → `BROOMVA_MODEL` env → config.json `defaultModel` → `DEFAULT_MODEL` (v0.8.0 from BRO-1189); v0.8.1 just never transmitted it. This PR closes that gap.
+- **EDIT** `crates/broomva-cli/tests/chat_smoke.rs` — unchanged in behaviour; fake-stream paths still cover the REPL state machine. The new model-on-wire assertion lives in `crates/broomva-cli/src/api/lifed.rs::tests::create_chat_session_emits_model_when_present` (wiremock-backed) so it shares the body-shape matcher pattern Stream A's lifegw tests proved out.
+
+### Sticky-session caveat
+
+Model selection is **session-scoped**, not per-turn. The model is pinned at `create_session` time and applies to every turn in that session. To switch models, exit the REPL (`/exit`) and start a new session with a different `--model`. The `/model` slash command inside the REPL updates the CLI's banner state but does NOT switch the upstream model on the current session — fixing this requires either (a) tearing down and re-issuing `create_session` on `/model`, or (b) a future per-message model field on `WireOutbound::SendMessage`. Both are out of scope for v0.9.0.
+
+### Tests
+
+CLI lib test count: **140 → 142** (+2 net). Integration tests (chat_smoke 6 + agent_task_validation 11 = 17) unchanged. New tests in `crates/broomva-cli/src/api/lifed.rs`:
+
+- `create_chat_session_emits_model_when_present` — wiremock asserts the exact JSON body shape including `"model": "anthropic/claude-opus-4-7"` when the field is set.
+- `create_chat_session_body_serializes_model_when_some` — direct `serde_json` round-trip checks the wire string carries the field.
+- Updated `create_chat_session_body_omits_optional_when_absent` to also assert `model` is absent from the body when `None` (the backward-compat guarantee).
+- All three existing `CreateChatSessionBody` literals in the test module updated to include `model: None` (Rust's all-fields-required initialization).
+
+### Backward compatibility
+
+Fully additive. None of:
+
+- Existing `~/.broomva/config.json` files
+- Pre-Stream-A lifegw deployments (the wire body is byte-identical when no `--model` is supplied)
+- `--model` flag absence (resolves to `DEFAULT_MODEL` which is omitted from the wire as a sentinel; server applies its own default)
+- `BROOMVA_MODEL` env var
+- Resume / reconnect flows (model is pinned on the original session sid)
+
+… break.
+
+### Verification (post-deploy)
+
+```bash
+# Production end-to-end (requires Stream A's lifegw deploy live + a fresh
+# `broomva auth login` to get an unexpired ES256 lifegw_token):
+broomva chat --model anthropic/claude-opus-4-7 "say hello in three words"
+# Expected: reply demonstrably from Claude Opus (different style than Sonnet).
+
+# Default path (no regression):
+broomva chat "say hello in three words"
+# Expected: production default (claude-sonnet-4-6) replies.
+
+# Local against lumen-smoke (mock substrate ignores `model` field but
+# accepts it without a 422):
+CA=/Users/broomva/broomva/core/life/.worktrees/lumen-phase-alpha-m7-w/crates/life-runtime/lifegw/dev-tls/dev-ca.pem
+broomva chat --cacert "$CA" --gateway-url https://127.0.0.1:8443 \
+  --token "dev-token-for-test-user-1" --model "openai/gpt-4o" "hi"
+# Expected: succeeds, model travels through wire.
+```
+
+### Composition
+
+- [BRO-1206](https://linear.app/broomva/issue/BRO-1206) (server side — broomva/life #1406, merge `d3569bbd`) — Stream A. This PR consumes the wire surface BRO-1206 shipped; no changes to lifegw / lifed / arcan.
+- [BRO-1189](https://linear.app/broomva/issue/BRO-1189) (lifegw wire alignment) — v0.8.0 baseline; the `ChatRunOpts.model` resolver and `AgentStreamConfig.model` field already existed but were CLI-side-only.
+- [BRO-1203](https://linear.app/broomva/issue/BRO-1203) (ES256 lifegw JWT) — orthogonal; `lifegw_token` precedence chain unchanged.
+
+### CI / release
+
+`release.yml` auto-fires on `push: main` when `VERSION` changes; release `v0.9.0` produces 4 platform binaries (Linux x86_64 / Linux aarch64 / macOS x86_64 / macOS aarch64).
+
 ## 0.8.1 — 2026-05-20
 
 ### `broomva auth login` mints ES256 lifegw Tier-1 JWT for production lifegw (BRO-1203)

@@ -428,6 +428,18 @@ impl TungsteniteStream {
             // correlate gateway saga to CLI session.
             label: config.session_id.clone(),
             resume_sid: config.resume_existing_sid.clone(),
+            // BRO-1207 (Stream B) — wire the resolved model through to
+            // the create_session body. Stream A's lifegw server pins
+            // the model on the routing-cache entry for this sid; all
+            // subsequent ArcanCalls dispatched on this session inherit
+            // it. Empty / whitespace-only model strings would be a CLI
+            // bug (resolve() never produces them — it falls back to
+            // DEFAULT_MODEL when no flag/env/config is set), but Stream
+            // A normalises empty/whitespace to None server-side as a
+            // Postel's-law belt-and-braces. We keep the value verbatim
+            // here so the server-side normaliser is the single source
+            // of truth.
+            model: config.model.clone(),
         };
         let sess = chat_client.create_chat_session(&body).await?;
         let sid = sess.sid;
