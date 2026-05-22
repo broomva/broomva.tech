@@ -8,8 +8,12 @@ import type { NextRequest } from "next/server";
 import { ChatSDKError } from "@/lib/ai/errors";
 import type { ChatMessage } from "@/lib/ai/types";
 import { getSafeSession } from "@/lib/auth";
+import { mintTier1ForConsumer } from "@/lib/auth/lifegw-jwt";
 import { getChatById, getChatMessageWithPartsById } from "@/lib/db/queries";
 import { ArcanClient, resolveArcanUrl } from "@/lib/arcan";
+import { LifedWsAgentSessionClient } from "@/lib/life-runtime/agent-session/lifed-ws-client";
+import { canonicalToVercelAiSdkSse } from "@/lib/life-runtime/edge-adapter/canonical-to-vercel-ai-sse";
+import { getLifegwBaseUrl } from "@/lib/life-runtime/edge-adapter/dispatch-via-lifegw";
 import { getStreamContext } from "../../route";
 
 function appendMessageResponse(message: ChatMessage) {
@@ -54,11 +58,82 @@ export async function GET(
     return new ChatSDKError("forbidden:chat").toResponse();
   }
 
-  // ── Arcan cursor-based replay ───────────────────────────────────
-  // If the user has a Life instance, use Lago's event journal for
-  // stream reconnection instead of Redis resumable streams.
+  // ── Cursor-based replay ─────────────────────────────────────────
+  // If the user has a Life-runtime backend (lifegw or per-user Arcan),
+  // replay events from the cursor on the canonical event journal.
+  //
+  // Backend resolution order (M9-F-A migration, BRO-1216):
+  //   1. lifegw — when USE_LIFEGW_STREAM_RESUME=1 AND LIFED_GATEWAY_URL is set.
+  //      Mints a Tier-1 cap, opens lifed session resumed under the chatId
+  //      as the sticky sid, then opens a per-turn stream with
+  //      userMessage="" + fromSequence=cursor — pure replay-only mode.
+  //   2. Arcan — pre-migration default, kept verbatim. Active when the
+  //      lifegw branch is gated off OR yields an error.
+  //   3. Redis resumable-stream — the fallback for both, unchanged.
   const cursor = request.nextUrl.searchParams.get("cursor");
   if (userId && cursor != null) {
+    const lifegwBaseUrl = getLifegwBaseUrl();
+    const lifegwResumeEnabled =
+      process.env.USE_LIFEGW_STREAM_RESUME === "1" && !!lifegwBaseUrl;
+
+    if (lifegwResumeEnabled) {
+      try {
+        const cap = await mintTier1ForConsumer({
+          consumer: { kind: "user", id: userId },
+          projectSlug: "default",
+        });
+        const lifegwClient = new LifedWsAgentSessionClient({
+          baseUrl: lifegwBaseUrl,
+        });
+        const lifegwSession = await lifegwClient.createSession({
+          capability: { token: cap.token },
+          userId,
+          projectSlug: "default",
+          resumeSid: chatId,
+        });
+        const events = lifegwClient.stream({
+          sessionId: lifegwSession.sid,
+          agentId: `user:${userId}`,
+          projectSlug: "default",
+          userMessage: "",
+          history: [],
+          kernelCtx: {
+            sessionId: lifegwSession.sid,
+            agentId: `user:${userId}`,
+          },
+          capability: {
+            token: cap.token,
+            expiresAt: cap.expiresAt,
+          },
+          fromSequence: BigInt(cursor),
+        });
+
+        const fallbackTextId = crypto.randomUUID();
+        const stream = createUIMessageStream<ChatMessage>({
+          execute: async ({ writer }) => {
+            for await (const chunk of canonicalToVercelAiSdkSse<ChatMessage>(
+              events,
+              { fallbackTextId }
+            )) {
+              writer.write(chunk);
+            }
+          },
+          generateId: () => fallbackTextId,
+        });
+
+        return new Response(
+          stream
+            .pipeThrough(new JsonToSseTransformStream())
+            .pipeThrough(new TextEncoderStream()),
+          { headers: UI_MESSAGE_STREAM_HEADERS }
+        );
+      } catch {
+        // lifegw unreachable / cap mint failed — fall through to Arcan,
+        // then to the Redis path. Same graceful-degradation contract the
+        // existing Arcan branch uses below.
+      }
+    }
+
     const endpoints = await resolveArcanUrl(userId);
     if (endpoints) {
       try {
