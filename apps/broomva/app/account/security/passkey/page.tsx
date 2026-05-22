@@ -1,13 +1,11 @@
 /**
  * /account/security/passkey — passkey enrollment + status surface.
  *
- * BRO-1213 / M9-C.
- *
- * # Bundle-size discipline (D4)
- *
- * The interactive enrollment card is loaded via `next/dynamic({ ssr: false })`
- * so WebAuthn ceremony code stays out of the shared client shell. The
- * server-rendered shell shows a skeleton while the client chunk hydrates.
+ * BRO-1213 / M9-C; BRO-1229 — moved the `dynamic({ ssr: false })` call
+ * into the client-side `<PasskeyCardLazy>` wrapper because Next.js 16
+ * only allows that option from Client Component contexts. The lazy
+ * chunk boundary is preserved (WebAuthn ceremony code stays out of the
+ * shared client shell); only the file that owns `nextDynamic` moved.
  *
  * # State 1 + 2 handling
  *
@@ -19,30 +17,15 @@
  */
 
 import { headers } from "next/headers";
-import nextDynamic from "next/dynamic";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PasskeyCardLazy } from "@/components/account/passkey-card-lazy";
 import { getSafeSession } from "@/lib/auth";
 import { fetchPasskeyStatus } from "@/lib/anima/passkey-status";
 
-const PasskeyEnrollmentCard = nextDynamic(
-  () =>
-    import("@/components/account/passkey-enrollment-card").then(
-      (m) => m.PasskeyEnrollmentCard,
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="space-y-3">
-        <Skeleton className="h-8 w-2/3" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-10 w-40" />
-      </div>
-    ),
-  },
-);
-
-export const dynamic = "force-dynamic";
+// BRO-1229 — removed `export const dynamic = "force-dynamic"`;
+// incompatible with `nextConfig.cacheComponents` (Next.js 16). The
+// `await headers()` call below already makes this page dynamic-by-
+// default, so the explicit opt-in is redundant *and* now blocks the
+// build.
 
 export default async function PasskeyPage() {
   const headerStore = await headers();
@@ -72,7 +55,7 @@ export default async function PasskeyPage() {
         </p>
       </div>
 
-      <PasskeyEnrollmentCard
+      <PasskeyCardLazy
         initialStatus={initialStatus}
         userEmail={session.user.email ?? "you@broomva.tech"}
         userId={session.user.id}

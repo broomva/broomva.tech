@@ -12,7 +12,10 @@ import { redirect } from "next/navigation";
 import { AccountNav } from "@/components/account/account-nav";
 import { getSafeSession } from "@/lib/auth";
 
-export const dynamic = "force-dynamic";
+// BRO-1229 — `export const dynamic = "force-dynamic"` is incompatible
+// with `nextConfig.cacheComponents` (Next.js 16). The `await headers()`
+// call below automatically opts this layout into dynamic rendering, so
+// the explicit declaration is redundant *and* now blocks the build.
 
 export default async function AccountLayout({
   children,
