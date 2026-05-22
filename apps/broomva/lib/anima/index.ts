@@ -24,3 +24,16 @@ export {
   type EnrollPasskeyInput,
   type EnrolledPasskey,
 } from "./passkey-enrollment";
+
+export {
+  clearStoredCap,
+  ensureFreshTierUserCap,
+  getStoredCap,
+  storeCap,
+  type TierUserCap,
+} from "./tier-user-cap";
+
+export {
+  animaCustodyFetch,
+  type AuthenticatedFetchOptions,
+} from "./authenticated-fetch";

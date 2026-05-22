@@ -11,6 +11,7 @@ import {
 import { TopNav } from "@/components/site/top-nav";
 import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
 import { SessionProvider } from "@/providers/session-provider";
+import { TierUserCapManager } from "@/providers/tier-user-cap-manager";
 import { TRPCReactProvider } from "@/trpc/react";
 import { getSafeSession } from "@/lib/auth";
 import { captureServerEvent } from "@/lib/analytics/posthog";
@@ -36,6 +37,7 @@ export default async function ConsoleLayout({
   return (
     <TRPCReactProvider>
       <SessionProvider initialSession={session}>
+        <TierUserCapManager />
         <ToolbarDockProvider>
           <SidebarProvider defaultOpen={defaultOpen}>
             <ConsoleSidebar
