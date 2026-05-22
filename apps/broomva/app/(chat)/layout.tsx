@@ -12,6 +12,7 @@ import { ContextSidebarProvider } from "@/hooks/use-context-sidebar";
 import { ChatModelsProvider } from "@/providers/chat-models-provider";
 import { DefaultModelProvider } from "@/providers/default-model-provider";
 import { SessionProvider } from "@/providers/session-provider";
+import { TierUserCapManager } from "@/providers/tier-user-cap-manager";
 import { TRPCReactProvider } from "@/trpc/react";
 import { getQueryClient, HydrateClient, trpc } from "@/trpc/server";
 import { TopNav } from "@/components/site/top-nav";
@@ -79,6 +80,7 @@ export default async function ChatLayout({
     <TRPCReactProvider>
       <HydrateClient>
         <SessionProvider initialSession={session}>
+          <TierUserCapManager />
           <ChatProviders>
             <SidebarProvider defaultOpen={!isCollapsed}>
               <AppSidebar />
