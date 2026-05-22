@@ -1,6 +1,7 @@
 pub mod agent_stream;
 pub mod auth;
 pub mod lifed;
+pub mod lifegw_refresh;
 pub mod output_validator;
 pub mod tls;
 pub mod types;

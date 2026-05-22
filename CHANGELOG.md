@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.9.1 — 2026-05-21
+
+### Transparent Tier-1 refresh — kills the 15-min auth papercut (BRO-1224)
+
+Closes [BRO-1224](https://linear.app/broomva/issue/BRO-1224). Production lifegw Tier-1 ES256 JWTs have a 15-min TTL (Spec C₃ §5.4). Pre-0.9.1, every `broomva chat` after expiry returned `error: authentication required — run broomva auth login` and forced the user through the interactive device-code flow. v0.9.1 wires the standard refresh-token pattern — the long-lived HS256 Better Auth session (24h TTL) silently re-mints the Tier-1 token before it ages out, so the user only sees an interactive prompt when their full account session expires (effectively daily, not every 15 minutes).
+
+### Architecture
+
+```
+Better Auth session (HS256, 24h)
+   ↓ POST /api/auth/lifegw-token   (NEW endpoint; Bearer HS256 auth)
+Tier-1 lifegw JWT (ES256, 15 min)   — auto-refreshed when < 60s from expiry
+   ↓ Authorization header to lifegw
+Tier-2 substrate JWT (lifegw → lifed, internal)
+```
+
+Refresh threshold defaults to 60s — catches almost-expired tokens before the request goes out, even on slow networks.
+
+### Scope
+
+**Server-side (apps/broomva)**
+
+- **NEW** `apps/broomva/app/api/auth/lifegw-token/route.ts` — `POST` handler that verifies the HS256 Bearer via `verifyLifeJWT` (from `lib/ai/vault/jwt.ts`), then calls `mintTier1ForConsumer({ consumer: { kind: "user", id: claims.sub }, projectSlug: "default" })` and returns `{ lifegw_token, lifegw_token_expires_at }`. Snake_case keys match the CLI's `CliConfig` deserialization exactly. `GET` returns a 405 with usage hint. Distinct route from `/api/auth/device/token` because that's the RFC 8628 device-code grant; this is the refresh grant — long-lived HS256 → short-lived ES256.
+- **NEW** `apps/broomva/app/api/auth/lifegw-token/route.test.ts` — 8 vitest cases covering the happy path, missing/malformed/empty Bearer (401 `missing_token`), invalid HS256 (401 `invalid_token`), claims without `sub` (401 `invalid_token`), KMS / signer failure (502 `mint_failed`), case-insensitive Bearer prefix, and the GET 405 contract.
+
+**CLI-side (crates/broomva-cli)**
+
+- **NEW** `src/api/lifegw_refresh.rs` — `refresh_lifegw_token(client, api_base, hs256)` and `ensure_fresh_lifegw_token(client, api_base, threshold)` (plus a `_with_default_client` convenience wrapper). Reads `~/.broomva/config.json`, compares `lifegw_token_expires_at` against `now() + threshold`, hits the new server endpoint with the HS256 Bearer when refresh is needed, persists the new token + expiry via `store_lifegw_token`. 401 from the server maps to `BroomvaError::AuthRequired` so the chat path surfaces the same "run `broomva auth login`" message users already know. 4 wiremock-backed unit tests cover 200/401/502/Bearer-attached.
+- **EDIT** `src/api/mod.rs` — register `pub mod lifegw_refresh`.
+- **EDIT** `src/cli/chat.rs` — pre-flight `refresh_lifegw_token_if_needed()` at the top of `run_one_shot`, at REPL start in `run_repl`, AND before every REPL turn's `agent_stream::connect`. The per-turn refresh is what makes long-running REPL sessions (20+ minutes) work — without it, the second turn after the 15-min expiry would 401 mid-conversation.
+
+### Backward compatibility
+
+- Server endpoint is additive — older CLIs (0.9.0 and earlier) never call it.
+- CLI's refresh is a no-op when `config.token` (HS256) is absent — falls through to the existing `AuthRequired` UX on the downstream lifegw 401.
+- CLI's refresh is a no-op when the Tier-1 token is still fresh (> 60s of life). Cost: a single `SystemTime::now()` per chat invocation.
+
+### Tests
+
+CLI lib test count: **142 → 146** (+4 net). Server vitest cases: **+8** (new route file). All existing tests pass.
+
+- `refresh_lifegw_token_200_returns_new_token_and_expiry` — happy path
+- `refresh_lifegw_token_401_returns_auth_required` — HS256 dead → `BroomvaError::AuthRequired`
+- `refresh_lifegw_token_502_returns_api_error_with_body` — KMS / signer failure surfaces with body
+- `refresh_lifegw_token_attaches_bearer_header` — wiremock matches the exact `Authorization: Bearer <token>` header
+
+### Why this matters
+
+The 15-min Tier-1 TTL is correct security posture — small theft blast radius. But without transparent refresh it's a UX disaster: every 15 minutes the user hits an interactive auth prompt that breaks shell ergonomics and any script flow. v0.9.1 keeps the security and removes the papercut. Dogfooding BRO-1206 surfaced this directly — the validation flow against `life.broomva.tech` was repeatedly interrupted by the 15-min cycle before this fix.
+
+### Out of scope (deferred)
+
+- Sliding TTL on the server (controversial; defeats the stateless-verify property of JWTs)
+- WebSocket mid-session refresh (lifegw heartbeat at 30s ping + 60s deadline already handles long-running streams without re-auth)
+- Refresh-token rotation per-call (overkill for CLI use)
+
+### Out-of-band follow-ups
+
+- [BRO-1222](https://linear.app/broomva/issue/BRO-1222) — two other v0.9.0 CLI papercuts (default gateway typo + config-token-resolution bug) still pending; not bundled into this release because the fixes are independent
+
 ## 0.9.0 — 2026-05-20
 
 ### `broomva chat --model <id>` now ships the model to the gateway (BRO-1207)
