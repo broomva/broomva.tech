@@ -198,6 +198,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
+    "@noble/curves": "^2.0.0",
+    "@noble/hashes": "^2.2.0",
     "@playwright/test": "^1.50.1",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/typography": "^0.5.19",

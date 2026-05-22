@@ -111,6 +111,15 @@ export default defineConfig({
       // No auth dependency — tests unauthenticated + JWT Bearer flows directly
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "anima-usdc",
+      testMatch: /anima-usdc.spec.ts/,
+      // Chromium-only — relies on the WebAuthn debugger CDP surface.
+      // No auth setup dependency — the in-test branch generates ephemeral
+      // signing material; the login-gated branch handles credentials itself
+      // and self-skips when TEST_PASSWORD is unset.
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 
   /* Run your local dev server before starting the tests */
