@@ -502,6 +502,12 @@ impl ChatSession {
     /// Run one-shot: connect, send a single turn, stream the reply
     /// until `TurnComplete` or `Closed`, exit.
     pub async fn run_one_shot(&mut self, prompt: &str) -> BroomvaResult<()> {
+        // BRO-1224 — transparent Tier-1 refresh. The 15-min ES256 TTL
+        // is short; without this pre-flight the user hits a 401 the
+        // moment the cached token ages out, even though the long-lived
+        // HS256 session is still valid. No-op when the token has
+        // plenty of life left.
+        Self::refresh_lifegw_token_if_needed().await?;
         let cfg = self.opts.resolve(Some(&self.session_id))?;
         let mut stream = agent_stream::connect(cfg).await?;
         self.send_turn(&mut *stream, prompt).await?;
@@ -510,8 +516,26 @@ impl ChatSession {
         Ok(())
     }
 
+    /// Refresh the persisted Tier-1 lifegw JWT in `~/.broomva/config.json`
+    /// if it's near expiry. Surfaces `BroomvaError::AuthRequired` when the
+    /// HS256 Better Auth session itself is dead — caller falls through
+    /// to the existing "run `broomva auth login`" UX. Network failures
+    /// are propagated as `BroomvaError::Api` / `BroomvaError::User`.
+    ///
+    /// Implementation lives in `api::lifegw_refresh`. Threshold default
+    /// 60s — catches almost-expired tokens before the request goes
+    /// out, even on slow networks.
+    async fn refresh_lifegw_token_if_needed() -> BroomvaResult<()> {
+        let api_base = crate::config::resolve_api_base(None)?;
+        crate::api::lifegw_refresh::ensure_fresh_lifegw_token_with_default_client(&api_base).await
+    }
+
     /// Run interactive REPL until `/exit` or EOF on stdin.
     pub async fn run_repl(&mut self) -> BroomvaResult<()> {
+        // BRO-1224 — refresh once at REPL start. Per-turn refresh is
+        // wired further down (the REPL can outlast the 15-min Tier-1
+        // TTL across multiple turns).
+        Self::refresh_lifegw_token_if_needed().await?;
         // We open a fresh connection per REPL session and reuse it
         // across turns. Reconnect-by-last-seq is driven by lower
         // layers in `agent_stream::spawn_driver` (Phase B follow-up
@@ -597,6 +621,19 @@ impl ChatSession {
             }
 
             // Treat as user turn. Open a fresh connection per turn.
+            //
+            // BRO-1224 — refresh the Tier-1 token before every turn.
+            // The 15-min TTL means a single REPL session running for
+            // 20+ min would 401 mid-conversation without this. Refresh
+            // is a no-op when token has > 60s of life left.
+            if let Err(e) = Self::refresh_lifegw_token_if_needed().await {
+                let _ = self
+                    .renderer
+                    .write_error(&format!("lifegw token refresh: {e}"));
+                // Fall through anyway — the request may still succeed
+                // if the stale token has 59s of life left, OR it 401s
+                // and surfaces the same error to the user.
+            }
             let mut cfg = self.opts.resolve(Some(&self.session_id))?;
             cfg.from_sequence = self.last_seq;
             if self.current_model.is_some() {

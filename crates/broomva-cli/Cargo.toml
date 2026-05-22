@@ -10,7 +10,7 @@ name = "broomva"
 # observably different runtime outcome (different LLM responds) —
 # user-visible behaviour change, additive but worth surfacing in the
 # version. Previous: 0.8.1 from BRO-1203 ES256 lifegw JWT.
-version = "0.9.0"
+version = "0.9.1"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
