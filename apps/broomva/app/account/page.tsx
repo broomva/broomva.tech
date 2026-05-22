@@ -21,7 +21,9 @@ import {
 } from "@/components/ui/card";
 import { fetchPasskeyStatus } from "@/lib/anima/passkey-status";
 
-export const dynamic = "force-dynamic";
+// BRO-1229 — removed `export const dynamic = "force-dynamic"`;
+// incompatible with `nextConfig.cacheComponents` (Next.js 16). The
+// `await headers()` call already makes this page dynamic-by-default.
 
 export default async function AccountIndexPage() {
   const headerStore = await headers();
