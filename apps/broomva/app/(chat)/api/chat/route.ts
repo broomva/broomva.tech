@@ -68,6 +68,10 @@ import {
   getLifegwBaseUrl,
   type SessionClientFactory,
 } from "@/lib/life-runtime/edge-adapter/dispatch-via-lifegw";
+import {
+  getFrameDeadlineMs,
+  wrapWithFrameDeadline,
+} from "@/lib/life-runtime/edge-adapter/wrap-with-frame-deadline";
 import { MAX_INPUT_TOKENS } from "@/lib/limits/tokens";
 import { createModuleLogger } from "@/lib/logger";
 import {
@@ -812,9 +816,21 @@ async function createLifegwBackedChatStream({
         ? wrapWithProgress(dispatch.events, onChunk)
         : dispatch.events;
 
+      // Per-frame deadline (BRO-1234). If lifegw goes silent the
+      // wrapper synthesises an `error` + `finish` canonical event
+      // pair so the user sees a structured failure within
+      // `frameDeadlineMs` instead of a silent 504 at Vercel's 290s
+      // function timeout. The translator turns the synthetic `error`
+      // into a UIMessageChunk error that chat-sync.tsx renders inline.
+      const frameDeadlineMs = getFrameDeadlineMs();
+      const eventsWithDeadline =
+        frameDeadlineMs !== null
+          ? wrapWithFrameDeadline(wrappedEvents, frameDeadlineMs, log)
+          : wrappedEvents;
+
       // Run the translator and merge its chunks into the writer.
       for await (const chunk of canonicalToVercelAiSdkSse<ChatMessage>(
-        wrappedEvents,
+        eventsWithDeadline,
         {
           fallbackTextId: messageId,
           state: consumeState,
