@@ -34,7 +34,7 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       created: ${{ steps.tag_check.outputs.created }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0   # full history so we can check existing tags
 
@@ -153,7 +153,7 @@ jobs:
       TARGET: ${{ matrix.target }}
       TARGET_LABEL: ${{ matrix.target_label }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # We want the tag commit, not the push commit, so the binary's
           # commit metadata (if any) matches the release.
