@@ -89,9 +89,9 @@ node_modules/
 /.roo/skills
 /.trae/rules/project_rules.md
 /.trae/rules/project_rules.md.bak
-/AGENTS.md
+# AGENTS.md + CLAUDE.md are committed (agent-native governance, no secrets).
+# Only the .bak scratch copies stay ignored.
 /AGENTS.md.bak
-/CLAUDE.md
 /CLAUDE.md.bak
 /CRUSH.md
 /CRUSH.md.bak
@@ -151,3 +151,6 @@ Cargo.lock
 packages/lago-client/
 .worktrees
 .superpowers
+
+# RCS control-loop audit logs (machine-local runtime telemetry)
+.control/audit/*.jsonl

@@ -1,0 +1,2 @@
+# RCS audit logs are machine-local runtime telemetry — not committed.
+# This .gitkeep keeps the dir present so the loop has somewhere to write.
