@@ -456,6 +456,64 @@ pub struct ApiListResponse<T> {
     pub error: Option<String>,
 }
 
+// ── Docs (BRO-1293) ──
+//
+// `broomva docs publish <file.html>` uploads an agent-authored HTML document
+// (spec/PRD/architecture/report) and returns a stable, owner-gated URL of the
+// form `<base>/d/<id>`. Owner is the authenticated identity behind the Bearer
+// token — nothing hardcoded server-side.
+
+/// Git provenance for an archived document (where the source file lives in VCS).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocSource {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
+}
+
+impl DocSource {
+    pub fn is_empty(&self) -> bool {
+        self.repo.is_none() && self.path.is_none() && self.commit.is_none()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishDocRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    pub html: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<DocSource>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishDocResponse {
+    pub id: String,
+    #[serde(default)]
+    pub title: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocSummary {
+    pub id: String,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_path: Option<String>,
+    #[serde(default)]
+    pub created_at: String,
+}
+
 #[cfg(test)]
 mod telemetry_types_tests {
     use super::*;

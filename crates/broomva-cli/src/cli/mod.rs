@@ -5,6 +5,7 @@ pub mod config_cmd;
 pub mod console;
 pub mod context;
 pub mod daemon_cmd;
+pub mod docs;
 pub mod output;
 pub mod prompts;
 pub mod relay;
@@ -66,6 +67,15 @@ pub enum Command {
     Prompts {
         #[command(subcommand)]
         action: PromptsCommand,
+    },
+    /// Publish + manage HTML documents (specs, PRDs, reports) at a gated URL.
+    ///
+    /// `broomva docs publish spec.html` uploads the file and prints a stable
+    /// `https://broomva.tech/d/<id>` link, viewable only by you. Ideal for
+    /// handing a finished HTML spec back from a remote/headless session.
+    Docs {
+        #[command(subcommand)]
+        action: DocsCommand,
     },
     /// Manage skills.
     Skills {
@@ -266,6 +276,32 @@ pub enum AuthCommand {
     Status,
     /// Print the stored token.
     Token,
+}
+
+// ── Docs (BRO-1293) ──
+
+#[derive(Subcommand, Debug)]
+pub enum DocsCommand {
+    /// Publish a local HTML file → prints a stable, owner-gated URL.
+    Publish {
+        /// Path to the .html file to publish.
+        file: String,
+        /// Title override (default: the file's <title> tag, else its name).
+        #[arg(long)]
+        title: Option<String>,
+        /// Stage + commit the file before publishing (git archival).
+        #[arg(long)]
+        commit: bool,
+        /// Open the published URL in the default browser.
+        #[arg(long)]
+        open: bool,
+    },
+    /// List your published documents.
+    List,
+    /// Open a published document in the browser by id.
+    Open { id: String },
+    /// Delete a published document by id.
+    Rm { id: String },
 }
 
 // ── Prompts ──
@@ -559,6 +595,17 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             AuthCommand::Logout => auth::handle_logout().await,
             AuthCommand::Status => auth::handle_status(&client, format).await,
             AuthCommand::Token => auth::handle_token().await,
+        },
+        Command::Docs { action } => match action {
+            DocsCommand::Publish {
+                file,
+                title,
+                commit,
+                open,
+            } => docs::handle_publish(&client, &file, title, commit, open, format).await,
+            DocsCommand::List => docs::handle_list(&client, format).await,
+            DocsCommand::Open { id } => docs::handle_open(&client, &id).await,
+            DocsCommand::Rm { id } => docs::handle_rm(&client, &id).await,
         },
         Command::Prompts { action } => match action {
             PromptsCommand::List {
