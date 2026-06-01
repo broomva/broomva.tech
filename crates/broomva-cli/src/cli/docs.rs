@@ -16,10 +16,13 @@ use crate::cli::output::{OutputFormat, print_json, print_kv, print_table};
 use crate::error::{BroomvaError, BroomvaResult};
 
 /// Publish a local HTML file. Prints the gated URL.
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_publish(
     client: &BroomvaClient,
     file: &str,
     title: Option<String>,
+    handle: Option<String>,
+    draft: bool,
     commit: bool,
     open: bool,
     format: OutputFormat,
@@ -46,10 +49,7 @@ pub async fn handle_publish(
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty())
         .or_else(|| extract_html_title(&html))
-        .or_else(|| {
-            path.file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-        });
+        .or_else(|| path.file_stem().map(|s| s.to_string_lossy().into_owned()));
 
     // git archival: --commit stages + commits the file first, so the recorded
     // HEAD is the commit that contains it.
@@ -62,6 +62,10 @@ pub async fn handle_publish(
 
     let req = PublishDocRequest {
         title: resolved_title,
+        handle: handle
+            .map(|h| h.trim().to_string())
+            .filter(|h| !h.is_empty()),
+        draft: if draft { Some(true) } else { None },
         html,
         source,
     };
@@ -71,6 +75,12 @@ pub async fn handle_publish(
         print_json(&resp);
     } else {
         print_kv("Published", &resp.title);
+        if resp.version > 1 {
+            print_kv("Version", &format!("v{}", resp.version));
+        }
+        if resp.state != "published" {
+            print_kv("State", &resp.state);
+        }
         print_kv("URL", &resp.url);
     }
 
@@ -98,14 +108,47 @@ pub async fn handle_list(client: &BroomvaClient, format: OutputFormat) -> Broomv
         .iter()
         .map(|d| {
             vec![
-                d.id.clone(),
+                d.handle.clone().unwrap_or_else(|| d.id.clone()),
+                format!("v{}", d.version.unwrap_or(1)),
+                d.state.clone().unwrap_or_default(),
                 d.title.clone(),
+                d.url.clone(),
+            ]
+        })
+        .collect();
+    print_table(&["HANDLE", "VER", "STATE", "TITLE", "URL"], &rows, format);
+    Ok(())
+}
+
+/// List the version history of a handle (newest first).
+pub async fn handle_versions(
+    client: &BroomvaClient,
+    handle: &str,
+    format: OutputFormat,
+) -> BroomvaResult<()> {
+    let docs = client.list_doc_versions(handle).await?;
+
+    if format == OutputFormat::Json {
+        print_json(&docs);
+        return Ok(());
+    }
+    if docs.is_empty() {
+        println!("No versions found for handle `{handle}`.");
+        return Ok(());
+    }
+
+    let rows: Vec<Vec<String>> = docs
+        .iter()
+        .map(|d| {
+            vec![
+                format!("v{}", d.version.unwrap_or(1)),
+                d.state.clone().unwrap_or_default(),
                 d.created_at.clone(),
                 d.url.clone(),
             ]
         })
         .collect();
-    print_table(&["ID", "TITLE", "CREATED", "URL"], &rows, format);
+    print_table(&["VER", "STATE", "CREATED", "URL"], &rows, format);
     Ok(())
 }
 
@@ -169,14 +212,11 @@ fn detect_git_source(path: &Path) -> Option<DocSource> {
     let toplevel = git_capture(&dir, &["rev-parse", "--show-toplevel"]);
 
     let rel_path = match (toplevel, path.canonicalize().ok()) {
-        (Some(top), Some(abs)) => Path::new(&top)
-            .canonicalize()
-            .ok()
-            .and_then(|top_abs| {
-                abs.strip_prefix(&top_abs)
-                    .ok()
-                    .map(|p| p.to_string_lossy().into_owned())
-            }),
+        (Some(top), Some(abs)) => Path::new(&top).canonicalize().ok().and_then(|top_abs| {
+            abs.strip_prefix(&top_abs)
+                .ok()
+                .map(|p| p.to_string_lossy().into_owned())
+        }),
         _ => None,
     };
 
