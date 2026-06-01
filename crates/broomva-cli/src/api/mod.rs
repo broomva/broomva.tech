@@ -200,6 +200,40 @@ impl BroomvaClient {
         Ok(())
     }
 
+    // ── Docs (BRO-1293) ──
+
+    /// Publish an HTML document. Returns `{ id, title, url }`; `url` is the
+    /// stable, owner-gated viewer link (`<base>/d/<id>`).
+    pub async fn publish_doc(
+        &self,
+        req: PublishDocRequest,
+    ) -> BroomvaResult<PublishDocResponse> {
+        let resp = self
+            .request(Method::POST, "/api/docs")
+            .json(&req)
+            .send()
+            .await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    /// List the authenticated owner's published docs (metadata only).
+    pub async fn list_docs(&self) -> BroomvaResult<Vec<DocSummary>> {
+        let resp = self.request(Method::GET, "/api/docs").send().await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    /// Delete an owned doc by id.
+    pub async fn delete_doc(&self, id: &str) -> BroomvaResult<()> {
+        let resp = self
+            .request(Method::DELETE, &format!("/api/docs/{id}"))
+            .send()
+            .await?;
+        self.check_response(resp).await?;
+        Ok(())
+    }
+
     // ── Skills ──
 
     pub async fn list_skills(&self, layer: Option<&str>) -> BroomvaResult<Vec<SkillSummary>> {

@@ -2045,4 +2045,45 @@ export const lifeSessionFile = pgTable(
 
 export type LifeSessionFile = InferSelectModel<typeof lifeSessionFile>;
 
+/**
+ * SpecDoc — agent-authored HTML documents (specs, PRDs, architecture, reports)
+ * published for fast, phone-friendly, owner-gated viewing at /d/<id>.
+ *
+ * Owner is the authenticated identity that published it (CLI Bearer token's
+ * `sub` OR browser Neon Auth session `user.id` — they resolve to the same
+ * `user.id`). Viewing is a strict owner match; nothing is hardcoded.
+ *
+ * `html` is stored inline (text). Agent-authored Category-C docs are typically
+ * 5KB–500KB self-contained HTML, well within Postgres limits. Content-addressed
+ * blob storage (Lago) is a future optimization, not required for v1.
+ */
+export const specDoc = pgTable(
+  "SpecDoc",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("ownerId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    html: text("html").notNull(),
+    // Provenance (git archival): where the source file lives in version control.
+    sourceRepo: text("sourceRepo"),
+    sourcePath: text("sourcePath"),
+    sourceCommit: varchar("sourceCommit", { length: 64 }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
+  },
+  (t) => ({
+    SpecDoc_owner_created_idx: index("SpecDoc_owner_created_idx").on(
+      t.ownerId,
+      t.createdAt,
+    ),
+  }),
+);
+
+export type SpecDoc = InferSelectModel<typeof specDoc>;
+
 export const schema = { user, session, account, verification };

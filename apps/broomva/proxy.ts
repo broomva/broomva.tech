@@ -39,6 +39,12 @@ const PUBLIC_API_PREFIXES = [
   "/api/context",
   "/api/llms",
   "/api/prompts",
+  // Docs publishing (BRO-1293): the broomva CLI publishes HTML specs with a
+  // Bearer token and no session cookie. The proxy must let /api/docs and
+  // /api/docs/[id] through so the handler can self-authenticate via
+  // resolveAuth (Bearer Life JWT OR session cookie). It returns 401 when
+  // neither is present, so it is not actually public.
+  "/api/docs",
   "/api/discovery",
   "/api/trust",
   "/api/marketplace",

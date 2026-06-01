@@ -1,0 +1,159 @@
+<!--
+---
+type: pr-explainer
+slug: pr-213-broomva-docs-publish
+pr: 213
+ticket: BRO-1293
+title: "broomva docs publish — instant owner-gated spec viewer"
+status: open
+related_entities:
+  - pattern/format-follows-audience
+  - concept/doc-as-data
+---
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>PR #213 — broomva docs publish (BRO-1293)</title>
+    <style>
+      :root {
+        --bg: #0b0e14; --panel: #131823; --ink: #e6e9ef; --muted: #9aa4b2;
+        --line: #232a37; --accent: #4f8cff; --good: #36c08a; --warn: #e0a458;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        --sans: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      @media (prefers-color-scheme: light) {
+        :root { --bg:#f7f8fa; --panel:#fff; --ink:#1a1f29; --muted:#5a6573; --line:#e4e8ef; }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+        line-height: 1.55; -webkit-font-smoothing: antialiased; }
+      main { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+      h1 { font-size: 1.7rem; margin: 0 0 .25rem; letter-spacing: -0.02em; }
+      .sub { color: var(--muted); margin: 0 0 2rem; font-size: .98rem; }
+      h2 { font-size: 1.12rem; margin: 2.2rem 0 .6rem; letter-spacing: -0.01em; }
+      p { margin: .5rem 0; }
+      code { font-family: var(--mono); font-size: .86em; background: var(--panel);
+        border: 1px solid var(--line); border-radius: 5px; padding: .08em .38em; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+        padding: 1rem 1.2rem; margin: 1rem 0; }
+      .pill { display: inline-block; font-size: .72rem; font-family: var(--mono);
+        padding: .12em .5em; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+      .pill.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--line)); }
+      .flow { width: 100%; height: auto; display: block; margin: .5rem 0; }
+      table { width: 100%; border-collapse: collapse; margin: .5rem 0; font-size: .9rem; }
+      th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+      td code { font-size: .8em; }
+      ul { margin: .4rem 0; padding-left: 1.2rem; }
+      li { margin: .25rem 0; }
+      .kbd { font-family: var(--mono); background: var(--panel); border: 1px solid var(--line);
+        border-radius: 6px; padding: .15em .45em; font-size: .85em; }
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+      @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+      .foot { color: var(--muted); font-size: .82rem; margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="pill">PR #213 · BRO-1293 · <span class="ok">P20 8/10 PASS</span></span>
+      <h1>broomva docs publish</h1>
+      <p class="sub">Finish an HTML spec → get an instant, phone-openable, owner-gated URL.</p>
+
+      <div class="card">
+        <strong>The problem.</strong> The autonomous workflow emits Category-C HTML
+        artifacts (specs, PRDs, architecture). On a remote session the agent hands back
+        <em>"the spec is at <code>/Users/&hellip;/docs/specs/foo.html</code>"</em> — a local
+        path that can't be opened from a phone. Now:
+        <p style="margin-top:.6rem"><span class="kbd">broomva docs publish spec.html</span>
+        &nbsp;→&nbsp; <span class="kbd">https://broomva.tech/d/&lt;id&gt;</span></p>
+      </div>
+
+      <h2>The flow</h2>
+      <svg class="flow" viewBox="0 0 820 150" role="img" aria-label="publish flow diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4f8cff" />
+          </marker>
+          <style>
+            .box{fill:#131823;stroke:#232a37;rx:10}.lbl{fill:#e6e9ef;font:600 13px ui-monospace,monospace}
+            .sm{fill:#9aa4b2;font:11px system-ui}.ln{stroke:#4f8cff;stroke-width:2;marker-end:url(#arrow)}
+          </style>
+        </defs>
+        <rect class="box" x="8" y="40" width="150" height="60" rx="10"/>
+        <text class="lbl" x="26" y="66">CLI</text>
+        <text class="sm" x="26" y="86">docs publish</text>
+        <line class="ln" x1="162" y1="70" x2="226" y2="70"/>
+        <rect class="box" x="230" y="40" width="170" height="60" rx="10"/>
+        <text class="lbl" x="248" y="66">POST /api/docs</text>
+        <text class="sm" x="248" y="86">resolveAuth → userId</text>
+        <line class="ln" x1="404" y1="70" x2="468" y2="70"/>
+        <rect class="box" x="472" y="40" width="150" height="60" rx="10"/>
+        <text class="lbl" x="490" y="66">SpecDoc</text>
+        <text class="sm" x="490" y="86">ownerId = userId</text>
+        <line class="ln" x1="626" y1="70" x2="690" y2="70"/>
+        <rect class="box" x="694" y="40" width="118" height="60" rx="10"/>
+        <text class="lbl" x="712" y="62">/d/&lt;id&gt;</text>
+        <text class="sm" x="712" y="82">gated view</text>
+        <text class="sm" x="232" y="125">Bearer (CLI) or cookie (browser) → same user.id</text>
+      </svg>
+
+      <h2>Why doc-as-data, not "PR → deploy → view"</h2>
+      <p>Vercel <strong>preview</strong> deploys (<code>*.vercel.app</code>) can't see the
+      production <code>broomva.tech</code> Neon Auth cookie — cookies are domain-scoped — so
+      per-PR-preview gating <em>breaks</em>, and a PR+deploy costs minutes. The HTML is stored
+      server-side and served at a stable apex-domain route: live in seconds, and the phone is
+      already logged in.</p>
+
+      <h2>Gating — the authenticated identity, nothing hardcoded</h2>
+      <p>Ownership is <code>doc.ownerId === resolveAuth(req).userId</code>. The CLI Bearer
+      Life-JWT's <code>sub</code> and the browser session's <code>user.id</code> resolve to the
+      <strong>same</strong> <code>user.id</code> (<code>device/authorize</code> →
+      <code>signLifeJWT({id})</code> → <code>verifyLifeJWT</code>). Every read/list/delete is
+      owner-scoped (<code>and(eq(id), eq(ownerId))</code>); a non-owner gets <strong>404</strong>
+      — no existence leak. The document HTML renders in a sandboxed <code>&lt;iframe srcDoc&gt;</code>
+      (<code>allow-scripts</code> <em>without</em> <code>allow-same-origin</code>): its inline JS
+      and charts run, but it cannot read the broomva.tech session cookie, touch the parent DOM,
+      or make credentialed same-origin requests.</p>
+
+      <h2>What changed</h2>
+      <table>
+        <thead><tr><th>Layer</th><th>Files</th></tr></thead>
+        <tbody>
+          <tr><td>DB</td><td><code>lib/db/schema.ts</code> (SpecDoc) · <code>lib/db/spec-doc-queries.ts</code> · migration <code>0069</code></td></tr>
+          <tr><td>API</td><td><code>app/api/docs/route.ts</code> · <code>app/api/docs/[id]/route.ts</code> · allowlist in <code>proxy.ts</code></td></tr>
+          <tr><td>Viewer</td><td><code>app/d/[id]/page.tsx</code> · <code>app/d/page.tsx</code> · <code>app/d/layout.tsx</code></td></tr>
+          <tr><td>CLI</td><td><code>crates/broomva-cli/src/cli/docs.rs</code> + <code>mod.rs</code> · <code>api/{mod,types}.rs</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Validation</h2>
+      <div class="grid2">
+        <div class="card"><strong>Static + unit</strong>
+          <ul>
+            <li>typecheck · Biome lint (8 files)</li>
+            <li><code>cargo build</code> · <code>clippy -D warnings</code></li>
+            <li>10 vitest owner-gate · 6 Rust unit</li>
+            <li>CLI arg-parse smoke</li>
+          </ul>
+        </div>
+        <div class="card"><strong>Deferred to prod</strong>
+          <ul>
+            <li>Migration auto-applies on prod build (<code>vercel-build</code>)</li>
+            <li>Live publish→view E2E post-deploy (real session)</li>
+            <li>Behavior crystallization (P18 reflex) — follow-up</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="foot">Cross-model adversarial review (P20, Strata B): 8/10 PASS, no blockers —
+      authorization completeness, identity-match, iframe isolation, proxy allowlist, and
+      migration safety all independently verified. Generated for human review;
+      the agent-loaded substrate stays markdown (P18 · Audience).</p>
+    </main>
+  </body>
+</html>
