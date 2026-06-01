@@ -11,7 +11,7 @@
  * query layer (defense in depth), independent of the route-level auth gate.
  */
 
-import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { type SpecDoc, type SpecDocState, specDoc } from "@/lib/db/schema";
 
@@ -77,6 +77,13 @@ export async function publishSpecDoc(
 ): Promise<SpecDoc> {
   const handle = deriveHandle(params);
   return db.transaction(async (tx) => {
+    // Serialize concurrent publishes to the same (owner, handle): the
+    // read-max-then-insert below would otherwise race two callers into the
+    // same version and a duplicate-key error. The advisory lock auto-releases
+    // at transaction end.
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`${params.ownerId}/${handle}`}, 0))`,
+    );
     const [agg] = await tx
       .select({ maxV: sql<number>`coalesce(max(${specDoc.version}), 0)` })
       .from(specDoc)
@@ -150,9 +157,10 @@ export async function getSpecDocForOwner(
  * Resolve a doc for the viewer from a `<ref>` that is either a handle or a
  * legacy/standalone id, optionally pinned to a `version`.
  *   - version given → that exact (handle, version)
- *   - else → latest non-expired version of the handle
- *   - else → exact id (legacy fallback)
- * Soft-deleted rows are never returned.
+ *   - else → latest ACTIVE (published/draft) version of the handle
+ *   - else → exact id, active-state (legacy/standalone fallback)
+ * Soft-deleted, archived, expired, and superseded rows are never served here;
+ * archived/expired/superseded remain reachable only by explicit version pin.
  */
 export async function resolveSpecDocForViewer(
   ref: string,
@@ -182,7 +190,7 @@ export async function resolveSpecDocForViewer(
       and(
         eq(specDoc.ownerId, ownerId),
         eq(specDoc.handle, ref),
-        ne(specDoc.state, "expired"),
+        inArray(specDoc.state, ACTIVE_STATES),
         isNull(specDoc.deletedAt),
       ),
     )
@@ -190,7 +198,22 @@ export async function resolveSpecDocForViewer(
     .limit(1);
   if (latest) return latest;
 
-  return getSpecDocForOwner(ref, ownerId);
+  // Legacy/standalone fallback: a bare id, also restricted to active state so
+  // archived/expired/superseded rows are never served at /d/<ref> (they remain
+  // reachable only by an explicit version pin).
+  const [byId] = await db
+    .select()
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.id, ref),
+        eq(specDoc.ownerId, ownerId),
+        inArray(specDoc.state, ACTIVE_STATES),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .limit(1);
+  return byId ?? null;
 }
 
 /** Metadata view — excludes the (potentially large) html body. */
@@ -276,7 +299,11 @@ export async function promoteLatestDraft(
   return true;
 }
 
-/** Set a doc's state by exact id (archive / restore-helper). Owner-scoped. */
+/**
+ * Set a doc's state by exact id (archive / restore). Owner-scoped, and only on
+ * non-deleted docs — `deletedAt` is left untouched, so archive/restore never
+ * undeletes a soft-deleted doc (un-delete is a Phase-2 concern).
+ */
 export async function setSpecDocState(
   id: string,
   ownerId: string,
@@ -284,8 +311,14 @@ export async function setSpecDocState(
 ): Promise<boolean> {
   const updated = await db
     .update(specDoc)
-    .set({ state, ...(state !== "expired" ? { deletedAt: null } : {}) })
-    .where(and(eq(specDoc.id, id), eq(specDoc.ownerId, ownerId)))
+    .set({ state })
+    .where(
+      and(
+        eq(specDoc.id, id),
+        eq(specDoc.ownerId, ownerId),
+        isNull(specDoc.deletedAt),
+      ),
+    )
     .returning({ id: specDoc.id });
   return updated.length > 0;
 }
