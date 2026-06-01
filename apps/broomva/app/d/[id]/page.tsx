@@ -10,8 +10,11 @@ import { getSpecDocForOwner } from "@/lib/db/spec-doc-queries";
  * Gate: must be logged in (else → /login?next=), and the doc must belong to
  * the session user (else 404, no existence leak). The document HTML is rendered
  * inside a sandboxed iframe via `srcDoc` — `allow-scripts` WITHOUT
- * `allow-same-origin`, so the doc's inline JS/charts run in an opaque origin and
- * cannot read the broomva.tech session cookie or touch the parent DOM.
+ * `allow-same-origin`, so the doc runs in an opaque origin: its inline JS/charts
+ * work, but it cannot read the broomva.tech session cookie, touch the parent DOM,
+ * or make credentialed same-origin requests (CORS rejects the null origin).
+ * `allow-popups-to-escape-sandbox` is intentionally NOT granted, so any popup the
+ * doc opens stays sandboxed too.
  *
  * `srcDoc` (not an iframe `src` to a raw route) is deliberate: the proxy stamps
  * `X-Frame-Options: DENY` on protected responses, which would block framing a
@@ -67,7 +70,8 @@ export default async function DocViewerPage({
       <iframe
         title={doc.title}
         srcDoc={doc.html}
-        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+        sandbox="allow-scripts allow-popups"
+        referrerPolicy="no-referrer"
         className="min-h-0 w-full flex-1 border-0 bg-white"
       />
     </div>

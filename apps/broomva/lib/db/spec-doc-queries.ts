@@ -35,6 +35,9 @@ export async function createSpecDoc(
       sourceCommit: params.sourceCommit ?? null,
     })
     .returning();
+  if (!doc) {
+    throw new Error("createSpecDoc: insert returned no row");
+  }
   return doc;
 }
 
@@ -58,6 +61,9 @@ export async function getSpecDocForOwner(
 /** Metadata view of a spec doc — excludes the (potentially large) html body. */
 export type SpecDocSummary = Omit<SpecDoc, "html">;
 
+/** Max rows returned by {@link listSpecDocs} — bounds the response. */
+const LIST_LIMIT = 200;
+
 /** List an owner's spec docs, newest first (metadata only — no html body). */
 export async function listSpecDocs(ownerId: string): Promise<SpecDocSummary[]> {
   return db
@@ -73,7 +79,8 @@ export async function listSpecDocs(ownerId: string): Promise<SpecDocSummary[]> {
     })
     .from(specDoc)
     .where(eq(specDoc.ownerId, ownerId))
-    .orderBy(desc(specDoc.createdAt));
+    .orderBy(desc(specDoc.createdAt))
+    .limit(LIST_LIMIT);
 }
 
 /** Delete a spec doc by id, scoped to owner. Returns true if a row was removed. */

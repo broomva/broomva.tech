@@ -28,6 +28,16 @@ pub async fn handle_publish(
     if !path.exists() {
         return Err(BroomvaError::User(format!("file not found: {file}")));
     }
+    // Fail fast on oversize before reading/uploading (server caps at ~2 MB).
+    const MAX_BYTES: u64 = 2_000_000;
+    if let Ok(meta) = fs::metadata(path)
+        && meta.len() > MAX_BYTES
+    {
+        return Err(BroomvaError::User(format!(
+            "file too large: {} bytes (max {MAX_BYTES}). The server rejects documents over ~2 MB.",
+            meta.len()
+        )));
+    }
     let html = fs::read_to_string(path)?;
 
     // Title precedence: explicit --title → <title> tag → file stem.
