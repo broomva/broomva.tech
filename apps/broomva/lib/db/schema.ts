@@ -552,10 +552,9 @@ export const promptFeedback = pgTable(
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (t) => ({
-    PromptFeedback_slug_created_idx: index("PromptFeedback_slug_created_idx").on(
-      t.promptSlug,
-      t.createdAt,
-    ),
+    PromptFeedback_slug_created_idx: index(
+      "PromptFeedback_slug_created_idx",
+    ).on(t.promptSlug, t.createdAt),
     PromptFeedback_invocation_idx: index("PromptFeedback_invocation_idx").on(
       t.invocationId,
     ),
@@ -2087,3 +2086,29 @@ export const specDoc = pgTable(
 export type SpecDoc = InferSelectModel<typeof specDoc>;
 
 export const schema = { user, session, account, verification };
+
+export const baseAccount = pgTable("base_account", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  address: text("address").notNull(),
+  chainId: integer("chain_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  verifiedAt: timestamp("verified_at").notNull(),
+});
+
+export type BaseAccount = InferSelectModel<typeof baseAccount>;
+
+export const baseAuthNonce = pgTable("base_auth_nonce", {
+  nonce: text("nonce").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type BaseAuthNonce = InferSelectModel<typeof baseAuthNonce>;

@@ -50,7 +50,6 @@
   },
   "dependencies": {
     "@ai-sdk-tools/store": "1.2.0",
-    "@broomva/lifegw-client": "workspace:*",
     "@ai-sdk/anthropic": "3.0.78",
     "@ai-sdk/devtools": "0.0.18",
     "@ai-sdk/gateway": "3.0.115",
@@ -61,7 +60,10 @@
     "@ai-sdk/provider": "3.0.10",
     "@ai-sdk/react": "3.0.186",
     "@auth/agent": "^0.5.1",
+    "@base-org/account": "^2.5.6",
     "@better-auth/agent-auth": "^0.5.1",
+    "@broomva/lifegw-client": "workspace:*",
+    "@broomva/prosopon": "workspace:*",
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-python": "^6.1.6",
     "@codemirror/state": "^6.5.0",
@@ -185,9 +187,9 @@
     "usehooks-ts": "^3.1.0",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
+    "viem": "^2.52.0",
     "zod": "^4.3.6",
-    "zustand": "^5.0.6",
-    "@broomva/prosopon": "workspace:*"
+    "zustand": "^5.0.6"
   },
   "overrides": {
     "commander": "^14.0.0",

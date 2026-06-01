@@ -491,6 +491,13 @@
       "when": 1780344803774,
       "tag": "0069_unique_wendell_vaughn",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1780351303768,
+      "tag": "0070_grey_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }
