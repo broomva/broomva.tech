@@ -16,6 +16,11 @@ import { config } from "@/lib/config";
 
 export const metadata: Metadata = {
   metadataBase: new URL(config.appUrl),
+  // Base app verification — registers broomva.tech in Base Dashboard (base.dev).
+  // Emits <meta name="base:app_id" content="..."/>; public identifier. BRO-1297.
+  other: {
+    "base:app_id": "6a1deda4d510a5a848efc662",
+  },
   title: {
     default: config.appTitle ?? config.appName ?? config.appName,
     template: `%s | ${config.appName}`,
