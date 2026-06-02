@@ -21,7 +21,7 @@
     "@anthropic-ai/sdk": "^0.96.0",
     "liquidjs": "^10.21.1",
     "yaml": "^2.8.1",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
