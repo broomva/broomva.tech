@@ -5,11 +5,13 @@ vi.mock("@/lib/prompts/resolve-auth", () => ({ resolveAuth: vi.fn() }));
 vi.mock("@/lib/db/spec-doc-queries", () => ({
   getSpecDocForOwner: vi.fn(),
   setSpecDocState: vi.fn(),
+  restoreSpecDoc: vi.fn(),
   softDeleteSpecDoc: vi.fn(),
 }));
 
 import {
   getSpecDocForOwner,
+  restoreSpecDoc,
   setSpecDocState,
   softDeleteSpecDoc,
 } from "@/lib/db/spec-doc-queries";
@@ -19,6 +21,7 @@ import { DELETE, GET, PATCH } from "./route";
 const mockAuth = vi.mocked(resolveAuth);
 const mockGet = vi.mocked(getSpecDocForOwner);
 const mockSetState = vi.mocked(setSpecDocState);
+const mockRestore = vi.mocked(restoreSpecDoc);
 const mockSoftDelete = vi.mocked(softDeleteSpecDoc);
 
 const getReq = () => new NextRequest("http://localhost/api/docs/doc-1");
@@ -36,6 +39,7 @@ beforeEach(() => {
   mockAuth.mockReset();
   mockGet.mockReset();
   mockSetState.mockReset();
+  mockRestore.mockReset();
   mockSoftDelete.mockReset();
 });
 
@@ -95,12 +99,14 @@ describe("PATCH /api/docs/[id]", () => {
     expect(await resp.json()).toEqual({ ok: true, state: "archived" });
   });
 
-  test("restore → setSpecDocState(published)", async () => {
+  test("restore → restoreSpecDoc (supersedes siblings, publishes target)", async () => {
     mockAuth.mockResolvedValue({ userId: "owner-1", email: "a@b.com" });
-    mockSetState.mockResolvedValue(true);
+    mockRestore.mockResolvedValue(true);
     const resp = await PATCH(patchReq({ action: "restore" }), params("doc-1"));
     expect(resp.status).toBe(200);
-    expect(mockSetState).toHaveBeenCalledWith("doc-1", "owner-1", "published");
+    expect(mockRestore).toHaveBeenCalledWith("doc-1", "owner-1");
+    expect(mockSetState).not.toHaveBeenCalled();
+    expect(await resp.json()).toEqual({ ok: true, state: "published" });
   });
 
   test("400 on an unknown action", async () => {

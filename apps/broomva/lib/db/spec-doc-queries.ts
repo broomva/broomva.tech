@@ -11,7 +11,7 @@
  * query layer (defense in depth), independent of the route-level auth gate.
  */
 
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { type SpecDoc, type SpecDocState, specDoc } from "@/lib/db/schema";
 
@@ -300,9 +300,10 @@ export async function promoteLatestDraft(
 }
 
 /**
- * Set a doc's state by exact id (archive / restore). Owner-scoped, and only on
- * non-deleted docs — `deletedAt` is left untouched, so archive/restore never
- * undeletes a soft-deleted doc (un-delete is a Phase-2 concern).
+ * Set a doc's state by exact id (e.g. archive). Owner-scoped, non-deleted only —
+ * `deletedAt` is left untouched, so this never undeletes a soft-deleted doc
+ * (un-delete is a Phase-2 concern). For restore use {@link restoreSpecDoc},
+ * which also supersedes sibling active versions.
  */
 export async function setSpecDocState(
   id: string,
@@ -321,6 +322,55 @@ export async function setSpecDocState(
     )
     .returning({ id: specDoc.id });
   return updated.length > 0;
+}
+
+/**
+ * Restore a doc (by id) to `published` as the SOLE active version of its handle:
+ * in one transaction, supersede any other active version of the handle, then
+ * publish the target. Prevents two active versions for one handle (the failure
+ * a naive state-set would create). Owner-scoped, non-deleted only.
+ */
+export async function restoreSpecDoc(
+  id: string,
+  ownerId: string,
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [target] = await tx
+      .select({ handle: specDoc.handle })
+      .from(specDoc)
+      .where(
+        and(
+          eq(specDoc.id, id),
+          eq(specDoc.ownerId, ownerId),
+          isNull(specDoc.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!target) return false;
+
+    // Supersede sibling active versions of the same handle (a null/standalone
+    // handle has no siblings to collide with).
+    if (target.handle) {
+      await tx
+        .update(specDoc)
+        .set({ state: "superseded" })
+        .where(
+          and(
+            eq(specDoc.ownerId, ownerId),
+            eq(specDoc.handle, target.handle),
+            inArray(specDoc.state, ACTIVE_STATES),
+            isNull(specDoc.deletedAt),
+            ne(specDoc.id, id),
+          ),
+        );
+    }
+
+    await tx
+      .update(specDoc)
+      .set({ state: "published" })
+      .where(and(eq(specDoc.id, id), eq(specDoc.ownerId, ownerId)));
+    return true;
+  });
 }
 
 /** Soft-delete a doc by id (sets `deletedAt`); the Phase-2 reconciler GCs it. */

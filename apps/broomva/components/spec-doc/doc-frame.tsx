@@ -31,9 +31,13 @@ export function DocFrame({
     timeStyle: "short",
   }).format(doc.createdAt);
 
+  // On a version-pin route the pinned version is the salient label (so
+  // /d/<handle>/v/1 and /v/2 don't both read "Superseded"); elsewhere the
+  // lifecycle state is the badge.
   const badge =
-    STATE_BADGE[doc.state] ??
-    (pinnedVersion != null ? `v${pinnedVersion}` : null);
+    pinnedVersion != null
+      ? `v${pinnedVersion}`
+      : (STATE_BADGE[doc.state] ?? null);
 
   return (
     <div className="flex h-dvh max-h-dvh w-full flex-col bg-background">
