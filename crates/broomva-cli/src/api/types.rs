@@ -497,15 +497,24 @@ pub struct PublishDocRequest {
     pub source: Option<DocSource>,
 }
 
+/// Back-compat defaults: a pre-lifecycle server omits these fields; a doc with
+/// no explicit lifecycle is version 1, published (not 0 / empty-string).
+fn default_doc_version() -> i64 {
+    1
+}
+fn default_doc_state() -> String {
+    "published".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishDocResponse {
     pub id: String,
     #[serde(default)]
     pub handle: Option<String>,
-    #[serde(default)]
+    #[serde(default = "default_doc_version")]
     pub version: i64,
-    #[serde(default)]
+    #[serde(default = "default_doc_state")]
     pub state: String,
     #[serde(default)]
     pub title: String,

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   getSpecDocForOwner,
+  restoreSpecDoc,
   setSpecDocState,
   softDeleteSpecDoc,
 } from "@/lib/db/spec-doc-queries";
@@ -54,11 +55,16 @@ export async function PATCH(
     );
   }
   const { id } = await params;
-  const nextState = action === "archive" ? "archived" : "published";
-  const ok = await setSpecDocState(id, auth.userId, nextState);
+  // restore supersedes sibling active versions (one active per handle); archive
+  // is a simple state set.
+  const ok =
+    action === "archive"
+      ? await setSpecDocState(id, auth.userId, "archived")
+      : await restoreSpecDoc(id, auth.userId);
   if (!ok) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const nextState = action === "archive" ? "archived" : "published";
   return NextResponse.json({ ok: true, state: nextState });
 }
 
