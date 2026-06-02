@@ -2056,6 +2056,20 @@ export type LifeSessionFile = InferSelectModel<typeof lifeSessionFile>;
  * 5KB–500KB self-contained HTML, well within Postgres limits. Content-addressed
  * blob storage (Lago) is a future optimization, not required for v1.
  */
+/**
+ * SpecDoc lifecycle states (BRO-1300). A doc has a stable `handle`; each
+ * publish appends a `version`. `/d/<handle>` serves the latest non-expired
+ * version. draft=WIP · published=current · superseded=older version exists ·
+ * archived=retained but inactive · expired=past TTL, soft-deleted.
+ */
+export const specDocStateEnum = pgEnum("spec_doc_state", [
+  "draft",
+  "published",
+  "superseded",
+  "archived",
+  "expired",
+]);
+
 export const specDoc = pgTable(
   "SpecDoc",
   {
@@ -2063,12 +2077,25 @@ export const specDoc = pgTable(
     ownerId: text("ownerId")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    // Stable identity: `/d/<handle>` resolves to the latest version. Nullable
+    // for back-compat with pre-BRO-1300 rows (addressed by `id`); backfilled to
+    // `id` in the migration. New publishes always set it.
+    handle: text("handle"),
+    version: integer("version").notNull().default(1),
+    state: specDocStateEnum("state").notNull().default("published"),
     title: text("title").notNull(),
     html: text("html").notNull(),
     // Provenance (git archival): where the source file lives in version control.
     sourceRepo: text("sourceRepo"),
     sourcePath: text("sourcePath"),
     sourceCommit: varchar("sourceCommit", { length: 64 }),
+    // Work-linkage (schema now; work-event-driven retention layers on later).
+    ticketId: text("ticketId"),
+    prNumber: integer("prNumber"),
+    sessionId: text("sessionId"),
+    // Retention: TTL target + soft-delete tombstone (controller is Phase 2).
+    expiresAt: timestamp("expiresAt"),
+    deletedAt: timestamp("deletedAt"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt")
       .notNull()
@@ -2080,10 +2107,15 @@ export const specDoc = pgTable(
       t.ownerId,
       t.createdAt,
     ),
+    // Version uniqueness + latest-per-handle lookups, scoped per owner.
+    SpecDoc_owner_handle_version_uq: uniqueIndex(
+      "SpecDoc_owner_handle_version_uq",
+    ).on(t.ownerId, t.handle, t.version),
   }),
 );
 
 export type SpecDoc = InferSelectModel<typeof specDoc>;
+export type SpecDocState = (typeof specDocStateEnum.enumValues)[number];
 
 export const schema = { user, session, account, verification };
 

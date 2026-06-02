@@ -45,12 +45,24 @@ export default async function DocsListPage() {
           {docs.map((d) => (
             <li key={d.id}>
               <Link
-                href={`/d/${d.id}`}
+                href={`/d/${d.handle ?? d.id}`}
                 className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-sm">
-                    {d.title}
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium text-sm">
+                      {d.title}
+                    </span>
+                    {d.state === "draft" ? (
+                      <span className="shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
+                        draft
+                      </span>
+                    ) : null}
+                    {d.version > 1 ? (
+                      <span className="shrink-0 text-muted-foreground text-xs">
+                        v{d.version}
+                      </span>
+                    ) : null}
                   </span>
                   {d.sourcePath ? (
                     <span className="block truncate text-muted-foreground text-xs">

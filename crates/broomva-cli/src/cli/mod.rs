@@ -289,6 +289,14 @@ pub enum DocsCommand {
         /// Title override (default: the file's <title> tag, else its name).
         #[arg(long)]
         title: Option<String>,
+        /// Stable handle: re-publishing the same handle appends a version and
+        /// keeps one durable `/d/<handle>` URL (default: derived from the
+        /// source path, else a standalone id).
+        #[arg(long = "as", value_name = "HANDLE")]
+        as_handle: Option<String>,
+        /// Publish as a work-in-progress draft.
+        #[arg(long)]
+        draft: bool,
         /// Stage + commit the file before publishing (git archival).
         #[arg(long)]
         commit: bool,
@@ -296,9 +304,14 @@ pub enum DocsCommand {
         #[arg(long)]
         open: bool,
     },
-    /// List your published documents.
+    /// List your published documents (latest version per handle).
     List,
-    /// Open a published document in the browser by id.
+    /// List the version history of a handle.
+    Versions {
+        /// The document handle.
+        handle: String,
+    },
+    /// Open a published document in the browser by handle or id.
     Open { id: String },
     /// Delete a published document by id.
     Rm { id: String },
@@ -600,10 +613,20 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             DocsCommand::Publish {
                 file,
                 title,
+                as_handle,
+                draft,
                 commit,
                 open,
-            } => docs::handle_publish(&client, &file, title, commit, open, format).await,
+            } => {
+                docs::handle_publish(
+                    &client, &file, title, as_handle, draft, commit, open, format,
+                )
+                .await
+            }
             DocsCommand::List => docs::handle_list(&client, format).await,
+            DocsCommand::Versions { handle } => {
+                docs::handle_versions(&client, &handle, format).await
+            }
             DocsCommand::Open { id } => docs::handle_open(&client, &id).await,
             DocsCommand::Rm { id } => docs::handle_rm(&client, &id).await,
         },

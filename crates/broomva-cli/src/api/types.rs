@@ -486,6 +486,12 @@ impl DocSource {
 pub struct PublishDocRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// Stable handle; re-publishing the same handle appends a version.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handle: Option<String>,
+    /// Publish as a work-in-progress draft.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub draft: Option<bool>,
     pub html: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<DocSource>,
@@ -496,6 +502,12 @@ pub struct PublishDocRequest {
 pub struct PublishDocResponse {
     pub id: String,
     #[serde(default)]
+    pub handle: Option<String>,
+    #[serde(default)]
+    pub version: i64,
+    #[serde(default)]
+    pub state: String,
+    #[serde(default)]
     pub title: String,
     pub url: String,
 }
@@ -504,6 +516,12 @@ pub struct PublishDocResponse {
 #[serde(rename_all = "camelCase")]
 pub struct DocSummary {
     pub id: String,
+    #[serde(default)]
+    pub handle: Option<String>,
+    #[serde(default)]
+    pub version: Option<i64>,
+    #[serde(default)]
+    pub state: Option<String>,
     #[serde(default)]
     pub title: String,
     #[serde(default)]

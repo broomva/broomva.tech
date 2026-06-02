@@ -204,10 +204,7 @@ impl BroomvaClient {
 
     /// Publish an HTML document. Returns `{ id, title, url }`; `url` is the
     /// stable, owner-gated viewer link (`<base>/d/<id>`).
-    pub async fn publish_doc(
-        &self,
-        req: PublishDocRequest,
-    ) -> BroomvaResult<PublishDocResponse> {
+    pub async fn publish_doc(&self, req: PublishDocRequest) -> BroomvaResult<PublishDocResponse> {
         let resp = self
             .request(Method::POST, "/api/docs")
             .json(&req)
@@ -217,9 +214,20 @@ impl BroomvaClient {
         Ok(resp.json().await?)
     }
 
-    /// List the authenticated owner's published docs (metadata only).
+    /// List the authenticated owner's active docs (latest per handle, metadata only).
     pub async fn list_docs(&self) -> BroomvaResult<Vec<DocSummary>> {
         let resp = self.request(Method::GET, "/api/docs").send().await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    /// List the version history of a handle (metadata only).
+    pub async fn list_doc_versions(&self, handle: &str) -> BroomvaResult<Vec<DocSummary>> {
+        let resp = self
+            .request(Method::GET, "/api/docs")
+            .query(&[("handle", handle)])
+            .send()
+            .await?;
         let resp = self.check_response(resp).await?;
         Ok(resp.json().await?)
     }

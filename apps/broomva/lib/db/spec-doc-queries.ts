@@ -1,50 +1,139 @@
 /**
- * SpecDoc database queries — agent-authored HTML documents, owner-gated.
+ * SpecDoc database queries — agent-authored HTML documents, owner-gated, with
+ * a stable-handle + version lifecycle (BRO-1300).
  *
- * Every read/delete is scoped to `ownerId` so ownership is enforced at the
+ * Identity model: a doc has a stable `handle`; each publish appends a `version`
+ * and supersedes the prior active version. `/d/<handle>` serves the latest
+ * non-expired version; `/d/<handle>/v<n>` pins one. Legacy/standalone docs use
+ * `handle = id`, so a bare id keeps resolving.
+ *
+ * Every read/mutation is scoped to `ownerId` — ownership is enforced at the
  * query layer (defense in depth), independent of the route-level auth gate.
  */
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { type SpecDoc, specDoc } from "@/lib/db/schema";
+import { type SpecDoc, type SpecDocState, specDoc } from "@/lib/db/schema";
 
-export interface CreateSpecDocParams {
+/** Active states shown in the default list and superseded on re-publish. */
+const ACTIVE_STATES: SpecDocState[] = ["published", "draft"];
+
+/** Max rows returned by list endpoints — bounds the response. */
+const LIST_LIMIT = 200;
+
+/** Normalize a string into a URL-safe handle (≤64 chars). */
+export function slugifyHandle(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+/**
+ * Resolve the handle for a publish:
+ *   explicit `handle` → slug of it
+ *   else `sourcePath` → slug of its basename (stable across iterations)
+ *   else the new row's `id` (standalone — behaves like the pre-lifecycle model)
+ */
+export function deriveHandle(params: {
+  handle?: string | null;
+  sourcePath?: string | null;
+  id: string;
+}): string {
+  if (params.handle) {
+    const s = slugifyHandle(params.handle);
+    if (s) return s;
+  }
+  if (params.sourcePath) {
+    const base = params.sourcePath.split("/").pop() ?? "";
+    const s = slugifyHandle(base.replace(/\.[a-z0-9]+$/i, ""));
+    if (s) return s;
+  }
+  return params.id;
+}
+
+export interface PublishSpecDocParams {
   id: string;
   ownerId: string;
   title: string;
   html: string;
+  handle?: string | null;
+  draft?: boolean;
   sourceRepo?: string | null;
   sourcePath?: string | null;
   sourceCommit?: string | null;
-}
-
-/** Insert a new spec doc owned by `ownerId`. */
-export async function createSpecDoc(
-  params: CreateSpecDocParams,
-): Promise<SpecDoc> {
-  const [doc] = await db
-    .insert(specDoc)
-    .values({
-      id: params.id,
-      ownerId: params.ownerId,
-      title: params.title,
-      html: params.html,
-      sourceRepo: params.sourceRepo ?? null,
-      sourcePath: params.sourcePath ?? null,
-      sourceCommit: params.sourceCommit ?? null,
-    })
-    .returning();
-  if (!doc) {
-    throw new Error("createSpecDoc: insert returned no row");
-  }
-  return doc;
+  ticketId?: string | null;
+  prNumber?: number | null;
+  sessionId?: string | null;
 }
 
 /**
- * Fetch a spec doc by id, scoped to its owner.
- * Returns null when the doc does not exist OR belongs to a different owner —
- * callers cannot distinguish the two (no existence leak).
+ * Publish a new version under a handle. The prior active version(s) of that
+ * handle become `superseded`; the new row is `draft` or `published`. Atomic.
+ */
+export async function publishSpecDoc(
+  params: PublishSpecDocParams,
+): Promise<SpecDoc> {
+  const handle = deriveHandle(params);
+  return db.transaction(async (tx) => {
+    // Serialize concurrent publishes to the same (owner, handle): the
+    // read-max-then-insert below would otherwise race two callers into the
+    // same version and a duplicate-key error. The advisory lock auto-releases
+    // at transaction end.
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`${params.ownerId}/${handle}`}, 0))`,
+    );
+    const [agg] = await tx
+      .select({ maxV: sql<number>`coalesce(max(${specDoc.version}), 0)` })
+      .from(specDoc)
+      .where(
+        and(eq(specDoc.ownerId, params.ownerId), eq(specDoc.handle, handle)),
+      );
+    const version = (agg?.maxV ?? 0) + 1;
+
+    if (version > 1) {
+      await tx
+        .update(specDoc)
+        .set({ state: "superseded" })
+        .where(
+          and(
+            eq(specDoc.ownerId, params.ownerId),
+            eq(specDoc.handle, handle),
+            inArray(specDoc.state, ACTIVE_STATES),
+            isNull(specDoc.deletedAt),
+          ),
+        );
+    }
+
+    const [doc] = await tx
+      .insert(specDoc)
+      .values({
+        id: params.id,
+        ownerId: params.ownerId,
+        handle,
+        version,
+        state: params.draft ? "draft" : "published",
+        title: params.title,
+        html: params.html,
+        sourceRepo: params.sourceRepo ?? null,
+        sourcePath: params.sourcePath ?? null,
+        sourceCommit: params.sourceCommit ?? null,
+        ticketId: params.ticketId ?? null,
+        prNumber: params.prNumber ?? null,
+        sessionId: params.sessionId ?? null,
+      })
+      .returning();
+    if (!doc) {
+      throw new Error("publishSpecDoc: insert returned no row");
+    }
+    return doc;
+  });
+}
+
+/**
+ * Fetch a doc by exact id, owner-scoped. Null when missing or not the owner's
+ * (no existence leak). Excludes soft-deleted rows.
  */
 export async function getSpecDocForOwner(
   id: string,
@@ -53,44 +142,202 @@ export async function getSpecDocForOwner(
   const [doc] = await db
     .select()
     .from(specDoc)
-    .where(and(eq(specDoc.id, id), eq(specDoc.ownerId, ownerId)))
+    .where(
+      and(
+        eq(specDoc.id, id),
+        eq(specDoc.ownerId, ownerId),
+        isNull(specDoc.deletedAt),
+      ),
+    )
     .limit(1);
   return doc ?? null;
 }
 
-/** Metadata view of a spec doc — excludes the (potentially large) html body. */
+/**
+ * Resolve a doc for the viewer from a `<ref>` that is either a handle or a
+ * legacy/standalone id, optionally pinned to a `version`.
+ *   - version given → that exact (handle, version)
+ *   - else → latest ACTIVE (published/draft) version of the handle
+ *   - else → exact id, active-state (legacy/standalone fallback)
+ * Soft-deleted, archived, expired, and superseded rows are never served here;
+ * archived/expired/superseded remain reachable only by explicit version pin.
+ */
+export async function resolveSpecDocForViewer(
+  ref: string,
+  ownerId: string,
+  version?: number,
+): Promise<SpecDoc | null> {
+  if (version != null) {
+    const [pinned] = await db
+      .select()
+      .from(specDoc)
+      .where(
+        and(
+          eq(specDoc.ownerId, ownerId),
+          eq(specDoc.handle, ref),
+          eq(specDoc.version, version),
+          isNull(specDoc.deletedAt),
+        ),
+      )
+      .limit(1);
+    return pinned ?? null;
+  }
+
+  const [latest] = await db
+    .select()
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.ownerId, ownerId),
+        eq(specDoc.handle, ref),
+        inArray(specDoc.state, ACTIVE_STATES),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .orderBy(desc(specDoc.version))
+    .limit(1);
+  if (latest) return latest;
+
+  // Legacy/standalone fallback: a bare id, also restricted to active state so
+  // archived/expired/superseded rows are never served at /d/<ref> (they remain
+  // reachable only by an explicit version pin).
+  const [byId] = await db
+    .select()
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.id, ref),
+        eq(specDoc.ownerId, ownerId),
+        inArray(specDoc.state, ACTIVE_STATES),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .limit(1);
+  return byId ?? null;
+}
+
+/** Metadata view — excludes the (potentially large) html body. */
 export type SpecDocSummary = Omit<SpecDoc, "html">;
 
-/** Max rows returned by {@link listSpecDocs} — bounds the response. */
-const LIST_LIMIT = 200;
+const SUMMARY_COLUMNS = {
+  id: specDoc.id,
+  ownerId: specDoc.ownerId,
+  handle: specDoc.handle,
+  version: specDoc.version,
+  state: specDoc.state,
+  title: specDoc.title,
+  sourceRepo: specDoc.sourceRepo,
+  sourcePath: specDoc.sourcePath,
+  sourceCommit: specDoc.sourceCommit,
+  ticketId: specDoc.ticketId,
+  prNumber: specDoc.prNumber,
+  sessionId: specDoc.sessionId,
+  expiresAt: specDoc.expiresAt,
+  deletedAt: specDoc.deletedAt,
+  createdAt: specDoc.createdAt,
+  updatedAt: specDoc.updatedAt,
+} as const;
 
-/** List an owner's spec docs, newest first (metadata only — no html body). */
+/** The owner's active docs — latest version per handle (no superseded/archived/expired/deleted). */
 export async function listSpecDocs(ownerId: string): Promise<SpecDocSummary[]> {
   return db
-    .select({
-      id: specDoc.id,
-      ownerId: specDoc.ownerId,
-      title: specDoc.title,
-      sourceRepo: specDoc.sourceRepo,
-      sourcePath: specDoc.sourcePath,
-      sourceCommit: specDoc.sourceCommit,
-      createdAt: specDoc.createdAt,
-      updatedAt: specDoc.updatedAt,
-    })
+    .select(SUMMARY_COLUMNS)
     .from(specDoc)
-    .where(eq(specDoc.ownerId, ownerId))
+    .where(
+      and(
+        eq(specDoc.ownerId, ownerId),
+        inArray(specDoc.state, ACTIVE_STATES),
+        isNull(specDoc.deletedAt),
+      ),
+    )
     .orderBy(desc(specDoc.createdAt))
     .limit(LIST_LIMIT);
 }
 
-/** Delete a spec doc by id, scoped to owner. Returns true if a row was removed. */
-export async function deleteSpecDoc(
+/** All (non-deleted) versions of a handle, newest first. */
+export async function listSpecDocVersions(
+  handle: string,
+  ownerId: string,
+): Promise<SpecDocSummary[]> {
+  return db
+    .select(SUMMARY_COLUMNS)
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.ownerId, ownerId),
+        eq(specDoc.handle, handle),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .orderBy(desc(specDoc.version))
+    .limit(LIST_LIMIT);
+}
+
+/** Promote the latest draft of a handle to published. Returns false if none. */
+export async function promoteLatestDraft(
+  handle: string,
+  ownerId: string,
+): Promise<boolean> {
+  const [draft] = await db
+    .select({ id: specDoc.id })
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.ownerId, ownerId),
+        eq(specDoc.handle, handle),
+        eq(specDoc.state, "draft"),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .orderBy(desc(specDoc.version))
+    .limit(1);
+  if (!draft) return false;
+  await db
+    .update(specDoc)
+    .set({ state: "published" })
+    .where(and(eq(specDoc.id, draft.id), eq(specDoc.ownerId, ownerId)));
+  return true;
+}
+
+/**
+ * Set a doc's state by exact id (archive / restore). Owner-scoped, and only on
+ * non-deleted docs — `deletedAt` is left untouched, so archive/restore never
+ * undeletes a soft-deleted doc (un-delete is a Phase-2 concern).
+ */
+export async function setSpecDocState(
+  id: string,
+  ownerId: string,
+  state: SpecDocState,
+): Promise<boolean> {
+  const updated = await db
+    .update(specDoc)
+    .set({ state })
+    .where(
+      and(
+        eq(specDoc.id, id),
+        eq(specDoc.ownerId, ownerId),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .returning({ id: specDoc.id });
+  return updated.length > 0;
+}
+
+/** Soft-delete a doc by id (sets `deletedAt`); the Phase-2 reconciler GCs it. */
+export async function softDeleteSpecDoc(
   id: string,
   ownerId: string,
 ): Promise<boolean> {
-  const deleted = await db
-    .delete(specDoc)
-    .where(and(eq(specDoc.id, id), eq(specDoc.ownerId, ownerId)))
+  const updated = await db
+    .update(specDoc)
+    .set({ deletedAt: sql`now()` })
+    .where(
+      and(
+        eq(specDoc.id, id),
+        eq(specDoc.ownerId, ownerId),
+        isNull(specDoc.deletedAt),
+      ),
+    )
     .returning({ id: specDoc.id });
-  return deleted.length > 0;
+  return updated.length > 0;
 }
