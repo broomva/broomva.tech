@@ -232,6 +232,22 @@ impl BroomvaClient {
         Ok(resp.json().await?)
     }
 
+    /// Fetch an owned doc's HTML content by ref (handle or id), optional version.
+    pub async fn get_doc_content(
+        &self,
+        reference: &str,
+        version: Option<i64>,
+    ) -> BroomvaResult<DocContentResponse> {
+        let mut req =
+            self.request(Method::GET, &format!("/api/docs/{reference}/content"));
+        if let Some(v) = version {
+            req = req.query(&[("version", v.to_string())]);
+        }
+        let resp = req.send().await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
     /// Delete an owned doc by id.
     pub async fn delete_doc(&self, id: &str) -> BroomvaResult<()> {
         let resp = self
