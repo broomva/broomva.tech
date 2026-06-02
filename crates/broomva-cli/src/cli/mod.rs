@@ -311,6 +311,17 @@ pub enum DocsCommand {
         /// The document handle.
         handle: String,
     },
+    /// Fetch a published document's HTML to a local file (to continue / fast-forward it).
+    Get {
+        /// Document handle or id.
+        reference: String,
+        /// Output file (default: <handle>.html).
+        #[arg(short, long)]
+        output: Option<String>,
+        /// Pin a specific version (default: latest).
+        #[arg(long)]
+        version: Option<i64>,
+    },
     /// Open a published document in the browser by handle or id.
     Open { id: String },
     /// Delete a published document by id.
@@ -626,6 +637,14 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             DocsCommand::List => docs::handle_list(&client, format).await,
             DocsCommand::Versions { handle } => {
                 docs::handle_versions(&client, &handle, format).await
+            }
+            DocsCommand::Get {
+                reference,
+                output,
+                version,
+            } => {
+                docs::handle_get(&client, &reference, output.as_deref(), version, format)
+                    .await
             }
             DocsCommand::Open { id } => docs::handle_open(&client, &id).await,
             DocsCommand::Rm { id } => docs::handle_rm(&client, &id).await,

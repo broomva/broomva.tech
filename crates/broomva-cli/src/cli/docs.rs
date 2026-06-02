@@ -152,6 +152,30 @@ pub async fn handle_versions(
     Ok(())
 }
 
+/// Fetch a doc's HTML to a local file — the cross-session continue keystone.
+pub async fn handle_get(
+    client: &BroomvaClient,
+    reference: &str,
+    output: Option<&str>,
+    version: Option<i64>,
+    format: OutputFormat,
+) -> BroomvaResult<()> {
+    let doc = client.get_doc_content(reference, version).await?;
+    let path = output
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("{}.html", doc.handle.as_deref().unwrap_or(reference)));
+    fs::write(&path, &doc.html)?;
+
+    if format == OutputFormat::Json {
+        print_json(&doc);
+    } else {
+        print_kv("Saved", &path);
+        print_kv("Version", &format!("v{}", doc.version));
+        print_kv("Title", &doc.title);
+    }
+    Ok(())
+}
+
 /// Open a doc's gated URL in the default browser.
 pub async fn handle_open(client: &BroomvaClient, id: &str) -> BroomvaResult<()> {
     let url = format!("{}/d/{}", client.base_url().trim_end_matches('/'), id);

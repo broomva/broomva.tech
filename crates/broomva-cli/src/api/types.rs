@@ -541,6 +541,22 @@ pub struct DocSummary {
     pub created_at: String,
 }
 
+/// Response of `GET /api/docs/[ref]/content` — the html body + metadata.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocContentResponse {
+    pub id: String,
+    #[serde(default)]
+    pub handle: Option<String>,
+    #[serde(default = "default_doc_version")]
+    pub version: i64,
+    #[serde(default = "default_doc_state")]
+    pub state: String,
+    #[serde(default)]
+    pub title: String,
+    pub html: String,
+}
+
 #[cfg(test)]
 mod telemetry_types_tests {
     use super::*;
