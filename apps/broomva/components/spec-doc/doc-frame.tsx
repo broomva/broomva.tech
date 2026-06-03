@@ -43,11 +43,11 @@ export function DocFrame({
     <div className="flex h-dvh max-h-dvh w-full flex-col bg-background">
       <header className="flex shrink-0 items-center gap-3 border-b px-3 py-2">
         <Link
-          href="/d"
-          aria-label="Back to your documents"
+          href="/maestro"
+          aria-label="Back to the Maestro console"
           className="shrink-0 rounded-md px-2 py-1 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
         >
-          ← Docs
+          ← Maestro
         </Link>
         <h1
           className="min-w-0 flex-1 truncate font-medium text-sm"
