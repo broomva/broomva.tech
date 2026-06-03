@@ -9,6 +9,9 @@ function row(over: Partial<SpecDocSummary> = {}): SpecDocSummary {
     handle: "h",
     version: 1,
     state: "published",
+    orchState: "proposed",
+    altitude: "task",
+    dispatchCount: 0,
     title: "T",
     sourceRepo: null,
     sourcePath: null,
@@ -21,7 +24,7 @@ function row(over: Partial<SpecDocSummary> = {}): SpecDocSummary {
     createdAt: new Date("2026-06-01T00:00:00Z"),
     updatedAt: new Date("2026-06-01T00:00:00Z"),
     ...over,
-  } as SpecDocSummary;
+  };
 }
 
 describe("groupBoardSpecs", () => {
