@@ -9,9 +9,11 @@ import { type BoardState, groupBoardSpecs, viewerHref } from "./lib";
 
 const dateFmt = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
+// Arcan Glass semantic tokens (globals.css) — not raw Tailwind palette colors.
 const STATE_BADGE_CLASS: Record<BoardState, string> = {
-  published: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
-  draft: "border-amber-500/40 text-amber-600 dark:text-amber-400",
+  published:
+    "border-[color:var(--ag-success)]/40 text-[color:var(--ag-success)]",
+  draft: "border-[color:var(--ag-warning)]/40 text-[color:var(--ag-warning)]",
   archived: "border-muted-foreground/30 text-muted-foreground",
 };
 
@@ -159,14 +161,24 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                       </button>
                     )}
                     {confirmId === d.id ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => mutate(d.id, { method: "DELETE" })}
-                        className="rounded-md bg-destructive/10 px-2 py-1 text-destructive text-xs transition-colors hover:bg-destructive/20 disabled:opacity-50"
-                      >
-                        Confirm?
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => mutate(d.id, { method: "DELETE" })}
+                          className="rounded-md bg-destructive/10 px-2 py-1 text-destructive text-xs transition-colors hover:bg-destructive/20 disabled:opacity-50"
+                        >
+                          Confirm?
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setConfirmId(null)}
+                          className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </>
                     ) : (
                       <button
                         type="button"
