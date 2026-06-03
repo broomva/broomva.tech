@@ -11,9 +11,19 @@
  * query layer (defense in depth), independent of the route-level auth gate.
  */
 
+import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { db } from "@/lib/db/client";
-import { type SpecDoc, type SpecDocState, specDoc } from "@/lib/db/schema";
+import {
+  type RuntimeTarget,
+  type SpecDoc,
+  type SpecDocOrchState,
+  type SpecDocRun,
+  type SpecDocState,
+  specDoc,
+  specDocRun,
+} from "@/lib/db/schema";
 
 /** Active states shown in the default list and superseded on re-publish. */
 const ACTIVE_STATES: SpecDocState[] = ["published", "draft"];
@@ -424,4 +434,98 @@ export async function softDeleteSpecDoc(
     )
     .returning({ id: specDoc.id });
   return updated.length > 0;
+}
+
+/** Orch-states a spec can be triggered from (dispatch authorized, G-D1). */
+const TRIGGERABLE_ORCH_STATES: SpecDocOrchState[] = ["proposed", "reviewing"];
+
+/** G-D3 / D5: N=1 dispatch per spec-version (re-publish mints a fresh setpoint). */
+const DISPATCH_BUDGET = 1;
+
+export type TriggerResult =
+  | { ok: true; run: SpecDocRun }
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "not_triggerable"; orchState: SpecDocOrchState }
+  | { ok: false; reason: "budget_exhausted" };
+
+/**
+ * Trigger a spec (BRO-1367, Maestro Phase 1a) — the dispatch control plane. One
+ * transaction (serialized per (owner,id) by an advisory lock, like
+ * {@link publishSpecDoc}): assert the orch-state is triggerable, enforce the
+ * N=1 dispatch budget (G-D3/D5), create a `queued` SpecDocRun, increment
+ * dispatchCount, and move orchState→`triggered`. Does NOT hand off to a live
+ * runtime yet — Phase 1b's dispatcher picks up the queued run. Budget-exhausted
+ * hard-blocks the spec (orchState→`blocked`).
+ */
+export async function triggerSpecDoc(
+  id: string,
+  ownerId: string,
+  target: RuntimeTarget,
+): Promise<TriggerResult> {
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`${ownerId}/trigger/${id}`}, 0))`,
+    );
+    const [doc] = await tx
+      .select({
+        id: specDoc.id,
+        handle: specDoc.handle,
+        version: specDoc.version,
+        orchState: specDoc.orchState,
+        dispatchCount: specDoc.dispatchCount,
+      })
+      .from(specDoc)
+      .where(
+        and(
+          eq(specDoc.id, id),
+          eq(specDoc.ownerId, ownerId),
+          isNull(specDoc.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!doc) return { ok: false, reason: "not_found" };
+    if (!TRIGGERABLE_ORCH_STATES.includes(doc.orchState)) {
+      return { ok: false, reason: "not_triggerable", orchState: doc.orchState };
+    }
+    if (doc.dispatchCount >= DISPATCH_BUDGET) {
+      // Hard-block on budget exhaustion (G-D3) — re-publish to act again.
+      await tx
+        .update(specDoc)
+        .set({ orchState: "blocked" })
+        .where(and(eq(specDoc.id, id), eq(specDoc.ownerId, ownerId)));
+      return { ok: false, reason: "budget_exhausted" };
+    }
+
+    const handle = doc.handle ?? doc.id;
+    const idempotencyKey = createHash("sha256")
+      .update(
+        [
+          handle,
+          String(doc.version),
+          target.kind,
+          target.runtime,
+          ownerId,
+        ].join("\n"),
+      )
+      .digest("hex");
+    const [run] = await tx
+      .insert(specDocRun)
+      .values({
+        id: nanoid(16),
+        specDocId: doc.id,
+        ownerId,
+        handle,
+        specVersion: doc.version,
+        target,
+        status: "queued",
+        idempotencyKey,
+      })
+      .returning();
+    if (!run) throw new Error("triggerSpecDoc: insert returned no run");
+    await tx
+      .update(specDoc)
+      .set({ orchState: "triggered", dispatchCount: doc.dispatchCount + 1 })
+      .where(and(eq(specDoc.id, id), eq(specDoc.ownerId, ownerId)));
+    return { ok: true, run };
+  });
 }

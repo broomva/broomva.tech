@@ -2158,6 +2158,74 @@ export type SpecDocState = (typeof specDocStateEnum.enumValues)[number];
 export type SpecDocOrchState = (typeof specDocOrchStateEnum.enumValues)[number];
 export type SpecDocAltitude = (typeof specDocAltitudeEnum.enumValues)[number];
 
+/** The runtime a dispatch targets (the v3 SpecDispatch IR's RuntimeTarget). */
+export type RuntimeTarget = {
+  kind: "session" | "chat" | "workspace" | "service";
+  runtime: string;
+};
+
+/** SpecDocRun lifecycle (BRO-1367). Drives the orchState mirror (D2). */
+export const specDocRunStatusEnum = pgEnum("spec_doc_run_status", [
+  "queued",
+  "running",
+  "blocked",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+
+/**
+ * SpecDocRun (BRO-1367, Maestro Phase 1a) — the append-only run log. Each
+ * dispatch of a spec-version creates one row; `orchState` is a mirror cache
+ * over this log (D2). Shaped from the v3 `SpecDispatch` IR. Phase 1a creates
+ * rows at status `queued` (the trigger control plane); Phase 1b's dispatcher
+ * fills `runRef`/`lastSeq`/`receipt` and drives the status forward.
+ */
+export const specDocRun = pgTable(
+  "SpecDocRun",
+  {
+    id: text("id").primaryKey(),
+    specDocId: text("specDocId")
+      .notNull()
+      .references(() => specDoc.id, { onDelete: "cascade" }),
+    ownerId: text("ownerId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    handle: text("handle").notNull(),
+    specVersion: integer("specVersion").notNull(),
+    // RuntimeTarget {kind, runtime} — which runtime this dispatch goes to.
+    target: json("target").$type<RuntimeTarget>().notNull(),
+    status: specDocRunStatusEnum("status").notNull().default("queued"),
+    // External run id (relay session id, etc.) — filled by the dispatcher (1b).
+    runRef: text("runRef"),
+    attempt: integer("attempt").notNull().default(1),
+    maxAttempts: integer("maxAttempts").notNull().default(3),
+    lastSeq: integer("lastSeq").notNull().default(0),
+    // Evidence bundle attached at Review (D9) — filled on completion (1b).
+    receipt: json("receipt"),
+    // Exactly-once dispatch dedup: sha256(handle, version, target, by).
+    idempotencyKey: text("idempotencyKey").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
+  },
+  (t) => ({
+    SpecDocRun_owner_created_idx: index("SpecDocRun_owner_created_idx").on(
+      t.ownerId,
+      t.createdAt,
+    ),
+    SpecDocRun_specDoc_idx: index("SpecDocRun_specDoc_idx").on(t.specDocId),
+    SpecDocRun_idempotency_uq: uniqueIndex("SpecDocRun_idempotency_uq").on(
+      t.idempotencyKey,
+    ),
+  }),
+);
+
+export type SpecDocRun = InferSelectModel<typeof specDocRun>;
+export type SpecDocRunStatus = (typeof specDocRunStatusEnum.enumValues)[number];
+
 export const schema = { user, session, account, verification };
 
 export const baseAccount = pgTable("base_account", {
