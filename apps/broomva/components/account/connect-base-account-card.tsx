@@ -253,8 +253,8 @@ export function ConnectBaseAccountCard({
             Base Account linked
           </CardTitle>
           <CardDescription>
-            This Base Account is linked to your broomva.tech profile for
-            identity verification. It does not replace your account sign-in.
+            Optional self-custody link in the Coinbase ecosystem. It supplements
+            your native Anima wallet and does not replace sign-in.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -290,8 +290,9 @@ export function ConnectBaseAccountCard({
           Link a Base Account
         </CardTitle>
         <CardDescription>
-          Link an ERC-4337 Base Account backed by a passkey to your broomva.tech
-          profile for identity verification. This is not a sign-in method.
+          Optional self-custody link in the Coinbase ecosystem for identity
+          verification. This supplements your native Anima wallet and is not a
+          sign-in method.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

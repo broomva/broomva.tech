@@ -2129,6 +2129,8 @@ export const baseAccount = pgTable("base_account", {
   chainId: integer("chain_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   verifiedAt: timestamp("verified_at").notNull(),
+  linkedAnimaDid: text("linked_anima_did"),
+  crossLinkVerifiedAt: timestamp("cross_link_verified_at"),
 });
 
 export type BaseAccount = InferSelectModel<typeof baseAccount>;
