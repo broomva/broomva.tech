@@ -1,7 +1,36 @@
+import type { SpecDocOrchState } from "@/lib/db/schema";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
 
 /** The content-states the Maestro board groups by (mirrors BOARD_STATES). */
 export type BoardState = "published" | "draft" | "archived";
+
+/** Visual tone per orch-state (mapped to Arcan Glass tokens in the client). */
+export type OrchTone =
+  | "muted"
+  | "active"
+  | "warn"
+  | "review"
+  | "done"
+  | "canceled";
+
+/**
+ * Display metadata for the orchestration plane (BRO-1336). Keyed by the full
+ * orch-state enum, so a missing case is a compile error if the enum grows.
+ * Phase 0b surfaces the state (read-only); Trigger actions land in Phase 1.
+ */
+export const ORCH_STATE_META: Record<
+  SpecDocOrchState,
+  { label: string; tone: OrchTone }
+> = {
+  proposed: { label: "Proposed", tone: "muted" },
+  reviewing: { label: "Reviewing", tone: "muted" },
+  triggered: { label: "Triggered", tone: "active" },
+  running: { label: "Running", tone: "active" },
+  blocked: { label: "Blocked", tone: "warn" },
+  review: { label: "Review", tone: "review" },
+  done: { label: "Done", tone: "done" },
+  canceled: { label: "Canceled", tone: "canceled" },
+};
 
 /** Canonical display order of the board groups. */
 export const BOARD_GROUP_ORDER: BoardState[] = [

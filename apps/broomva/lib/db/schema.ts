@@ -2070,6 +2070,37 @@ export const specDocStateEnum = pgEnum("spec_doc_state", [
   "expired",
 ]);
 
+/**
+ * SpecDoc orchestration state (BRO-1336, Maestro Phase 0b). ORTHOGONAL to the
+ * content `state` above: this tracks where the WORK the doc describes is, not
+ * whether the text is canonical. 8 states mapped onto Linear's categories
+ * (see /d/maestro v3 §3). Runtime-complete lands in `review`; only a human
+ * accept advances to `done`. This is a mirror column (D2) — Phase 1 wires the
+ * relay-event write-back + reconciler. Defaults to `proposed` for every row.
+ */
+export const specDocOrchStateEnum = pgEnum("spec_doc_orch_state", [
+  "proposed",
+  "reviewing",
+  "triggered",
+  "running",
+  "blocked",
+  "review",
+  "done",
+  "canceled",
+]);
+
+/**
+ * Spec altitude (BRO-1343 D10) — the abstraction level that determines which
+ * Linear entity a spec projects onto: task→Issue, feature→Issue+sub-issues,
+ * project→Project, initiative→Initiative. Polymorphic binding.
+ */
+export const specDocAltitudeEnum = pgEnum("spec_doc_altitude", [
+  "task",
+  "feature",
+  "project",
+  "initiative",
+]);
+
 export const specDoc = pgTable(
   "SpecDoc",
   {
@@ -2093,6 +2124,14 @@ export const specDoc = pgTable(
     ticketId: text("ticketId"),
     prNumber: integer("prNumber"),
     sessionId: text("sessionId"),
+    // Orchestration plane (BRO-1336) — orthogonal to content `state`: where the
+    // work is (orchState), the spec's abstraction level (altitude → Linear
+    // entity), and the per-version dispatch-budget counter (G-D3, N=1). The run
+    // log, assignee, and sub-spec edges land in Phase 1 with the trigger
+    // endpoint that writes them. Additive: existing rows take the defaults.
+    orchState: specDocOrchStateEnum("orchState").notNull().default("proposed"),
+    altitude: specDocAltitudeEnum("altitude").notNull().default("task"),
+    dispatchCount: integer("dispatchCount").notNull().default(0),
     // Retention: TTL target + soft-delete tombstone (controller is Phase 2).
     expiresAt: timestamp("expiresAt"),
     deletedAt: timestamp("deletedAt"),
@@ -2116,6 +2155,8 @@ export const specDoc = pgTable(
 
 export type SpecDoc = InferSelectModel<typeof specDoc>;
 export type SpecDocState = (typeof specDocStateEnum.enumValues)[number];
+export type SpecDocOrchState = (typeof specDocOrchStateEnum.enumValues)[number];
+export type SpecDocAltitude = (typeof specDocAltitudeEnum.enumValues)[number];
 
 export const schema = { user, session, account, verification };
 
