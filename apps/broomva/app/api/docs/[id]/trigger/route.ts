@@ -80,13 +80,21 @@ export async function POST(
       { status: 409 },
     );
   }
-  // budget_exhausted (G-D3/D5): N=1 per version — re-publish to act again.
+  if (result.reason === "budget_exhausted") {
+    // G-D3/D5: N=1 per version — re-publish to mint a fresh setpoint.
+    return NextResponse.json(
+      {
+        error:
+          "Dispatch budget exhausted (N=1 per version) — re-publish to mint a fresh setpoint",
+        reason: "budget_exhausted",
+      },
+      { status: 409 },
+    );
+  }
+  // Exhaustiveness: a new TriggerResult variant becomes a compile error here.
+  const _exhaustive: never = result;
   return NextResponse.json(
-    {
-      error:
-        "Dispatch budget exhausted (N=1 per version) — re-publish to mint a fresh setpoint",
-      reason: "budget_exhausted",
-    },
-    { status: 409 },
+    { error: `Unhandled trigger result: ${JSON.stringify(_exhaustive)}` },
+    { status: 500 },
   );
 }

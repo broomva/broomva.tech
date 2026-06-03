@@ -489,6 +489,12 @@ export async function triggerSpecDoc(
     }
     if (doc.dispatchCount >= DISPATCH_BUDGET) {
       // Hard-block on budget exhaustion (G-D3) — re-publish to act again.
+      // NOTE: in Phase 1a this branch is normally unreachable — a successful
+      // trigger sets orchState→triggered (non-triggerable), so a re-trigger
+      // returns not_triggerable first. It is intentionally pre-wired for Phase
+      // 1b, where retry / re-review transitions can leave a spec triggerable
+      // (proposed/reviewing) with dispatchCount≥1; the per-version budget is the
+      // authoritative G-D3 invariant, while orchState is only a mirror cache.
       await tx
         .update(specDoc)
         .set({ orchState: "blocked" })
