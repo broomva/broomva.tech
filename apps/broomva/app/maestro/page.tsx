@@ -29,7 +29,7 @@ export default async function MaestroPage() {
   const docs = await listBoardSpecDocs(userId);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
+    <div className="mx-auto w-full max-w-3xl px-4 pt-8 pb-28">
       <header className="mb-6">
         <h1 className="font-semibold text-2xl">Maestro</h1>
         <p className="mt-1 text-muted-foreground text-sm">

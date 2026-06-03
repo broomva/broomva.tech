@@ -9,6 +9,7 @@ import {
   Sparkles,
   Terminal,
   User,
+  Workflow,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
@@ -62,6 +63,13 @@ const allLinks = [
     href: "/console",
     label: "Console",
     icon: Terminal,
+    productOnly: false,
+    authOnly: true,
+  },
+  {
+    href: "/maestro",
+    label: "Maestro",
+    icon: Workflow,
     productOnly: false,
     authOnly: true,
   },
