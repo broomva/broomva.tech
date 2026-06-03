@@ -18,6 +18,14 @@ import { type SpecDoc, type SpecDocState, specDoc } from "@/lib/db/schema";
 /** Active states shown in the default list and superseded on re-publish. */
 const ACTIVE_STATES: SpecDocState[] = ["published", "draft"];
 
+/**
+ * States shown on the Maestro board: active (published/draft) plus archived
+ * (manageable — restore/delete). Superseded + expired are version history
+ * (reachable via /d/<handle>/v/<n>), and deleted rows are gone — none belong
+ * on the board.
+ */
+const BOARD_STATES: SpecDocState[] = ["published", "draft", "archived"];
+
 /** Max rows returned by list endpoints — bounds the response. */
 const LIST_LIMIT = 200;
 
@@ -247,6 +255,29 @@ export async function listSpecDocs(ownerId: string): Promise<SpecDocSummary[]> {
       and(
         eq(specDoc.ownerId, ownerId),
         inArray(specDoc.state, ACTIVE_STATES),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .orderBy(desc(specDoc.createdAt))
+    .limit(LIST_LIMIT);
+}
+
+/**
+ * The Maestro board view — the owner's published, draft, and archived docs
+ * (BRO-1349), newest first. Superseded/expired/deleted are excluded (they are
+ * version history or gone). Like {@link listSpecDocs} this is owner-scoped and
+ * excludes the html body.
+ */
+export async function listBoardSpecDocs(
+  ownerId: string,
+): Promise<SpecDocSummary[]> {
+  return db
+    .select(SUMMARY_COLUMNS)
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.ownerId, ownerId),
+        inArray(specDoc.state, BOARD_STATES),
         isNull(specDoc.deletedAt),
       ),
     )
