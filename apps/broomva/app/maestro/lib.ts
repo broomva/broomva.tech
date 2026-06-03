@@ -43,3 +43,16 @@ export function groupBoardSpecs(docs: SpecDocSummary[]): BoardGroup[] {
     docs: docs.filter((d) => d.state === state),
   })).filter((g) => g.docs.length > 0);
 }
+
+/**
+ * The viewer URL for a board row. The bare `/d/<handle>` route serves only
+ * ACTIVE_STATES (published/draft), so an archived doc must link to its
+ * version-pin route `/d/<handle>/v/<n>` (which serves any non-deleted version)
+ * — otherwise the link dead-ends at 404. Keeps the archive round-trip navigable.
+ */
+export function viewerHref(
+  doc: Pick<SpecDocSummary, "handle" | "id" | "state" | "version">,
+): string {
+  const ref = doc.handle ?? doc.id;
+  return doc.state === "archived" ? `/d/${ref}/v/${doc.version}` : `/d/${ref}`;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
-import { groupBoardSpecs } from "./lib";
+import { groupBoardSpecs, viewerHref } from "./lib";
 
 function row(over: Partial<SpecDocSummary> = {}): SpecDocSummary {
   return {
@@ -62,5 +62,28 @@ describe("groupBoardSpecs", () => {
     const [g] = groupBoardSpecs([row({ state: "published" })]);
     expect(g?.label).toBe("Published");
     expect(g?.hint).toContain("/d/<handle>");
+  });
+});
+
+describe("viewerHref", () => {
+  test("active docs → bare handle route", () => {
+    expect(
+      viewerHref(row({ handle: "alpha", state: "published", version: 2 })),
+    ).toBe("/d/alpha");
+    expect(
+      viewerHref(row({ handle: "alpha", state: "draft", version: 1 })),
+    ).toBe("/d/alpha");
+  });
+
+  test("archived doc → version-pin route (the bare handle 404s for archived)", () => {
+    expect(
+      viewerHref(row({ handle: "alpha", state: "archived", version: 3 })),
+    ).toBe("/d/alpha/v/3");
+  });
+
+  test("falls back to id when handle is null", () => {
+    expect(
+      viewerHref(row({ handle: null, id: "xyz", state: "published" })),
+    ).toBe("/d/xyz");
   });
 });

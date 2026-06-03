@@ -1,10 +1,11 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
-import { type BoardState, groupBoardSpecs } from "./lib";
+import { type BoardState, groupBoardSpecs, viewerHref } from "./lib";
 
 const dateFmt = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
@@ -91,13 +92,16 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
           <ul className="divide-y rounded-lg border">
             {group.docs.map((d) => {
               const ref = d.handle ?? d.id;
+              // viewerHref returns a validated route string; cast to the Next
+              // typed-routes brand (the dynamic /d/<handle>[/v/<n>] target).
+              const href = viewerHref(d) as Route;
               const busy = pendingId === d.id;
               return (
                 <li key={d.id} className="flex items-center gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/d/${ref}`}
+                        href={href}
                         className="truncate font-medium text-sm hover:underline"
                       >
                         {d.title}
