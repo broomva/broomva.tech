@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
-import { type BoardState, groupBoardSpecs, viewerHref } from "./lib";
+import {
+  type BoardState,
+  groupBoardSpecs,
+  ORCH_STATE_META,
+  type OrchTone,
+  viewerHref,
+} from "./lib";
 
 const dateFmt = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
@@ -15,6 +21,17 @@ const STATE_BADGE_CLASS: Record<BoardState, string> = {
     "border-[color:var(--ag-success)]/40 text-[color:var(--ag-success)]",
   draft: "border-[color:var(--ag-warning)]/40 text-[color:var(--ag-warning)]",
   archived: "border-muted-foreground/30 text-muted-foreground",
+};
+
+// Orchestration-state pill tones → Arcan Glass tokens (BRO-1336).
+const ORCH_TONE_CLASS: Record<OrchTone, string> = {
+  muted: "border-muted-foreground/30 text-muted-foreground",
+  active: "border-[color:var(--ag-ai-blue)]/40 text-[color:var(--ag-ai-blue)]",
+  warn: "border-[color:var(--ag-warning)]/40 text-[color:var(--ag-warning)]",
+  review:
+    "border-[color:var(--ag-accent-blue)]/40 text-[color:var(--ag-accent-blue)]",
+  done: "border-[color:var(--ag-success)]/40 text-[color:var(--ag-success)]",
+  canceled: "border-[color:var(--ag-error)]/40 text-[color:var(--ag-error)]",
 };
 
 /**
@@ -112,6 +129,12 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                         className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${STATE_BADGE_CLASS[d.state as BoardState]}`}
                       >
                         {d.state}
+                      </span>
+                      <span
+                        title="Orchestration state"
+                        className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${ORCH_TONE_CLASS[ORCH_STATE_META[d.orchState].tone]}`}
+                      >
+                        {ORCH_STATE_META[d.orchState].label}
                       </span>
                       {d.version > 1 ? (
                         <span className="shrink-0 text-muted-foreground text-xs">

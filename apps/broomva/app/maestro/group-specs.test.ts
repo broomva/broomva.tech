@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
-import { groupBoardSpecs, viewerHref } from "./lib";
+import { groupBoardSpecs, ORCH_STATE_META, viewerHref } from "./lib";
 
 function row(over: Partial<SpecDocSummary> = {}): SpecDocSummary {
   return {
@@ -85,5 +85,24 @@ describe("viewerHref", () => {
     expect(
       viewerHref(row({ handle: null, id: "xyz", state: "published" })),
     ).toBe("/d/xyz");
+  });
+});
+
+describe("ORCH_STATE_META", () => {
+  test("covers all 8 orch-states, each with a label + tone", () => {
+    expect(Object.keys(ORCH_STATE_META).sort()).toEqual([
+      "blocked",
+      "canceled",
+      "done",
+      "proposed",
+      "review",
+      "reviewing",
+      "running",
+      "triggered",
+    ]);
+    for (const meta of Object.values(ORCH_STATE_META)) {
+      expect(meta.label).toBeTruthy();
+      expect(meta.tone).toBeTruthy();
+    }
   });
 });
