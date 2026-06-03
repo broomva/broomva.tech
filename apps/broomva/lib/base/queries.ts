@@ -42,6 +42,8 @@ export async function getBaseAccountLink(userId: string): Promise<{
   address: string;
   chainId: number;
   verifiedAt: Date;
+  linkedAnimaDid: string | null;
+  crossLinkVerifiedAt: Date | null;
 } | null> {
   try {
     const rows = await db
@@ -49,6 +51,8 @@ export async function getBaseAccountLink(userId: string): Promise<{
         address: baseAccount.address,
         chainId: baseAccount.chainId,
         verifiedAt: baseAccount.verifiedAt,
+        linkedAnimaDid: baseAccount.linkedAnimaDid,
+        crossLinkVerifiedAt: baseAccount.crossLinkVerifiedAt,
       })
       .from(baseAccount)
       .where(eq(baseAccount.userId, userId))
@@ -108,6 +112,43 @@ export async function markNonceUsed(
     .update(baseAuthNonce)
     .set({ usedAt })
     .where(eq(baseAuthNonce.nonce, nonce));
+}
+
+export async function getCrossLink(userId: string): Promise<{
+  linkedAnimaDid: string | null;
+  crossLinkVerifiedAt: Date | null;
+} | null> {
+  try {
+    const rows = await db
+      .select({
+        linkedAnimaDid: baseAccount.linkedAnimaDid,
+        crossLinkVerifiedAt: baseAccount.crossLinkVerifiedAt,
+      })
+      .from(baseAccount)
+      .where(eq(baseAccount.userId, userId))
+      .limit(1);
+
+    return rows[0] ?? null;
+  } catch (error) {
+    if (isMissingTable(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function markCrossLink(
+  userId: string,
+  animaDid: string,
+  when: Date,
+): Promise<void> {
+  await db
+    .update(baseAccount)
+    .set({
+      linkedAnimaDid: animaDid,
+      crossLinkVerifiedAt: when,
+    })
+    .where(eq(baseAccount.userId, userId));
 }
 
 export async function upsertBaseAccount({

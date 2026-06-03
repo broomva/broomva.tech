@@ -23,6 +23,10 @@ export async function GET() {
       address: link.address,
       chainId: link.chainId,
       verifiedAt: link.verifiedAt.toISOString(),
+      linkedAnimaDid: link.linkedAnimaDid ?? null,
+      crossLinkVerifiedAt: link.crossLinkVerifiedAt
+        ? link.crossLinkVerifiedAt.toISOString()
+        : null,
     });
   } catch {
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
