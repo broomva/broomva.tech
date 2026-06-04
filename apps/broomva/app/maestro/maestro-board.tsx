@@ -47,11 +47,11 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
   const [error, setError] = useState<string | null>(null);
   const groups = groupBoardSpecs(docs);
 
-  async function mutate(id: string, init: RequestInit) {
+  async function mutate(id: string, init: RequestInit, suffix = "") {
     setPendingId(id);
     setError(null);
     try {
-      const resp = await fetch(`/api/docs/${id}`, init);
+      const resp = await fetch(`/api/docs/${id}${suffix}`, init);
       if (!resp.ok) {
         const body = (await resp.json().catch(() => null)) as {
           error?: string;
@@ -158,8 +158,22 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
+                    {d.orchState === "proposed" ||
+                    d.orchState === "reviewing" ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          mutate(d.id, { method: "POST" }, "/trigger")
+                        }
+                        title="Dispatch this spec (orch_state → triggered)"
+                        className="rounded-md border border-[color:var(--ag-ai-blue)]/40 px-2 py-1 text-[color:var(--ag-ai-blue)] text-xs transition-colors hover:bg-[color:var(--ag-ai-blue)]/10 disabled:opacity-50"
+                      >
+                        Trigger
+                      </button>
+                    ) : null}
                     <Link
-                      href={`/d/${ref}`}
+                      href={href}
                       className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
                     >
                       View

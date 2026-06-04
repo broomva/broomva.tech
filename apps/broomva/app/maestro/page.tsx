@@ -50,12 +50,14 @@ export default async function MaestroPage() {
 
       <div className="mb-6 rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-muted-foreground text-xs">
         <span className="font-medium text-foreground">
-          Orchestration state is live.
+          Trigger is live (control plane).
         </span>{" "}
-        Each spec now carries an orch-state (every spec starts{" "}
-        <code className="rounded bg-muted px-1 py-0.5">proposed</code>). The{" "}
-        <strong>Trigger</strong> action that drives it through running → review
-        → done — plus the run log and dispatch budget — lands in Phase 1.
+        Triggering a spec records a dispatch and advances its orch-state{" "}
+        <code className="rounded bg-muted px-1 py-0.5">
+          proposed → triggered
+        </code>{" "}
+        (N=1 per version). Handing the queued run to a live runtime — actually
+        running the agent — is the next slice.
       </div>
 
       <MaestroBoard docs={docs} />
