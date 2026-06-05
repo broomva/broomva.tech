@@ -62,8 +62,11 @@ function chipClass(selected: boolean, tone?: OrchTone): string {
  * by ORCH-state, attention-first (BRO-1402): a triage header surfaces what needs
  * the human, a filter strip narrows by state, and specs flow Blocked → Review →
  * Running → … → Done. Archived specs collapse into a manage section. Cards are
- * mobile-first (BRO-1400) and wire Continue/Copy (BRO-1399), Trigger (BRO-1393),
- * and archive/restore/delete to the owner-scoped endpoints.
+ * mobile-first (BRO-1400) and wire Continue/Copy (BRO-1399) + archive/restore/
+ * delete to the owner-scoped endpoints. The live Trigger control is hidden until
+ * the relay runtime ships (BRO-1407, /d/maestro-relay-phase-1b) — until then
+ * orch-state is read-only and a spec is run via Continue (Claude Code) / Copy
+ * (Omnara). The /trigger endpoint + N=1 budget stay server-side, ready to wire.
  */
 export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
   const router = useRouter();
@@ -139,8 +142,6 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
     const href = viewerHref(d) as Route;
     const ref = d.handle ?? d.id;
     const busy = pendingId === d.id;
-    const triggerable =
-      d.orchState === "proposed" || d.orchState === "reviewing";
     return (
       <div key={d.id} className={CARD}>
         <div className="flex items-start gap-2">
@@ -206,17 +207,6 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
             >
               {copiedId === d.id ? "Copied" : "Copy"}
             </button>
-            {triggerable ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => mutate(d.id, { method: "POST" }, "/trigger")}
-                title="Dispatch this spec (orch_state → triggered)"
-                className={PRIMARY_BTN}
-              >
-                Trigger
-              </button>
-            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
