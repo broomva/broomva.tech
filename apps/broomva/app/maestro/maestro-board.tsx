@@ -84,7 +84,9 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
     try {
       await navigator.clipboard.writeText(continuePrompt(d));
       setCopiedId(d.id);
-      setTimeout(() => setCopiedId(null), 1500);
+      // Guard the reset: a later copy on another row must not be cleared by
+      // this row's stale timer (only clear if still showing this id).
+      setTimeout(() => setCopiedId((cur) => (cur === d.id ? null : cur)), 1500);
     } catch {
       setError("Clipboard unavailable — open the spec and copy manually.");
     }
@@ -175,7 +177,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                     <a
                       href={claudeDeepLink(d)}
                       title="Open Claude Code in the repo with a continue-prompt pre-filled (claude-cli://)"
-                      className="rounded-md border border-[color:var(--ag-accent-blue)]/40 px-2 py-1 text-[color:var(--ag-accent-blue)] text-xs transition-colors hover:bg-[color:var(--ag-accent-blue)]/10"
+                      className="rounded-md border border-[color:var(--ag-ai-blue)]/40 px-2 py-1 text-[color:var(--ag-ai-blue)] text-xs transition-colors hover:bg-[color:var(--ag-ai-blue)]/10"
                     >
                       Continue
                     </a>
