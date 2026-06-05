@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -31,13 +32,36 @@ export default async function MaestroPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-8 pb-28">
       <header className="mb-6">
-        <h1 className="font-semibold text-2xl">Maestro</h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h1 className="font-semibold text-2xl">Maestro</h1>
+          <nav className="flex items-center gap-3 text-sm">
+            <Link
+              href={"/maestro/queue" as Route}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Handoff queue →
+            </Link>
+            <Link
+              href={"/maestro/analytics" as Route}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Analytics
+            </Link>
+          </nav>
+        </div>
         <p className="mt-1 text-muted-foreground text-sm">
           Spec orchestration console. Manage the docs published at{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">
             /d/&lt;handle&gt;
           </code>{" "}
-          — open, archive, restore, delete. Defined by{" "}
+          — open, archive, restore, delete. Hand the next session a{" "}
+          <Link
+            href={"/maestro/queue" as Route}
+            className="underline transition-colors hover:text-foreground"
+          >
+            handoff
+          </Link>
+          . Defined by{" "}
           <Link
             href="/d/maestro"
             className="underline transition-colors hover:text-foreground"

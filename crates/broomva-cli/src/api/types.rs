@@ -557,6 +557,107 @@ pub struct DocContentResponse {
     pub html: String,
 }
 
+// ── Handoff Queue (BRO-1415) ──
+//
+// `broomva handoff push <file.md>` pushes a narrative handoff onto the queue
+// at `<base>/maestro/queue`, related to the HTML specs it references, run by
+// the same Copy/Continue fresh-session trigger the Maestro spec board uses.
+
+/// Git provenance + work-linkage for a pushed handoff.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HandoffSource {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ticket: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pr: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session: Option<String>,
+}
+
+impl HandoffSource {
+    pub fn is_empty(&self) -> bool {
+        self.repo.is_none()
+            && self.path.is_none()
+            && self.commit.is_none()
+            && self.branch.is_none()
+            && self.ticket.is_none()
+            && self.pr.is_none()
+            && self.session.is_none()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PushHandoffRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    pub body: String,
+    /// Stable arc slug; re-pushing the same slug appends a version.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slug: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tldr: Option<String>,
+    /// The Copy-button payload (continue-prompt / first action).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_action: Option<String>,
+    /// Related spec handles (the HTML specs at /d/<handle>).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub spec_refs: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<HandoffSource>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PushHandoffResponse {
+    pub id: String,
+    #[serde(default)]
+    pub slug: Option<String>,
+    #[serde(default = "default_doc_version")]
+    pub version: i64,
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub spec_refs: Vec<String>,
+    pub url: String,
+}
+
+/// One row of `GET /api/handoffs` (metadata only — excludes the body).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HandoffSummary {
+    pub id: String,
+    #[serde(default)]
+    pub slug: Option<String>,
+    #[serde(default = "default_doc_version")]
+    pub version: i64,
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub tldr: Option<String>,
+    #[serde(default)]
+    pub spec_refs: Vec<String>,
+    #[serde(default)]
+    pub ticket_id: Option<String>,
+    #[serde(default)]
+    pub created_at: String,
+}
+
 #[cfg(test)]
 mod telemetry_types_tests {
     use super::*;

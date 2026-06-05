@@ -526,6 +526,13 @@
       "when": 1780512540208,
       "tag": "0074_minor_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1780697010456,
+      "tag": "0075_pretty_toad_men",
+      "breakpoints": true
     }
   ]
 }
