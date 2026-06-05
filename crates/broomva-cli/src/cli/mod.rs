@@ -6,6 +6,7 @@ pub mod console;
 pub mod context;
 pub mod daemon_cmd;
 pub mod docs;
+pub mod handoff;
 pub mod output;
 pub mod prompts;
 pub mod relay;
@@ -76,6 +77,15 @@ pub enum Command {
     Docs {
         #[command(subcommand)]
         action: DocsCommand,
+    },
+    /// Push + manage handoff docs on the Maestro queue (/maestro/queue).
+    ///
+    /// `broomva handoff push docs/handoffs/<arc>.md --spec <handle>` pushes a
+    /// narrative handoff onto the queue, related to its specs and run by the
+    /// same Copy/Continue trigger the spec board uses. The fresh-session bridge.
+    Handoff {
+        #[command(subcommand)]
+        action: HandoffCommand,
     },
     /// Manage skills.
     Skills {
@@ -325,6 +335,43 @@ pub enum DocsCommand {
     /// Open a published document in the browser by handle or id.
     Open { id: String },
     /// Delete a published document by id.
+    Rm { id: String },
+}
+
+// ── Handoff Queue (BRO-1415) ──
+
+#[derive(Subcommand, Debug)]
+pub enum HandoffCommand {
+    /// Push a local markdown handoff → queues it at /maestro/queue.
+    Push {
+        /// Path to the .md handoff file to push.
+        file: String,
+        /// Title override (default: the first `# ` heading, else the file name).
+        #[arg(long)]
+        title: Option<String>,
+        /// Stable arc slug: re-pushing the same slug appends a version and
+        /// supersedes the prior one (default: derived from the file name).
+        #[arg(long = "as", value_name = "SLUG")]
+        as_slug: Option<String>,
+        /// Related spec handle (repeatable) — the HTML specs at /d/<handle>
+        /// this handoff relates to.
+        #[arg(long = "spec", value_name = "HANDLE")]
+        spec: Vec<String>,
+        /// Linear ticket id (e.g. BRO-1415).
+        #[arg(long)]
+        ticket: Option<String>,
+        /// Queue priority — higher floats up (default: 0).
+        #[arg(long)]
+        priority: Option<i64>,
+        /// Stage + commit the file before pushing (git archival).
+        #[arg(long)]
+        commit: bool,
+    },
+    /// List your active handoff queue.
+    List,
+    /// Mark a handoff done by id.
+    Done { id: String },
+    /// Delete a handoff by id.
     Rm { id: String },
 }
 
@@ -648,6 +695,25 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             }
             DocsCommand::Open { id } => docs::handle_open(&client, &id).await,
             DocsCommand::Rm { id } => docs::handle_rm(&client, &id).await,
+        },
+        Command::Handoff { action } => match action {
+            HandoffCommand::Push {
+                file,
+                title,
+                as_slug,
+                spec,
+                ticket,
+                priority,
+                commit,
+            } => {
+                handoff::handle_push(
+                    &client, &file, title, as_slug, spec, ticket, priority, commit, format,
+                )
+                .await
+            }
+            HandoffCommand::List => handoff::handle_list(&client, format).await,
+            HandoffCommand::Done { id } => handoff::handle_done(&client, &id).await,
+            HandoffCommand::Rm { id } => handoff::handle_rm(&client, &id).await,
         },
         Command::Prompts { action } => match action {
             PromptsCommand::List {

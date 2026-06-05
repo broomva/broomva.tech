@@ -258,6 +258,51 @@ impl BroomvaClient {
         Ok(())
     }
 
+    // ── Handoff Queue (BRO-1415) ──
+
+    /// Push a handoff onto the queue. Returns `{ id, slug, url, … }`; `url` is
+    /// the queue board (`<base>/maestro/queue`).
+    pub async fn push_handoff(
+        &self,
+        req: PushHandoffRequest,
+    ) -> BroomvaResult<PushHandoffResponse> {
+        let resp = self
+            .request(Method::POST, "/api/handoffs")
+            .json(&req)
+            .send()
+            .await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    /// List the authenticated owner's active queue (metadata only).
+    pub async fn list_handoffs(&self) -> BroomvaResult<Vec<HandoffSummary>> {
+        let resp = self.request(Method::GET, "/api/handoffs").send().await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
+    }
+
+    /// Apply a queue transition (`pick_up` | `complete` | `archive` | `requeue`).
+    pub async fn set_handoff_status(&self, id: &str, action: &str) -> BroomvaResult<()> {
+        let resp = self
+            .request(Method::PATCH, &format!("/api/handoffs/{id}"))
+            .json(&serde_json::json!({ "action": action }))
+            .send()
+            .await?;
+        self.check_response(resp).await?;
+        Ok(())
+    }
+
+    /// Delete an owned handoff by id.
+    pub async fn delete_handoff(&self, id: &str) -> BroomvaResult<()> {
+        let resp = self
+            .request(Method::DELETE, &format!("/api/handoffs/{id}"))
+            .send()
+            .await?;
+        self.check_response(resp).await?;
+        Ok(())
+    }
+
     // ── Skills ──
 
     pub async fn list_skills(&self, layer: Option<&str>) -> BroomvaResult<Vec<SkillSummary>> {

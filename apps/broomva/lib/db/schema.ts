@@ -2226,6 +2226,138 @@ export const specDocRun = pgTable(
 export type SpecDocRun = InferSelectModel<typeof specDocRun>;
 export type SpecDocRunStatus = (typeof specDocRunStatusEnum.enumValues)[number];
 
+// ---------------------------------------------------------------------------
+// Handoff Queue (BRO-1415) — the narrative bridge that triggers the NEXT
+// session. Where SpecDoc orchestrates HTML *specs* served at /d/<handle>,
+// Handoff orchestrates the human-readable *handoff docs* the `/handoff` skill
+// writes (TL;DR + P15 snapshot + PR table + first action). Pushed via
+// `broomva handoff push`, queued, related to specs, and run by Copy/Continue —
+// the same fresh-session trigger the Maestro spec board uses (BRO-1399). The
+// queue lives at /maestro/queue; HandoffEvent drives its realtime timeline.
+// ---------------------------------------------------------------------------
+
+/**
+ * Handoff queue lifecycle. One handoff moves queued → in_progress (a fresh
+ * session picked it up via Copy/Continue) → done. `archived` = set aside;
+ * `superseded` = replaced by a newer version of the same slug (re-push).
+ */
+export const handoffStatusEnum = pgEnum("handoff_status", [
+  "queued",
+  "in_progress",
+  "done",
+  "archived",
+  "superseded",
+]);
+
+export const handoff = pgTable(
+  "Handoff",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("ownerId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    // Stable arc identity; re-pushing the same slug appends a version and
+    // supersedes the prior active one (mirrors SpecDoc handle/version).
+    slug: text("slug"),
+    version: integer("version").notNull().default(1),
+    status: handoffStatusEnum("status").notNull().default("queued"),
+    // Queue ordering — higher first, then createdAt desc.
+    priority: integer("priority").notNull().default(0),
+    title: text("title").notNull(),
+    // One-sentence queue headline (the handoff's TL;DR).
+    tldr: text("tldr"),
+    // Full markdown narrative (P18: agent-loaded → markdown). Capped server-side.
+    body: text("body").notNull(),
+    // The Copy-button payload — the continue-prompt / first action handed to a
+    // fresh session. Null → derived from a default continue-prompt at render.
+    firstAction: text("firstAction"),
+    // Related spec handles (the HTML specs at /d/<handle> this handoff relates
+    // to) — the "articulate + relate specs with handoffs" linkage.
+    specRefs: json("specRefs").$type<string[]>().notNull().default([]),
+    // Provenance (git archival + work linkage).
+    sourceRepo: text("sourceRepo"),
+    sourcePath: text("sourcePath"),
+    sourceCommit: varchar("sourceCommit", { length: 64 }),
+    branch: text("branch"),
+    ticketId: text("ticketId"),
+    prNumber: integer("prNumber"),
+    sessionId: text("sessionId"),
+    // Lifecycle timestamps (drive analytics: pickup latency, throughput).
+    pickedUpAt: timestamp("pickedUpAt"),
+    completedAt: timestamp("completedAt"),
+    expiresAt: timestamp("expiresAt"),
+    deletedAt: timestamp("deletedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date()),
+  },
+  (t) => ({
+    Handoff_owner_created_idx: index("Handoff_owner_created_idx").on(
+      t.ownerId,
+      t.createdAt,
+    ),
+    Handoff_owner_status_idx: index("Handoff_owner_status_idx").on(
+      t.ownerId,
+      t.status,
+    ),
+    Handoff_owner_slug_version_uq: uniqueIndex(
+      "Handoff_owner_slug_version_uq",
+    ).on(t.ownerId, t.slug, t.version),
+  }),
+);
+
+export type Handoff = InferSelectModel<typeof handoff>;
+export type HandoffStatus = (typeof handoffStatusEnum.enumValues)[number];
+
+/**
+ * Handoff timeline event types — the append-only stream behind the realtime
+ * card on /maestro/queue. Each push / status transition / spec-link emits one
+ * row; the SSE endpoint tails this table.
+ */
+export const handoffEventTypeEnum = pgEnum("handoff_event_type", [
+  "pushed",
+  "picked_up",
+  "completed",
+  "archived",
+  "restored",
+  "superseded",
+  "linked",
+  "note",
+]);
+
+export const handoffEvent = pgTable(
+  "HandoffEvent",
+  {
+    id: text("id").primaryKey(),
+    handoffId: text("handoffId")
+      .notNull()
+      .references(() => handoff.id, { onDelete: "cascade" }),
+    ownerId: text("ownerId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    type: handoffEventTypeEnum("type").notNull(),
+    // Who/what drove it: "cli" | "web" | "agent" | "system".
+    actor: varchar("actor", { length: 32 }).notNull().default("system"),
+    // Human-readable timeline line.
+    message: text("message"),
+    metadata: json("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    HandoffEvent_owner_created_idx: index("HandoffEvent_owner_created_idx").on(
+      t.ownerId,
+      t.createdAt,
+    ),
+    HandoffEvent_handoff_idx: index("HandoffEvent_handoff_idx").on(t.handoffId),
+  }),
+);
+
+export type HandoffEvent = InferSelectModel<typeof handoffEvent>;
+export type HandoffEventType =
+  (typeof handoffEventTypeEnum.enumValues)[number];
+
 export const schema = { user, session, account, verification };
 
 export const baseAccount = pgTable("base_account", {
