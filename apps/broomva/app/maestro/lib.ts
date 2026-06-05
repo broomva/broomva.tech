@@ -133,3 +133,80 @@ export function claudeDeepLink(doc: ContinuableDoc): string {
   const repo = doc.sourceRepo ?? DEFAULT_REPO;
   return `claude-cli://open?repo=${repo}&q=${encodeURIComponent(continuePrompt(doc))}`;
 }
+
+// ── Mission-control view (BRO-1402): group by ORCH-state, attention-first ─────
+
+/** Attention-first order for the orchestration view (needs-you → active → backlog → terminal). */
+export const ORCH_GROUP_ORDER: SpecDocOrchState[] = [
+  "blocked",
+  "review",
+  "running",
+  "triggered",
+  "reviewing",
+  "proposed",
+  "done",
+  "canceled",
+];
+
+/** Orch-states that need the human (surfaced first; drive the "needs attention" headline). */
+export const ATTENTION_STATES: SpecDocOrchState[] = ["blocked", "review"];
+
+/** Active (non-archived) docs — the ones in the orchestration flow. */
+function activeDocs(docs: SpecDocSummary[]): SpecDocSummary[] {
+  return docs.filter((d) => d.state === "published" || d.state === "draft");
+}
+
+export interface OrchGroup {
+  state: SpecDocOrchState;
+  label: string;
+  tone: OrchTone;
+  docs: SpecDocSummary[];
+}
+
+/**
+ * Group ACTIVE docs by orch-state, attention-first (ORCH_GROUP_ORDER), dropping
+ * empty groups. Archived docs are excluded (a manage concern — see archivedDocs).
+ */
+export function groupByOrchState(docs: SpecDocSummary[]): OrchGroup[] {
+  const active = activeDocs(docs);
+  return ORCH_GROUP_ORDER.map((state) => ({
+    state,
+    label: ORCH_STATE_META[state].label,
+    tone: ORCH_STATE_META[state].tone,
+    docs: active.filter((d) => d.orchState === state),
+  })).filter((g) => g.docs.length > 0);
+}
+
+export interface OrchSummaryItem {
+  state: SpecDocOrchState;
+  label: string;
+  tone: OrchTone;
+  count: number;
+}
+
+/** Per-orch-state counts (active docs), attention-ordered, non-zero only — the triage strip. */
+export function orchSummary(docs: SpecDocSummary[]): OrchSummaryItem[] {
+  const active = activeDocs(docs);
+  return ORCH_GROUP_ORDER.map((state) => ({
+    state,
+    label: ORCH_STATE_META[state].label,
+    tone: ORCH_STATE_META[state].tone,
+    count: active.filter((d) => d.orchState === state).length,
+  })).filter((s) => s.count > 0);
+}
+
+/** Count of active docs needing the human (blocked + review) — the headline. */
+export function attentionCount(docs: SpecDocSummary[]): number {
+  return activeDocs(docs).filter((d) => ATTENTION_STATES.includes(d.orchState))
+    .length;
+}
+
+/** Total active (non-archived) docs. */
+export function activeCount(docs: SpecDocSummary[]): number {
+  return activeDocs(docs).length;
+}
+
+/** Archived docs (the collapsed manage section, off the control view). */
+export function archivedDocs(docs: SpecDocSummary[]): SpecDocSummary[] {
+  return docs.filter((d) => d.state === "archived");
+}

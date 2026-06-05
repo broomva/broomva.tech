@@ -1,10 +1,15 @@
 import { describe, expect, test } from "vitest";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
 import {
+  activeCount,
+  archivedDocs,
+  attentionCount,
   claudeDeepLink,
   continuePrompt,
   groupBoardSpecs,
+  groupByOrchState,
   ORCH_STATE_META,
+  orchSummary,
   viewerHref,
 } from "./lib";
 
@@ -151,5 +156,54 @@ describe("continuePrompt + claudeDeepLink", () => {
     expect(claudeDeepLink(row({ sourceRepo: null }))).toContain(
       "repo=broomva/broomva.tech",
     );
+  });
+});
+
+describe("mission-control grouping (BRO-1402)", () => {
+  const set = [
+    row({ id: "a", state: "published", orchState: "proposed" }),
+    row({ id: "b", state: "published", orchState: "running" }),
+    row({ id: "c", state: "published", orchState: "blocked" }),
+    row({ id: "d", state: "published", orchState: "review" }),
+    row({ id: "e", state: "draft", orchState: "proposed" }),
+    row({ id: "f", state: "archived", orchState: "proposed" }),
+  ];
+
+  test("groupByOrchState: attention-first order, active-only, drops empty", () => {
+    const groups = groupByOrchState(set);
+    expect(groups.map((g) => g.state)).toEqual([
+      "blocked",
+      "review",
+      "running",
+      "proposed",
+    ]);
+    // archived 'f' is NOT folded into proposed — only active a + e
+    expect(
+      groups
+        .find((g) => g.state === "proposed")
+        ?.docs.map((x) => x.id)
+        .sort(),
+    ).toEqual(["a", "e"]);
+  });
+
+  test("orchSummary: per-state counts, attention-ordered, non-zero only", () => {
+    expect(orchSummary(set).map((s) => [s.state, s.count])).toEqual([
+      ["blocked", 1],
+      ["review", 1],
+      ["running", 1],
+      ["proposed", 2],
+    ]);
+  });
+
+  test("attentionCount: blocked + review among active only", () => {
+    expect(attentionCount(set)).toBe(2);
+    expect(
+      attentionCount([row({ state: "archived", orchState: "blocked" })]),
+    ).toBe(0);
+  });
+
+  test("activeCount excludes archived; archivedDocs returns only archived", () => {
+    expect(activeCount(set)).toBe(5);
+    expect(archivedDocs(set).map((x) => x.id)).toEqual(["f"]);
   });
 });
