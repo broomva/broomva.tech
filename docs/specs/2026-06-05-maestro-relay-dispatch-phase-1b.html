@@ -1,0 +1,356 @@
+<!doctype html>
+<!--
+title: "Maestro Phase 1b — Relay-Dispatch Runtime (Handoff Spec)"
+slug: maestro-relay-phase-1b
+type: spec
+status: handoff-ready
+ticket: BRO-1407
+related: [BRO-1408, BRO-1349, BRO-1336]
+date: 2026-06-05
+audience: human
+category: C
+summary: "Turn a queued SpecDocRun into a real agent running on a live relay node, and drive orch_state triggered→running→review→done from real run events. Both ends — server dispatcher + runner write-back — specced for a fresh session."
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Maestro Phase 1b — Relay-Dispatch Runtime (Handoff Spec)</title>
+<style>
+  :root {
+    --bg: #0b0e14; --surface: #121723; --surface-2: #0e131d; --border: #232b3a;
+    --text: #e6e9ef; --muted: #9aa5b8; --faint: #6b7689;
+    --blue: #5b9dff; --ai: #7c5cff; --green: #3fb950; --warn: #d29922; --red: #f85149; --review: #3b82f6;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 0 0 6rem;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.25rem 0; }
+  header.masthead { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .kicker { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ai); margin: 0 0 .6rem; }
+  h1 { font-size: clamp(1.7rem, 4.5vw, 2.5rem); line-height: 1.1; margin: 0 0 .6rem; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 1.05rem; margin: 0 0 1.1rem; }
+  .meta { display: flex; flex-wrap: wrap; gap: .5rem; font: 500 12px/1 var(--mono); }
+  .meta span { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: .4rem .7rem; color: var(--muted); }
+  .meta .ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, var(--border)); }
+  h2 { font-size: 1.4rem; margin: 2.6rem 0 .9rem; letter-spacing: -.01em; padding-top: .6rem; border-top: 1px solid var(--border); }
+  h2 .n { font: 700 13px/1 var(--mono); color: var(--ai); margin-right: .55rem; vertical-align: .12em; }
+  h3 { font-size: 1.08rem; margin: 1.6rem 0 .5rem; color: var(--text); }
+  p { margin: .7rem 0; }
+  a { color: var(--blue); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--blue) 35%, transparent); }
+  a:hover { border-bottom-color: var(--blue); }
+  code { font: 13px/1.5 var(--mono); background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: .08em .4em; color: #cbd5ea; }
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; overflow-x: auto; margin: 1rem 0; }
+  pre code { background: none; border: none; padding: 0; color: #c8d3e6; font-size: 12.5px; line-height: 1.6; }
+  .lead { font-size: 1.08rem; color: var(--text); }
+  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--ai); border-radius: 10px; padding: 1rem 1.2rem; margin: 1.3rem 0; }
+  .callout.tldr { border-left-color: var(--green); }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout h3 { margin-top: 0; }
+  ul, ol { padding-left: 1.3rem; margin: .7rem 0; }
+  li { margin: .35rem 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.2rem 0; }
+  @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
+  .panel h3 { margin: 0 0 .5rem; font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .panel.built h3 { color: var(--green); }
+  .panel.missing h3 { color: var(--red); }
+  .panel ul { margin: 0; padding-left: 1.1rem; font-size: .94rem; color: var(--muted); }
+  .panel li { margin: .4rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1.1rem 0; font-size: .92rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font: 600 11px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+  td code { font-size: 12px; }
+  .pill { display: inline-block; font: 600 11px/1 var(--mono); padding: .28em .5em; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .p-proposed { color: var(--muted); border-color: var(--border); }
+  .p-triggered, .p-running { color: var(--ai); border-color: color-mix(in srgb, var(--ai) 45%, var(--border)); }
+  .p-blocked { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
+  .p-review { color: var(--review); border-color: color-mix(in srgb, var(--review) 45%, var(--border)); }
+  .p-done { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, var(--border)); }
+  .p-canceled { color: var(--red); border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+  .actor { font: 600 11px/1 var(--mono); padding: .2em .45em; border-radius: 4px; }
+  .a-human { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue); }
+  .a-disp { background: color-mix(in srgb, var(--ai) 18%, transparent); color: var(--ai); }
+  .a-runner { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+  figure { margin: 1.4rem 0; }
+  figure svg { width: 100%; height: auto; display: block; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; }
+  figcaption { color: var(--faint); font-size: .82rem; text-align: center; margin-top: .5rem; }
+  .anchor { font: 12px/1.5 var(--mono); color: var(--blue); }
+  .step { border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem 1rem 1.3rem; margin: .9rem 0; background: var(--surface); border-left: 3px solid var(--blue); }
+  .step .tag { font: 700 11px/1 var(--mono); color: var(--ai); letter-spacing: .06em; }
+  .step h3 { margin: .35rem 0 .5rem; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.4rem 0; }
+  .foot { color: var(--faint); font-size: .85rem; margin-top: 2.5rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+  .legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: .4rem 0 0; font-size: .8rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: .35rem; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker">Maestro · Phase 1b · Handoff Spec</p>
+  <h1>Relay-Dispatch Runtime</h1>
+  <p class="sub">Turn a <em>queued</em> dispatch into a real agent running on a live relay node — and drive orchestration state from real run events. Both ends.</p>
+  <div class="meta">
+    <span class="ok">status: handoff-ready</span>
+    <span>ticket: BRO-1407</span>
+    <span>from: BRO-1408</span>
+    <span>date: 2026-06-05</span>
+    <span>owner-gated</span>
+  </div>
+</header>
+
+<div class="callout tldr">
+  <h3>TL;DR for the next session</h3>
+  <ol>
+    <li>Pull this spec: <code>broomva docs get maestro-relay-phase-1b -o spec.html</code> (or open <a href="/d/maestro-relay-phase-1b">/d/maestro-relay-phase-1b</a>). Claim <strong>BRO-1407</strong>.</li>
+    <li>Build the <strong>server dispatcher</strong> — a worker that consumes <code>queued</code> <code>specDocRun</code> rows, spawns a <code>claude-code</code> relay session on an online node, and advances orch_state <span class="pill p-triggered">triggered</span> → <span class="pill p-running">running</span>.</li>
+    <li>Build the <strong>runner write-back</strong> — teach the relay daemon's spawn config to carry the seed prompt + <code>specDocRunId</code>, and emit a typed <code>receipt</code> event on completion.</li>
+    <li>Wire the <strong>evidence-gated Review</strong> (D9): <span class="pill p-review">review</span> → <span class="pill p-done">done</span> requires a receipt, not prose.</li>
+    <li>Re-enable the Trigger button (hidden in BRO-1408) once dispatch actually runs an agent.</li>
+  </ol>
+  <p style="margin-bottom:0"><strong>Acceptance:</strong> click Trigger → a real Claude Code session starts on a node → state flows <span class="pill p-triggered">triggered</span>→<span class="pill p-running">running</span>→<span class="pill p-review">review</span> with a receipt → human accepts → <span class="pill p-done">done</span>.</p>
+</div>
+
+<h2><span class="n">00</span>Why this exists</h2>
+<p class="lead">Today, clicking <strong>Trigger</strong> in Maestro is control-plane bookkeeping with no execution behind it.</p>
+<p>The shipped slice (BRO-1367/BRO-1393) records a <code>queued</code> <code>specDocRun</code>, spends the N=1 dispatch budget, and advances orch_state <code>proposed → triggered</code> — in one advisory-locked transaction. But <strong>nothing consumes that queued run.</strong> Verified: the only writers of <code>specDocRun</code> are the schema and <code>triggerSpecDoc()</code> (which inserts the <code>queued</code> row) — <em>no reader exists</em>. No dispatcher, no runner. So a triggered spec parks forever, and (because <code>triggerSpecDoc</code> is the sole <code>orch_state</code> writer) there's no un-trigger.</p>
+<p>BRO-1408 hid the Trigger button to remove that foot-gun. <strong>This spec is the other half:</strong> the runtime that makes Trigger mean something. The user's framing was exact — <em>"that still needs work on both ends."</em></p>
+
+<h2><span class="n">01</span>Where we are — built vs. the gap</h2>
+<div class="grid2">
+  <div class="panel built">
+    <h3>✓ Built &amp; tested</h3>
+    <ul>
+      <li><code>specDocRun</code> table — id, specDocId FK, ownerId, handle, specVersion, target json, status, <code>runRef</code>, <code>attempt/maxAttempts</code>, <code>lastSeq</code>, <code>receipt</code> json, unique <code>idempotencyKey</code>. <span class="anchor">lib/db/schema.ts</span></li>
+      <li><code>triggerSpecDoc()</code> — advisory-locked: N=1 budget, inserts <code>queued</code> run, <code>triggered</code>. <span class="anchor">lib/db/spec-doc-queries.ts</span></li>
+      <li><code>POST /api/docs/[id]/trigger</code> — owner-gated, default target <code>{session, claude-code}</code>. <span class="anchor">app/api/docs/[id]/trigger/route.ts</span></li>
+      <li>orch_state enum (8) <span class="anchor">lib/db/schema.ts</span> + mission-control view <span class="anchor">app/maestro/lib.ts</span></li>
+      <li><strong>Relay substrate</strong> — spawn → Redis → poll (§04).</li>
+    </ul>
+  </div>
+  <div class="panel missing">
+    <h3>✗ Missing — this ticket</h3>
+    <ul>
+      <li><strong>Server dispatcher</strong> — consumer of <code>queued</code> runs → spawn relay session → <code>running</code>.</li>
+      <li><strong>Spawn config fields</strong> — <code>seedPrompt</code> / <code>specHandle</code> + <code>specDocRunId</code> so the runner knows what to do and how to report back.</li>
+      <li><strong>Receipt event</strong> — runner → server completion signal carrying evidence.</li>
+      <li><strong>State write-back</strong> — events drive <code>running → review|blocked</code>.</li>
+      <li><strong>Evidence-gated Review</strong> (D9) — <code>review → done</code> requires a receipt.</li>
+      <li><strong>Re-enable Trigger UI</strong> (reverse the BRO-1408 hide).</li>
+    </ul>
+  </div>
+</div>
+
+<h2><span class="n">02</span>The orchestration state machine</h2>
+<p>Eight orch-states (<code>specDocOrchStateEnum</code>). The <em>content</em> axis (draft/published/archived) is orthogonal and unchanged. Below: who drives each transition — <span class="actor a-human">human</span>, <span class="actor a-disp">dispatcher</span>, <span class="actor a-runner">runner</span>.</p>
+
+<figure>
+<svg viewBox="0 0 860 360" role="img" aria-label="Orch-state machine diagram">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6b7689"/>
+    </marker>
+    <style>
+      .s { rx: 9; ry: 9; height: 42; stroke-width: 1.5; }
+      .lbl { font: 600 13px ui-monospace, monospace; fill: #e6e9ef; text-anchor: middle; }
+      .edge { stroke: #6b7689; stroke-width: 1.5; fill: none; }
+      .et { font: 600 10px ui-monospace, monospace; text-anchor: middle; }
+      .eh { fill: #5b9dff; } .ed { fill: #7c5cff; } .er { fill: #3fb950; }
+    </style>
+  </defs>
+
+  <!-- nodes -->
+  <g>
+    <rect class="s" x="20"  y="60"  width="120" fill="#121723" stroke="#232b3a"/><text class="lbl" x="80"  y="86">proposed</text>
+    <rect class="s" x="20"  y="150" width="120" fill="#121723" stroke="#232b3a"/><text class="lbl" x="80"  y="176">reviewing</text>
+    <rect class="s" x="200" y="105" width="120" fill="#121723" stroke="#46407a"/><text class="lbl" x="260" y="131">triggered</text>
+    <rect class="s" x="380" y="105" width="120" fill="#121723" stroke="#46407a"/><text class="lbl" x="440" y="131">running</text>
+    <rect class="s" x="380" y="210" width="120" fill="#121723" stroke="#5a4a1f"/><text class="lbl" x="440" y="236" style="fill:#d29922">blocked</text>
+    <rect class="s" x="560" y="105" width="120" fill="#121723" stroke="#1e3a6b"/><text class="lbl" x="620" y="131" style="fill:#3b82f6">review</text>
+    <rect class="s" x="730" y="105" width="110" fill="#121723" stroke="#1f5a2a"/><text class="lbl" x="785" y="131" style="fill:#3fb950">done</text>
+    <rect class="s" x="560" y="290" width="110" fill="#121723" stroke="#5a2424"/><text class="lbl" x="615" y="316" style="fill:#f85149">canceled</text>
+  </g>
+
+  <!-- edges -->
+  <!-- proposed/reviewing -> triggered (human) -->
+  <path class="edge" d="M140 78 C175 80 175 116 198 120" marker-end="url(#arr)"/>
+  <path class="edge" d="M140 168 C175 165 175 130 198 126" marker-end="url(#arr)"/>
+  <path class="edge" d="M82 102 L82 148" marker-end="url(#arr)"/>
+  <text class="et eh" x="150" y="64">trigger</text>
+  <text class="et eh" x="60" y="128">review</text>
+  <!-- triggered -> running (dispatcher) -->
+  <path class="edge" d="M320 126 L378 126" marker-end="url(#arr)"/>
+  <text class="et ed" x="349" y="118">spawn</text>
+  <!-- running -> review (runner) -->
+  <path class="edge" d="M500 126 L558 126" marker-end="url(#arr)"/>
+  <text class="et er" x="529" y="118">receipt</text>
+  <!-- review -> done (human, gated) -->
+  <path class="edge" d="M680 126 L728 126" marker-end="url(#arr)"/>
+  <text class="et eh" x="704" y="118">accept✓</text>
+  <!-- running -> blocked (runner/dispatcher) -->
+  <path class="edge" d="M440 147 L440 208" marker-end="url(#arr)"/>
+  <text class="et er" x="468" y="182">error</text>
+  <!-- blocked -> running (dispatcher retry) -->
+  <path class="edge" d="M418 208 C405 185 405 160 418 147" marker-end="url(#arr)"/>
+  <text class="et ed" x="372" y="182">retry</text>
+  <!-- review -> canceled (human reject) -->
+  <path class="edge" d="M620 147 L618 288" marker-end="url(#arr)"/>
+  <text class="et eh" x="650" y="220">reject</text>
+  <!-- blocked -> canceled -->
+  <path class="edge" d="M500 231 C540 250 545 270 575 288" marker-end="url(#arr)"/>
+  <text class="et eh" x="556" y="262">abort</text>
+</svg>
+<figcaption>Runtime-driven transitions. Pre-dispatch states (proposed/reviewing) are human; the dispatcher owns spawn + retry; the runner owns receipt; the human owns accept/reject (gated).</figcaption>
+</figure>
+<div class="legend">
+  <span><i class="dot" style="background:#5b9dff"></i> human</span>
+  <span><i class="dot" style="background:#7c5cff"></i> dispatcher (server)</span>
+  <span><i class="dot" style="background:#3fb950"></i> runner (daemon + agent)</span>
+</div>
+
+<table>
+  <thead><tr><th>Transition</th><th>Driver</th><th>Trigger condition</th><th>Side effects</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pill p-proposed">proposed</span> → <span class="pill p-triggered">triggered</span></td><td><span class="actor a-human">human</span></td><td>Trigger clicked (re-enabled this ticket)</td><td>insert <code>queued</code> run, <code>dispatchCount++</code> (exists)</td></tr>
+    <tr><td><span class="pill p-triggered">triggered</span> → <span class="pill p-running">running</span></td><td><span class="actor a-disp">dispatcher</span></td><td>queued run picked up, relay session spawned OK</td><td><code>run.status=running</code>, <code>run.runRef=relaySession.id</code></td></tr>
+    <tr><td><span class="pill p-running">running</span> → <span class="pill p-review">review</span></td><td><span class="actor a-runner">runner</span></td><td>agent finishes + emits <code>receipt</code> event</td><td><code>run.receipt=…</code>, <code>run.status=completed</code></td></tr>
+    <tr><td><span class="pill p-running">running</span> → <span class="pill p-blocked">blocked</span></td><td><span class="actor a-runner">runner</span> / <span class="actor a-disp">dispatcher</span></td><td>agent errors / needs approval / spawn failed / node offline</td><td><code>run.status=failed|blocked</code>, reason recorded</td></tr>
+    <tr><td><span class="pill p-blocked">blocked</span> → <span class="pill p-running">running</span></td><td><span class="actor a-disp">dispatcher</span></td><td>retry while <code>attempt &lt; maxAttempts</code> (D5)</td><td><code>attempt++</code>, re-spawn</td></tr>
+    <tr><td><span class="pill p-review">review</span> → <span class="pill p-done">done</span></td><td><span class="actor a-human">human</span></td><td><strong>receipt present + accepted</strong> (D9)</td><td>terminal; budget consumed</td></tr>
+    <tr><td>any active → <span class="pill p-canceled">canceled</span></td><td><span class="actor a-human">human</span></td><td>abort / reject</td><td>terminal; cancel relay session</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="n">03</span>The two ends</h2>
+
+<h3>End A — Server dispatcher <span class="actor a-disp">broomva.tech</span></h3>
+<p>A worker that closes the loop between a <code>queued</code> run and a live session. Responsibilities:</p>
+<ul>
+  <li><strong>Claim</strong> the next <code>queued</code> <code>specDocRun</code> (owner-scoped), advisory-locked so two workers never double-spawn.</li>
+  <li><strong>Select a node</strong> — an online <code>relayNode</code> owned by <code>run.ownerId</code> (<code>status='online'</code>, fresh <code>lastSeenAt</code>). If none: leave <code>queued</code>, surface "no online node" (don't burn the attempt).</li>
+  <li><strong>Spawn</strong> — reuse the verified path (insert <code>relaySession</code> + <code>rPush</code> spawn cmd to <code>nodeCommandsChannel</code>), but carry the new fields (§05). Seed the prompt with the <em>same</em> <code>continuePrompt(doc)</code> the Continue button uses (<span class="anchor">app/maestro/lib.ts</span>) — single source of truth.</li>
+  <li><strong>Advance</strong> — on <code>201 spawning</code>: <code>run.status=running</code>, <code>run.runRef=relaySession.id</code>, orch_state → <span class="pill p-running">running</span>.</li>
+  <li><strong>Consume events</strong> — react to runner write-back (§05) to advance <code>running → review|blocked</code>, idempotent on <code>run.lastSeq</code>.</li>
+</ul>
+<p><strong>Mechanism (open — §07):</strong> a cron/queue worker polling <code>queued</code> rows, or event-driven off the trigger transaction. Start with a small polled worker (every ~5s) — simplest, and the volume is N=1-per-spec-version.</p>
+
+<h3>End B — Runner write-back <span class="actor a-runner">relayd + agent</span></h3>
+<p>The relay daemon already polls <code>/api/relay/poll</code> and spawns processes. What's missing for Maestro:</p>
+<ul>
+  <li><strong>Accept the seed</strong> — the spawn config must carry the prompt (or <code>specHandle</code> for the runner to <code>broomva docs get</code>) + <code>specDocRunId</code>. The daemon starts the <code>claude-code</code> process pre-fed that prompt.</li>
+  <li><strong>Emit a receipt</strong> — on agent completion, POST a typed <code>receipt</code> event to <code>/api/relay/events</code> referencing <code>specDocRunId</code>, carrying evidence (PR URL / commit / test summary / artifact). This is what makes Review <em>evidence-gated</em> rather than vibes.</li>
+  <li><strong>Heartbeat the run</strong> — optional progress events (<code>lastSeq</code>) so the board can show liveness.</li>
+</ul>
+<div class="callout warn">
+  <strong>Security boundary (must resolve before shipping).</strong> The runner executes an agent against an arbitrary owner-authored prompt with repo access on a real node. This is remote code execution by design. Decide the sandbox / allowed-workdir / approval-gate policy (§07) <em>before</em> the dispatcher is allowed to spawn from a web click. Today the human runs Continue/Copy themselves — that human-in-the-loop is the current safety; the dispatcher removes it.
+</div>
+
+<h2><span class="n">04</span>Relay substrate — verified, reuse don't reinvent</h2>
+<p>Confirmed by reading the live code (2026-06-05). The dispatcher rides this; do not build a parallel transport.</p>
+<table>
+  <thead><tr><th>Surface</th><th>Contract</th><th>Anchor</th></tr></thead>
+  <tbody>
+    <tr><td><code>POST /api/relay/sessions</code></td><td>validate node owned + <code>online</code> → insert <code>relaySession</code> (status <code>active</code>) → <code>rPush</code> <code>{type:"spawn", sessionType, config:{name,workdir,model,sessionId}}</code> to Redis → <code>{sessionId, status:"spawning"}</code></td><td class="anchor">app/api/relay/sessions/route.ts</td></tr>
+    <tr><td><code>GET /api/relay/poll?nodeId=</code></td><td>daemon polls every 1–2s; heartbeat <code>lastSeenAt</code>+<code>online</code>; <code>lPop</code> next command or <code>{command:null}</code></td><td class="anchor">app/api/relay/poll/route.ts</td></tr>
+    <tr><td><code>POST /api/relay/events</code></td><td>daemon → server write-back: a <code>switch(event.type)</code> publishes to Redis SSE + updates DB on lifecycle (<code>session_ended</code>→completed, <code>session_created</code>, <code>node_info</code>, <code>approval_request</code>…). <strong>Phase 1b adds a <code>receipt</code> case to that switch</strong> (events/route.ts:76).</td><td class="anchor">app/api/relay/events/route.ts</td></tr>
+    <tr><td>Redis queue</td><td><code>nodeCommandsChannel(nodeId)</code> list; <code>getRelayRedis()</code></td><td class="anchor">lib/relay/redis-channels.ts · lib/relay/redis.ts</td></tr>
+    <tr><td>Schema + queries</td><td><code>relayNode</code> (id, userId, status, lastSeenAt) · <code>relaySession</code> (id, nodeId, userId, sessionType, status, name, workdir, model)</td><td class="anchor">lib/db/schema.ts · lib/db/relay-queries.ts</td></tr>
+  </tbody>
+</table>
+<p><strong>Spawn command shape today</strong> (the contract to extend):</p>
+<pre><code>// app/api/relay/sessions/route.ts — current
+{ type: "spawn", sessionType: "claude-code",
+  config: { name, workdir, model?, sessionId } }</code></pre>
+<p style="font-size:.9rem;color:var(--faint)">Note: the spawn route sets no run-correlation field on <code>relaySession</code> — the dispatcher must persist <code>specDocRun.runRef = relaySession.id</code> itself.</p>
+
+<h2><span class="n">05</span>Contract additions</h2>
+<p>Two additive changes — keep them backward-compatible (the relay path serves the existing console too).</p>
+
+<h3>1 · Spawn config gains Maestro fields</h3>
+<pre><code>config: {
+  name, workdir, model?, sessionId,        // existing
+  specDocRunId: string,                     // correlate write-back → run
+  seedPrompt: string,                       // = continuePrompt(doc), pre-fed to the agent
+  // or, instead of seedPrompt: specHandle so the runner fetches via `broomva docs get`
+}</code></pre>
+
+<h3>2 · A typed <code>receipt</code> event (runner → <code>/api/relay/events</code>)</h3>
+<pre><code>{ type: "receipt",
+  specDocRunId: string,
+  outcome: "completed" | "failed" | "needs_approval",
+  evidence: {
+    prUrl?: string, commit?: string,
+    testsSummary?: string, artifactRef?: string, notes?: string
+  },
+  seq: number }                              // idempotency vs run.lastSeq</code></pre>
+<p>The dispatcher maps <code>outcome</code> → orch_state: <code>completed</code> → <span class="pill p-review">review</span> (with <code>run.receipt=evidence</code>), <code>failed</code> → <span class="pill p-blocked">blocked</span> (retry if budget), <code>needs_approval</code> → <span class="pill p-blocked">blocked</span> (human resumes via existing <code>sessions/[id]/approve</code>).</p>
+
+<h2><span class="n">06</span>Two locked decisions this inherits</h2>
+<div class="grid2">
+  <div class="panel">
+    <h3 style="color:var(--review)">D9 · Evidence-gated Review</h3>
+    <p style="font-size:.92rem;color:var(--muted);margin:0">A prose-only human "accept" launders unverified completion into an audit trail. <span class="pill p-review">review</span> → <span class="pill p-done">done</span> is allowed <em>only</em> when <code>run.receipt</code> is present and its evidence resolves (PR merged / tests referenced / artifact fetchable). The accept endpoint checks the receipt, not the human's say-so.</p>
+  </div>
+  <div class="panel">
+    <h3 style="color:var(--ai)">D5 · Dispatch ≠ attempt</h3>
+    <p style="font-size:.92rem;color:var(--muted);margin:0"><strong>Dispatch identity</strong> is N=1 per immutable spec-version (<code>dispatchCount</code> + unique <code>idempotencyKey</code>). <strong>Execution attempts</strong> are bounded retry (<code>attempt</code>/<code>maxAttempts</code> on the run). A blocked run retries without minting a second dispatch — same run, next attempt.</p>
+  </div>
+</div>
+
+<h2><span class="n">07</span>Open decisions for the implementing session</h2>
+<table>
+  <thead><tr><th>Decision</th><th>Options / lean</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Node selection</strong></td><td>Owner has ≥1 online node. Lean: most-recently-seen online node owned by <code>run.ownerId</code>; if none, stay <code>queued</code> + surface. (Multi-node routing later.)</td></tr>
+    <tr><td><strong>Dispatcher mechanism</strong></td><td>(a) polled worker every ~5s over <code>queued</code> rows — simplest, fits N=1 volume; (b) event-driven off the trigger txn. Lean (a) first. Where does it run — Vercel cron, or a Railway worker (default deploy target)?</td></tr>
+    <tr><td><strong>Runner / sandbox</strong> ⚠</td><td>Which daemon is deployed on the nodes? What's the workdir/permission boundary for an agent spawned from a web click? Resolve the §03 security boundary <em>first</em>.</td></tr>
+    <tr><td><strong>Receipt verification depth</strong></td><td>Trust the runner-reported evidence, or have the dispatcher independently verify (e.g. GitHub API confirms the PR exists/merged) before allowing <code>done</code>? Lean: verify cheaply server-side for PR-url receipts.</td></tr>
+    <tr><td><strong>Re-enable Trigger UI</strong></td><td>Reverse BRO-1408's hide in <code>maestro-board.tsx</code>; consider a confirm now that it really dispatches.</td></tr>
+  </tbody>
+</table>
+
+<h2><span class="n">08</span>Build plan</h2>
+
+<div class="step"><span class="tag">1b-i · DISPATCHER</span>
+  <h3>Claim → spawn → running</h3>
+  <p>New: <code>lib/db/spec-doc-dispatch.ts</code> (<code>claimQueuedRun</code>, <code>markRunning</code>) + a worker entrypoint (cron route <code>app/api/maestro/dispatch/route.ts</code> or Railway worker). Reuse the relay spawn helper; extend the config (§05.1). Advisory-lock the claim. On spawn OK → <code>running</code>.</p>
+  <p class="anchor">touches: lib/db/spec-doc-queries.ts (read queued) · app/api/relay/sessions internals · new dispatch module</p>
+</div>
+<div class="step"><span class="tag">1b-ii · RUNNER WRITE-BACK</span>
+  <h3>Seed prompt in, receipt out</h3>
+  <p>Daemon-side (relay runner repo): consume <code>seedPrompt</code>/<code>specDocRunId</code> from spawn config; start <code>claude-code</code> pre-fed the prompt; on completion POST the <code>receipt</code> event. Server-side: extend <code>app/api/relay/events</code> to accept <code>receipt</code>, write <code>run.receipt</code> + advance state, idempotent on <code>seq</code>/<code>lastSeq</code>.</p>
+  <p class="anchor">touches: app/api/relay/events/route.ts · relay daemon repo (out of this monorepo) · lib/db/spec-doc-queries.ts (apply receipt)</p>
+</div>
+<div class="step"><span class="tag">1b-iii · REVIEW GATE + UI</span>
+  <h3>Evidence-gated accept, re-light Trigger</h3>
+  <p>New <code>POST /api/docs/[id]/accept</code> (owner-gated): allow <code>review → done</code> only if <code>run.receipt</code> present (+ optional verify). Add reject → <code>canceled</code>. Re-enable the Trigger button + add Accept/Reject affordances to the board for <code>review</code> cards.</p>
+  <p class="anchor">touches: app/api/docs/[id]/accept/route.ts (new) · app/maestro/maestro-board.tsx · app/maestro/page.tsx (banner back to "live")</p>
+</div>
+
+<h2><span class="n">09</span>Validation (P11) — the acceptance test</h2>
+<ol>
+  <li>Ensure one online relay node owned by you (<code>GET /api/relay/nodes</code> → <code>.nodes</code>, not a bare array).</li>
+  <li>Publish a trivial spec; Trigger it → assert orch_state <span class="pill p-triggered">triggered</span> then <span class="pill p-running">running</span> within the dispatcher interval; assert a real <code>relaySession</code> exists + a <code>claude-code</code> process started on the node (node logs).</li>
+  <li>Let the agent finish a tiny task (e.g. open a draft PR); assert a <code>receipt</code> event arrived and state is <span class="pill p-review">review</span> with <code>run.receipt.prUrl</code> set.</li>
+  <li>Try to accept with the receipt removed → <strong>blocked</strong> (D9 holds). Restore → accept → <span class="pill p-done">done</span>.</li>
+  <li>Re-trigger the same version → <strong>409</strong> (N=1 + idempotency). Force a failure mid-run → <span class="pill p-blocked">blocked</span> → retry increments <code>attempt</code>, not <code>dispatchCount</code> (D5).</li>
+</ol>
+
+<p class="foot">
+  Handoff spec authored under BRO-1408 (hide-Trigger + spec) · implements toward BRO-1407 (relay runtime).
+  Substrate verified against live code on 2026-06-05. Relay daemon lives outside this monorepo — End B spans repos.
+  Pull the freshest version any time: <code>broomva docs get maestro-relay-phase-1b</code>.
+  Run a spec today (no runtime needed) via <strong>Continue</strong> / <strong>Copy</strong> on <a href="/maestro">/maestro</a>.
+</p>
+
+</div>
+</body>
+</html>

@@ -50,14 +50,21 @@ export default async function MaestroPage() {
 
       <div className="mb-6 rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-muted-foreground text-xs">
         <span className="font-medium text-foreground">
-          Trigger is live (control plane).
+          Orchestration state is read-only for now.
         </span>{" "}
-        Triggering a spec records a dispatch and advances its orch-state{" "}
-        <code className="rounded bg-muted px-1 py-0.5">
-          proposed → triggered
-        </code>{" "}
-        (N=1 per version). Handing the queued run to a live runtime — actually
-        running the agent — is the next slice.
+        Specs show their orch-state, but the live trigger / run controls land
+        with the relay runtime. To run a spec today, use{" "}
+        <span className="font-medium text-foreground">Continue</span> (opens
+        Claude Code) or{" "}
+        <span className="font-medium text-foreground">Copy</span> (paste into
+        Omnara). Design:{" "}
+        <Link
+          href="/d/maestro-relay-phase-1b"
+          className="underline transition-colors hover:text-foreground"
+        >
+          relay-dispatch spec
+        </Link>
+        .
       </div>
 
       <MaestroBoard docs={docs} />
