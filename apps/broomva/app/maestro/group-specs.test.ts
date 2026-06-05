@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vitest";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
-import { groupBoardSpecs, ORCH_STATE_META, viewerHref } from "./lib";
+import {
+  claudeDeepLink,
+  continuePrompt,
+  groupBoardSpecs,
+  ORCH_STATE_META,
+  viewerHref,
+} from "./lib";
 
 function row(over: Partial<SpecDocSummary> = {}): SpecDocSummary {
   return {
@@ -107,5 +113,43 @@ describe("ORCH_STATE_META", () => {
       expect(meta.label).toBeTruthy();
       expect(meta.tone).toBeTruthy();
     }
+  });
+});
+
+describe("continuePrompt + claudeDeepLink", () => {
+  test("continuePrompt pulls the spec via the keystone + the /d URL", () => {
+    const p = continuePrompt(row({ handle: "alpha", title: "My Spec" }));
+    expect(p).toContain('Continue work on the Broomva spec "My Spec"');
+    expect(p).toContain("broomva docs get alpha");
+    expect(p).toContain("https://broomva.tech/d/alpha");
+    expect(p).toContain("CLAUDE.md / AGENTS.md");
+  });
+
+  test("continuePrompt includes source + ticket when present, omits when null", () => {
+    const withMeta = continuePrompt(
+      row({
+        sourcePath: "docs/x.html",
+        sourceRepo: "broomva/broomva.tech",
+        ticketId: "BRO-1",
+      }),
+    );
+    expect(withMeta).toContain("docs/x.html");
+    expect(withMeta).toContain("broomva/broomva.tech");
+    expect(withMeta).toContain("BRO-1");
+    const bare = continuePrompt(row({ sourcePath: null, ticketId: null }));
+    expect(bare).not.toContain("Spec source:");
+    expect(bare).not.toContain("Linear ticket:");
+  });
+
+  test("claudeDeepLink: claude-cli://open with repo + url-encoded prompt", () => {
+    const link = claudeDeepLink(row({ handle: "alpha", sourceRepo: "acme/x" }));
+    expect(link.startsWith("claude-cli://open?repo=acme/x&q=")).toBe(true);
+    expect(link).toContain("%20"); // spaces in the prompt are encoded
+  });
+
+  test("claudeDeepLink defaults repo to broomva/broomva.tech", () => {
+    expect(claudeDeepLink(row({ sourceRepo: null }))).toContain(
+      "repo=broomva/broomva.tech",
+    );
   });
 });

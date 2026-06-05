@@ -7,6 +7,8 @@ import { startTransition, useState } from "react";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
 import {
   type BoardState,
+  claudeDeepLink,
+  continuePrompt,
   groupBoardSpecs,
   ORCH_STATE_META,
   type OrchTone,
@@ -45,6 +47,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const groups = groupBoardSpecs(docs);
 
   async function mutate(id: string, init: RequestInit, suffix = "") {
@@ -74,6 +77,19 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ action }),
     };
+  }
+
+  // Copy the continue-prompt to the clipboard (the phone → Omnara paste path).
+  async function copyPrompt(d: SpecDocSummary) {
+    try {
+      await navigator.clipboard.writeText(continuePrompt(d));
+      setCopiedId(d.id);
+      // Guard the reset: a later copy on another row must not be cleared by
+      // this row's stale timer (only clear if still showing this id).
+      setTimeout(() => setCopiedId((cur) => (cur === d.id ? null : cur)), 1500);
+    } catch {
+      setError("Clipboard unavailable — open the spec and copy manually.");
+    }
   }
 
   if (groups.length === 0) {
@@ -158,6 +174,21 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
+                    <a
+                      href={claudeDeepLink(d)}
+                      title="Open Claude Code in the repo with a continue-prompt pre-filled (claude-cli://)"
+                      className="rounded-md border border-[color:var(--ag-ai-blue)]/40 px-2 py-1 text-[color:var(--ag-ai-blue)] text-xs transition-colors hover:bg-[color:var(--ag-ai-blue)]/10"
+                    >
+                      Continue
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => copyPrompt(d)}
+                      title="Copy the continue-prompt — paste into a new Omnara session from your phone"
+                      className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      {copiedId === d.id ? "Copied" : "Copy"}
+                    </button>
                     {d.orchState === "proposed" ||
                     d.orchState === "reviewing" ? (
                       <button

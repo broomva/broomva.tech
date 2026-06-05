@@ -85,3 +85,51 @@ export function viewerHref(
   const ref = doc.handle ?? doc.id;
   return doc.state === "archived" ? `/d/${ref}/v/${doc.version}` : `/d/${ref}`;
 }
+
+/** Fields the continue-session helpers read off a board doc. */
+type ContinuableDoc = Pick<
+  SpecDocSummary,
+  "handle" | "id" | "title" | "sourcePath" | "sourceRepo" | "ticketId"
+>;
+
+/** Default repo when a spec has no recorded sourceRepo (most specs live here). */
+const DEFAULT_REPO = "broomva/broomva.tech";
+
+/**
+ * The seed prompt handed to a fresh agent session to CONTINUE a spec (BRO-1399).
+ * Leans on the BRO-1335 content-GET keystone (`broomva docs get <handle>`) so the
+ * agent pulls the exact spec body, then reads the referenced source and continues
+ * under the workspace conventions. Pure — unit-tested.
+ */
+export function continuePrompt(doc: ContinuableDoc): string {
+  const handle = doc.handle ?? doc.id;
+  const lines = [
+    `Continue work on the Broomva spec "${doc.title}".`,
+    "",
+    `Pull the full spec: \`broomva docs get ${handle} -o spec.html\` (or open https://broomva.tech/d/${handle}).`,
+  ];
+  if (doc.sourcePath) {
+    lines.push(
+      `Spec source: \`${doc.sourcePath}\`${doc.sourceRepo ? ` in ${doc.sourceRepo}` : ""}.`,
+    );
+  }
+  if (doc.ticketId) {
+    lines.push(`Linear ticket: ${doc.ticketId}.`);
+  }
+  lines.push(
+    "",
+    "Read the spec and the files it references, check the current state of the work, then continue the implementation under the workspace conventions (CLAUDE.md / AGENTS.md). Think through the dependency chain before editing.",
+  );
+  return lines.join("\n");
+}
+
+/**
+ * A Claude Code deep link (`claude-cli://open`, v2.1.91+) that opens a session in
+ * the spec's repo with the continue-prompt pre-filled (not auto-sent). `repo`
+ * resolves to a local clone Claude Code has already seen. Omnara has no public
+ * prompt-carrying deep link, so its path is `continuePrompt` + clipboard paste.
+ */
+export function claudeDeepLink(doc: ContinuableDoc): string {
+  const repo = doc.sourceRepo ?? DEFAULT_REPO;
+  return `claude-cli://open?repo=${repo}&q=${encodeURIComponent(continuePrompt(doc))}`;
+}
