@@ -1,12 +1,19 @@
 "use client";
 
+import { MoreHorizontal } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { SpecDocSummary } from "@/lib/db/spec-doc-queries";
 import {
-  type BoardState,
   claudeDeepLink,
   continuePrompt,
   groupBoardSpecs,
@@ -17,15 +24,8 @@ import {
 
 const dateFmt = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
-// Arcan Glass semantic tokens (globals.css) — not raw Tailwind palette colors.
-const STATE_BADGE_CLASS: Record<BoardState, string> = {
-  published:
-    "border-[color:var(--ag-success)]/40 text-[color:var(--ag-success)]",
-  draft: "border-[color:var(--ag-warning)]/40 text-[color:var(--ag-warning)]",
-  archived: "border-muted-foreground/30 text-muted-foreground",
-};
-
-// Orchestration-state pill tones → Arcan Glass tokens (BRO-1336).
+// Orchestration-state pill tones → Arcan Glass tokens (BRO-1336). The board is
+// grouped by content-state, so the per-card pill shows ORCH-state only.
 const ORCH_TONE_CLASS: Record<OrchTone, string> = {
   muted: "border-muted-foreground/30 text-muted-foreground",
   active: "border-[color:var(--ag-ai-blue)]/40 text-[color:var(--ag-ai-blue)]",
@@ -36,11 +36,18 @@ const ORCH_TONE_CLASS: Record<OrchTone, string> = {
   canceled: "border-[color:var(--ag-error)]/40 text-[color:var(--ag-error)]",
 };
 
+const SECONDARY_BTN =
+  "rounded-md px-2.5 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50";
+const PRIMARY_BTN =
+  "rounded-md border border-[color:var(--ag-ai-blue)]/40 px-2.5 py-1 text-[color:var(--ag-ai-blue)] text-xs transition-colors hover:bg-[color:var(--ag-ai-blue)]/10 disabled:opacity-50";
+
 /**
- * The Maestro board (BRO-1349) — client island over the owner's specs. Lists
- * them grouped by content-state and wires the archive / restore / delete
- * actions to the existing owner-scoped /api/docs/[id] endpoints (cookie auth,
- * same origin), refreshing the server component on success.
+ * The Maestro board (BRO-1349) — client island over the owner's specs, grouped
+ * by content-state. Mobile-first card layout (BRO-1400): each spec is a card
+ * that stacks title / meta / actions vertically so nothing collides on a phone
+ * (the Omnara webview); secondary actions live in a ⋯ overflow menu. Wires
+ * Continue/Copy (BRO-1399), Trigger (BRO-1393), and archive/restore/delete to
+ * the owner-scoped endpoints, refreshing the server component on success.
  */
 export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
   const router = useRouter();
@@ -84,8 +91,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
     try {
       await navigator.clipboard.writeText(continuePrompt(d));
       setCopiedId(d.id);
-      // Guard the reset: a later copy on another row must not be cleared by
-      // this row's stale timer (only clear if still showing this id).
+      // Guard the reset so a later copy on another row isn't cleared early.
       setTimeout(() => setCopiedId((cur) => (cur === d.id ? null : cur)), 1500);
     } catch {
       setError("Clipboard unavailable — open the spec and copy manually.");
@@ -94,7 +100,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
 
   if (groups.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
+      <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground text-sm">
         No specs yet. Publish one with{" "}
         <code className="rounded bg-muted px-1 py-0.5 text-xs">
           broomva docs publish file.html --as &lt;handle&gt;
@@ -105,7 +111,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       {error ? (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive text-xs">
           {error}
@@ -113,155 +119,157 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
       ) : null}
       {groups.map((group) => (
         <section key={group.state}>
-          <div className="mb-2 flex items-baseline gap-2">
+          <div className="mb-2.5 flex items-baseline gap-2">
             <h2 className="font-semibold text-sm uppercase tracking-wide">
               {group.label}
             </h2>
             <span className="text-muted-foreground text-xs">
               {group.docs.length}
             </span>
-            <span className="text-muted-foreground text-xs">
+            <span className="hidden text-muted-foreground text-xs sm:inline">
               · {group.hint}
             </span>
           </div>
-          <ul className="divide-y rounded-lg border">
+          <div className="space-y-2.5">
             {group.docs.map((d) => {
-              const ref = d.handle ?? d.id;
-              // viewerHref returns a validated route string; cast to the Next
-              // typed-routes brand (the dynamic /d/<handle>[/v/<n>] target).
               const href = viewerHref(d) as Route;
+              const ref = d.handle ?? d.id;
               const busy = pendingId === d.id;
+              const orch = ORCH_STATE_META[d.orchState];
+              const triggerable =
+                d.orchState === "proposed" || d.orchState === "reviewing";
               return (
-                <li key={d.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={href}
-                        className="truncate font-medium text-sm hover:underline"
-                      >
-                        {d.title}
-                      </Link>
-                      <span
-                        className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${STATE_BADGE_CLASS[d.state as BoardState]}`}
-                      >
-                        {d.state}
-                      </span>
-                      <span
-                        title="Orchestration state"
-                        className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${ORCH_TONE_CLASS[ORCH_STATE_META[d.orchState].tone]}`}
-                      >
-                        {ORCH_STATE_META[d.orchState].label}
-                      </span>
-                      {d.version > 1 ? (
-                        <span className="shrink-0 text-muted-foreground text-xs">
-                          v{d.version}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-muted-foreground text-xs">
-                      <code className="rounded bg-muted px-1 py-0.5">
-                        {ref}
-                      </code>
-                      {d.sourcePath ? (
-                        <span className="truncate">{d.sourcePath}</span>
-                      ) : null}
-                      {d.ticketId ? (
-                        <span className="shrink-0">{d.ticketId}</span>
-                      ) : null}
-                      <span className="shrink-0">
-                        {dateFmt.format(d.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <a
-                      href={claudeDeepLink(d)}
-                      title="Open Claude Code in the repo with a continue-prompt pre-filled (claude-cli://)"
-                      className="rounded-md border border-[color:var(--ag-ai-blue)]/40 px-2 py-1 text-[color:var(--ag-ai-blue)] text-xs transition-colors hover:bg-[color:var(--ag-ai-blue)]/10"
-                    >
-                      Continue
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => copyPrompt(d)}
-                      title="Copy the continue-prompt — paste into a new Omnara session from your phone"
-                      className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                      {copiedId === d.id ? "Copied" : "Copy"}
-                    </button>
-                    {d.orchState === "proposed" ||
-                    d.orchState === "reviewing" ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() =>
-                          mutate(d.id, { method: "POST" }, "/trigger")
-                        }
-                        title="Dispatch this spec (orch_state → triggered)"
-                        className="rounded-md border border-[color:var(--ag-ai-blue)]/40 px-2 py-1 text-[color:var(--ag-ai-blue)] text-xs transition-colors hover:bg-[color:var(--ag-ai-blue)]/10 disabled:opacity-50"
-                      >
-                        Trigger
-                      </button>
-                    ) : null}
+                <div
+                  key={d.id}
+                  className="rounded-xl border border-border/60 bg-bg-surface/40 px-4 py-3 transition-colors hover:border-[color:var(--ag-ai-blue)]/30"
+                >
+                  {/* Title + orch-state */}
+                  <div className="flex items-start gap-2">
                     <Link
                       href={href}
-                      className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+                      className="min-w-0 flex-1 truncate font-medium text-sm leading-6 hover:underline"
                     >
-                      View
+                      {d.title}
                     </Link>
-                    {d.state === "archived" ? (
+                    <span
+                      title="Orchestration state"
+                      className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${ORCH_TONE_CLASS[orch.tone]}`}
+                    >
+                      {orch.label}
+                    </span>
+                  </div>
+
+                  {/* Meta */}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
+                    <code className="rounded bg-muted px-1 py-0.5">{ref}</code>
+                    {d.version > 1 ? <span>v{d.version}</span> : null}
+                    {d.sourcePath ? (
+                      <span className="max-w-[60%] truncate">
+                        {d.sourcePath}
+                      </span>
+                    ) : null}
+                    {d.ticketId ? <span>{d.ticketId}</span> : null}
+                    <span>{dateFmt.format(d.createdAt)}</span>
+                  </div>
+
+                  {/* Actions */}
+                  {confirmId === d.id ? (
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="flex-1 text-destructive text-xs">
+                        Delete this spec?
+                      </span>
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => mutate(d.id, patch("restore"))}
-                        className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-                      >
-                        Restore
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => mutate(d.id, patch("archive"))}
-                        className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-                      >
-                        Archive
-                      </button>
-                    )}
-                    {confirmId === d.id ? (
-                      <>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => mutate(d.id, { method: "DELETE" })}
-                          className="rounded-md bg-destructive/10 px-2 py-1 text-destructive text-xs transition-colors hover:bg-destructive/20 disabled:opacity-50"
-                        >
-                          Confirm?
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => setConfirmId(null)}
-                          className="rounded-md px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setConfirmId(d.id)}
-                        className="rounded-md px-2 py-1 text-destructive/80 text-xs transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                        onClick={() => mutate(d.id, { method: "DELETE" })}
+                        className="rounded-md bg-destructive/10 px-2.5 py-1 text-destructive text-xs transition-colors hover:bg-destructive/20 disabled:opacity-50"
                       >
                         Delete
                       </button>
-                    )}
-                  </div>
-                </li>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setConfirmId(null)}
+                        className={SECONDARY_BTN}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex items-center gap-1.5">
+                      <a
+                        href={claudeDeepLink(d)}
+                        title="Open Claude Code in the repo with a continue-prompt pre-filled"
+                        className={PRIMARY_BTN}
+                      >
+                        Continue
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => copyPrompt(d)}
+                        title="Copy the continue-prompt — paste into a new Omnara session from your phone"
+                        className={SECONDARY_BTN}
+                      >
+                        {copiedId === d.id ? "Copied" : "Copy"}
+                      </button>
+                      {triggerable ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            mutate(d.id, { method: "POST" }, "/trigger")
+                          }
+                          title="Dispatch this spec (orch_state → triggered)"
+                          className={PRIMARY_BTN}
+                        >
+                          Trigger
+                        </button>
+                      ) : null}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="More actions"
+                            className="ml-auto rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={href}>Open spec</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={busy}
+                            onClick={() =>
+                              mutate(
+                                d.id,
+                                patch(
+                                  d.state === "archived"
+                                    ? "restore"
+                                    : "archive",
+                                ),
+                              )
+                            }
+                          >
+                            {d.state === "archived" ? "Restore" : "Archive"}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            disabled={busy}
+                            onClick={() => setConfirmId(d.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
               );
             })}
-          </ul>
+          </div>
         </section>
       ))}
     </div>
