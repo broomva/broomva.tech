@@ -240,6 +240,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                             <Link href={href}>Open spec</Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            disabled={busy}
                             onClick={() =>
                               mutate(
                                 d.id,
@@ -255,6 +256,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
+                            disabled={busy}
                             onClick={() => setConfirmId(d.id)}
                             className="text-destructive focus:text-destructive"
                           >
