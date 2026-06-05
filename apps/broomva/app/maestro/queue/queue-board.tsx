@@ -234,23 +234,27 @@ function HandoffCard({
   const [expanded, setExpanded] = useState(false);
   const [body, setBody] = useState<string | null>(null);
   const [loadingBody, setLoadingBody] = useState(false);
+  const [bodyError, setBodyError] = useState(false);
   const specRefs = h.specRefs ?? [];
 
   async function toggleBody() {
     const next = !expanded;
     setExpanded(next);
+    // Fetch when expanding and not yet loaded. On error we leave `body` null so
+    // collapsing + re-expanding retries (rather than caching the error string).
     if (next && body === null && !loadingBody) {
       setLoadingBody(true);
+      setBodyError(false);
       try {
         const resp = await fetch(`/api/handoffs/${h.id}`);
         if (resp.ok) {
           const data = (await resp.json()) as { body?: string };
           setBody(data.body ?? "");
         } else {
-          setBody("_Could not load handoff body._");
+          setBodyError(true);
         }
       } catch {
-        setBody("_Could not load handoff body._");
+        setBodyError(true);
       } finally {
         setLoadingBody(false);
       }
@@ -311,6 +315,10 @@ function HandoffCard({
         <div className="mt-3 ml-5 rounded-lg border border-border/50 bg-bg-surface/30 px-3 py-2.5">
           {loadingBody ? (
             <p className="text-muted-foreground text-xs">Loading handoff…</p>
+          ) : bodyError ? (
+            <p className="text-destructive text-xs">
+              Couldn't load the handoff body — collapse and re-open to retry.
+            </p>
           ) : (
             <div className="prose prose-invert prose-sm max-w-none prose-headings:text-sm prose-headings:font-semibold prose-p:text-xs prose-li:text-xs prose-code:text-[11px] prose-pre:text-[11px] text-muted-foreground">
               <ReactMarkdown>{body ?? ""}</ReactMarkdown>

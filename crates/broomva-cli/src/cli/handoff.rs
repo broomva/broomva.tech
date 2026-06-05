@@ -163,6 +163,12 @@ fn extract_tldr(md: &str) -> Option<String> {
         let Some(idx) = line.find("TL;DR") else {
             continue;
         };
+        // Require the bold lead marker (`**TL;DR`) so a prose mention of "TL;DR"
+        // mid-narrative isn't mistaken for the lead line (matches the server's
+        // `**TL;DR**` matcher).
+        if !line[..idx].trim_end().ends_with("**") {
+            continue;
+        }
         // Everything after the TL;DR label; drop closing `**` and punctuation.
         let after = &line[idx + "TL;DR".len()..];
         let after = after.trim_start_matches(['*', '.', ':', ' ']);
@@ -320,6 +326,13 @@ mod tests {
     fn extracts_tldr_with_colon() {
         let md = "**TL;DR:** Do the thing.";
         assert_eq!(extract_tldr(md).as_deref(), Some("Do the thing."));
+    }
+
+    #[test]
+    fn ignores_prose_tldr_without_bold_marker() {
+        // A narrative mention of TL;DR is not the lead line.
+        let md = "I'll write the TL;DR after the snapshot.\n\n**TL;DR.** Real one.";
+        assert_eq!(extract_tldr(md).as_deref(), Some("Real one."));
     }
 
     #[test]

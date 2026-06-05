@@ -282,7 +282,9 @@ const TRANSITIONS: Record<
 export type HandoffAction = keyof typeof TRANSITIONS;
 
 export function isHandoffAction(value: unknown): value is HandoffAction {
-  return typeof value === "string" && value in TRANSITIONS;
+  // Object.hasOwn (not `in`) — `in` walks the prototype chain, so a payload of
+  // `{ action: "constructor" }` would otherwise pass the guard and 500 later.
+  return typeof value === "string" && Object.hasOwn(TRANSITIONS, value);
 }
 
 /**
@@ -442,16 +444,14 @@ export async function getQueueAnalytics(
   let specSum = 0;
   for (const r of statusRows) {
     if (r.status in statusCounts) statusCounts[r.status] = r.count;
-    // "active" total excludes superseded (history), like the queue board.
-    if (r.status !== "superseded") total += r.count;
-    specSum += r.specSum;
+    // Exclude superseded (version history) from BOTH the total and the
+    // specs-per-handoff numerator, so re-pushing an arc N times doesn't dilute
+    // the metric — consistent with every other metric on the page.
+    if (r.status !== "superseded") {
+      total += r.count;
+      specSum += r.specSum;
+    }
   }
-  const activeForSpecs =
-    statusCounts.queued +
-    statusCounts.in_progress +
-    statusCounts.done +
-    statusCounts.archived +
-    statusCounts.superseded;
 
   const [windowed] = await db
     .select({
@@ -511,8 +511,7 @@ export async function getQueueAnalytics(
     pushed7d: windowed?.pushed7d ?? 0,
     medianPickupMinutes:
       windowed?.medianPickup != null ? Math.round(windowed.medianPickup) : null,
-    avgSpecsPerHandoff:
-      activeForSpecs > 0 ? Math.round((specSum / activeForSpecs) * 10) / 10 : 0,
+    avgSpecsPerHandoff: total > 0 ? Math.round((specSum / total) * 10) / 10 : 0,
     daily: densifyDailyBuckets(pushedByDay, completedByDay),
   };
 }

@@ -11,15 +11,19 @@ import { resolveAuth } from "@/lib/prompts/resolve-auth";
  *
  * The client passes `?since=<ISO>` — the createdAt of the newest event it has —
  * so no event is missed between SSR and the EventSource connecting. The stream
- * self-closes after ~55s; EventSource auto-reconnects with an updated cursor,
- * which keeps us within serverless function-duration limits.
+ * self-closes after ~55s; the client reconnects with an updated cursor, which
+ * keeps us within serverless function-duration limits.
+ *
+ * No `runtime`/`dynamic` route-segment config: this app runs with
+ * `cacheComponents`, which forbids those exports. Reading `request` (auth
+ * headers + `?since`) already makes the handler dynamic, and the default
+ * runtime is Node.js (required for the DB tail).
  */
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
-/** Poll cadence + hard lifetime — re-tuned together (lifetime ≫ serverless cap). */
+/** Poll cadence + hard lifetime + per-tick batch (lifetime ≫ serverless cap). */
 const POLL_MS = 2500;
 const MAX_LIFETIME_MS = 55_000;
+const BATCH_LIMIT = 100;
 
 export async function GET(request: NextRequest) {
   const auth = await resolveAuth(request);
@@ -36,6 +40,7 @@ export async function GET(request: NextRequest) {
       : new Date();
 
   const encoder = new TextEncoder();
+  const signal = request.signal;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -49,6 +54,8 @@ export async function GET(request: NextRequest) {
           // already closed
         }
       };
+      // Abort when the client disconnects.
+      signal.addEventListener("abort", close);
 
       const send = (event: string, data: unknown) => {
         if (closed) return;
@@ -57,16 +64,20 @@ export async function GET(request: NextRequest) {
         );
       };
 
-      // Abort when the client disconnects.
-      request.signal.addEventListener("abort", close);
-
       send("ready", { since: cursor.toISOString() });
 
       const startedAt = Date.now();
       try {
         while (!closed && Date.now() - startedAt < MAX_LIFETIME_MS) {
-          const events = await listHandoffEvents(ownerId, { since: cursor });
-          if (events.length > 0) {
+          // Drain forward in batches so a burst of > BATCH_LIMIT events between
+          // polls is never skipped (a naïve jump-to-newest would lose the tail).
+          let emitted = 0;
+          for (;;) {
+            const events = await listHandoffEvents(ownerId, {
+              since: cursor,
+              limit: BATCH_LIMIT,
+            });
+            if (events.length === 0) break;
             // listHandoffEvents returns newest-first; emit oldest-first so the
             // client appends in chronological order.
             for (const ev of events.slice().reverse()) {
@@ -79,19 +90,23 @@ export async function GET(request: NextRequest) {
                 metadata: ev.metadata,
                 createdAt: ev.createdAt,
               });
+              emitted++;
             }
             const newest = events[0];
             if (newest) cursor = new Date(newest.createdAt);
-          } else {
-            // Heartbeat comment keeps proxies from buffering / timing out.
-            if (!closed) controller.enqueue(encoder.encode(": ping\n\n"));
+            if (events.length < BATCH_LIMIT || closed) break;
           }
-          await sleep(POLL_MS, request.signal);
+          // Heartbeat comment keeps proxies from buffering / timing out.
+          if (emitted === 0 && !closed) {
+            controller.enqueue(encoder.encode(": ping\n\n"));
+          }
+          await sleep(POLL_MS, signal);
         }
       } catch {
         // DB hiccup or aborted wait — end the stream; client reconnects.
       } finally {
         send("bye", { reconnect: true });
+        signal.removeEventListener("abort", close);
         close();
       }
     },
