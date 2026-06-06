@@ -633,6 +633,9 @@ pub struct PushHandoffResponse {
     #[serde(default)]
     pub spec_refs: Vec<String>,
     pub url: String,
+    /// Server-side createdAt — used as `pushed_at` in the file's frontmatter.
+    #[serde(default)]
+    pub created_at: Option<String>,
 }
 
 /// One row of `GET /api/handoffs` (metadata only — excludes the body).

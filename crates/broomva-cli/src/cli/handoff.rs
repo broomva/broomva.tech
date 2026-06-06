@@ -11,10 +11,14 @@ use std::process::Command as ProcessCommand;
 
 use crate::api::BroomvaClient;
 use crate::api::types::{HandoffSource, PushHandoffRequest};
+use crate::cli::handoff_frontmatter as fm;
 use crate::cli::output::{OutputFormat, print_json, print_kv, print_table};
 use crate::error::{BroomvaError, BroomvaResult};
 
-/// Push a local markdown handoff → prints the queue URL.
+/// Push a local markdown handoff → queues it, then writes the queue reference
+/// back into the file's frontmatter (BRO-1418). Frontmatter supplies defaults
+/// (`arc` / `specs` / `ticket` / `priority`); CLI flags override. The body sent
+/// to the server is the narrative with any frontmatter stripped.
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_push(
     client: &BroomvaClient,
@@ -25,6 +29,7 @@ pub async fn handle_push(
     ticket: Option<String>,
     priority: Option<i64>,
     commit: bool,
+    no_write_back: bool,
     format: OutputFormat,
 ) -> BroomvaResult<()> {
     let path = Path::new(file);
@@ -41,7 +46,11 @@ pub async fn handle_push(
             meta.len()
         )));
     }
-    let body = fs::read_to_string(path)?;
+
+    let raw = fs::read_to_string(path)?;
+    let parsed = fm::parse(&raw);
+    let body = parsed.body.clone();
+    let mut front = parsed.frontmatter;
 
     // Title precedence: explicit --title → first `# ` heading → file stem.
     let resolved_title = title
@@ -49,6 +58,31 @@ pub async fn handle_push(
         .filter(|t| !t.is_empty())
         .or_else(|| extract_h1_title(&body))
         .or_else(|| path.file_stem().map(|s| s.to_string_lossy().into_owned()));
+
+    // Slug / specs / ticket / priority: CLI flag → frontmatter → derived.
+    let resolved_slug = slug
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .or_else(|| fm::get_str(&front, "arc"))
+        .or_else(|| fm::get_str(&front, "slug"));
+
+    let mut spec_refs: Vec<String> = Vec::new();
+    for s in specs
+        .into_iter()
+        .map(|s| s.trim().to_string())
+        .chain(fm::get_seq_str(&front, "specs"))
+    {
+        if !s.is_empty() && !spec_refs.contains(&s) {
+            spec_refs.push(s);
+        }
+    }
+
+    let resolved_ticket = ticket
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+        .or_else(|| fm::get_str(&front, "ticket"));
+
+    let resolved_priority = priority.or_else(|| fm::get_i64(&front, "priority"));
 
     let tldr = extract_tldr(&body);
     let first_action = extract_section(&body, "First action");
@@ -59,26 +93,54 @@ pub async fn handle_push(
     }
 
     let mut source = detect_git_source(path).unwrap_or_default();
-    if let Some(t) = ticket.map(|t| t.trim().to_string()).filter(|t| !t.is_empty()) {
+    if let Some(t) = resolved_ticket.clone() {
         source.ticket = Some(t);
     }
-    let source = if source.is_empty() { None } else { Some(source) };
+    let source = if source.is_empty() {
+        None
+    } else {
+        Some(source)
+    };
 
     let req = PushHandoffRequest {
         title: resolved_title,
-        body,
-        slug: slug.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        body, // narrative only (frontmatter stripped)
+        slug: resolved_slug.clone(),
         tldr,
         first_action,
-        spec_refs: specs
-            .into_iter()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect(),
-        priority,
+        spec_refs: spec_refs.clone(),
+        priority: resolved_priority,
         source,
     };
     let resp = client.push_handoff(req).await?;
+
+    // Write the queue reference back into the file's frontmatter — the `.md`
+    // becomes self-referential to its queue entry (re-push updates it).
+    if !no_write_back {
+        if let Some(s) = resp.slug.clone().or(resolved_slug) {
+            fm::set_str(&mut front, "arc", &s);
+        }
+        if !spec_refs.is_empty() {
+            fm::set_seq_str(&mut front, "specs", &spec_refs);
+        }
+        if let Some(t) = resolved_ticket {
+            fm::set_str(&mut front, "ticket", &t);
+        }
+        if let Some(p) = resolved_priority {
+            fm::set_i64(&mut front, "priority", p);
+        }
+        fm::set_str(&mut front, "queue_id", &resp.id);
+        if let Some(s) = resp.slug.clone() {
+            fm::set_str(&mut front, "queue_slug", &s);
+        }
+        fm::set_i64(&mut front, "queue_version", resp.version);
+        fm::set_str(&mut front, "queue_status", &resp.status);
+        fm::set_str(&mut front, "queue_url", &resp.url);
+        if let Some(ts) = resp.created_at.clone() {
+            fm::set_str(&mut front, "pushed_at", &ts);
+        }
+        fs::write(path, fm::render(&front, &parsed.body))?;
+    }
 
     if format == OutputFormat::Json {
         print_json(&resp);
@@ -89,6 +151,9 @@ pub async fn handle_push(
         }
         if !resp.spec_refs.is_empty() {
             print_kv("Specs", &resp.spec_refs.join(", "));
+        }
+        if !no_write_back {
+            print_kv("Frontmatter", "updated (queue_id, queue_status, …)");
         }
         print_kv("Queue", &resp.url);
     }
@@ -120,20 +185,98 @@ pub async fn handle_list(client: &BroomvaClient, format: OutputFormat) -> Broomv
             ]
         })
         .collect();
-    print_table(&["SLUG", "STATUS", "SPECS", "TICKET", "TITLE"], &rows, format);
+    print_table(
+        &["SLUG", "STATUS", "SPECS", "TICKET", "TITLE"],
+        &rows,
+        format,
+    );
     Ok(())
 }
 
-/// Mark a handoff done (queue transition `complete`).
-pub async fn handle_done(client: &BroomvaClient, id: &str) -> BroomvaResult<()> {
-    client.set_handoff_status(id, "complete").await?;
-    println!("Completed {id}");
+/// Resolve a lifecycle target that is either a handoff id or a path to a
+/// handoff file (whose frontmatter carries `queue_id`). Returns (id, file).
+fn resolve_target(target: &str) -> BroomvaResult<(String, Option<PathBuf>)> {
+    let path = Path::new(target);
+    if path.is_file() {
+        let parsed = fm::parse(&fs::read_to_string(path)?);
+        let id = fm::get_str(&parsed.frontmatter, "queue_id").ok_or_else(|| {
+            BroomvaError::User(format!(
+                "{target} has no `queue_id` in its frontmatter — run `broomva handoff push` first"
+            ))
+        })?;
+        Ok((id, Some(path.to_path_buf())))
+    } else {
+        Ok((target.to_string(), None))
+    }
+}
+
+/// Write a new `queue_status` into a handoff file's frontmatter.
+fn write_back_status(path: &Path, status: &str) -> BroomvaResult<()> {
+    let parsed = fm::parse(&fs::read_to_string(path)?);
+    let mut front = parsed.frontmatter;
+    fm::set_str(&mut front, "queue_status", status);
+    fs::write(path, fm::render(&front, &parsed.body))?;
     Ok(())
 }
 
-/// Delete a handoff by id.
-pub async fn handle_rm(client: &BroomvaClient, id: &str) -> BroomvaResult<()> {
-    client.delete_handoff(id).await?;
+/// Apply a queue transition by `<file|id>`, mirroring the new status into the
+/// file's frontmatter when a file is given (the file is the control surface).
+async fn transition(
+    client: &BroomvaClient,
+    target: &str,
+    action: &str,
+    status: &str,
+    verb: &str,
+) -> BroomvaResult<()> {
+    let (id, file) = resolve_target(target)?;
+    client.set_handoff_status(&id, action).await?;
+    if let Some(p) = file {
+        write_back_status(&p, status)?;
+    }
+    println!("{verb} {id}");
+    Ok(())
+}
+
+/// Mark a handoff in-progress (a fresh session picked it up).
+pub async fn handle_pickup(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
+    transition(client, target, "pick_up", "in_progress", "Picked up").await
+}
+
+/// Mark a handoff done.
+pub async fn handle_done(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
+    transition(client, target, "complete", "done", "Completed").await
+}
+
+/// Archive a handoff (set aside, off the active queue).
+pub async fn handle_archive(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
+    transition(client, target, "archive", "archived", "Archived").await
+}
+
+/// Re-queue a handoff (back to the waiting queue).
+pub async fn handle_requeue(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
+    transition(client, target, "requeue", "queued", "Re-queued").await
+}
+
+/// Delete a handoff by `<file|id>`. When a file, clears the queue reference
+/// from its frontmatter (the row is gone; the local arc params stay).
+pub async fn handle_rm(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
+    let (id, file) = resolve_target(target)?;
+    client.delete_handoff(&id).await?;
+    if let Some(p) = file {
+        let parsed = fm::parse(&fs::read_to_string(&p)?);
+        let mut front = parsed.frontmatter;
+        for k in [
+            "queue_id",
+            "queue_slug",
+            "queue_version",
+            "queue_status",
+            "queue_url",
+            "pushed_at",
+        ] {
+            fm::remove(&mut front, k);
+        }
+        fs::write(&p, fm::render(&front, &parsed.body))?;
+    }
     println!("Deleted {id}");
     Ok(())
 }
@@ -305,7 +448,10 @@ mod tests {
     #[test]
     fn extracts_h1_title() {
         let md = "# Handoff Queue — Phase 1\n\nbody";
-        assert_eq!(extract_h1_title(md).as_deref(), Some("Handoff Queue — Phase 1"));
+        assert_eq!(
+            extract_h1_title(md).as_deref(),
+            Some("Handoff Queue — Phase 1")
+        );
     }
 
     #[test]
@@ -316,10 +462,7 @@ mod tests {
     #[test]
     fn extracts_tldr_line() {
         let md = "# T\n\n**TL;DR.** Ship the queue today.\n\nmore";
-        assert_eq!(
-            extract_tldr(md).as_deref(),
-            Some("Ship the queue today."),
-        );
+        assert_eq!(extract_tldr(md).as_deref(), Some("Ship the queue today."),);
     }
 
     #[test]

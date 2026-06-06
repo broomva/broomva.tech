@@ -7,6 +7,7 @@ pub mod context;
 pub mod daemon_cmd;
 pub mod docs;
 pub mod handoff;
+pub mod handoff_frontmatter;
 pub mod output;
 pub mod prompts;
 pub mod relay;
@@ -366,13 +367,37 @@ pub enum HandoffCommand {
         /// Stage + commit the file before pushing (git archival).
         #[arg(long)]
         commit: bool,
+        /// Don't write the queue reference back into the file's frontmatter.
+        #[arg(long = "no-write-back")]
+        no_write_back: bool,
     },
     /// List your active handoff queue.
     List,
-    /// Mark a handoff done by id.
-    Done { id: String },
-    /// Delete a handoff by id.
-    Rm { id: String },
+    /// Mark a handoff in-progress by <file|id> (a fresh session took it).
+    PickUp {
+        /// Handoff file path or queue id.
+        target: String,
+    },
+    /// Mark a handoff done by <file|id>.
+    Done {
+        /// Handoff file path or queue id.
+        target: String,
+    },
+    /// Archive a handoff by <file|id> (off the active queue).
+    Archive {
+        /// Handoff file path or queue id.
+        target: String,
+    },
+    /// Re-queue a handoff by <file|id> (back to waiting).
+    Requeue {
+        /// Handoff file path or queue id.
+        target: String,
+    },
+    /// Delete a handoff by <file|id>.
+    Rm {
+        /// Handoff file path or queue id.
+        target: String,
+    },
 }
 
 // ── Prompts ──
@@ -689,10 +714,7 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 reference,
                 output,
                 version,
-            } => {
-                docs::handle_get(&client, &reference, output.as_deref(), version, format)
-                    .await
-            }
+            } => docs::handle_get(&client, &reference, output.as_deref(), version, format).await,
             DocsCommand::Open { id } => docs::handle_open(&client, &id).await,
             DocsCommand::Rm { id } => docs::handle_rm(&client, &id).await,
         },
@@ -705,15 +727,28 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 ticket,
                 priority,
                 commit,
+                no_write_back,
             } => {
                 handoff::handle_push(
-                    &client, &file, title, as_slug, spec, ticket, priority, commit, format,
+                    &client,
+                    &file,
+                    title,
+                    as_slug,
+                    spec,
+                    ticket,
+                    priority,
+                    commit,
+                    no_write_back,
+                    format,
                 )
                 .await
             }
             HandoffCommand::List => handoff::handle_list(&client, format).await,
-            HandoffCommand::Done { id } => handoff::handle_done(&client, &id).await,
-            HandoffCommand::Rm { id } => handoff::handle_rm(&client, &id).await,
+            HandoffCommand::PickUp { target } => handoff::handle_pickup(&client, &target).await,
+            HandoffCommand::Done { target } => handoff::handle_done(&client, &target).await,
+            HandoffCommand::Archive { target } => handoff::handle_archive(&client, &target).await,
+            HandoffCommand::Requeue { target } => handoff::handle_requeue(&client, &target).await,
+            HandoffCommand::Rm { target } => handoff::handle_rm(&client, &target).await,
         },
         Command::Prompts { action } => match action {
             PromptsCommand::List {
