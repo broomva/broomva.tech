@@ -1,14 +1,13 @@
 ---
-title: "Forking Houston into Hawthorne: 89 commits, six agents, one hack camp"
+title: "Forking Houston: 89 commits, six agents, one hack camp"
 summary: "We took Houston — an MIT-licensed agent runtime — and grafted a new brain onto it. In a single hack camp the fork went 89 commits ahead of upstream: four net-new Rust crates, a full Linear integration, a feature-flag platform, a push pipeline. The features are the easy part to show. The real story is the method that produced them — autonomous agents working in parallel git worktrees under a governance harness that made the speed safe instead of reckless."
 date: 2026-06-06
 published: false
-image: /images/writing/forking-houston-into-hawthorne/hero.png
-audio: /audio/writing/forking-houston-into-hawthorne.mp3
+image: /images/writing/forking-houston/hero.png
+audio: /audio/writing/forking-houston.mp3
 tags:
   - agents
   - harness-engineering
-  - hawthorne
   - houston
   - bstack
   - rust
@@ -18,13 +17,13 @@ tags:
 links:
   - label: "Houston (MIT upstream)"
     url: "https://github.com/gethouston/houston"
-  - label: "Fork inventory — full Category-C showcase"
-    url: "https://broomva.tech/d/hawthorne-fork-inventory"
+  - label: "broomva/houston — the fork"
+    url: "https://github.com/broomva/houston"
   - label: "bstack — the portable agent harness"
     url: "https://github.com/broomva/bstack"
 ---
 
-<video src="/images/writing/forking-houston-into-hawthorne/hero.mp4" poster="/images/writing/forking-houston-into-hawthorne/poster.png" controls autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+<video src="/images/writing/forking-houston/hero.mp4" poster="/images/writing/forking-houston/poster.png" controls autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
 
 ## TL;DR
 
@@ -32,7 +31,7 @@ We forked [Houston](https://github.com/gethouston/houston) — a proven, MIT-lic
 
 In one hack camp the fork went **89 commits ahead of upstream**: **1,118 files changed, +101,906 / −21,310 lines, four net-new Rust crates, the engine grew from 17 to 21 crates.** Six agents were building in parallel the whole time.
 
-Those are the numbers everyone quotes. They are not the point. The point is *how* a number like that happens without the result being garbage — and that comes down to a method you can copy. This post is that method, illustrated by the features it produced. Every screenshot below is a real frame from a running build; the hero video above is an 8-second tour of the live UI, narrated.
+Those are the numbers everyone quotes. They are not the point. The point is *how* a number like that happens without the result being garbage — and that comes down to a method you can copy. This post is that method, illustrated by the features it produced. Every screenshot below is a real frame from a running build; the hero video above is a short narrated tour of the live UI.
 
 ## 1. Why fork at all
 
@@ -43,10 +42,10 @@ We wanted to invert that. In our model the noun is **the work** — an Initiativ
 So the strategy was a transplant, in stages:
 
 - **gethouston/houston** `v0.4.18` — the MIT upstream. The body.
-- **broomva/houston** — the V1 fork. 60-plus PRs of surgery: Linear, advanced settings, a push pipeline, a Life-runtime bridge.
-- **broomva/hawthorne** — the V2 rename and brain graft. The new noun: `Initiative → Project → Task → Cycle → Run`.
+- **broomva/houston** — our fork. Sixty-plus PRs of surgery: Linear, advanced settings, a push pipeline, a Life-runtime bridge, and four net-new engine crates.
+- **The brain graft** (V2, in progress) — turning *work* into the noun: `Initiative → Project → Task → Cycle → Run`, with orchestration moving off the human.
 
-The fork is also insurance. It's renamed end-to-end (`hawthorne-*` crates, `@hawthorne/*` UI scope, `.hawthorne/` on-disk format) and installable on its own, with a daily GitHub Action that syncs from upstream. A slow upstream merge can never block the roadmap, and we never lose the ability to pull their fixes.
+The fork is also insurance. It's installable on its own, with a daily GitHub Action that syncs from upstream. A slow upstream merge can never block the roadmap, and we never lose the ability to pull their fixes.
 
 ## 2. The method that made it fast
 
@@ -60,7 +59,7 @@ The rule that makes this safe is boring and absolute: **no two agents share a mu
 
 ### 2.2 Everything ships behind a flag
 
-<img src="/images/writing/forking-houston-into-hawthorne/advanced-flags.png" alt="The Advanced settings panel — a feature-flag platform with worktrees, context meter, git panel, timeline, and checkpoints, all off by default" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/advanced-flags.png" alt="The Advanced settings panel — a feature-flag platform with worktrees, context meter, git panel, timeline, and checkpoints, all off by default" style="width:100%;border-radius:12px;margin:16px 0" />
 
 Speed creates a different danger: half-finished features leaking into the product. The answer was to build the flag platform *first*, then ship each capability behind its own flag — worktrees, a context meter, a git panel, a timeline, checkpoints, tile layout, Claude-Code hooks, a slash-skills catalog. Off by default, each with its own KB doc.
 
@@ -70,9 +69,9 @@ This is what lets an agent merge an in-progress feature to `main` safely: it's d
 
 An agent that says "done" has proven nothing. So the whole inventory — and this post — is built on evidence captured from a *running* system, not from the diff.
 
-We booted the Rust engine locally on `127.0.0.1:56763`, drove the UI through the browser via the non-Tauri fallback we built, and captured real screenshots and an 8-second video against a fresh dev database. Surfaces that need external credentials (Linear OAuth, phone pairing) are shown honestly in their pre-connection state; the live-data surfaces show real engine responses. The mission board below is a live agent and mission, served by the engine:
+We booted the Rust engine locally, drove the UI through the browser via the non-Tauri fallback we built, and captured real screenshots and video against a fresh dev database. Surfaces that need external credentials (Linear OAuth, phone pairing) are shown honestly in their pre-connection state; the live-data surfaces show real engine responses. The mission board below is a live agent and mission, served by the engine:
 
-<img src="/images/writing/forking-houston-into-hawthorne/mission-board.png" alt="The mission board — Running, Needs you, Done kanban columns with a live agent and mission served by the engine" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/mission-board.png" alt="The mission board — Running, Needs you, Done kanban columns with a live agent and mission served by the engine" style="width:100%;border-radius:12px;margin:16px 0" />
 
 Reasoning is not validation. Interaction is. That single rule is the difference between a demo that works once and a feature you can stand behind.
 
@@ -88,32 +87,32 @@ The method produced real surface area. Here's the inventory, grouped by what it 
 
 ### 3.1 Four net-new Rust crates
 
-The rename moved all 17 upstream `houston-*` crates to `hawthorne-*`. Four crates are genuinely new code, confirmed by diffing the engine trees:
+The engine grew from 17 to 21 crates. Four are genuinely new code, confirmed by diffing the engine trees:
 
-- **`hawthorne-orchestration`** — the V2 brain. The fs-canonical object model (`Initiative → Project → Task → Cycle → Run`) grafted onto the Houston body. The filesystem *is* the orchestration store: a status change is a git diff.
-- **`hawthorne-linear`** — full Linear tracker integration. Schemas, a cynic GraphQL client, OAuth, a REST surface, webhook verification, and a mirror pipeline. 24 source files.
-- **`hawthorne-life`** — a Rust client to the Life runtime over a Unix socket (Stage-0 end-to-end proven), with protobuf. Bridges Life into the agent stack.
-- **`hawthorne-claude-hooks`** — installs and uninstalls Hawthorne hooks into Claude Code's `settings.json`, powering the `advanced.claude_hooks` flag.
+- **`houston-orchestration`** — the V2 brain. The fs-canonical object model (`Initiative → Project → Task → Cycle → Run`) grafted onto the Houston body. The filesystem *is* the orchestration store: a status change is a git diff.
+- **`houston-linear`** — full Linear tracker integration. Schemas, a cynic GraphQL client, OAuth, a REST surface, webhook verification, and a mirror pipeline. 24 source files.
+- **`houston-life`** — a Rust client to the Life runtime over a Unix socket (Stage-0 end-to-end proven), with protobuf. Bridges Life into the agent stack.
+- **`houston-claude-hooks`** — installs and uninstalls hooks into Claude Code's `settings.json`, powering the `advanced.claude_hooks` flag.
 
 ### 3.2 Linear integration — the largest cluster
 
-<img src="/images/writing/forking-houston-into-hawthorne/connect-linear.png" alt="Connect Linear — OAuth into Linear's Agent Session protocol to read and write issues, projects, and cycles" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/connect-linear.png" alt="Connect Linear — OAuth into Linear's Agent Session protocol to read and write issues, projects, and cycles" style="width:100%;border-radius:12px;margin:16px 0" />
 
 The single biggest body of work: OAuth into Linear's Agent Session protocol so an agent can read and write issues, projects, and cycles — and respond to delegations — with the whole tracker mirrored inside the shell. Webhook verification with an idempotency ledger, an inbox↔activity protocol, workspace-many connection management, and a camelCase kanban serialization fix all landed here across a dozen-plus PRs.
 
 ### 3.3 The git panel
 
-<img src="/images/writing/forking-houston-into-hawthorne/git-panel.png" alt="The git panel — status, log, branch, untracked files and diffs read live from the engine's git routes" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/git-panel.png" alt="The git panel — status, log, branch, untracked files and diffs read live from the engine's git routes" style="width:100%;border-radius:12px;margin:16px 0" />
 
 Status, log, branch, untracked files, and diffs — read live from new engine `/v1/git/*` routes. Because every agent run happens in a git worktree, the git panel is how you see what an agent actually changed, from frame one. (We also `git init` every new agent folder at boot, and added a migration that auto-fixes older agent dirs missing a `.git`, so the panel always has something to read.)
 
 ### 3.4 Checkpoints and timeline
 
-<img src="/images/writing/forking-houston-into-hawthorne/checkpoints.png" alt="Checkpoints — snapshot and restore an agent's .hawthorne state before a risky run" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/checkpoints.png" alt="Checkpoints — snapshot and restore an agent's .houston state before a risky run" style="width:100%;border-radius:12px;margin:16px 0" />
 
-**Checkpoints** snapshot an agent's `.hawthorne` state before a risky run, so you can restore it if a run goes sideways. **Timeline** is the cross-session record — every message, tool call, and result, newest first.
+**Checkpoints** snapshot an agent's `.houston` state before a risky run, so you can restore it if a run goes sideways. **Timeline** is the cross-session record — every message, tool call, and result, newest first.
 
-<img src="/images/writing/forking-houston-into-hawthorne/timeline.png" alt="Timeline — cross-session activity showing every message, tool call, and result, newest first" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/timeline.png" alt="Timeline — cross-session activity showing every message, tool call, and result, newest first" style="width:100%;border-radius:12px;margin:16px 0" />
 
 ### 3.5 Push pipeline, Life bridge, and more
 
@@ -136,6 +135,6 @@ The features are nice. The transplant — a brain that turns *work* into the nou
 
 But if you take one thing from this, take the method. **Eighty-nine reviewable commits in a hack camp is not a typing-speed story. It's a harness story.** Parallel agents in isolated worktrees, every feature behind a flag, every claim backed by interaction with a running system, and a governance layer that automates the honesty — that's the combination that lets you go genuinely fast without the output being slop.
 
-Houston watches agents run. Hawthorne builds, on its own. The harness is what made building it safe.
+Upstream Houston watches agents run. The fork builds, on its own. The harness is what made building it safe.
 
-<img src="/images/writing/forking-houston-into-hawthorne/command-palette.png" alt="The command palette — search agents, missions, and actions, and jump anywhere in the runtime" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/command-palette.png" alt="The command palette — search agents, missions, and actions, and jump anywhere in the runtime" style="width:100%;border-radius:12px;margin:16px 0" />
