@@ -45,6 +45,14 @@ const PUBLIC_API_PREFIXES = [
   // resolveAuth (Bearer Life JWT OR session cookie). It returns 401 when
   // neither is present, so it is not actually public.
   "/api/docs",
+  // Handoff queue (BRO-1415/BRO-1418): like /api/docs, the broomva CLI pushes
+  // handoffs and drives their lifecycle with a Bearer token and no session
+  // cookie. The proxy must let /api/handoffs, /api/handoffs/[id], and the SSE
+  // /api/handoffs/events through so the handler can self-authenticate via
+  // resolveAuth (Bearer Life JWT OR session cookie); it returns 401 when
+  // neither is present, so it is not actually public. (Missing this entry made
+  // every CLI push 307→/login — the redirect external SDK callers can't follow.)
+  "/api/handoffs",
   "/api/discovery",
   "/api/trust",
   "/api/marketplace",
@@ -213,10 +221,7 @@ function withSecurityHeaders(
   // origins get no CORS headers — the browser silently fails its end, which
   // is the standard posture.
   const origin = req.headers.get("origin");
-  if (
-    req.nextUrl.pathname.startsWith("/api/") &&
-    isAllowedOrigin(origin)
-  ) {
+  if (req.nextUrl.pathname.startsWith("/api/") && isAllowedOrigin(origin)) {
     applyCorsHeaders(res.headers, origin as string);
   }
 
@@ -255,9 +260,7 @@ function extractTenantSlug(req: NextRequest): string | null {
   const hostname = host.split(":")[0];
 
   // Match `<slug>.broomva.tech` or `<slug>.localhost`
-  const match = hostname.match(
-    /^([a-z0-9-]+)\.(broomva\.tech|localhost)$/i,
-  );
+  const match = hostname.match(/^([a-z0-9-]+)\.(broomva\.tech|localhost)$/i);
   if (!match) return null;
 
   const slug = match[1].toLowerCase();
