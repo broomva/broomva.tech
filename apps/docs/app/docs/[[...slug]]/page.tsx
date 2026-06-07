@@ -9,6 +9,13 @@ import {
 import { notFound } from "next/navigation";
 import type { ComponentType } from "react";
 
+type RuntimePageData = {
+  body: ComponentType<Record<string, unknown>>;
+  toc: Parameters<typeof DocsPage>[0]["toc"];
+  title: string;
+  description?: string;
+};
+
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
 }) {
@@ -16,12 +23,13 @@ export default async function Page(props: {
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  const MDX = page.data.body as unknown as ComponentType<Record<string, unknown>>;
+  const data = page.data as unknown as RuntimePageData;
+  const MDX = data.body;
 
   return (
-    <DocsPage toc={page.data.toc}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+    <DocsPage toc={data.toc}>
+      <DocsTitle>{data.title}</DocsTitle>
+      <DocsDescription>{data.description}</DocsDescription>
       <DocsBody>
         <MDX components={{ ...defaultMdxComponents }} />
       </DocsBody>
@@ -39,9 +47,10 @@ export async function generateMetadata(props: {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
+  const data = page.data as unknown as RuntimePageData;
 
   return {
-    title: page.data.title,
-    description: page.data.description,
+    title: data.title,
+    description: data.description,
   };
 }

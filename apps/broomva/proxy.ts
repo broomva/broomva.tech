@@ -24,6 +24,10 @@ const PUBLIC_PAGE_PREFIXES = [
   "/links",
   "/ingest",
   "/life",
+  // Public artifact sharing: route handlers still enforce row-level
+  // visibility. The proxy must let anonymous viewers reach them.
+  "/d/",
+  "/h/",
   "/.well-known",
 ] as const;
 
