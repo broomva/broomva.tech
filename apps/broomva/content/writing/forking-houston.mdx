@@ -2,7 +2,7 @@
 title: "Forking Houston: 89 commits, six agents, one hack camp"
 summary: "We took Houston — an MIT-licensed agent runtime — and grafted a new brain onto it. In a single hack camp the fork went 89 commits ahead of upstream: four net-new Rust crates, a full Linear integration, a feature-flag platform, a push pipeline. The features are the easy part to show. The real story is the method that produced them — autonomous agents working in parallel git worktrees under a governance harness that made the speed safe instead of reckless."
 date: 2026-06-06
-published: false
+published: true
 image: /images/writing/forking-houston/hero.png
 audio: /audio/writing/forking-houston.mp3
 tags:
@@ -69,9 +69,9 @@ This is what lets an agent merge an in-progress feature to `main` safely: it's d
 
 An agent that says "done" has proven nothing. So the whole inventory — and this post — is built on evidence captured from a *running* system, not from the diff.
 
-We booted the Rust engine locally, drove the UI through the browser via the non-Tauri fallback we built, and captured real screenshots and video against a fresh dev database. Surfaces that need external credentials (Linear OAuth, phone pairing) are shown honestly in their pre-connection state; the live-data surfaces show real engine responses. The mission board below is a live agent and mission, served by the engine:
+We booted the Rust engine locally, drove the UI through the browser via the non-Tauri fallback we built, and captured real screenshots and video against a fresh dev database. Surfaces that need external credentials (Linear OAuth, phone pairing) are shown honestly in their pre-connection state; the live-data surfaces show real engine responses. The mission board below — Running, Needs you, Done — is served live by the engine:
 
-<img src="/images/writing/forking-houston/mission-board.png" alt="The mission board — Running, Needs you, Done kanban columns with a live agent and mission served by the engine" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/mission-board.png" alt="The mission board — Running, Needs you, Done kanban columns served live by the engine" style="width:100%;border-radius:12px;margin:16px 0" />
 
 Reasoning is not validation. Interaction is. That single rule is the difference between a demo that works once and a feature you can stand behind.
 
