@@ -2135,6 +2135,13 @@ export const specDoc = pgTable(
     // Retention: TTL target + soft-delete tombstone (controller is Phase 2).
     expiresAt: timestamp("expiresAt"),
     deletedAt: timestamp("deletedAt"),
+    // Public sharing is orthogonal to content lifecycle. "published" above
+    // means current/active for the owner; visibility is the anonymous-read gate.
+    visibility: varchar("visibility", { enum: ["private", "public"] })
+      .notNull()
+      .default("private"),
+    publicAt: timestamp("publicAt"),
+    unpublishedAt: timestamp("unpublishedAt"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt")
       .notNull()
@@ -2146,6 +2153,11 @@ export const specDoc = pgTable(
       t.ownerId,
       t.createdAt,
     ),
+    SpecDoc_visibility_handle_idx: index("SpecDoc_visibility_handle_idx").on(
+      t.visibility,
+      t.handle,
+      t.version,
+    ),
     // Version uniqueness + latest-per-handle lookups, scoped per owner.
     SpecDoc_owner_handle_version_uq: uniqueIndex(
       "SpecDoc_owner_handle_version_uq",
@@ -2154,6 +2166,7 @@ export const specDoc = pgTable(
 );
 
 export type SpecDoc = InferSelectModel<typeof specDoc>;
+export type ArtifactVisibility = "private" | "public";
 export type SpecDocState = (typeof specDocStateEnum.enumValues)[number];
 export type SpecDocOrchState = (typeof specDocOrchStateEnum.enumValues)[number];
 export type SpecDocAltitude = (typeof specDocAltitudeEnum.enumValues)[number];
@@ -2287,6 +2300,12 @@ export const handoff = pgTable(
     completedAt: timestamp("completedAt"),
     expiresAt: timestamp("expiresAt"),
     deletedAt: timestamp("deletedAt"),
+    // Public sharing exposes only the handoff content, never the private queue.
+    visibility: varchar("visibility", { enum: ["private", "public"] })
+      .notNull()
+      .default("private"),
+    publicAt: timestamp("publicAt"),
+    unpublishedAt: timestamp("unpublishedAt"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt")
       .notNull()
@@ -2301,6 +2320,11 @@ export const handoff = pgTable(
     Handoff_owner_status_idx: index("Handoff_owner_status_idx").on(
       t.ownerId,
       t.status,
+    ),
+    Handoff_visibility_slug_idx: index("Handoff_visibility_slug_idx").on(
+      t.visibility,
+      t.slug,
+      t.version,
     ),
     Handoff_owner_slug_version_uq: uniqueIndex(
       "Handoff_owner_slug_version_uq",
@@ -2355,8 +2379,7 @@ export const handoffEvent = pgTable(
 );
 
 export type HandoffEvent = InferSelectModel<typeof handoffEvent>;
-export type HandoffEventType =
-  (typeof handoffEventTypeEnum.enumValues)[number];
+export type HandoffEventType = (typeof handoffEventTypeEnum.enumValues)[number];
 
 export const schema = { user, session, account, verification };
 

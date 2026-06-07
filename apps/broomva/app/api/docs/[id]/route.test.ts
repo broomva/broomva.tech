@@ -2,9 +2,11 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("@/lib/prompts/resolve-auth", () => ({ resolveAuth: vi.fn() }));
+vi.mock("@/lib/env", () => ({ env: { APP_URL: "" } }));
 vi.mock("@/lib/db/spec-doc-queries", () => ({
   getSpecDocForOwner: vi.fn(),
   setSpecDocState: vi.fn(),
+  setSpecDocVisibility: vi.fn(),
   restoreSpecDoc: vi.fn(),
   softDeleteSpecDoc: vi.fn(),
 }));
@@ -12,6 +14,7 @@ vi.mock("@/lib/db/spec-doc-queries", () => ({
 import {
   getSpecDocForOwner,
   restoreSpecDoc,
+  setSpecDocVisibility,
   setSpecDocState,
   softDeleteSpecDoc,
 } from "@/lib/db/spec-doc-queries";
@@ -21,6 +24,7 @@ import { DELETE, GET, PATCH } from "./route";
 const mockAuth = vi.mocked(resolveAuth);
 const mockGet = vi.mocked(getSpecDocForOwner);
 const mockSetState = vi.mocked(setSpecDocState);
+const mockSetVisibility = vi.mocked(setSpecDocVisibility);
 const mockRestore = vi.mocked(restoreSpecDoc);
 const mockSoftDelete = vi.mocked(softDeleteSpecDoc);
 
@@ -39,6 +43,7 @@ beforeEach(() => {
   mockAuth.mockReset();
   mockGet.mockReset();
   mockSetState.mockReset();
+  mockSetVisibility.mockReset();
   mockRestore.mockReset();
   mockSoftDelete.mockReset();
 });
@@ -68,6 +73,9 @@ describe("GET /api/docs/[id]", () => {
       ticketId: null,
       prNumber: null,
       sessionId: null,
+      visibility: "private",
+      publicAt: null,
+      unpublishedAt: null,
       expiresAt: null,
       deletedAt: null,
       createdAt: new Date("2026-06-01T00:00:00Z"),
@@ -107,6 +115,46 @@ describe("PATCH /api/docs/[id]", () => {
     expect(mockRestore).toHaveBeenCalledWith("doc-1", "owner-1");
     expect(mockSetState).not.toHaveBeenCalled();
     expect(await resp.json()).toEqual({ ok: true, state: "published" });
+  });
+
+  test("share → setSpecDocVisibility(public), owner-scoped, returns public URL", async () => {
+    mockAuth.mockResolvedValue({ userId: "owner-1", email: "a@b.com" });
+    mockSetVisibility.mockResolvedValue({
+      id: "doc-1",
+      visibility: "public",
+    } as never);
+    const resp = await PATCH(patchReq({ action: "share" }), params("doc-1"));
+    expect(resp.status).toBe(200);
+    expect(mockSetVisibility).toHaveBeenCalledWith(
+      "doc-1",
+      "owner-1",
+      "public",
+    );
+    expect(await resp.json()).toEqual({
+      ok: true,
+      visibility: "public",
+      publicUrl: "http://localhost/d/doc-1",
+    });
+  });
+
+  test("unshare → setSpecDocVisibility(private), owner-scoped", async () => {
+    mockAuth.mockResolvedValue({ userId: "owner-1", email: "a@b.com" });
+    mockSetVisibility.mockResolvedValue({
+      id: "doc-1",
+      visibility: "private",
+    } as never);
+    const resp = await PATCH(patchReq({ action: "unshare" }), params("doc-1"));
+    expect(resp.status).toBe(200);
+    expect(mockSetVisibility).toHaveBeenCalledWith(
+      "doc-1",
+      "owner-1",
+      "private",
+    );
+    expect(await resp.json()).toEqual({
+      ok: true,
+      visibility: "private",
+      publicUrl: null,
+    });
   });
 
   test("400 on an unknown action", async () => {

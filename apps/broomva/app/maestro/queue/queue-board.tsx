@@ -65,6 +65,7 @@ export function QueueBoard({ handoffs }: { handoffs: HandoffSummary[] }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedPublicId, setCopiedPublicId] = useState<string | null>(null);
   const [filter, setFilter] = useState<HandoffStatus | null>(null);
 
   const groups = groupQueue(handoffs);
@@ -92,6 +93,39 @@ export function QueueBoard({ handoffs }: { handoffs: HandoffSummary[] }) {
     }
   }
 
+  async function share(h: HandoffSummary, action: "share" | "unshare") {
+    setPendingId(h.id);
+    setError(null);
+    try {
+      const resp = await fetch(`/api/handoffs/${h.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const body = (await resp.json().catch(() => null)) as {
+        error?: string;
+        publicUrl?: string | null;
+      } | null;
+      if (!resp.ok) {
+        setError(body?.error ?? `Action failed (${resp.status})`);
+        return;
+      }
+      if (action === "share" && body?.publicUrl) {
+        await navigator.clipboard.writeText(body.publicUrl);
+        setCopiedPublicId(h.id);
+        setTimeout(
+          () => setCopiedPublicId((cur) => (cur === h.id ? null : cur)),
+          1500,
+        );
+      }
+      startTransition(() => router.refresh());
+    } catch {
+      setError("Network error — please retry.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   function action(
     a: "pick_up" | "complete" | "archive" | "requeue",
   ): RequestInit {
@@ -110,6 +144,15 @@ export function QueueBoard({ handoffs }: { handoffs: HandoffSummary[] }) {
     } catch {
       setError("Clipboard unavailable — open the handoff and copy manually.");
     }
+  }
+
+  async function copyPublicLink(h: HandoffSummary) {
+    await navigator.clipboard.writeText(`${window.location.origin}/h/${h.id}`);
+    setCopiedPublicId(h.id);
+    setTimeout(
+      () => setCopiedPublicId((cur) => (cur === h.id ? null : cur)),
+      1500,
+    );
   }
 
   if (handoffs.length === 0) {
@@ -196,7 +239,10 @@ export function QueueBoard({ handoffs }: { handoffs: HandoffSummary[] }) {
                 busy={pendingId === h.id}
                 confirming={confirmId === h.id}
                 copied={copiedId === h.id}
+                copiedPublic={copiedPublicId === h.id}
                 onCopy={() => copyPrompt(h)}
+                onCopyPublic={() => copyPublicLink(h)}
+                onShare={(a) => share(h, a)}
                 onAction={(a) => mutate(h.id, action(a))}
                 onConfirmDelete={() => setConfirmId(h.id)}
                 onCancelDelete={() => setConfirmId(null)}
@@ -215,7 +261,10 @@ function HandoffCard({
   busy,
   confirming,
   copied,
+  copiedPublic,
   onCopy,
+  onCopyPublic,
+  onShare,
   onAction,
   onConfirmDelete,
   onCancelDelete,
@@ -225,7 +274,10 @@ function HandoffCard({
   busy: boolean;
   confirming: boolean;
   copied: boolean;
+  copiedPublic: boolean;
   onCopy: () => void;
+  onCopyPublic: () => void;
+  onShare: (a: "share" | "unshare") => void;
   onAction: (a: "pick_up" | "complete" | "archive" | "requeue") => void;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
@@ -285,6 +337,15 @@ function HandoffCard({
             v{h.version}
           </span>
         ) : null}
+        <span
+          className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${
+            h.visibility === "public"
+              ? "border-[color:var(--ag-success)]/40 text-[color:var(--ag-success)]"
+              : "border-muted-foreground/30 text-muted-foreground"
+          }`}
+        >
+          {h.visibility === "public" ? "public" : "private"}
+        </span>
       </div>
 
       {h.tldr ? (
@@ -419,6 +480,26 @@ function HandoffCard({
                   Archive
                 </DropdownMenuItem>
               ) : null}
+              {h.visibility === "public" ? (
+                <>
+                  <DropdownMenuItem disabled={busy} onClick={onCopyPublic}>
+                    {copiedPublic ? "Copied public link" : "Copy public link"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={busy}
+                    onClick={() => onShare("unshare")}
+                  >
+                    Unshare content
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem
+                  disabled={busy}
+                  onClick={() => onShare("share")}
+                >
+                  {copiedPublic ? "Copied public link" : "Share content"}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={busy}

@@ -184,6 +184,24 @@ pub async fn handle_open(client: &BroomvaClient, id: &str) -> BroomvaResult<()> 
     Ok(())
 }
 
+/// Make a doc's content public and print the share URL.
+pub async fn handle_share(client: &BroomvaClient, id: &str) -> BroomvaResult<()> {
+    let resp = client.set_doc_visibility(id, true).await?;
+    print_kv("Visibility", &resp.visibility);
+    if let Some(url) = resp.public_url {
+        print_kv("Public URL", &url);
+    }
+    Ok(())
+}
+
+/// Revoke public access to a doc's content.
+pub async fn handle_unshare(client: &BroomvaClient, id: &str) -> BroomvaResult<()> {
+    let resp = client.set_doc_visibility(id, false).await?;
+    print_kv("Visibility", &resp.visibility);
+    println!("Unshared {id}");
+    Ok(())
+}
+
 /// Delete an owned doc.
 pub async fn handle_rm(client: &BroomvaClient, id: &str) -> BroomvaResult<()> {
     client.delete_doc(id).await?;

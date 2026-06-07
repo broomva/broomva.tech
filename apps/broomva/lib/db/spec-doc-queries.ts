@@ -16,6 +16,7 @@ import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db/client";
 import {
+  type ArtifactVisibility,
   type RuntimeTarget,
   type SpecDoc,
   type SpecDocOrchState,
@@ -27,6 +28,9 @@ import {
 
 /** Active states shown in the default list and superseded on re-publish. */
 const ACTIVE_STATES: SpecDocState[] = ["published", "draft"];
+
+/** States anonymous visitors may read when a doc is explicitly public. */
+const PUBLIC_STATES: SpecDocState[] = ["published", "draft"];
 
 /**
  * States shown on the Maestro board: active (published/draft) plus archived
@@ -246,6 +250,9 @@ const SUMMARY_COLUMNS = {
   orchState: specDoc.orchState,
   altitude: specDoc.altitude,
   dispatchCount: specDoc.dispatchCount,
+  visibility: specDoc.visibility,
+  publicAt: specDoc.publicAt,
+  unpublishedAt: specDoc.unpublishedAt,
   title: specDoc.title,
   sourceRepo: specDoc.sourceRepo,
   sourcePath: specDoc.sourcePath,
@@ -273,6 +280,79 @@ export async function listSpecDocs(ownerId: string): Promise<SpecDocSummary[]> {
     )
     .orderBy(desc(specDoc.createdAt))
     .limit(LIST_LIMIT);
+}
+
+/**
+ * Resolve a public doc from a `<ref>` that is either a stable handle or a
+ * legacy/standalone id. Public sharing exposes content only; ownership and
+ * Maestro state remain private.
+ */
+export async function resolvePublicSpecDoc(
+  ref: string,
+  version?: number,
+): Promise<SpecDoc | null> {
+  if (version != null) {
+    const [byId] = await db
+      .select()
+      .from(specDoc)
+      .where(
+        and(
+          eq(specDoc.id, ref),
+          eq(specDoc.version, version),
+          eq(specDoc.visibility, "public"),
+          inArray(specDoc.state, PUBLIC_STATES),
+          isNull(specDoc.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (byId) return byId;
+
+    const [pinned] = await db
+      .select()
+      .from(specDoc)
+      .where(
+        and(
+          eq(specDoc.handle, ref),
+          eq(specDoc.version, version),
+          eq(specDoc.visibility, "public"),
+          inArray(specDoc.state, PUBLIC_STATES),
+          isNull(specDoc.deletedAt),
+        ),
+      )
+      .limit(1);
+    return pinned ?? null;
+  }
+
+  // Public share URLs should prefer exact id resolution to avoid collisions
+  // between owner-scoped handles that happen to share the same slug.
+  const [byId] = await db
+    .select()
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.id, ref),
+        eq(specDoc.visibility, "public"),
+        inArray(specDoc.state, PUBLIC_STATES),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (byId) return byId;
+
+  const [latest] = await db
+    .select()
+    .from(specDoc)
+    .where(
+      and(
+        eq(specDoc.handle, ref),
+        eq(specDoc.visibility, "public"),
+        inArray(specDoc.state, PUBLIC_STATES),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .orderBy(desc(specDoc.version))
+    .limit(1);
+  return latest ?? null;
 }
 
 /**
@@ -366,6 +446,41 @@ export async function setSpecDocState(
     )
     .returning({ id: specDoc.id });
   return updated.length > 0;
+}
+
+/**
+ * Owner-scoped public-sharing toggle. Reversible and independent of archive /
+ * delete lifecycle: unsharing only removes anonymous access.
+ */
+export async function setSpecDocVisibility(
+  id: string,
+  ownerId: string,
+  visibility: ArtifactVisibility,
+): Promise<SpecDocSummary | null> {
+  const patch =
+    visibility === "public"
+      ? {
+          visibility,
+          publicAt: sql`now()` as never,
+          unpublishedAt: null,
+        }
+      : {
+          visibility,
+          unpublishedAt: sql`now()` as never,
+        };
+
+  const [updated] = await db
+    .update(specDoc)
+    .set(patch)
+    .where(
+      and(
+        eq(specDoc.id, id),
+        eq(specDoc.ownerId, ownerId),
+        isNull(specDoc.deletedAt),
+      ),
+    )
+    .returning(SUMMARY_COLUMNS);
+  return updated ?? null;
 }
 
 /**

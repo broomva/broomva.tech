@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 import {
   getSpecDocForOwner,
   restoreSpecDoc,
+  setSpecDocVisibility,
   setSpecDocState,
   softDeleteSpecDoc,
 } from "@/lib/db/spec-doc-queries";
+import { env } from "@/lib/env";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 /**
@@ -13,6 +15,11 @@ import { resolveAuth } from "@/lib/prompts/resolve-auth";
  * Owner-scoped: a doc owned by a different user (or missing) returns 404, so
  * callers cannot probe for existence.
  */
+
+function docUrl(request: NextRequest, ref: string): string {
+  const base = (env.APP_URL || new URL(request.url).origin).replace(/\/+$/, "");
+  return `${base}/d/${ref}`;
+}
 
 /** GET — metadata for one owned doc (excludes html body). */
 export async function GET(
@@ -32,7 +39,10 @@ export async function GET(
   return NextResponse.json(meta);
 }
 
-/** PATCH — lifecycle transition by id: `{ action: "archive" | "restore" }`. */
+/**
+ * PATCH — lifecycle / sharing transition by id:
+ * `{ action: "archive" | "restore" | "share" | "unshare" }`.
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -48,13 +58,34 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   const action = (body as { action?: unknown })?.action;
-  if (action !== "archive" && action !== "restore") {
+  if (
+    action !== "archive" &&
+    action !== "restore" &&
+    action !== "share" &&
+    action !== "unshare"
+  ) {
     return NextResponse.json(
-      { error: "action must be 'archive' or 'restore'" },
+      { error: "action must be 'archive', 'restore', 'share', or 'unshare'" },
       { status: 400 },
     );
   }
   const { id } = await params;
+  if (action === "share" || action === "unshare") {
+    const doc = await setSpecDocVisibility(
+      id,
+      auth.userId,
+      action === "share" ? "public" : "private",
+    );
+    if (!doc) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json({
+      ok: true,
+      visibility: doc.visibility,
+      publicUrl: action === "share" ? docUrl(request, doc.id) : null,
+    });
+  }
+
   // restore supersedes sibling active versions (one active per handle); archive
   // is a simple state set.
   const ok =

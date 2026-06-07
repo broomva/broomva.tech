@@ -335,6 +335,10 @@ pub enum DocsCommand {
     },
     /// Open a published document in the browser by handle or id.
     Open { id: String },
+    /// Make a document's content public by id.
+    Share { id: String },
+    /// Revoke public access to a document by id.
+    Unshare { id: String },
     /// Delete a published document by id.
     Rm { id: String },
 }
@@ -390,6 +394,16 @@ pub enum HandoffCommand {
     },
     /// Re-queue a handoff by <file|id> (back to waiting).
     Requeue {
+        /// Handoff file path or queue id.
+        target: String,
+    },
+    /// Make a handoff's content public by <file|id>.
+    Share {
+        /// Handoff file path or queue id.
+        target: String,
+    },
+    /// Revoke public access to a handoff by <file|id>.
+    Unshare {
         /// Handoff file path or queue id.
         target: String,
     },
@@ -716,6 +730,8 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
                 version,
             } => docs::handle_get(&client, &reference, output.as_deref(), version, format).await,
             DocsCommand::Open { id } => docs::handle_open(&client, &id).await,
+            DocsCommand::Share { id } => docs::handle_share(&client, &id).await,
+            DocsCommand::Unshare { id } => docs::handle_unshare(&client, &id).await,
             DocsCommand::Rm { id } => docs::handle_rm(&client, &id).await,
         },
         Command::Handoff { action } => match action {
@@ -748,6 +764,8 @@ pub async fn run_command(cli: Cli) -> BroomvaResult<()> {
             HandoffCommand::Done { target } => handoff::handle_done(&client, &target).await,
             HandoffCommand::Archive { target } => handoff::handle_archive(&client, &target).await,
             HandoffCommand::Requeue { target } => handoff::handle_requeue(&client, &target).await,
+            HandoffCommand::Share { target } => handoff::handle_share(&client, &target).await,
+            HandoffCommand::Unshare { target } => handoff::handle_unshare(&client, &target).await,
             HandoffCommand::Rm { target } => handoff::handle_rm(&client, &target).await,
         },
         Command::Prompts { action } => match action {

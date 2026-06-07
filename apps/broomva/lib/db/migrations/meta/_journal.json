@@ -533,6 +533,13 @@
       "when": 1780697010456,
       "tag": "0075_pretty_toad_men",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1780837744000,
+      "tag": "0076_public_artifact_visibility",
+      "breakpoints": true
     }
   ]
 }
