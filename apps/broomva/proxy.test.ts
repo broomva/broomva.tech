@@ -37,8 +37,6 @@ describe("proxy public artifact routes", () => {
     const response = await proxy(req("/maestro"));
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe(
-      "https://broomva.tech/login",
-    );
+    expect(response.headers.get("location")).toBe("https://broomva.tech/login");
   });
 });
