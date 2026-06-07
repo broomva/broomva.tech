@@ -66,6 +66,12 @@ const nextConfig: NextConfig = {
       // Writing canonicalization — /blog folds into /writing
       { source: "/blog", destination: "/writing", permanent: true },
       { source: "/blog/:slug", destination: "/writing/:slug", permanent: true },
+      // Renamed post — the "hawthorne" codename was dropped
+      {
+        source: "/writing/forking-houston-into-hawthorne",
+        destination: "/writing/forking-houston",
+        permanent: true,
+      },
     ];
   },
 
