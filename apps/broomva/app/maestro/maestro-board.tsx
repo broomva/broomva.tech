@@ -74,6 +74,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedPublicId, setCopiedPublicId] = useState<string | null>(null);
   const [filter, setFilter] = useState<SpecDocOrchState | null>(null);
 
   const groups = groupByOrchState(docs);
@@ -111,6 +112,39 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
     };
   }
 
+  async function share(d: SpecDocSummary, action: "share" | "unshare") {
+    setPendingId(d.id);
+    setError(null);
+    try {
+      const resp = await fetch(`/api/docs/${d.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const body = (await resp.json().catch(() => null)) as {
+        error?: string;
+        publicUrl?: string | null;
+      } | null;
+      if (!resp.ok) {
+        setError(body?.error ?? `Action failed (${resp.status})`);
+        return;
+      }
+      if (action === "share" && body?.publicUrl) {
+        await navigator.clipboard.writeText(body.publicUrl);
+        setCopiedPublicId(d.id);
+        setTimeout(
+          () => setCopiedPublicId((cur) => (cur === d.id ? null : cur)),
+          1500,
+        );
+      }
+      startTransition(() => router.refresh());
+    } catch {
+      setError("Network error — please retry.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   // Copy the continue-prompt to the clipboard (the phone → Omnara paste path).
   async function copyPrompt(d: SpecDocSummary) {
     try {
@@ -120,6 +154,15 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
     } catch {
       setError("Clipboard unavailable — open the spec and copy manually.");
     }
+  }
+
+  async function copyPublicLink(d: SpecDocSummary) {
+    await navigator.clipboard.writeText(`${window.location.origin}/d/${d.id}`);
+    setCopiedPublicId(d.id);
+    setTimeout(
+      () => setCopiedPublicId((cur) => (cur === d.id ? null : cur)),
+      1500,
+    );
   }
 
   if (active === 0 && archived.length === 0) {
@@ -156,6 +199,15 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
               draft
             </span>
           ) : null}
+          <span
+            className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${
+              d.visibility === "public"
+                ? "border-[color:var(--ag-success)]/40 text-[color:var(--ag-success)]"
+                : "border-muted-foreground/30 text-muted-foreground"
+            }`}
+          >
+            {d.visibility === "public" ? "public" : "private"}
+          </span>
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
@@ -232,6 +284,33 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
                 >
                   {d.state === "archived" ? "Restore" : "Archive"}
                 </DropdownMenuItem>
+                {d.visibility === "public" ? (
+                  <>
+                    <DropdownMenuItem
+                      disabled={busy}
+                      onClick={() => copyPublicLink(d)}
+                    >
+                      {copiedPublicId === d.id
+                        ? "Copied public link"
+                        : "Copy public link"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={busy}
+                      onClick={() => share(d, "unshare")}
+                    >
+                      Unshare content
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem
+                    disabled={busy}
+                    onClick={() => share(d, "share")}
+                  >
+                    {copiedPublicId === d.id
+                      ? "Copied public link"
+                      : "Share content"}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   disabled={busy}

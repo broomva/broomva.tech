@@ -1,8 +1,14 @@
 import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { PublicArtifactShell } from "@/components/public-artifact/public-artifact-shell";
+import { PublicSpecFrame } from "@/components/public-artifact/public-spec-frame";
 import { DocFrame } from "@/components/spec-doc/doc-frame";
 import { getSafeSession } from "@/lib/auth";
-import { resolveSpecDocForViewer } from "@/lib/db/spec-doc-queries";
+import { config } from "@/lib/config";
+import {
+  resolvePublicSpecDoc,
+  resolveSpecDocForViewer,
+} from "@/lib/db/spec-doc-queries";
 
 /**
  * /d/[ref]/v/[version] — gated viewer pinned to a specific version of a handle.
@@ -20,18 +26,31 @@ export default async function PinnedDocViewerPage({
     fetchOptions: { headers: await headers() },
   });
   const userId = session?.user?.id;
-  if (!userId) {
-    redirect(`/login?next=${encodeURIComponent(`/d/${ref}/v/${version}`)}`);
-  }
-
   if (!Number.isInteger(v) || v < 1) {
     notFound();
   }
 
-  const doc = await resolveSpecDocForViewer(ref, userId, v);
-  if (!doc) {
-    notFound();
+  if (userId) {
+    const owned = await resolveSpecDocForViewer(ref, userId, v);
+    if (owned) {
+      return <DocFrame doc={owned} pinnedVersion={v} />;
+    }
   }
 
-  return <DocFrame doc={doc} pinnedVersion={v} />;
+  const doc = await resolvePublicSpecDoc(ref, v);
+  if (!doc) notFound();
+
+  const publicUrl = `${config.appUrl.replace(/\/+$/, "")}/d/${doc.id}/v/${v}`;
+  return (
+    <PublicArtifactShell
+      kind="Spec"
+      title={doc.title}
+      version={doc.version}
+      sharedAt={doc.publicAt}
+      sourcePath={doc.sourcePath}
+      publicUrl={publicUrl}
+    >
+      <PublicSpecFrame title={doc.title} html={doc.html} />
+    </PublicArtifactShell>
+  );
 }

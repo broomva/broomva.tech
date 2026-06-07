@@ -532,6 +532,8 @@ pub struct DocSummary {
     #[serde(default)]
     pub state: Option<String>,
     #[serde(default)]
+    pub visibility: Option<String>,
+    #[serde(default)]
     pub title: String,
     #[serde(default)]
     pub url: String,
@@ -539,6 +541,16 @@ pub struct DocSummary {
     pub source_path: Option<String>,
     #[serde(default)]
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShareArtifactResponse {
+    pub ok: bool,
+    #[serde(default)]
+    pub visibility: String,
+    #[serde(default)]
+    pub public_url: Option<String>,
 }
 
 /// Response of `GET /api/docs/[ref]/content` — the html body + metadata.
@@ -649,6 +661,8 @@ pub struct HandoffSummary {
     pub version: i64,
     #[serde(default)]
     pub status: String,
+    #[serde(default)]
+    pub visibility: String,
     #[serde(default)]
     pub title: String,
     #[serde(default)]

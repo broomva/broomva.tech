@@ -17,6 +17,7 @@ import { nanoid } from "nanoid";
 import { db } from "@/lib/db/client";
 import { densifyDailyBuckets } from "@/lib/db/handoff-buckets";
 import {
+  type ArtifactVisibility,
   type Handoff,
   type HandoffEventType,
   type HandoffStatus,
@@ -33,6 +34,9 @@ const ACTIVE_STATUSES: HandoffStatus[] = [
   "done",
   "archived",
 ];
+
+/** Public handoff pages expose content only; archived/deleted/superseded stay private. */
+const PUBLIC_STATUSES: HandoffStatus[] = ["queued", "in_progress", "done"];
 
 /** Statuses superseded on re-push of the same slug. */
 const SUPERSEDABLE_STATUSES: HandoffStatus[] = ["queued", "in_progress"];
@@ -224,6 +228,9 @@ const SUMMARY_COLUMNS = {
   completedAt: handoff.completedAt,
   expiresAt: handoff.expiresAt,
   deletedAt: handoff.deletedAt,
+  visibility: handoff.visibility,
+  publicAt: handoff.publicAt,
+  unpublishedAt: handoff.unpublishedAt,
   createdAt: handoff.createdAt,
   updatedAt: handoff.updatedAt,
 } as const;
@@ -268,6 +275,76 @@ export async function getHandoffForOwner(
   return row ?? null;
 }
 
+/**
+ * Resolve a public handoff by id or slug. Public sharing exposes the markdown
+ * body as a standalone content page; the private queue remains owner-gated.
+ */
+export async function resolvePublicHandoff(
+  ref: string,
+  version?: number,
+): Promise<Handoff | null> {
+  if (version != null) {
+    const [byId] = await db
+      .select()
+      .from(handoff)
+      .where(
+        and(
+          eq(handoff.id, ref),
+          eq(handoff.version, version),
+          eq(handoff.visibility, "public"),
+          inArray(handoff.status, PUBLIC_STATUSES),
+          isNull(handoff.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (byId) return byId;
+
+    const [pinned] = await db
+      .select()
+      .from(handoff)
+      .where(
+        and(
+          eq(handoff.slug, ref),
+          eq(handoff.version, version),
+          eq(handoff.visibility, "public"),
+          inArray(handoff.status, PUBLIC_STATUSES),
+          isNull(handoff.deletedAt),
+        ),
+      )
+      .limit(1);
+    return pinned ?? null;
+  }
+
+  const [byId] = await db
+    .select()
+    .from(handoff)
+    .where(
+      and(
+        eq(handoff.id, ref),
+        eq(handoff.visibility, "public"),
+        inArray(handoff.status, PUBLIC_STATUSES),
+        isNull(handoff.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (byId) return byId;
+
+  const [latest] = await db
+    .select()
+    .from(handoff)
+    .where(
+      and(
+        eq(handoff.slug, ref),
+        eq(handoff.visibility, "public"),
+        inArray(handoff.status, PUBLIC_STATUSES),
+        isNull(handoff.deletedAt),
+      ),
+    )
+    .orderBy(desc(handoff.version))
+    .limit(1);
+  return latest ?? null;
+}
+
 /** The status transition a PATCH requests → its target status + event type. */
 const TRANSITIONS: Record<
   string,
@@ -285,6 +362,41 @@ export function isHandoffAction(value: unknown): value is HandoffAction {
   // Object.hasOwn (not `in`) — `in` walks the prototype chain, so a payload of
   // `{ action: "constructor" }` would otherwise pass the guard and 500 later.
   return typeof value === "string" && Object.hasOwn(TRANSITIONS, value);
+}
+
+/**
+ * Owner-scoped public-sharing toggle. Reversible and independent from queue
+ * status transitions.
+ */
+export async function setHandoffVisibility(
+  id: string,
+  ownerId: string,
+  visibility: ArtifactVisibility,
+): Promise<HandoffSummary | null> {
+  const patch =
+    visibility === "public"
+      ? {
+          visibility,
+          publicAt: sql`now()` as never,
+          unpublishedAt: null,
+        }
+      : {
+          visibility,
+          unpublishedAt: sql`now()` as never,
+        };
+
+  const [updated] = await db
+    .update(handoff)
+    .set(patch)
+    .where(
+      and(
+        eq(handoff.id, id),
+        eq(handoff.ownerId, ownerId),
+        isNull(handoff.deletedAt),
+      ),
+    )
+    .returning(SUMMARY_COLUMNS);
+  return updated ?? null;
 }
 
 /**

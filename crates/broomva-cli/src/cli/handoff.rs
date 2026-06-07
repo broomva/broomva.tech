@@ -9,6 +9,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
 
+use chrono::Utc;
+
 use crate::api::BroomvaClient;
 use crate::api::types::{HandoffSource, PushHandoffRequest};
 use crate::cli::handoff_frontmatter as fm;
@@ -219,6 +221,29 @@ fn write_back_status(path: &Path, status: &str) -> BroomvaResult<()> {
     Ok(())
 }
 
+/// Write public-sharing fields into a handoff file's frontmatter.
+fn write_back_visibility(
+    path: &Path,
+    visibility: &str,
+    public_url: Option<&str>,
+) -> BroomvaResult<()> {
+    let parsed = fm::parse(&fs::read_to_string(path)?);
+    let mut front = parsed.frontmatter;
+    fm::set_str(&mut front, "visibility", visibility);
+    match public_url {
+        Some(url) => {
+            fm::set_str(&mut front, "public_url", url);
+            fm::remove(&mut front, "unpublished_at");
+        }
+        None => {
+            fm::remove(&mut front, "public_url");
+            fm::set_str(&mut front, "unpublished_at", &Utc::now().to_rfc3339());
+        }
+    }
+    fs::write(path, fm::render(&front, &parsed.body))?;
+    Ok(())
+}
+
 /// Apply a queue transition by `<file|id>`, mirroring the new status into the
 /// file's frontmatter when a file is given (the file is the control surface).
 async fn transition(
@@ -255,6 +280,32 @@ pub async fn handle_archive(client: &BroomvaClient, target: &str) -> BroomvaResu
 /// Re-queue a handoff (back to the waiting queue).
 pub async fn handle_requeue(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
     transition(client, target, "requeue", "queued", "Re-queued").await
+}
+
+/// Make a handoff's content public without exposing the queue.
+pub async fn handle_share(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
+    let (id, file) = resolve_target(target)?;
+    let resp = client.set_handoff_visibility(&id, true).await?;
+    if let Some(p) = file {
+        write_back_visibility(&p, &resp.visibility, resp.public_url.as_deref())?;
+    }
+    print_kv("Visibility", &resp.visibility);
+    if let Some(url) = resp.public_url {
+        print_kv("Public URL", &url);
+    }
+    Ok(())
+}
+
+/// Revoke public access to a handoff's content without changing queue status.
+pub async fn handle_unshare(client: &BroomvaClient, target: &str) -> BroomvaResult<()> {
+    let (id, file) = resolve_target(target)?;
+    let resp = client.set_handoff_visibility(&id, false).await?;
+    if let Some(p) = file {
+        write_back_visibility(&p, &resp.visibility, None)?;
+    }
+    print_kv("Visibility", &resp.visibility);
+    println!("Unshared {id}");
+    Ok(())
 }
 
 /// Delete a handoff by `<file|id>`. When a file, clears the queue reference

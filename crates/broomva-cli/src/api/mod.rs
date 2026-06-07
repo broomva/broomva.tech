@@ -238,8 +238,7 @@ impl BroomvaClient {
         reference: &str,
         version: Option<i64>,
     ) -> BroomvaResult<DocContentResponse> {
-        let mut req =
-            self.request(Method::GET, &format!("/api/docs/{reference}/content"));
+        let mut req = self.request(Method::GET, &format!("/api/docs/{reference}/content"));
         if let Some(v) = version {
             req = req.query(&[("version", v.to_string())]);
         }
@@ -256,6 +255,22 @@ impl BroomvaClient {
             .await?;
         self.check_response(resp).await?;
         Ok(())
+    }
+
+    /// Share or unshare an owned doc's content publicly.
+    pub async fn set_doc_visibility(
+        &self,
+        id: &str,
+        public: bool,
+    ) -> BroomvaResult<ShareArtifactResponse> {
+        let action = if public { "share" } else { "unshare" };
+        let resp = self
+            .request(Method::PATCH, &format!("/api/docs/{id}"))
+            .json(&serde_json::json!({ "action": action }))
+            .send()
+            .await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
     }
 
     // ── Handoff Queue (BRO-1415) ──
@@ -301,6 +316,22 @@ impl BroomvaClient {
             .await?;
         self.check_response(resp).await?;
         Ok(())
+    }
+
+    /// Share or unshare an owned handoff's content publicly.
+    pub async fn set_handoff_visibility(
+        &self,
+        id: &str,
+        public: bool,
+    ) -> BroomvaResult<ShareArtifactResponse> {
+        let action = if public { "share" } else { "unshare" };
+        let resp = self
+            .request(Method::PATCH, &format!("/api/handoffs/{id}"))
+            .json(&serde_json::json!({ "action": action }))
+            .send()
+            .await?;
+        let resp = self.check_response(resp).await?;
+        Ok(resp.json().await?)
     }
 
     // ── Skills ──
