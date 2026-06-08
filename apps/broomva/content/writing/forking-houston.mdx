@@ -27,7 +27,7 @@ links:
     url: "https://broomva.tech/d/xdNidzmdjKqd"
 ---
 
-<video src="/images/writing/forking-houston/hero.mp4" poster="/images/writing/forking-houston/poster.png" controls autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+<video src="/images/writing/forking-houston/hero.mp4" poster="/images/writing/forking-houston/poster.png" controls autoplay muted playsinline preload="metadata" style="width:100%;border-radius:12px;margin:24px 0"></video>
 
 <style>{`
   .fh-evidence {
@@ -79,7 +79,7 @@ We forked [Houston](https://github.com/gethouston/houston) — a proven, MIT-lic
 
 In one hack camp the fork went **89 commits ahead of upstream**: **1,118 files changed, +101,906 / −21,310 lines, four net-new Rust crates, the engine grew from 17 to 21 crates.** Six agents were building in parallel the whole time.
 
-Those are the numbers everyone quotes. They are not the point. The point is *how* a number like that happens without the result being garbage — and that comes down to a method you can copy. This post is that method, illustrated by the features it produced. Every screenshot below is a real frame from a running build; the hero video above is a short tour of the live UI.
+Those are the numbers everyone quotes. They are not the point. The point is *how* a number like that happens without the result being garbage — and that comes down to a method you can copy. This post is that method, illustrated by the features it produced. Every screenshot below is a real frame from a running build; the hero video above is a narrated walkthrough — the method, the product surface, and a live, git-verified screen capture of the running fork.
 
 <div className="fh-evidence">
   <h3>Dogfood evidence captured from the running fork</h3>
