@@ -21,9 +21,57 @@ links:
     url: "https://github.com/broomva/houston"
   - label: "bstack — the portable agent harness"
     url: "https://github.com/broomva/bstack"
+  - label: "Fork inventory — feature showcase"
+    url: "https://broomva.tech/d/hackathon-fork-inventory"
+  - label: "Fork validation pass"
+    url: "https://broomva.tech/d/xdNidzmdjKqd"
 ---
 
 <video src="/images/writing/forking-houston/hero.mp4" poster="/images/writing/forking-houston/poster.png" controls autoplay loop muted playsinline style="width:100%;border-radius:12px;margin:24px 0"></video>
+
+<style>{`
+  .fh-evidence {
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 12px;
+    padding: 18px;
+    margin: 22px 0;
+    background: #f8fafc;
+  }
+  .fh-evidence h3 { margin: 0 0 8px; font-size: 1.05rem; }
+  .fh-evidence p { margin: 0 0 14px; color: #475569; }
+  .fh-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .fh-pills li {
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #fff;
+    font-size: 0.85rem;
+    color: #334155;
+  }
+  .fh-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px;
+    margin: 18px 0 28px;
+  }
+  .fh-feature-card {
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 10px;
+    padding: 16px;
+    background: #fff;
+  }
+  .fh-feature-card h3 { margin: 0 0 8px; font-size: 1rem; }
+  .fh-feature-card p { margin: 0; color: #475569; font-size: 0.92rem; line-height: 1.5; }
+  .fh-feature-card .fh-tag {
+    display: inline-block;
+    margin-bottom: 10px;
+    color: #0f766e;
+    font-size: 0.78rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+`}</style>
 
 ## TL;DR
 
@@ -31,7 +79,22 @@ We forked [Houston](https://github.com/gethouston/houston) — a proven, MIT-lic
 
 In one hack camp the fork went **89 commits ahead of upstream**: **1,118 files changed, +101,906 / −21,310 lines, four net-new Rust crates, the engine grew from 17 to 21 crates.** Six agents were building in parallel the whole time.
 
-Those are the numbers everyone quotes. They are not the point. The point is *how* a number like that happens without the result being garbage — and that comes down to a method you can copy. This post is that method, illustrated by the features it produced. Every screenshot below is a real frame from a running build; the hero video above is a short narrated tour of the live UI.
+Those are the numbers everyone quotes. They are not the point. The point is *how* a number like that happens without the result being garbage — and that comes down to a method you can copy. This post is that method, illustrated by the features it produced. Every screenshot below is a real frame from a running build; the hero video above is a short tour of the live UI.
+
+<div className="fh-evidence">
+  <h3>Dogfood evidence captured from the running fork</h3>
+  <p>For this update I booted the Rust engine locally, pointed the web shell at it, seeded a realistic Hack Camp Fork workspace, and interacted with the app through the browser. The captures now show real data rather than blank feature frames.</p>
+  <ul className="fh-pills">
+    <li>2 workspace agents</li>
+    <li>3 activity cards</li>
+    <li>6 mirrored Linear issues</li>
+    <li>8 timeline events</li>
+    <li>3 checkpoints</li>
+    <li>Dirty git repo with status + diff surface</li>
+  </ul>
+</div>
+
+<img src="/images/writing/forking-houston/contact-sheet.png" alt="Contact sheet of the dogfood pass showing activity, Linear, Git, Timeline, Checkpoints, and Advanced settings with real content" style="width:100%;border-radius:12px;margin:16px 0" />
 
 ## 1. Why fork at all
 
@@ -69,7 +132,7 @@ This is what lets an agent merge an in-progress feature to `main` safely: it's d
 
 An agent that says "done" has proven nothing. So the whole inventory — and this post — is built on evidence captured from a *running* system, not from the diff.
 
-We booted the Rust engine locally, drove the UI through the browser via the non-Tauri fallback we built, and captured real screenshots and video against a fresh dev database. Surfaces that need external credentials (Linear OAuth, phone pairing) are shown honestly in their pre-connection state; the live-data surfaces show real engine responses. The mission board below — Running, Needs you, Done — is served live by the engine:
+We booted the Rust engine locally, drove the UI through the browser via the non-Tauri fallback we built, and captured real screenshots and video against a fresh dev database. The Linear board is seeded through the same on-disk projection the engine reads after OAuth sync; the Git, Timeline, Checkpoints, Advanced settings, and activity board are all live engine/UI surfaces. The mission board below — Running, Needs you, Done — is served live by the engine:
 
 <img src="/images/writing/forking-houston/mission-board.png" alt="The mission board — Running, Needs you, Done kanban columns served live by the engine" style="width:100%;border-radius:12px;margin:16px 0" />
 
@@ -96,9 +159,9 @@ The engine grew from 17 to 21 crates. Four are genuinely new code, confirmed by 
 
 ### 3.2 Linear integration — the largest cluster
 
-<img src="/images/writing/forking-houston/connect-linear.png" alt="Connect Linear — OAuth into Linear's Agent Session protocol to read and write issues, projects, and cycles" style="width:100%;border-radius:12px;margin:16px 0" />
+<img src="/images/writing/forking-houston/linear-board.png" alt="Linear board — six mirrored Broomva Labs issues grouped by workflow state from the running tracker projection" style="width:100%;border-radius:12px;margin:16px 0" />
 
-The single biggest body of work: OAuth into Linear's Agent Session protocol so an agent can read and write issues, projects, and cycles — and respond to delegations — with the whole tracker mirrored inside the shell. Webhook verification with an idempotency ledger, an inbox↔activity protocol, workspace-many connection management, and a camelCase kanban serialization fix all landed here across a dozen-plus PRs.
+The single biggest body of work: OAuth into Linear's Agent Session protocol so an agent can read and write issues, projects, and cycles — and respond to delegations — with the whole tracker mirrored inside the shell. Webhook verification with an idempotency ledger, an inbox↔activity protocol, workspace-many connection management, and a camelCase kanban serialization fix all landed here across a dozen-plus PRs. In the dogfood pass the board rendered six mirrored issues from the running engine path, not a static mock.
 
 ### 3.3 The git panel
 
@@ -117,6 +180,75 @@ Status, log, branch, untracked files, and diffs — read live from new engine `/
 ### 3.5 Push pipeline, Life bridge, and more
 
 The rest of the 89 commits: a **push/tunnel notification pipeline** (a Notify frame on the engine↔relay protocol, a `NotifyFrame` as an APNs/FCM loc-key for device-side localization, a notify dispatcher mapping session status to notifications); a **Life Runtime bridge** routed through the session manager; an **interactive AskUserQuestion** over MCP, disallowed in headless mode; and a **Capacitor mobile shell** plus a native cross-review tool for second opinions.
+
+## 3.6 What the fork adds, feature by feature
+
+The full card inventory lives in the [feature showcase](https://broomva.tech/d/hackathon-fork-inventory), but the short version is below. These are not abstract roadmap boxes; the screenshots and GIF in this post were captured from the running fork.
+
+<img src="/images/writing/forking-houston/feature-tour.gif" alt="Animated dogfood tour through Activity, Linear, Git, Timeline, and Checkpoints in the running fork" style="width:100%;border-radius:12px;margin:16px 0" />
+
+<div className="fh-feature-grid">
+  <div className="fh-feature-card">
+    <span className="fh-tag">Orchestration</span>
+    <h3>Work becomes the noun</h3>
+    <p>The V2 brain graft models Initiative → Project → Task → Cycle → Run so agents attach to work, not the other way around.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Parallelism</span>
+    <h3>Worktree fanout</h3>
+    <p>Multiple agents can build in isolated git worktrees while the main tree stays clean and reviewable.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Tracker</span>
+    <h3>Linear inside the shell</h3>
+    <p>OAuth, issue mirroring, workflow-state kanban, webhook replay safety, and workspace-many connection support.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Evidence</span>
+    <h3>Git panel</h3>
+    <p>Read-only status, log, branch, untracked files, and diffs from engine git routes for each agent folder.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Memory</span>
+    <h3>Timeline</h3>
+    <p>Cross-session activity shows messages, tool calls, file changes, and final results newest-first.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Rollback</span>
+    <h3>Checkpoints</h3>
+    <p>Snapshot and restore agent state before risky edits, then recover without manual filesystem surgery.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Controls</span>
+    <h3>Advanced flags</h3>
+    <p>Worktrees, context meter, Git, Timeline, Checkpoints, tile layout, Claude Code hooks, and slash skills ship dark by default.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Runtime</span>
+    <h3>Life bridge</h3>
+    <p>A new Rust client speaks to the Life runtime over a Unix socket, proving the Stage-0 bridge end to end.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Mobile</span>
+    <h3>Push and pairing path</h3>
+    <p>The engine relay gained notification frames and a mobile shell track; the local dogfood run shows pairing disabled when no relay exists.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Agent UX</span>
+    <h3>Command palette</h3>
+    <p>Jump across actions, agents, and recent missions without treating the sidebar as the only navigation surface.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Safety</span>
+    <h3>Governed merge flow</h3>
+    <p>PRs carry CI, review gates, clean-tree discipline, and empirical validation receipts instead of trust-me summaries.</p>
+  </div>
+  <div className="fh-feature-card">
+    <span className="fh-tag">Cloud track</span>
+    <h3>Sandbox foundation</h3>
+    <p>Cloud sandbox specs, benchmark harnesses, and container runbooks exist on feature branches while the desktop fork keeps shipping.</p>
+  </div>
+</div>
 
 ## 4. The numbers, verified against git
 
