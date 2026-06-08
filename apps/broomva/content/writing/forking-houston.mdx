@@ -48,45 +48,6 @@ links:
     font-size: 0.85rem;
     color: #334155;
   }
-  .fh-ledger {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-    gap: 14px;
-    margin: 18px 0 10px;
-  }
-  .fh-ledger-card {
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    border-radius: 12px;
-    padding: 18px;
-    background: #fff;
-  }
-  .fh-ledger-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-  .fh-ledger-head h3 { margin: 0; font-size: 1rem; }
-  .fh-ledger-head .fh-count {
-    color: #0f766e;
-    font-size: 0.72rem;
-    font-weight: 650;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .fh-ledger-card ul { margin: 0; padding: 0; list-style: none; }
-  .fh-ledger-card li {
-    position: relative;
-    padding: 6px 0 6px 18px;
-    color: #475569;
-    font-size: 0.88rem;
-    line-height: 1.45;
-    border-top: 1px dashed rgba(15, 23, 42, 0.07);
-  }
-  .fh-ledger-card li:first-child { border-top: none; }
-  .fh-ledger-card li::before { content: "▸"; position: absolute; left: 0; color: #0ea5e9; }
-  .fh-ledger-card code {
-    background: rgba(15, 23, 42, 0.05);
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 0.82em;
-  }
-  .fh-ledger-note { color: #64748b; font-size: 0.9rem; margin: 6px 0 0; }
 `}</style>
 
 ## TL;DR
@@ -116,10 +77,13 @@ Those are the numbers everyone quotes. They are not the point. The point is *how
 
 Before the story of *how*, here's the *what* — everything the fork carries that upstream Houston doesn't, grouped by surface. The interactive version lives in the [fork inventory showcase](https://broomva.tech/d/hackathon-fork-inventory); the complete ledger is below. Every line is a real commit against `gethouston/houston`.
 
-<div className="fh-ledger">
-  <div className="fh-ledger-card">
-    <div className="fh-ledger-head"><h3>🛰️ Agent cloud infrastructure</h3><span className="fh-count">5 new engine surfaces</span></div>
-    <ul>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:20px 0 12px">
+  <div style="border:1px solid rgba(127,127,127,0.28);border-radius:12px;padding:16px 18px;background:rgba(127,127,127,0.06)">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <strong style="font-size:1.02rem">🛰️ Agent cloud infrastructure</strong>
+      <span style="font-size:0.72rem;font-weight:650;text-transform:uppercase;letter-spacing:0.04em;opacity:0.6">5 new engine surfaces</span>
+    </div>
+    <ul style="margin:0;padding-left:18px;line-height:1.5;font-size:0.9rem">
       <li><code>engine/houston-sandbox</code> — the isolation control plane: one <code>SandboxPolicy</code> over a pluggable backend registry</li>
       <li><code>cloud/</code> — the managed-deploy vision (one engine per host, many tenants)</li>
       <li><code>always-on/</code> — Dockerfile · compose · systemd · railway.json</li>
@@ -127,9 +91,12 @@ Before the story of *how*, here's the *what* — everything the fork carries tha
       <li><code>.dockerignore</code> + a PaaS <code>$PORT</code> entrypoint, so one image deploys anywhere</li>
     </ul>
   </div>
-  <div className="fh-ledger-card">
-    <div className="fh-ledger-head"><h3>🧠 Orchestration brain</h3><span className="fh-count">the V2 graft</span></div>
-    <ul>
+  <div style="border:1px solid rgba(127,127,127,0.28);border-radius:12px;padding:16px 18px;background:rgba(127,127,127,0.06)">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <strong style="font-size:1.02rem">🧠 Orchestration brain</strong>
+      <span style="font-size:0.72rem;font-weight:650;text-transform:uppercase;letter-spacing:0.04em;opacity:0.6">the V2 graft</span>
+    </div>
+    <ul style="margin:0;padding-left:18px;line-height:1.5;font-size:0.9rem">
       <li><code>engine/houston-orchestration</code> — the new brain crate</li>
       <li>fs-canonical object model: Initiative → Project → Task → Cycle → Run</li>
       <li>markdown + YAML frontmatter on disk; the child-edge is authoritative</li>
@@ -137,18 +104,24 @@ Before the story of *how*, here's the *what* — everything the fork carries tha
       <li>11 / 11 ported unit tests green</li>
     </ul>
   </div>
-  <div className="fh-ledger-card">
-    <div className="fh-ledger-head"><h3>🔗 New engine crates</h3><span className="fh-count">vs upstream</span></div>
-    <ul>
+  <div style="border:1px solid rgba(127,127,127,0.28);border-radius:12px;padding:16px 18px;background:rgba(127,127,127,0.06)">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <strong style="font-size:1.02rem">🔗 New engine crates</strong>
+      <span style="font-size:0.72rem;font-weight:650;text-transform:uppercase;letter-spacing:0.04em;opacity:0.6">vs upstream</span>
+    </div>
+    <ul style="margin:0;padding-left:18px;line-height:1.5;font-size:0.9rem">
       <li><code>houston-linear</code> — full Linear tracker: OAuth, webhooks, mirror pipeline, in-shell board view</li>
       <li><code>houston-life</code> — a Life-runtime client over a Unix socket (Stage-0 end-to-end)</li>
       <li><code>houston-claude-hooks</code> — install / uninstall hooks in Claude Code</li>
       <li>Native cross-review: a <code>request_review</code> tool + a second-opinion doctrine</li>
     </ul>
   </div>
-  <div className="fh-ledger-card">
-    <div className="fh-ledger-head"><h3>✨ Product & UX</h3><span className="fh-count">integrated, non-technical</span></div>
-    <ul>
+  <div style="border:1px solid rgba(127,127,127,0.28);border-radius:12px;padding:16px 18px;background:rgba(127,127,127,0.06)">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <strong style="font-size:1.02rem">✨ Product & UX</strong>
+      <span style="font-size:0.72rem;font-weight:650;text-transform:uppercase;letter-spacing:0.04em;opacity:0.6">integrated, non-technical</span>
+    </div>
+    <ul style="margin:0;padding-left:18px;line-height:1.5;font-size:0.9rem">
       <li>Context-enablement wizard — import + synthesize workspace/user context</li>
       <li>"Help me write this" guided writer</li>
       <li>Advanced feature-flag surface: context meter, git panel, timeline, tile layout, checkpoints, worktrees</li>
@@ -157,18 +130,24 @@ Before the story of *how*, here's the *what* — everything the fork carries tha
       <li>i18n en/es/pt across the new surfaces</li>
     </ul>
   </div>
-  <div className="fh-ledger-card">
-    <div className="fh-ledger-head"><h3>🛠️ Tooling & skills</h3><span className="fh-count">developer surface</span></div>
-    <ul>
+  <div style="border:1px solid rgba(127,127,127,0.28);border-radius:12px;padding:16px 18px;background:rgba(127,127,127,0.06)">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <strong style="font-size:1.02rem">🛠️ Tooling & skills</strong>
+      <span style="font-size:0.72rem;font-weight:650;text-transform:uppercase;letter-spacing:0.04em;opacity:0.6">developer surface</span>
+    </div>
+    <ul style="margin:0;padding-left:18px;line-height:1.5;font-size:0.9rem">
       <li>A 32-doc <code>knowledge-base/</code> (cloud-compute, cross-review, advanced-*, tracker…)</li>
       <li>Built-in skill <code>write-my-job-description</code> + a slash-skills catalog</li>
       <li><code>houston-doctor.sh</code> · <code>check-cli-deps.sh</code> · <code>lint-banned-patterns.sh</code> · <code>cargo-sync-check.sh</code></li>
       <li>bun (from pnpm) · Biome · a PR CI workflow · a husky pre-commit hook</li>
     </ul>
   </div>
-  <div className="fh-ledger-card">
-    <div className="fh-ledger-head"><h3>⚖️ Governance & provenance</h3><span className="fh-count">friendly-fork hygiene</span></div>
-    <ul>
+  <div style="border:1px solid rgba(127,127,127,0.28);border-radius:12px;padding:16px 18px;background:rgba(127,127,127,0.06)">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <strong style="font-size:1.02rem">⚖️ Governance & provenance</strong>
+      <span style="font-size:0.72rem;font-weight:650;text-transform:uppercase;letter-spacing:0.04em;opacity:0.6">friendly-fork hygiene</span>
+    </div>
+    <ul style="margin:0;padding-left:18px;line-height:1.5;font-size:0.9rem">
       <li><code>BROOMVA.md</code> attribution + a friendly-fork policy</li>
       <li><code>PROVENANCE.md</code> · <code>HOUSTON-LINEAGE.md</code> · <code>NOTICE</code></li>
       <li>A <code>.control/</code> metalayer · CLAUDE.md · AGENTS.md</li>
@@ -178,7 +157,7 @@ Before the story of *how*, here's the *what* — everything the fork carries tha
   </div>
 </div>
 
-<p className="fh-ledger-note">That's the inventory. The rest of this post is the method that produced it — without the result being garbage.</p>
+<p style="opacity:0.75;font-size:0.95rem">That's the inventory. The rest of this post is the method that produced it — without the result being garbage.</p>
 
 ## 1. Why fork at all
 
