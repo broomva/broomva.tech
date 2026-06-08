@@ -48,29 +48,45 @@ links:
     font-size: 0.85rem;
     color: #334155;
   }
-  .fh-feature-grid {
+  .fh-ledger {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 12px;
-    margin: 18px 0 28px;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 14px;
+    margin: 18px 0 10px;
   }
-  .fh-feature-card {
+  .fh-ledger-card {
     border: 1px solid rgba(15, 23, 42, 0.12);
-    border-radius: 10px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 18px;
     background: #fff;
   }
-  .fh-feature-card h3 { margin: 0 0 8px; font-size: 1rem; }
-  .fh-feature-card p { margin: 0; color: #475569; font-size: 0.92rem; line-height: 1.5; }
-  .fh-feature-card .fh-tag {
-    display: inline-block;
-    margin-bottom: 10px;
+  .fh-ledger-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .fh-ledger-head h3 { margin: 0; font-size: 1rem; }
+  .fh-ledger-head .fh-count {
     color: #0f766e;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 650;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
+  .fh-ledger-card ul { margin: 0; padding: 0; list-style: none; }
+  .fh-ledger-card li {
+    position: relative;
+    padding: 6px 0 6px 18px;
+    color: #475569;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    border-top: 1px dashed rgba(15, 23, 42, 0.07);
+  }
+  .fh-ledger-card li:first-child { border-top: none; }
+  .fh-ledger-card li::before { content: "▸"; position: absolute; left: 0; color: #0ea5e9; }
+  .fh-ledger-card code {
+    background: rgba(15, 23, 42, 0.05);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.82em;
+  }
+  .fh-ledger-note { color: #64748b; font-size: 0.9rem; margin: 6px 0 0; }
 `}</style>
 
 ## TL;DR
@@ -95,6 +111,74 @@ Those are the numbers everyone quotes. They are not the point. The point is *how
 </div>
 
 <img src="/images/writing/forking-houston/contact-sheet.png" alt="Contact sheet of the dogfood pass showing activity, Linear, Git, Timeline, Checkpoints, and Advanced settings with real content" style="width:100%;border-radius:12px;margin:16px 0" />
+
+## The full additions ledger
+
+Before the story of *how*, here's the *what* — everything the fork carries that upstream Houston doesn't, grouped by surface. The interactive version lives in the [fork inventory showcase](https://broomva.tech/d/hackathon-fork-inventory); the complete ledger is below. Every line is a real commit against `gethouston/houston`.
+
+<div className="fh-ledger">
+  <div className="fh-ledger-card">
+    <div className="fh-ledger-head"><h3>🛰️ Agent cloud infrastructure</h3><span className="fh-count">5 new engine surfaces</span></div>
+    <ul>
+      <li><code>engine/houston-sandbox</code> — the isolation control plane: one <code>SandboxPolicy</code> over a pluggable backend registry</li>
+      <li><code>cloud/</code> — the managed-deploy vision (one engine per host, many tenants)</li>
+      <li><code>always-on/</code> — Dockerfile · compose · systemd · railway.json</li>
+      <li><code>knowledge-base/cloud-compute.md</code> — the two-planes (relay vs compute) model</li>
+      <li><code>.dockerignore</code> + a PaaS <code>$PORT</code> entrypoint, so one image deploys anywhere</li>
+    </ul>
+  </div>
+  <div className="fh-ledger-card">
+    <div className="fh-ledger-head"><h3>🧠 Orchestration brain</h3><span className="fh-count">the V2 graft</span></div>
+    <ul>
+      <li><code>engine/houston-orchestration</code> — the new brain crate</li>
+      <li>fs-canonical object model: Initiative → Project → Task → Cycle → Run</li>
+      <li>markdown + YAML frontmatter on disk; the child-edge is authoritative</li>
+      <li>multi-stage <code>blocked_by</code>; a <code>RunRef</code> worktree per run</li>
+      <li>11 / 11 ported unit tests green</li>
+    </ul>
+  </div>
+  <div className="fh-ledger-card">
+    <div className="fh-ledger-head"><h3>🔗 New engine crates</h3><span className="fh-count">vs upstream</span></div>
+    <ul>
+      <li><code>houston-linear</code> — full Linear tracker: OAuth, webhooks, mirror pipeline, in-shell board view</li>
+      <li><code>houston-life</code> — a Life-runtime client over a Unix socket (Stage-0 end-to-end)</li>
+      <li><code>houston-claude-hooks</code> — install / uninstall hooks in Claude Code</li>
+      <li>Native cross-review: a <code>request_review</code> tool + a second-opinion doctrine</li>
+    </ul>
+  </div>
+  <div className="fh-ledger-card">
+    <div className="fh-ledger-head"><h3>✨ Product & UX</h3><span className="fh-count">integrated, non-technical</span></div>
+    <ul>
+      <li>Context-enablement wizard — import + synthesize workspace/user context</li>
+      <li>"Help me write this" guided writer</li>
+      <li>Advanced feature-flag surface: context meter, git panel, timeline, tile layout, checkpoints, worktrees</li>
+      <li>Mobile: a Capacitor native shell + session handoff</li>
+      <li>A tunnel / Notify push pipeline (APNs/FCM loc-keys)</li>
+      <li>i18n en/es/pt across the new surfaces</li>
+    </ul>
+  </div>
+  <div className="fh-ledger-card">
+    <div className="fh-ledger-head"><h3>🛠️ Tooling & skills</h3><span className="fh-count">developer surface</span></div>
+    <ul>
+      <li>A 32-doc <code>knowledge-base/</code> (cloud-compute, cross-review, advanced-*, tracker…)</li>
+      <li>Built-in skill <code>write-my-job-description</code> + a slash-skills catalog</li>
+      <li><code>houston-doctor.sh</code> · <code>check-cli-deps.sh</code> · <code>lint-banned-patterns.sh</code> · <code>cargo-sync-check.sh</code></li>
+      <li>bun (from pnpm) · Biome · a PR CI workflow · a husky pre-commit hook</li>
+    </ul>
+  </div>
+  <div className="fh-ledger-card">
+    <div className="fh-ledger-head"><h3>⚖️ Governance & provenance</h3><span className="fh-count">friendly-fork hygiene</span></div>
+    <ul>
+      <li><code>BROOMVA.md</code> attribution + a friendly-fork policy</li>
+      <li><code>PROVENANCE.md</code> · <code>HOUSTON-LINEAGE.md</code> · <code>NOTICE</code></li>
+      <li>A <code>.control/</code> metalayer · CLAUDE.md · AGENTS.md</li>
+      <li>A daily sync-upstream GitHub Action, so the fork never drifts</li>
+      <li><code>docs/specs/*.html</code> · <code>docs/handoffs/</code></li>
+    </ul>
+  </div>
+</div>
+
+<p className="fh-ledger-note">That's the inventory. The rest of this post is the method that produced it — without the result being garbage.</p>
 
 ## 1. Why fork at all
 
@@ -181,74 +265,13 @@ Status, log, branch, untracked files, and diffs — read live from new engine `/
 
 The rest of the 89 commits: a **push/tunnel notification pipeline** (a Notify frame on the engine↔relay protocol, a `NotifyFrame` as an APNs/FCM loc-key for device-side localization, a notify dispatcher mapping session status to notifications); a **Life Runtime bridge** routed through the session manager; an **interactive AskUserQuestion** over MCP, disallowed in headless mode; and a **Capacitor mobile shell** plus a native cross-review tool for second opinions.
 
-## 3.6 What the fork adds, feature by feature
+### 3.6 The running fork, in motion
 
-The full card inventory lives in the [feature showcase](https://broomva.tech/d/hackathon-fork-inventory), but the short version is below. These are not abstract roadmap boxes; the screenshots and GIF in this post were captured from the running fork.
+The [additions ledger](#the-full-additions-ledger) at the top of this post is the static list; this is the same fork moving. The clip below is a single unbroken capture from the running build — one pass through Activity, Linear, Git, Timeline, and Checkpoints, stitched from the same dogfood session the screenshots above came from.
 
 <img src="/images/writing/forking-houston/feature-tour.gif" alt="Animated dogfood tour through Activity, Linear, Git, Timeline, and Checkpoints in the running fork" style="width:100%;border-radius:12px;margin:16px 0" />
 
-<div className="fh-feature-grid">
-  <div className="fh-feature-card">
-    <span className="fh-tag">Orchestration</span>
-    <h3>Work becomes the noun</h3>
-    <p>The V2 brain graft models Initiative → Project → Task → Cycle → Run so agents attach to work, not the other way around.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Parallelism</span>
-    <h3>Worktree fanout</h3>
-    <p>Multiple agents can build in isolated git worktrees while the main tree stays clean and reviewable.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Tracker</span>
-    <h3>Linear inside the shell</h3>
-    <p>OAuth, issue mirroring, workflow-state kanban, webhook replay safety, and workspace-many connection support.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Evidence</span>
-    <h3>Git panel</h3>
-    <p>Read-only status, log, branch, untracked files, and diffs from engine git routes for each agent folder.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Memory</span>
-    <h3>Timeline</h3>
-    <p>Cross-session activity shows messages, tool calls, file changes, and final results newest-first.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Rollback</span>
-    <h3>Checkpoints</h3>
-    <p>Snapshot and restore agent state before risky edits, then recover without manual filesystem surgery.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Controls</span>
-    <h3>Advanced flags</h3>
-    <p>Worktrees, context meter, Git, Timeline, Checkpoints, tile layout, Claude Code hooks, and slash skills ship dark by default.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Runtime</span>
-    <h3>Life bridge</h3>
-    <p>A new Rust client speaks to the Life runtime over a Unix socket, proving the Stage-0 bridge end to end.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Mobile</span>
-    <h3>Push and pairing path</h3>
-    <p>The engine relay gained notification frames and a mobile shell track; the local dogfood run shows pairing disabled when no relay exists.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Agent UX</span>
-    <h3>Command palette</h3>
-    <p>Jump across actions, agents, and recent missions without treating the sidebar as the only navigation surface.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Safety</span>
-    <h3>Governed merge flow</h3>
-    <p>PRs carry CI, review gates, clean-tree discipline, and empirical validation receipts instead of trust-me summaries.</p>
-  </div>
-  <div className="fh-feature-card">
-    <span className="fh-tag">Cloud track</span>
-    <h3>Sandbox foundation</h3>
-    <p>Cloud sandbox specs, benchmark harnesses, and container runbooks exist on feature branches while the desktop fork keeps shipping.</p>
-  </div>
-</div>
+Nothing in it is a mockup: the board is served by the engine, the diffs are read from real `/v1/git/*` routes, and the timeline replays actual tool calls. That is the whole point of §2.3 — you are looking at interaction with a running system, not a render of one. For the complete itemized inventory, see the additions ledger near the top of this post or the [interactive showcase](https://broomva.tech/d/hackathon-fork-inventory).
 
 ## 4. The numbers, verified against git
 
