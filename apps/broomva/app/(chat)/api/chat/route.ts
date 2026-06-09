@@ -694,6 +694,60 @@ function extractUserMessageText(message: ChatMessage): string {
 }
 
 /**
+ * Build the single user-message string lifegw forwards to the LLM,
+ * including recent conversation context.
+ *
+ * Multi-turn (BRO-chat): lifed's arcan dispatch is per-turn and sends
+ * only this one `content` string to the model — it does NOT carry the
+ * conversation history (the LLM `messages` array is `[system, user]`).
+ * broomva.tech owns the thread (DB for authed users, client-supplied
+ * `prevMessages` for anonymous), so we are the right layer to supply
+ * context: we prepend a compact role-labelled transcript of the recent
+ * turns so the model can actually "remember" earlier messages.
+ *
+ * `previousMessages` is already trimmed to the last few turns upstream
+ * (`prepareRequestContext`). When empty (first turn) the output is just
+ * the current user text, byte-for-byte identical to the old behaviour.
+ *
+ * NOTE: this flattens roles into one message — a pragmatic adaptation to
+ * lifed's string-only dispatch interface. The ideal is structured
+ * history through the lifegw WS protocol (a lifed-side follow-up); until
+ * then this delivers working multi-turn without a critical-service
+ * protocol change.
+ */
+function buildLifegwUserText(
+  previousMessages: ChatMessage[],
+  currentMessage: ChatMessage,
+): string {
+  const current = extractUserMessageText(currentMessage);
+
+  const priorTurns: string[] = [];
+  for (const msg of previousMessages) {
+    if (msg.id === currentMessage.id) {
+      continue;
+    }
+    const text = extractUserMessageText(msg);
+    if (!text) {
+      continue;
+    }
+    const label = msg.role === "assistant" ? "Assistant" : "User";
+    priorTurns.push(`${label}: ${text}`);
+  }
+
+  if (priorTurns.length === 0) {
+    return current;
+  }
+
+  return [
+    "Conversation so far (most recent last):",
+    priorTurns.join("\n"),
+    "",
+    "Continue the conversation. The user's new message:",
+    current,
+  ].join("\n");
+}
+
+/**
  * Build the lifegw-routed response stream. Wraps the canonical iterator
  * from `dispatchViaLifegw` in a `createUIMessageStream` so we can:
  *
@@ -714,6 +768,7 @@ async function createLifegwBackedChatStream({
   messageId,
   chatId,
   userMessage,
+  previousMessages,
   selectedModelId,
   userId,
   anonymousSessionId,
@@ -728,6 +783,9 @@ async function createLifegwBackedChatStream({
   messageId: string;
   chatId: string;
   userMessage: ChatMessage;
+  /** Recent prior turns (trimmed upstream) — prepended as conversation
+   *  context so lifed's per-turn dispatch can "remember" earlier turns. */
+  previousMessages: ChatMessage[];
   selectedModelId: AppModelId;
   userId: string | null;
   /** Anonymous-session id — populated when `userId` is null. Used as the
@@ -766,7 +824,7 @@ async function createLifegwBackedChatStream({
     ? { kind: "user" as const, id: userId }
     : { kind: "anon" as const, id: anonymousSessionId ?? chatId };
 
-  const userMessageText = extractUserMessageText(userMessage);
+  const userMessageText = buildLifegwUserText(previousMessages, userMessage);
 
   const stream = createUIMessageStream<ChatMessage>({
     execute: async ({ writer: dataStream }) => {
@@ -980,6 +1038,7 @@ async function* wrapWithProgress(
 async function executeChatRequest({
   chatId,
   userMessage,
+  previousMessages,
   selectedModelId,
   userId,
   anonymousSessionId,
@@ -991,6 +1050,7 @@ async function executeChatRequest({
 }: {
   chatId: string;
   userMessage: ChatMessage;
+  previousMessages: ChatMessage[];
   selectedModelId: AppModelId;
   userId: string | null;
   anonymousSessionId: string | null;
@@ -1040,6 +1100,7 @@ async function executeChatRequest({
     messageId,
     chatId,
     userMessage,
+    previousMessages,
     selectedModelId,
     userId,
     anonymousSessionId,
@@ -1322,6 +1383,7 @@ export async function POST(request: NextRequest) {
     return await executeChatRequest({
       chatId,
       userMessage,
+      previousMessages: contextResult.previousMessages,
       selectedModelId,
       userId,
       anonymousSessionId: anonymousSession?.id ?? null,
