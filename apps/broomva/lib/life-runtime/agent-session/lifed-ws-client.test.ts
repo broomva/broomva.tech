@@ -228,6 +228,45 @@ describe("decodeAgentEvent — ERROR", () => {
   });
 });
 
+// Regression: lifegw's `event_to_outbound_frame` emits the SHORT enum
+// form (`TOKEN`/`FINISH`/`ERROR`) while the proto canonical JSON form is
+// the prefixed `AGENT_EVENT_KIND_*`. Before normalization these short
+// frames fell through to the `unknown_kind` warning branch, so TOKEN text
+// never rendered and FINISH never terminated the stream — every turn
+// streamed nothing then died at the 30s frame-deadline. The decoder now
+// accepts both forms.
+describe("decodeAgentEvent — short-form wire kinds (lifegw compat)", () => {
+  it("decodes a short-form TOKEN frame", () => {
+    const f = frame("TOKEN", { text: "hi" });
+    expect(decodeAgentEvent(f, ctx)).toEqual({ kind: "token", delta: "hi" });
+  });
+
+  it("recognizes a short-form FINISH frame as terminal", () => {
+    const f = frame("FINISH", { reason: "stop" });
+    expect(decodeAgentEvent(f, ctx)).toMatchObject({
+      kind: "finish",
+      reason: "stop",
+    });
+  });
+
+  it("decodes a short-form ERROR frame", () => {
+    const f = frame("ERROR", { code: "lifed.x", message: "boom" });
+    expect(decodeAgentEvent(f, ctx)).toEqual({
+      kind: "error",
+      code: "lifed.x",
+      message: "boom",
+    });
+  });
+
+  it("still treats a genuinely unknown kind as a warning", () => {
+    const f = frame("NONSENSE", {});
+    expect(decodeAgentEvent(f, ctx)).toMatchObject({
+      kind: "warning",
+      code: "lifed-ws.unknown_kind",
+    });
+  });
+});
+
 describe("decodeAgentEvent — HIBERNATE", () => {
   it("decodes a HIBERNATE frame into a warning with code 'lifed.hibernate'", () => {
     const f = frame("AGENT_EVENT_KIND_HIBERNATE", {});

@@ -976,7 +976,21 @@ function decodeAgentEvent(
   frame: Extract<OutboundFrame, { kind: "agent_event" }>,
   ctx: AgentStreamInput,
 ): AgentEvent | null {
-  const kind = frame.agent_kind;
+  // Normalize the wire kind. The proto canonical JSON form is the
+  // fully-qualified enum name (`AGENT_EVENT_KIND_TOKEN`), which this
+  // switch matches. lifegw's `event_to_outbound_frame`, however, has
+  // historically emitted the short form (`TOKEN`, `FINISH`, `ERROR`).
+  // A short-form frame used to fall through to the `unknown_kind`
+  // `warning` branch below — which is silently collected onto message
+  // metadata and never recognized as terminal. The net effect: TOKEN
+  // text never rendered AND the FINISH frame never ended the stream, so
+  // every turn streamed nothing and then died at the 30s frame-deadline.
+  // Accept both forms (Postel's law) so a producer-side kind-format
+  // change can never again silently break rendering + termination.
+  const rawKind = frame.agent_kind ?? "";
+  const kind = rawKind.startsWith("AGENT_EVENT_KIND_")
+    ? rawKind
+    : `AGENT_EVENT_KIND_${rawKind}`;
   const payload = (frame.record.payload ?? {}) as Record<string, unknown>;
 
   switch (kind) {
