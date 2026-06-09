@@ -341,3 +341,80 @@ describe("LifedWsAgentSessionClient — per-turn close-after-finish parity", () 
     expect(events[events.length - 1].event.kind).toBe("finish");
   });
 });
+
+/**
+ * A WS fake that emits TOKEN + FINISH and then NEVER closes the socket —
+ * modelling lifed's real per-turn behaviour (the fan-out sender stays
+ * attached after a single-turn FINISH, so the WS is not server-closed).
+ * The harness `FakeWebSocket` auto-closes on script exhaustion, which
+ * masked this; in production it caused the stream to hang ~30s after a
+ * complete answer and append a spurious `frame-deadline` error.
+ */
+class NeverClosesAfterFinishFake {
+  readyState = 0;
+  private handlers: FakeWsHandlers = {};
+
+  constructor() {
+    queueMicrotask(() => {
+      this.readyState = 1;
+      this.handlers.open?.();
+    });
+  }
+
+  addEventListener<K extends keyof FakeWsHandlers>(
+    event: K,
+    h: NonNullable<FakeWsHandlers[K]>,
+  ): void {
+    // biome-ignore lint/suspicious/noExplicitAny: handler union
+    (this.handlers as any)[event] = h;
+  }
+
+  send(_data: string): void {
+    queueMicrotask(() => {
+      if (this.readyState !== 1) return;
+      this.handlers.message?.({
+        data: JSON.stringify({
+          kind: "agent_event",
+          seq_no: "1",
+          record: { sequence: 1, at: new Date().toISOString(), kind: "TOKEN", payload: { text: "hi" } },
+          agent_kind: "AGENT_EVENT_KIND_TOKEN",
+        }),
+      });
+      this.handlers.message?.({
+        data: JSON.stringify({
+          kind: "agent_event",
+          seq_no: "2",
+          record: { sequence: 2, at: new Date().toISOString(), kind: "FINISH", payload: { finish_reason: "stop" } },
+          agent_kind: "AGENT_EVENT_KIND_FINISH",
+        }),
+      });
+      // Intentionally NO close() — the socket stays open forever.
+    });
+  }
+
+  close(_code = 1000, _reason = ""): void {
+    this.readyState = 3;
+  }
+}
+
+describe("LifedWsAgentSessionClient — per-turn terminates on FINISH without server close", () => {
+  it("completes the iterator on FINISH even when the WS never closes", async () => {
+    const wsFactory: WebSocketFactory = () =>
+      new NeverClosesAfterFinishFake() as unknown as ReturnType<WebSocketFactory>;
+    const client = new LifedWsAgentSessionClient({
+      baseUrl: "https://fake.lifegw.test",
+      webSocketFactory: wsFactory,
+      fetchFn: (async () => new Response("OK")) as typeof fetch,
+    });
+
+    // Without the per-turn break-on-finish fix this `for await` (inside
+    // drainStream) would never resolve — the test would hang to timeout.
+    const events = await drainStream(client, "never-closes-after-finish");
+
+    expect(events.some((e) => e.event.kind === "token")).toBe(true);
+    const finishes = events.filter((e) => e.event.kind === "finish");
+    expect(finishes).toHaveLength(1);
+    expect(events.filter((e) => e.event.kind === "error")).toHaveLength(0);
+    expect(events[events.length - 1].event.kind).toBe("finish");
+  });
+});

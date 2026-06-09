@@ -604,6 +604,15 @@ export class LifedWsAgentSessionClient implements AgentSessionClient {
               at: frame.record.at ?? new Date().toISOString(),
               event: decoded,
             };
+            // Per-turn contract (this method): FINISH is the
+            // terminal-and-last event. lifed does not reliably close the
+            // WS after a per-turn FINISH (the fan-out sender stays
+            // attached), so continuing to read would block until the
+            // client-side frame deadline (~30s) and append a spurious
+            // error AFTER a fully-delivered answer. Stop as soon as the
+            // terminal finish is delivered. (Multi-turn treats FINISH as a
+            // turn boundary and is handled separately in streamMultiTurn.)
+            if (decoded.kind === "finish") break;
           }
         } else if (frame.kind === "closing") {
           // server is about to close the stream (Spec C₃ §6.5). Don't
