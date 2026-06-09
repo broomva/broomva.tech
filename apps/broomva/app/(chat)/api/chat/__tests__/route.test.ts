@@ -469,6 +469,62 @@ describe("POST /api/chat — anonymous flow", () => {
     expect(arcanGuard.resolveArcanEndpoints).not.toHaveBeenCalled();
   });
 
+  it("prepends recent conversation context to the lifegw user message (multi-turn)", async () => {
+    const streamCalls: FakeOpts["streamCalls"] = [];
+    __setSessionClientFactoryForTests(() => makeFakeClient({ streamCalls }));
+
+    const chatId = "22222222-2222-2222-2222-222222222222";
+    const priorUser = { ...makeChatMessage("My code word is ARCANGEL."), id: "prev-u" };
+    const priorAssistant = {
+      id: "prev-a",
+      role: "assistant" as const,
+      parts: [{ type: "text" as const, text: "Got it — ARCANGEL." }],
+      metadata: {
+        createdAt: new Date(),
+        parentMessageId: "prev-u",
+        selectedModel: ANON_MODEL,
+        activeStreamId: null,
+      },
+    };
+
+    const resp = await POST(
+      makeRequest({
+        id: chatId,
+        message: makeChatMessage("What is my code word?"),
+        prevMessages: [priorUser, priorAssistant],
+      }),
+    );
+    expect(resp.status).toBe(200);
+    await drainBody(resp);
+
+    // The content lifegw forwards to the LLM carries the prior turns as
+    // labelled context plus the current message — so the model can
+    // "remember" earlier turns despite lifed's per-turn dispatch.
+    expect(streamCalls).toHaveLength(1);
+    const sent = streamCalls![0].userMessage;
+    expect(sent).toContain("User: My code word is ARCANGEL.");
+    expect(sent).toContain("Assistant: Got it — ARCANGEL.");
+    expect(sent).toContain("What is my code word?");
+  });
+
+  it("sends only the current message when there is no prior context", async () => {
+    const streamCalls: FakeOpts["streamCalls"] = [];
+    __setSessionClientFactoryForTests(() => makeFakeClient({ streamCalls }));
+
+    const resp = await POST(
+      makeRequest({
+        id: "33333333-3333-3333-3333-333333333333",
+        message: makeChatMessage("Just one message"),
+        prevMessages: [],
+      }),
+    );
+    expect(resp.status).toBe(200);
+    await drainBody(resp);
+
+    // First turn: byte-for-byte the bare user text (no transcript wrapper).
+    expect(streamCalls![0].userMessage).toBe("Just one message");
+  });
+
   it("rejects anonymous request when model is not in ANONYMOUS_LIMITS", async () => {
     __setSessionClientFactoryForTests(() => makeFakeClient({}));
     const req = makeRequest({
