@@ -469,6 +469,42 @@ describe("POST /api/chat — anonymous flow", () => {
     expect(arcanGuard.resolveArcanEndpoints).not.toHaveBeenCalled();
   });
 
+  it("stamps assistant metadata on the stream (message-metadata chunks)", async () => {
+    __setSessionClientFactoryForTests(() => makeFakeClient({}));
+
+    const userMessage = makeChatMessage("Hello", ANON_MODEL);
+    const resp = await POST(
+      makeRequest({
+        id: "44444444-4444-4444-4444-444444444444",
+        message: userMessage,
+        prevMessages: [],
+      }),
+    );
+    expect(resp.status).toBe(200);
+
+    const body = await drainBody(resp);
+    const metadataChunks = body
+      .split("\n")
+      .filter((line) => line.startsWith("data: ") && !line.includes("[DONE]"))
+      .map((line) => JSON.parse(line.slice("data: ".length)))
+      .filter((chunk) => chunk.type === "message-metadata");
+
+    // The route wrapper owns message-metadata emission (the canonical
+    // translator deliberately does not) — without these chunks the
+    // client's live assistant message has no parentMessageId and
+    // lib/stores/with-threads.ts renders consecutive turns as version
+    // siblings.
+    expect(metadataChunks.length).toBeGreaterThanOrEqual(2);
+
+    const first = metadataChunks[0].messageMetadata;
+    expect(first.parentMessageId).toBe(userMessage.id);
+    expect(first.selectedModel).toBe(ANON_MODEL);
+
+    const last = metadataChunks.at(-1).messageMetadata;
+    expect(last.parentMessageId).toBe(userMessage.id);
+    expect(last.activeStreamId).toBeNull();
+  });
+
   it("prepends recent conversation context to the lifegw user message (multi-turn)", async () => {
     const streamCalls: FakeOpts["streamCalls"] = [];
     __setSessionClientFactoryForTests(() => makeFakeClient({ streamCalls }));
