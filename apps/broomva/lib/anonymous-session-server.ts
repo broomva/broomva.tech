@@ -42,6 +42,16 @@ export async function setAnonymousSession(
     maxAge: ANONYMOUS_LIMITS.SESSION_DURATION,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
+    // Deliberately NOT httpOnly: the client reads this cookie via
+    // document.cookie (anonymous-session-client.ts getAnonymousSession →
+    // useGetCredits) to render the remaining-credits banner, and the
+    // client created it non-httpOnly in the first place
+    // (AnonymousSessionInit). With httpOnly the server's per-message
+    // decrement became invisible to the client and the banner stuck at
+    // the default credit count (#249). This is the user's own counter,
+    // not a secret — enforcement is server-side (pre-deduct, 402 on
+    // exhaustion, per-IP rate limits), and httpOnly never stopped the
+    // user from editing their own cookie anyway.
+    httpOnly: false,
   });
 }
