@@ -1,6 +1,10 @@
 "use client";
 
-import { useChatActions, useChatStatus } from "@ai-sdk-tools/store";
+import {
+  useChatActions,
+  useChatStatus,
+  useChatStore,
+} from "@ai-sdk-tools/store";
 import { memo, useEffect, useRef } from "react";
 import { Chat } from "@/components/chat";
 import { ChatSync } from "@/components/chat-sync";
@@ -11,15 +15,28 @@ import { ArtifactProvider } from "@/hooks/use-artifact";
 import type { AppModelId } from "@/lib/ai/app-models";
 import type { ChatMessage, UiToolName } from "@/lib/ai/types";
 import { CustomStoreProvider } from "@/lib/stores/custom-store-provider";
-import { useAddMessageToTree } from "@/lib/stores/hooks-threads";
-import { useThreadEpoch } from "@/lib/stores/hooks-threads";
+import {
+  useAddMessageToTree,
+  useThreadEpoch,
+} from "@/lib/stores/hooks-threads";
 import { generateUUID } from "@/lib/utils";
-import { ChatInputProvider } from "@/providers/chat-input-provider";
-import { useChatInput } from "@/providers/chat-input-provider";
+import {
+  ChatInputProvider,
+  useChatInput,
+} from "@/providers/chat-input-provider";
 
 function AutoSubmitTrigger({ chatId }: { chatId: string }) {
   const status = useChatStatus();
   const { sendMessage } = useChatActions<ChatMessage>();
+  // useChatActions falls back to a silent no-op until ChatSync's useChat
+  // registers the real transport-bound sendMessage into the store — and
+  // that registration is deferred (rAF-batched state sync). On a heavy
+  // navigation (authed landing → /chat?q= handoff: RSC refetch + session
+  // + sidebar queries) the 100ms timer below can win that race, consume
+  // the auto-submit, and "send" into the void: message rendered in the
+  // tree, no POST /api/chat ever issued (#250). Gate on the real
+  // function being present; the effect re-runs when it registers.
+  const transportReady = useChatStore((state) => Boolean(state.sendMessage));
   const addMessageToTree = useAddMessageToTree();
   const {
     tryConsumeAutoSubmit,
@@ -31,7 +48,7 @@ function AutoSubmitTrigger({ chatId }: { chatId: string }) {
   const firedRef = useRef(false);
 
   useEffect(() => {
-    if (firedRef.current || status !== "ready") return;
+    if (firedRef.current || status !== "ready" || !transportReady) return;
 
     const timer = setTimeout(() => {
       if (firedRef.current) return;
@@ -62,6 +79,7 @@ function AutoSubmitTrigger({ chatId }: { chatId: string }) {
     return () => clearTimeout(timer);
   }, [
     status,
+    transportReady,
     chatId,
     sendMessage,
     addMessageToTree,
