@@ -139,6 +139,21 @@ function ModelSection() {
   );
 }
 
+/**
+ * Tool inventory — PREVIEW state, not live capability.
+ *
+ * Chat streams via lifegw, which dispatches a bare [system, user]
+ * completion with no tool definitions — see the "lifegw owns
+ * server-side tool dispatch" note in app/(chat)/api/chat/route.ts.
+ * The execution harness lands with the life-side arcand Phase-2 arc
+ * (TOOL_CALL_PENDING / TOOL_RESULT proto events; life repo
+ * docs/handoffs/2026-06-10-chat-agent-grounding-shipped.md) — that
+ * ship is the trigger to remove this preview framing.
+ *
+ * Per-tier filtering (chat.config.ts `anonymous.availableTools`) is
+ * deliberately deferred to the tool-wiring arc — do NOT import server
+ * config into this client component.
+ */
 function ToolsSection() {
   const tools = useMemo(() => {
     return Object.values(toolsDefinitions).map((tool) => ({
@@ -149,8 +164,13 @@ function ToolsSection() {
   }, []);
 
   return (
-    <SectionHeader icon={WrenchIcon} title={`Tools (${tools.length})`}>
-      <div className="space-y-1">
+    <SectionHeader icon={WrenchIcon} title={`Tools (${tools.length} · preview)`}>
+      <p className="mb-2 text-[11px] text-muted-foreground">
+        Tool execution isn&apos;t wired into the live agent runtime yet — the
+        agent answers from its grounded knowledge. The inventory below is the
+        roadmap surface, arriving with the runtime tool harness.
+      </p>
+      <div className="space-y-1 opacity-60">
         {tools.map((tool) => (
           <div
             key={tool.name}
