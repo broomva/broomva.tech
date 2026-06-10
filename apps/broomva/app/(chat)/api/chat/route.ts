@@ -840,6 +840,19 @@ async function createLifegwBackedChatStream({
         });
       }
 
+      // Stamp the live assistant message's metadata up front. The
+      // canonical translator deliberately does NOT emit
+      // `message-metadata` chunks (see canonical-to-vercel-ai-sse.ts
+      // header — they're owned by this wrapper). Without this chunk the
+      // client's streaming message has no `parentMessageId`, so
+      // lib/stores/with-threads.ts parents every live assistant turn at
+      // `null` and consecutive replies render as version siblings
+      // ("1/2" / "2/2" arrows across different turns).
+      dataStream.write({
+        type: "message-metadata",
+        messageMetadata: initialMetadata,
+      });
+
       // Open the lifegw dispatch. createSession failures surface here
       // as a thrown error → caught by `createUIMessageStream`'s onError.
       let dispatch: Awaited<ReturnType<typeof dispatchViaLifegw>>;
@@ -910,6 +923,21 @@ async function createLifegwBackedChatStream({
           "main-chat",
         );
       }
+
+      // Converge the live message with what stitchAssistantMessage
+      // persists: clear activeStreamId and attach usage (when lifegw
+      // reported it). The SDK deep-merges repeated message-metadata
+      // chunks into message.metadata (processUIMessageStream →
+      // mergeObjects), so this overlays the up-front chunk above.
+      const finalUsage = buildUsageMetadata(consumeState);
+      dataStream.write({
+        type: "message-metadata",
+        messageMetadata: {
+          ...initialMetadata,
+          activeStreamId: null,
+          ...(finalUsage ? { usage: finalUsage } : {}),
+        },
+      });
     },
     generateId: () => messageId,
     onFinish: async ({ responseMessage }) => {
@@ -961,16 +989,45 @@ async function createLifegwBackedChatStream({
 }
 
 /**
- * Synthesize a `ChatMessage` to persist as the assistant turn. The
- * Vercel-AI-SDK `responseMessage` passed to onFinish already carries
- * the parts the client saw (text + tool + data); we just need to
- * stamp the finalized metadata (usage, activeStreamId: null).
+ * Build the `usage` metadata field from lifegw's reported counts.
  *
  * Lifegw reports plain token counts (`{ inputTokens, outputTokens }`)
  * but the SDK's `LanguageModelUsage` shape carries per-provider
  * detail (cache reads, reasoning tokens). We pad the missing detail
- * fields with `undefined` so the persisted metadata typecheck-passes
- * without inventing data we don't actually have.
+ * fields with `undefined` so the metadata typecheck-passes without
+ * inventing data we don't actually have. Shared by the final
+ * `message-metadata` stream chunk and the persisted assistant message
+ * (stitchAssistantMessage) so the live and stored shapes never drift.
+ */
+function buildUsageMetadata(
+  consumeState: CanonicalConsumeState,
+): ChatMessage["metadata"]["usage"] {
+  if (!consumeState.usage) {
+    return undefined;
+  }
+  return {
+    inputTokens: consumeState.usage.inputTokens,
+    outputTokens: consumeState.usage.outputTokens,
+    totalTokens:
+      (consumeState.usage.inputTokens ?? 0) +
+      (consumeState.usage.outputTokens ?? 0),
+    inputTokenDetails: {
+      noCacheTokens: undefined,
+      cacheReadTokens: undefined,
+      cacheWriteTokens: undefined,
+    },
+    outputTokenDetails: {
+      textTokens: undefined,
+      reasoningTokens: undefined,
+    },
+  };
+}
+
+/**
+ * Synthesize a `ChatMessage` to persist as the assistant turn. The
+ * Vercel-AI-SDK `responseMessage` passed to onFinish already carries
+ * the parts the client saw (text + tool + data); we just need to
+ * stamp the finalized metadata (usage, activeStreamId: null).
  */
 function stitchAssistantMessage({
   responseMessage,
@@ -981,24 +1038,7 @@ function stitchAssistantMessage({
   consumeState: CanonicalConsumeState;
   initialMetadata: ChatMessage["metadata"];
 }): ChatMessage {
-  const usage = consumeState.usage
-    ? {
-        inputTokens: consumeState.usage.inputTokens,
-        outputTokens: consumeState.usage.outputTokens,
-        totalTokens:
-          (consumeState.usage.inputTokens ?? 0) +
-          (consumeState.usage.outputTokens ?? 0),
-        inputTokenDetails: {
-          noCacheTokens: undefined,
-          cacheReadTokens: undefined,
-          cacheWriteTokens: undefined,
-        },
-        outputTokenDetails: {
-          textTokens: undefined,
-          reasoningTokens: undefined,
-        },
-      }
-    : undefined;
+  const usage = buildUsageMetadata(consumeState);
 
   return {
     ...responseMessage,
