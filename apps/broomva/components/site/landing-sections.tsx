@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { ScrollReveal } from "@/components/site/scroll-reveal";
 import ThermodynamicGrid from "@/components/ui/interactive-thermodynamic-grid";
@@ -57,7 +57,15 @@ export function HeroSection({ userName }: { userName?: string | null }) {
   const [chatInput, setChatInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const greeting = useMemo(() => getTimeGreeting(), []);
+  // Two-pass render: the server can't know the visitor's local hour, so the
+  // greeting starts null (server HTML and first client render both say
+  // "Hello") and an effect swaps in the time-based greeting after hydration.
+  // Computing it during render trips React #418 (hydration text mismatch)
+  // whenever the server's UTC hour lands in a different bucket.
+  const [greeting, setGreeting] = useState<string | null>(null);
+  useEffect(() => {
+    setGreeting(getTimeGreeting());
+  }, []);
   const firstName = userName?.split(" ")[0] ?? null;
 
   const submitChat = useCallback(() => {
@@ -114,7 +122,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
         >
           {firstName ? (
             <>
-              {greeting},{" "}
+              {greeting ?? "Hello"},{" "}
               <span className="relative inline-block text-ai-blue">
                 {firstName}
                 <motion.span
