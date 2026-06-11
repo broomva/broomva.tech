@@ -77,6 +77,10 @@ const PUBLIC_API_PREFIXES = [
   "/api/invocations",
   "/api/feedback",
   "/api/metrics",
+  // Infra health probes (e.g. /api/health/redis): status-only JSON (no
+  // secrets), polled by dogfood / uptime checks from terminals with no
+  // session cookie. Must not 307→/login or external probes can't read it.
+  "/api/health",
   // Audio narration: every blog/project post has a "Listen to post" player.
   // The handler stores per-user resume position when signed in, but degrades
   // to no-op for anonymous readers (`NextResponse.json(null)` on GET, 401 on
