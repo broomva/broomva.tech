@@ -828,6 +828,20 @@ async function createLifegwBackedChatStream({
 
   const stream = createUIMessageStream<ChatMessage>({
     execute: async ({ writer: dataStream }) => {
+      // Adopt the server's assistant message id on the client. Without a
+      // `start` chunk carrying `messageId`, the client's useChat invents
+      // its own id while persistence writes under `messageId` — so for
+      // authenticated users the DB-synced row and the live streamed
+      // message become two siblings of the same user message and the UI
+      // shows phantom version arrows on every turn. Like
+      // `message-metadata` below, `start` is owned by this wrapper (the
+      // canonical translator deliberately emits neither — see
+      // canonical-to-vercel-ai-sse.ts header).
+      dataStream.write({
+        type: "start",
+        messageId,
+      });
+
       // Confirm chat persistence on first message (chat + user message
       // are persisted before streaming begins — this just signals the
       // UI to update its sidebar)

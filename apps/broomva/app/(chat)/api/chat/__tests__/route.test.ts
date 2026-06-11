@@ -483,11 +483,22 @@ describe("POST /api/chat — anonymous flow", () => {
     expect(resp.status).toBe(200);
 
     const body = await drainBody(resp);
-    const metadataChunks = body
+    const chunks = body
       .split("\n")
       .filter((line) => line.startsWith("data: ") && !line.includes("[DONE]"))
-      .map((line) => JSON.parse(line.slice("data: ".length)))
-      .filter((chunk) => chunk.type === "message-metadata");
+      .map((line) => JSON.parse(line.slice("data: ".length)));
+    const metadataChunks = chunks.filter(
+      (chunk) => chunk.type === "message-metadata",
+    );
+
+    // The route wrapper owns `start` emission too: without a `start`
+    // chunk carrying the server's messageId, the client invents its own
+    // assistant id and (for authenticated users) the DB-synced row
+    // becomes a phantom version sibling of the live message.
+    const startChunks = chunks.filter((chunk) => chunk.type === "start");
+    expect(startChunks.length).toBeGreaterThanOrEqual(1);
+    expect(typeof startChunks[0].messageId).toBe("string");
+    expect(startChunks[0].messageId.length).toBeGreaterThan(0);
 
     // The route wrapper owns message-metadata emission (the canonical
     // translator deliberately does not) — without these chunks the
