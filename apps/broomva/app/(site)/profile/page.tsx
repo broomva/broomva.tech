@@ -36,7 +36,7 @@ import {
 export const metadata: Metadata = {
   title: "Profile — Carlos D. Escobar-Valbuena",
   description:
-    "Agent OS architect and AI engineering lead. AI Lead at Stimulus, Data Architect contractor at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). Builder of Life Agent OS, Lago, Vigil, and the RCS paper series.",
+    "Agent OS architect and AI engineering lead. AI Lead at Stimulus, Data Architect contractor at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). Builder of Life Agent OS, bstack, broomva/skills, Lago, Vigil, and the RCS paper series.",
   alternates: { canonical: "/profile" },
   openGraph: {
     title: "Carlos D. Escobar-Valbuena — Agent OS Architect & AI Engineering Lead",
@@ -184,10 +184,16 @@ const ossProjects = [
     desc: "Agentic finance engine. x402 metered machine-to-machine payments with USDC settlement on Base. Six Rust crates; secp256k1 wallet, per-task billing, full audit trails.",
   },
   {
+    icon: Workflow,
+    name: "bstack + broomva/skills",
+    href: "https://github.com/broomva/bstack",
+    desc: "Agentic development harness — 20 irreducible automation primitives (policy gates, knowledge bookkeeping, CI productive-wait, persistent cross-context loops, cross-model adversarial review) that turn an agent-driven workspace into a self-operating system, plus 48 portable agent skills (agentskills.io spec) for Claude Code, Codex, Cursor, Gemini CLI, Goose, and Copilot.",
+  },
+  {
     icon: Shield,
     name: "Recursive Controlled Systems (RCS)",
     href: "/notes",
-    desc: "Five-paper series formalizing LLM-as-controller agents as a 7-tuple Σ = (X, Y, U, f, h, S, Π) with recursive stability budgets across hierarchical control levels (L0–L3). Foundations paper complete; 4 papers in progress.",
+    desc: "Five-paper series formalizing LLM-as-controller agents as a 7-tuple Σ = (X, Y, U, f, h, S, Π) with recursive stability budgets across hierarchical control levels (L0–L3). Control-native architecture for autonomous workflows — verification causally independent of the acting model — and the ongoing autonomy / search / intelligence research program. Foundations paper complete; 4 papers in progress.",
   },
 ];
 
@@ -319,7 +325,7 @@ export default async function ProfilePage() {
 
       <FadeIn>
         <PageHero
-          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production — across regulated and high-stakes domains. Concurrent senior leadership across Stimulus (AI Lead), TEAM International (Data Architect), and Wedi Pay (Co-founder/CTO, 2024–2026). Open-source author of Life Agent OS, Lago, Vigil, and the RCS paper series. MSc AI at Universidad de los Andes (2026)."
+          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production — across regulated and high-stakes domains. Concurrent senior leadership across Stimulus (AI Lead), TEAM International (Data Architect), and Wedi Pay (Co-founder/CTO, 2024–2026). Open-source author of Life Agent OS, the bstack agentic harness + broomva/skills, Lago, Vigil, and the RCS paper series. MSc AI at Universidad de los Andes (2026)."
           title="Carlos D. Escobar-Valbuena"
         />
       </FadeIn>
