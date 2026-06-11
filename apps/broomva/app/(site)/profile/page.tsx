@@ -139,12 +139,6 @@ const engagements = [
       "Anchor customer of the Time Series Engine. Production medallion-style lakehouse since 2021 with anomaly detection, alarm threshold estimation, and digital-twin integration.",
   },
   {
-    metric: "$250M+ AUM · 3,000+ bedrooms",
-    label: "Canadian property-management group",
-    blurb:
-      "First paying tenant of Broomva Life Runtime — Sentinel work-order audit module. Pro-tier SLA, USDC-on-Base billing rail.",
-  },
-  {
     metric: "FIFA 2026 + Olympics Committee scale",
     label: "Tier-1 sports + procurement enterprise",
     blurb:
