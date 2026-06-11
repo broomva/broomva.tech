@@ -36,12 +36,12 @@ import {
 export const metadata: Metadata = {
   title: "Profile — Carlos D. Escobar-Valbuena",
   description:
-    "Agent OS architect and AI engineering lead. Co-founder/CTO at Wedi Pay, Senior ML/AI Lead at Stimulus, Data Architect contractor at TEAM International. Builder of Life Agent OS, Lago, Vigil, and the RCS paper series.",
+    "Agent OS architect and AI engineering lead. AI Lead at Stimulus, Data Architect contractor at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). Builder of Life Agent OS, Lago, Vigil, and the RCS paper series.",
   alternates: { canonical: "/profile" },
   openGraph: {
     title: "Carlos D. Escobar-Valbuena — Agent OS Architect & AI Engineering Lead",
     description:
-      "AI-native, multi-tenant data platforms in production. Co-founder/CTO at Wedi Pay, Senior ML/AI Lead at Stimulus, Data Architect at TEAM International. MSc AI at Universidad de los Andes.",
+      "AI-native, multi-tenant data platforms in production. AI Lead at Stimulus, Data Architect at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). MSc AI at Universidad de los Andes.",
     type: "profile",
   },
 };
@@ -100,20 +100,20 @@ const personJsonLd = {
 
 const concurrent = [
   {
-    icon: Workflow,
-    title: "Co-founder & CTO",
-    org: "Wedi Pay",
-    period: "Oct 2024 – Present",
-    blurb:
-      "Agentic cross-border B2B payment orchestration. Multi-tenant Postgres RLS, Kafka/Redpanda event-driven backbone, Databricks gold-table ETLs. Wedi Agents execute payment actions under strict policy/consent/scoped credentials with full audit trails. Strategic integration with a leading LATAM open-banking infrastructure provider — 1B+ accounts across 10K+ FIs.",
-  },
-  {
     icon: Sparkles,
-    title: "Senior ML/AI Engineering Lead",
+    title: "AI Lead",
     org: "Stimulus",
     period: "Nov 2024 – Present",
     blurb:
       "Architecture redesign of an AI-native, Databricks-backed agentic procurement platform serving FIFA 2026 and the Olympics Committee. Lakehouse-native real-time substrate: Databricks Zerobus streaming into a Unity-Catalog-governed medallion architecture (bronze/silver/gold). Multi-document RAG with policy-bounded tool adapters; multi-tenant JWT hardening.",
+  },
+  {
+    icon: Workflow,
+    title: "Co-founder & CTO",
+    org: "Wedi Pay",
+    period: "Oct 2024 – Jun 2026",
+    blurb:
+      "Agentic cross-border B2B payment orchestration. Multi-tenant Postgres RLS, Kafka/Redpanda event-driven backbone, Databricks gold-table ETLs. Wedi Agents execute payment actions under strict policy/consent/scoped credentials with full audit trails. Signed and shipped payment-rail integrations — Prometeo (open-banking A2A), TruBit/VelaFi (USDC on/off-ramp), Thirdweb (web3-native) — on a provider-agnostic integration layer.",
   },
   {
     icon: Database,
@@ -127,10 +127,10 @@ const concurrent = [
 
 const engagements = [
   {
-    metric: "1B+ accounts · 10K+ FIs",
-    label: "LATAM open-banking infrastructure",
+    metric: "3 payment rails · multi-country",
+    label: "LATAM payments integration layer",
     blurb:
-      "Negotiated and structured a strategic integration partnership covering CO/MX/PE/US, with extension pipeline to Brazil, Chile, and Europe.",
+      "Signed and shipped integrations with Prometeo (open-banking account-to-account), TruBit — now VelaFi (USDC on/off-ramp), and Thirdweb (web3-native) behind one provider-agnostic layer at Wedi Pay.",
   },
   {
     metric: "~70,000 wells · multi-basin",
@@ -325,7 +325,7 @@ export default async function ProfilePage() {
 
       <FadeIn>
         <PageHero
-          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production — across regulated and high-stakes domains. Concurrent senior leadership across Wedi Pay (CTO), Stimulus (ML/AI Lead), and TEAM International (Data Architect). Open-source author of Life Agent OS, Lago, Vigil, and the RCS paper series. MSc AI at Universidad de los Andes (2026)."
+          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production — across regulated and high-stakes domains. Concurrent senior leadership across Stimulus (AI Lead), TEAM International (Data Architect), and Wedi Pay (Co-founder/CTO, 2024–2026). Open-source author of Life Agent OS, Lago, Vigil, and the RCS paper series. MSc AI at Universidad de los Andes (2026)."
           title="Carlos D. Escobar-Valbuena"
         />
       </FadeIn>
