@@ -12,13 +12,14 @@
  *   503 { status: "unavailable" }  — REDIS_URL set but unreachable (real fault)
  */
 
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { checkRedisHealth } from "@/lib/redis-health";
 
-// Always probe live — a cached health result is worse than useless.
-export const dynamic = "force-dynamic";
-
 export async function GET() {
+  // Opt out of static prerendering (the project runs `cacheComponents`, which
+  // forbids `export const dynamic`): always probe live — a build-time cached
+  // health result is worse than useless.
+  await connection();
   const health = await checkRedisHealth();
   const httpStatus = health.status === "unavailable" ? 503 : 200;
   return NextResponse.json(health, { status: httpStatus });
