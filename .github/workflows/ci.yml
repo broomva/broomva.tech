@@ -26,6 +26,19 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      # Real Redis for the wiring integration test (redis-wiring.integration
+      # .test.ts). The test self-skips when REDIS_URL is unset, so this is what
+      # makes the "is the whole setup wired?" check actually gate PRs.
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -57,6 +70,15 @@ jobs:
 
       - name: Typecheck
         run: bun run test:types
+
+      # Runs the full vitest suite (previously not gated in CI) plus the Redis
+      # wiring integration test against the redis:8 service on db15 (isolated
+      # from the app's prod=0 / preview=1 / dev=2 logical DBs).
+      - name: Test (unit + Redis integration)
+        working-directory: apps/broomva
+        env:
+          REDIS_URL: redis://localhost:6379/15
+        run: bun run test:unit
 
       - name: Validate internal links
         run: bun run check:links
