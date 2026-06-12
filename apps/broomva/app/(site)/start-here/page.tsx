@@ -36,11 +36,12 @@ export default async function StartHerePage() {
         <div>
           <h2 className="font-display text-2xl">What I build</h2>
           <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-            Three concurrent Principal-tier roles: Co-founder &amp; CTO at Wedi
-            Pay (agentic cross-border payments), Senior ML/AI Lead at Stimulus
-            (governed agentic procurement), and Data Architect at TEAM
-            International. On the substrate side: the Rust Agent OS stack —
-            Life, Symphony, the control metalayer, and the RCS paper series.
+            AI Lead at Stimulus (governed agentic procurement) and Data
+            Architect at TEAM International; previously Co-founder &amp; CTO at
+            Wedi Pay (agentic cross-border payments, 2024–2026). On the
+            substrate side: the Rust Agent OS stack — Life, Symphony, the
+            control metalayer, bstack + broomva/skills, and the RCS paper
+            series.
           </p>
         </div>
         <div>
