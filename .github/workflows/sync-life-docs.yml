@@ -20,12 +20,12 @@ jobs:
 
     steps:
       - name: Checkout broomva.tech
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout life
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: broomva/life
           path: life-repo
