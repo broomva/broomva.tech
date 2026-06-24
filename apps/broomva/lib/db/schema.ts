@@ -2410,3 +2410,36 @@ export const baseAuthNonce = pgTable("base_auth_nonce", {
 });
 
 export type BaseAuthNonce = InferSelectModel<typeof baseAuthNonce>;
+
+// ─── swapit commons ───────────────────────────────────────────────────────────
+// Anonymized household-toxics knowledge facts contributed by the `swapit` skill.
+// Content-addressed: identical facts from different contributors share an id and
+// corroborate (count up) rather than duplicate. Only GENERIC facts live here —
+// private inventory never reaches the server (enforced client + server side).
+export const swapitFact = pgTable(
+  "swapit_fact",
+  {
+    // sha256(kind + canonical semantic key), recomputed server-side from the payload
+    id: text("id").primaryKey(),
+    kind: text("kind", {
+      enum: ["product", "item_class_hazard", "alternative"],
+    }).notNull(),
+    payload: json("payload").$type<Record<string, unknown>>().notNull(),
+    confidence: numeric("confidence").notNull().default("0.5"),
+    corroborationCount: integer("corroboration_count").notNull().default(1),
+    // sha256-truncated contributor tokens (user id or anon token); never the raw value
+    contributors: json("contributors").$type<string[]>().notNull().default([]),
+    // approved once a 2nd independent contributor corroborates (corroboration-gated)
+    status: text("status", { enum: ["pending", "approved"] })
+      .notNull()
+      .default("pending"),
+    firstSeen: timestamp("first_seen").defaultNow().notNull(),
+    lastSeen: timestamp("last_seen").defaultNow().notNull(),
+  },
+  (t) => [
+    index("swapit_fact_status_last_seen_idx").on(t.status, t.lastSeen),
+    index("swapit_fact_kind_idx").on(t.kind),
+  ],
+);
+
+export type SwapitFact = InferSelectModel<typeof swapitFact>;
