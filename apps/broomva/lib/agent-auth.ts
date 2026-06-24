@@ -13,12 +13,9 @@
  * @see https://www.npmjs.com/package/@better-auth/agent-auth
  */
 
-import {
-  verifyAgentRequest as _verifyAgentRequest,
-  agentAuth,
-} from "@better-auth/agent-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { agentAuth, verifyAgentRequest as _verifyAgentRequest } from "@better-auth/agent-auth";
 import { db } from "@/lib/db/client";
 
 // ---------------------------------------------------------------------------
@@ -66,11 +63,6 @@ const PLATFORM_CAPABILITIES = [
     name: "trust:read",
     description: "Read trust scores from the Autonomic controller",
   },
-  {
-    name: "swapit:contribute",
-    description:
-      "Contribute anonymized household-toxics knowledge facts to the swapit commons (generic facts only; never private inventory)",
-  },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -84,7 +76,7 @@ export const agentAuthInstance = betterAuth({
   basePath: "/api/auth/agent-protocol",
 
   plugins: [
-    // @ts-expect-error — version mismatch between better-auth and @better-auth/agent-auth AuthContext types
+    // @ts-ignore — version mismatch between better-auth and @better-auth/agent-auth AuthContext types
     agentAuth({
       providerName: "Broomva Platform",
       providerDescription:
@@ -116,14 +108,16 @@ export const agentAuthInstance = betterAuth({
  * Returns the agent session payload if valid, or null if the request
  * does not contain a valid agent JWT.
  */
-export async function verifyAgentRequest(request: Request): Promise<{
+export async function verifyAgentRequest(
+  request: Request,
+): Promise<{
   agentId: string;
   userId: string | null;
   hostId: string;
   capabilities: string[];
 } | null> {
   try {
-    // @ts-expect-error — same version mismatch as above
+    // @ts-ignore — same version mismatch as above
     const result = await _verifyAgentRequest(request, agentAuthInstance);
     if (!result) return null;
     return {

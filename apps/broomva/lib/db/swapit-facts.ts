@@ -21,10 +21,12 @@ export { scanForbidden } from "@/lib/swapit/content-hash";
  */
 
 // ── moderation + helpers ─────────────────────────────────────────────────────────
-/** Corroboration-gated, NOT confidence-gated: `confidence` is caller-supplied, so a fact
- * is served only once a 2nd independent contributor corroborates it. */
-function statusFor(corroboration: number): "approved" | "pending" {
-  return corroboration >= 2 ? "approved" : "pending";
+/** Approval is gated on DISTINCT contributors, not submission count and not the
+ * caller-supplied `confidence`. A fact is served only once two *different* contributor
+ * identities (server-derived: session user or client IP) have submitted it — so a single
+ * source resubmitting the same fact can never self-approve it. */
+function statusFor(distinctContributors: number): "approved" | "pending" {
+  return distinctContributors >= 2 ? "approved" : "pending";
 }
 
 function clampUnit(x: unknown): number {
@@ -70,7 +72,7 @@ async function upsertOnce(
           ),
           corroborationCount: corroboration,
           contributors: [...contributors].sort(),
-          status: statusFor(corroboration),
+          status: statusFor(contributors.size),
           lastSeen: new Date(),
         })
         .where(eq(swapitFact.id, id))
@@ -87,7 +89,7 @@ async function upsertOnce(
         confidence: String(incomingConf),
         corroborationCount: 1,
         contributors: contributorHash ? [contributorHash] : [],
-        status: statusFor(1),
+        status: statusFor(contributorHash ? 1 : 0),
       })
       .returning();
     return row;

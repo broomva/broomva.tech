@@ -133,14 +133,10 @@ swapit sync`}
               <div className="space-y-2">
                 {flagged.map((row) => {
                   const max = flagged[0]?.count || 1;
+                  const label = row.itemClass ?? "(unspecified)";
                   return (
-                    <div
-                      key={row.itemClass}
-                      className="flex items-center gap-3"
-                    >
-                      <div className="w-48 truncate text-sm">
-                        {row.itemClass}
-                      </div>
+                    <div key={label} className="flex items-center gap-3">
+                      <div className="w-48 truncate text-sm">{label}</div>
                       <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted/40">
                         <div
                           className="h-full rounded-full"
