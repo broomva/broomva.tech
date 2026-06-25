@@ -19,6 +19,10 @@ const PUBLIC_PAGE_PREFIXES = [
   "/terms",
   "/pricing",
   "/skills",
+  // Swapit commons (BRO-1547): the public household-toxics where-to-buy dataset.
+  // The page is read-only and renders only approved, corroborated facts — never
+  // any private inventory — so anonymous viewers must reach it.
+  "/swapit",
   "/agents",
   "/graph",
   "/links",
@@ -77,6 +81,15 @@ const PUBLIC_API_PREFIXES = [
   "/api/invocations",
   "/api/feedback",
   "/api/metrics",
+  // Swapit commons (BRO-1547): the anonymized household-toxics knowledge commons.
+  // GET serves only approved facts (browse/pull from the skill's `swapit sync`);
+  // POST contributes a generic, content-addressed fact. Anonymous-OK by design —
+  // the `swapit` CLI syncs from terminals with no session cookie. The handler does
+  // its own trust enforcement (per-kind Zod, the scanForbidden privacy backstop,
+  // payload-size caps, server-derived contributor identity = session user OR client
+  // IP) and per-IP/per-user rate limits, so it MUST NOT 307→/login (the CLI can't
+  // follow an HTML auth redirect). Private inventory never reaches here.
+  "/api/swapit",
   // Infra health probes (e.g. /api/health/redis): status-only JSON (no
   // secrets), polled by dogfood / uptime checks from terminals with no
   // session cookie. Must not 307→/login or external probes can't read it.
@@ -186,7 +199,14 @@ function isPublicPage(pathname: string): boolean {
   if ((PUBLIC_PAGE_EXACT as readonly string[]).includes(pathname)) {
     return true;
   }
-  return PUBLIC_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  // Boundary-aware matching (mirrors isPublicApiRoute): a bare prefix like `/swapit` must
+  // match `/swapit` and `/swapit/...` but NOT a sibling route like `/swapit-admin`. Prefixes
+  // that already end in `/` (e.g. `/share/`, `/d/`, `/h/`) keep their literal startsWith.
+  return PUBLIC_PAGE_PREFIXES.some((prefix) =>
+    prefix.endsWith("/")
+      ? pathname.startsWith(prefix)
+      : pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 function isPublicApiRoute(pathname: string): boolean {
