@@ -51,6 +51,13 @@ describe("proxy public artifact routes", () => {
     expect(mockGetSafeSession).not.toHaveBeenCalled();
   });
 
+  test("does NOT treat a sibling like /swapit-admin as public (boundary match)", async () => {
+    const response = await proxy(req("/swapit-admin"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://broomva.tech/login");
+  });
+
   test("still redirects private app pages for anonymous visitors", async () => {
     const response = await proxy(req("/maestro"));
 

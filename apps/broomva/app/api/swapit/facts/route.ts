@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -139,18 +139,31 @@ const factSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+// Server-held HMAC key so a stored contributorHash can't be reversed to an IP by anyone with
+// DB-table access (an IPv4 is trivially brute-forced against a bare sha256). Stable across
+// instances/deploys (same precedence as lib/auth.ts) so corroboration keeps counting a given
+// contributor as ONE identity; the fallback only applies in dev/test where anonymity is moot.
+const CONTRIBUTOR_HMAC_KEY =
+  process.env.NEON_AUTH_COOKIE_SECRET ||
+  process.env.AUTH_SECRET ||
+  "swapit-anon-contributor-fallback";
+
 /** Server-observed contributor identity: the Better Auth session user, else the trusted
  * client IP. The IP MUST come from `getClientIP` (the rightmost, platform-appended
  * x-forwarded-for entry) — NOT a client-supplied header. Using the leftmost XFF entry would
  * let one anonymous source mint many identities (spoofed XFF) and self-approve a fact, since
- * approval is gated on DISTINCT contributors. The raw value is hashed and never stored. */
+ * approval is gated on DISTINCT contributors. Keyed (HMAC) so the stored value is stable for
+ * corroboration but not reversible to the raw IP. The raw value is never stored. */
 function contributorHash(
   userId: string | null,
   ip: string | null,
 ): string | null {
   const raw = userId ?? ip;
   return raw
-    ? createHash("sha256").update(raw).digest("hex").slice(0, 32)
+    ? createHmac("sha256", CONTRIBUTOR_HMAC_KEY)
+        .update(raw)
+        .digest("hex")
+        .slice(0, 32)
     : null;
 }
 

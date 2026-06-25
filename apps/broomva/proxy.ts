@@ -199,7 +199,14 @@ function isPublicPage(pathname: string): boolean {
   if ((PUBLIC_PAGE_EXACT as readonly string[]).includes(pathname)) {
     return true;
   }
-  return PUBLIC_PAGE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  // Boundary-aware matching (mirrors isPublicApiRoute): a bare prefix like `/swapit` must
+  // match `/swapit` and `/swapit/...` but NOT a sibling route like `/swapit-admin`. Prefixes
+  // that already end in `/` (e.g. `/share/`, `/d/`, `/h/`) keep their literal startsWith.
+  return PUBLIC_PAGE_PREFIXES.some((prefix) =>
+    prefix.endsWith("/")
+      ? pathname.startsWith(prefix)
+      : pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 function isPublicApiRoute(pathname: string): boolean {
