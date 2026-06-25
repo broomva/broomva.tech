@@ -35,8 +35,53 @@ function clampUnit(x: unknown): number {
 }
 
 export interface FactInput {
-  kind: "product" | "item_class_hazard" | "alternative";
+  kind:
+    | "product"
+    | "item_class_hazard"
+    | "alternative"
+    | "procurement_option"
+    | "item_class";
   payload: Record<string, unknown>;
+}
+
+/** Denormalized region column value (the geographic scale axis) — only procurement carries one. */
+function regionOf(input: FactInput): string | null {
+  if (input.kind !== "procurement_option") {
+    return null;
+  }
+  const r = input.payload.region;
+  return typeof r === "string" ? r.toUpperCase() : null;
+}
+
+// The only payload fields that may change on corroboration — a procurement_option's market data,
+// freshened forward by as_of. Identity (alternative/retailer/region) is fixed by the hash key.
+const FRESHEN_FIELDS = [
+  "price_min",
+  "price_max",
+  "currency",
+  "url",
+  "availability",
+  "as_of",
+] as const;
+
+function maybeFreshen(
+  kind: FactInput["kind"],
+  stored: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> | null {
+  if (kind !== "procurement_option") {
+    return null;
+  }
+  const newAsOf = String(incoming.as_of ?? "");
+  const oldAsOf = String(stored.as_of ?? "");
+  if (newAsOf && newAsOf > oldAsOf) {
+    const merged = { ...stored };
+    for (const f of FRESHEN_FIELDS) {
+      merged[f] = incoming[f] ?? null;
+    }
+    return merged;
+  }
+  return null;
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -63,10 +108,13 @@ async function upsertOnce(
         contributors.add(contributorHash);
       }
       const corroboration = existing.corroborationCount + 1;
+      // payload is immutable on corroboration ("I agree with THIS fact") — EXCEPT a
+      // procurement_option's market data, which freshens forward by as_of (never the key).
+      const fresh = maybeFreshen(input.kind, existing.payload, input.payload);
       const [row] = await tx
         .update(swapitFact)
         .set({
-          // payload is NOT updated — corroboration means "I agree with THIS fact"
+          ...(fresh ? { payload: fresh } : {}),
           confidence: String(
             Math.max(Number(existing.confidence), incomingConf),
           ),
@@ -86,6 +134,7 @@ async function upsertOnce(
         id,
         kind: input.kind,
         payload: input.payload,
+        region: regionOf(input),
         confidence: String(incomingConf),
         corroborationCount: 1,
         contributors: contributorHash ? [contributorHash] : [],
@@ -112,9 +161,16 @@ export async function upsertFact(
   }
 }
 
+export interface FactFilter {
+  kind?: string;
+  region?: string;
+  alternative?: string;
+}
+
 export async function listApprovedSince(
   since: Date | null,
   minCorroboration = 1,
+  filter: FactFilter = {},
 ): Promise<SwapitFact[]> {
   const conditions = [
     eq(swapitFact.status, "approved"),
@@ -122,6 +178,18 @@ export async function listApprovedSince(
   ];
   if (since && !Number.isNaN(since.getTime())) {
     conditions.push(gte(swapitFact.lastSeen, since));
+  }
+  if (filter.kind) {
+    conditions.push(eq(swapitFact.kind, filter.kind as SwapitFact["kind"]));
+  }
+  if (filter.region) {
+    conditions.push(eq(swapitFact.region, filter.region.toUpperCase()));
+  }
+  if (filter.alternative) {
+    // alternative lives in the JSON payload (procurement_option / alternative kinds)
+    conditions.push(
+      sql`${swapitFact.payload}->>'alternative' = ${filter.alternative}`,
+    );
   }
   return db
     .select()
@@ -152,6 +220,7 @@ export function serializeFact(f: SwapitFact) {
     id: f.id,
     kind: f.kind,
     payload: f.payload,
+    region: f.region,
     confidence: Number(f.confidence),
     corroboration_count: f.corroborationCount,
     contributor_count: f.contributors.length,

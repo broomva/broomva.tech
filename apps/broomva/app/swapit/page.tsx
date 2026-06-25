@@ -12,27 +12,80 @@ export const metadata = {
     "The anonymized, crowd-sourced knowledge commons behind the swapit skill: products, hazards, and safer alternatives. Private inventory never appears here.",
 };
 
+// Generic card sections (procurement_option has its own richer "Where to buy" section below).
 const KIND_LABEL: Record<string, string> = {
   product: "Products",
   item_class_hazard: "Hazard edges",
   alternative: "Alternatives",
+  item_class: "Item classes",
+};
+
+// All kinds, for the "by kind" badge counts.
+const ALL_KIND_LABEL: Record<string, string> = {
+  ...KIND_LABEL,
+  procurement_option: "Where-to-buy",
 };
 
 function asString(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-export default async function SwapitCommonsPage() {
+function asNumber(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function priceLabel(p: Record<string, unknown>): string {
+  const lo = asNumber(p.price_min);
+  const hi = asNumber(p.price_max);
+  const cur = asString(p.currency);
+  if (lo == null && hi == null) {
+    return "";
+  }
+  const range = lo != null && hi != null ? `${lo}–${hi}` : `${lo ?? hi}`;
+  return `${range} ${cur}`.trim();
+}
+
+export default async function SwapitCommonsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ region?: string }>;
+}) {
+  const sp = (await searchParams) ?? {};
+  const regionFilter = sp.region?.toUpperCase();
+
   const stats = await commonsStats();
   const facts = await listApprovedSince(null, 1);
+  const offers = await listApprovedSince(null, 1, {
+    kind: "procurement_option",
+    region: regionFilter,
+  });
 
   const byKind: Record<string, typeof facts> = {
     product: [],
     item_class_hazard: [],
     alternative: [],
+    item_class: [],
   };
   for (const f of facts) {
     byKind[f.kind]?.push(f);
+  }
+
+  // distinct regions present in the commons (for the where-to-buy region filter)
+  const allOffers = await listApprovedSince(null, 1, {
+    kind: "procurement_option",
+  });
+  const regions = [
+    ...new Set(allOffers.map((o) => o.region).filter((r): r is string => !!r)),
+  ].sort();
+
+  // group the (region-filtered) offers by the alternative they're for
+  const offersByAlt = new Map<string, typeof offers>();
+  for (const o of offers) {
+    const alt =
+      asString((o.payload as Record<string, unknown>).alternative) || o.id;
+    const list = offersByAlt.get(alt) ?? [];
+    list.push(o);
+    offersByAlt.set(alt, list);
   }
 
   // most-flagged item-classes (approved hazard-edge facts grouped by item_class)
@@ -100,9 +153,12 @@ export default async function SwapitCommonsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            {Object.entries(KIND_LABEL).map(([k, label]) => (
+            {Object.entries(ALL_KIND_LABEL).map(([k, label]) => (
               <Badge key={k} variant="secondary">
-                {label}: {byKind[k]?.length ?? 0}
+                {label}:{" "}
+                {k === "procurement_option"
+                  ? allOffers.length
+                  : (byKind[k]?.length ?? 0)}
               </Badge>
             ))}
           </CardContent>
@@ -125,6 +181,99 @@ swapit sync`}
         </Card>
       ) : (
         <div className="space-y-10">
+          {allOffers.length > 0 && (
+            <section>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b pb-2">
+                <h2 className="font-semibold text-xl">
+                  🛒 Where to buy{regionFilter ? ` · ${regionFilter}` : ""}
+                </h2>
+                <div className="flex flex-wrap gap-1.5 text-sm">
+                  <a
+                    href="/swapit"
+                    className={`rounded-full px-2.5 py-0.5 ${regionFilter ? "bg-muted text-muted-foreground" : "bg-foreground text-background"}`}
+                  >
+                    All
+                  </a>
+                  {regions.map((r) => (
+                    <a
+                      key={r}
+                      href={`/swapit?region=${r}`}
+                      className={`rounded-full px-2.5 py-0.5 ${regionFilter === r ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {r}
+                    </a>
+                  ))}
+                </div>
+              </div>
+              <p className="mb-4 max-w-2xl text-muted-foreground text-sm">
+                A public, organically-grown dataset of where to buy safer
+                alternatives, by country. Prices are public listing prices
+                (never anyone's private purchase), freshened forward as
+                contributors update them.
+              </p>
+              {offersByAlt.size === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No offers for {regionFilter} yet — contribute one with{" "}
+                  <code className="rounded bg-muted px-1 py-0.5">
+                    swapit procure
+                  </code>
+                  .
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {[...offersByAlt.entries()].map(([alt, list]) => (
+                    <div key={alt}>
+                      <h3 className="mb-2 font-medium">{alt}</h3>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {list.map((o) => {
+                          const p = o.payload as Record<string, unknown>;
+                          const price = priceLabel(p);
+                          const url = asString(p.url);
+                          const area = asString(p.area);
+                          return (
+                            <Card key={o.id}>
+                              <CardContent className="flex items-start justify-between gap-3 py-3">
+                                <div className="min-w-0">
+                                  <div className="truncate font-medium">
+                                    {asString(p.retailer) || "—"}
+                                    <span className="ml-2 text-muted-foreground text-xs">
+                                      {o.region}
+                                      {area ? ` · ${area}` : ""}
+                                    </span>
+                                  </div>
+                                  <div className="text-muted-foreground text-sm">
+                                    {price || "price: contribute one"}
+                                    {asString(p.as_of)
+                                      ? ` · as of ${asString(p.as_of)}`
+                                      : ""}
+                                  </div>
+                                  {url && (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer nofollow"
+                                      className="truncate text-sm underline"
+                                      style={{ color: "var(--ag-ai-blue)" }}
+                                    >
+                                      where to buy ↗
+                                    </a>
+                                  )}
+                                </div>
+                                <Badge variant="outline" className="shrink-0">
+                                  ×{o.corroborationCount}
+                                </Badge>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
           {flagged.length > 0 && (
             <section>
               <h2 className="mb-4 border-b pb-2 font-semibold text-xl">
@@ -179,7 +328,9 @@ swapit sync`}
                         ? asString(p.item_class)
                         : kind === "item_class_hazard"
                           ? `${asString(p.item_class)} → ${asString(p.hazard_id)}`
-                          : `replaces ${(p.replaces as string[] | undefined)?.join(", ") ?? ""}`;
+                          : kind === "item_class"
+                            ? `category: ${asString(p.category)}`
+                            : `replaces ${(p.replaces as string[] | undefined)?.join(", ") ?? ""}`;
                     return (
                       <Card key={f.id}>
                         <CardContent className="flex items-start justify-between gap-3 py-4">

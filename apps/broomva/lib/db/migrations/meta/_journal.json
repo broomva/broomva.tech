@@ -547,6 +547,13 @@
       "when": 1782339797236,
       "tag": "0077_mixed_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1782426197236,
+      "tag": "0078_swapit_procurement_region",
+      "breakpoints": true
     }
   ]
 }

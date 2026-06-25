@@ -101,6 +101,19 @@ export function computeFactId(
       item_class: payload.item_class ?? null,
       hazard_id: payload.hazard_id ?? null,
     };
+  } else if (kind === "procurement_option") {
+    // identity-only key: the same offer (alt × retailer × region) corroborates; price/url/area
+    // are refinable market data, NOT identity. region is uppercased to match the Python builder.
+    key = {
+      alternative: payload.alternative ?? null,
+      retailer: payload.retailer ?? null,
+      region:
+        typeof payload.region === "string"
+          ? payload.region.toUpperCase()
+          : (payload.region ?? null),
+    };
+  } else if (kind === "item_class") {
+    key = { item_class: payload.item_class ?? null };
   } else {
     key = {
       name: payload.name ?? null,

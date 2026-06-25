@@ -2422,9 +2422,18 @@ export const swapitFact = pgTable(
     // sha256(kind + canonical semantic key), recomputed server-side from the payload
     id: text("id").primaryKey(),
     kind: text("kind", {
-      enum: ["product", "item_class_hazard", "alternative"],
+      enum: [
+        "product",
+        "item_class_hazard",
+        "alternative",
+        "procurement_option",
+        "item_class",
+      ],
     }).notNull(),
     payload: json("payload").$type<Record<string, unknown>>().notNull(),
+    // denormalized ISO-3166-1 alpha-2 region for procurement_option facts (the geographic scale
+    // axis); null for non-geographic kinds. Indexed so "where to buy in <region>" stays cheap.
+    region: text("region"),
     confidence: numeric("confidence").notNull().default("0.5"),
     corroborationCount: integer("corroboration_count").notNull().default(1),
     // sha256-truncated contributor tokens (user id or anon token); never the raw value
@@ -2439,6 +2448,7 @@ export const swapitFact = pgTable(
   (t) => [
     index("swapit_fact_status_last_seen_idx").on(t.status, t.lastSeen),
     index("swapit_fact_kind_idx").on(t.kind),
+    index("swapit_fact_kind_region_idx").on(t.kind, t.region),
   ],
 );
 
