@@ -14,6 +14,8 @@ import {
   serializeFact,
   upsertFact,
 } from "@/lib/db/swapit-facts";
+import { checkSwapitWriteRateLimit } from "@/lib/swapit/rate-limit";
+import { getClientIP } from "@/lib/utils/rate-limit";
 
 const MAX_PAYLOAD_BYTES = 32_768;
 const MAX_FREETEXT = 600;
@@ -137,15 +139,15 @@ const factSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-/** Server-observed contributor identity: the Better Auth session user, else the client IP.
- * NOT a client-supplied header — otherwise one source could mint many identities and
- * self-corroborate. Returns null when no signal is available (then it can't count toward
- * approval). The raw value is hashed and never stored. */
-function contributorHash(userId: string | null, h: Headers): string | null {
-  const ip =
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    h.get("x-real-ip") ||
-    null;
+/** Server-observed contributor identity: the Better Auth session user, else the trusted
+ * client IP. The IP MUST come from `getClientIP` (the rightmost, platform-appended
+ * x-forwarded-for entry) — NOT a client-supplied header. Using the leftmost XFF entry would
+ * let one anonymous source mint many identities (spoofed XFF) and self-approve a fact, since
+ * approval is gated on DISTINCT contributors. The raw value is hashed and never stored. */
+function contributorHash(
+  userId: string | null,
+  ip: string | null,
+): string | null {
   const raw = userId ?? ip;
   return raw
     ? createHash("sha256").update(raw).digest("hex").slice(0, 32)
@@ -153,7 +155,28 @@ function contributorHash(userId: string | null, h: Headers): string | null {
 }
 
 // POST /api/swapit/facts — contribute an anonymized fact (anonymous-by-IP or Better-Auth-identified)
-export const POST = withValidation(factSchema, async (_request, { body }) => {
+export const POST = withValidation(factSchema, async (request, { body }) => {
+  // One session read serves both the rate-limit key and the contributor identity.
+  const h = await headers();
+  const { data: session } = await getSafeSession({
+    fetchOptions: { headers: h },
+  });
+  const userId = session?.user?.id ?? null;
+
+  // Per-IP (anonymous) / per-user rate limit — the route is public (proxy allowlist),
+  // so this is the abuse guard on the anonymous write path.
+  const rate = checkSwapitWriteRateLimit({ request, userId });
+  if (!rate.allowed) {
+    const retryAfter = Math.max(
+      0,
+      Math.ceil((rate.resetAt - Date.now()) / 1000),
+    );
+    return NextResponse.json(
+      { error: "rate limit exceeded", code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
   const leaks = scanForbidden(body.payload);
   if (leaks.length > 0) {
     return NextResponse.json(
@@ -167,11 +190,8 @@ export const POST = withValidation(factSchema, async (_request, { body }) => {
     return NextResponse.json({ error: "payload too large" }, { status: 413 });
   }
 
-  const h = await headers();
-  const { data: session } = await getSafeSession({
-    fetchOptions: { headers: h },
-  });
-  const hash = contributorHash(session?.user?.id ?? null, h);
+  // Trusted IP (rightmost, platform-appended XFF) — same un-spoofable source as the limiter.
+  const hash = contributorHash(userId, getClientIP(request));
 
   const fact = await upsertFact(
     { kind: body.kind, payload: body.payload } as FactInput,

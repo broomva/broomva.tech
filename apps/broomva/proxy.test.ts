@@ -33,6 +33,24 @@ describe("proxy public artifact routes", () => {
     expect(mockGetSafeSession).not.toHaveBeenCalled();
   });
 
+  test("allows the anonymous swapit commons page through to the handler", async () => {
+    const response = await proxy(req("/swapit"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(mockGetSafeSession).not.toHaveBeenCalled();
+  });
+
+  test("allows the public swapit commons API (GET browse/pull) through", async () => {
+    const response = await proxy(
+      req("/api/swapit/facts?kind=procurement_option&region=US"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(mockGetSafeSession).not.toHaveBeenCalled();
+  });
+
   test("still redirects private app pages for anonymous visitors", async () => {
     const response = await proxy(req("/maestro"));
 
