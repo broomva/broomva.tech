@@ -63,6 +63,52 @@ const alternativePayload = z
   })
   .passthrough();
 
+// ISO-3166-1 alpha-2 region / ISO-4217 currency, normalized to upper so the content-hash key
+// (and the denormalized region column) match the Python client byte-for-byte.
+const region = z
+  .string()
+  .regex(/^[A-Za-z]{2}$/, "region must be an ISO-3166-1 alpha-2 code")
+  .transform((s) => s.toUpperCase());
+const currency = z
+  .string()
+  .regex(/^[A-Za-z]{3}$/, "currency must be an ISO-4217 code")
+  .transform((s) => s.toUpperCase());
+const price = z.number().nonnegative().max(1_000_000_000);
+
+const procurementPayload = z
+  .object({
+    // public where-to-buy fields ONLY — never vendor/cost (the private purchase record)
+    alternative: id,
+    item_class: id.nullish(),
+    retailer: freetext,
+    region,
+    area: freetext.nullish(),
+    url: z.string().max(2048).nullish(),
+    price_min: price.nullish(),
+    price_max: price.nullish(),
+    currency: currency.nullish(),
+    as_of: z.string().max(40).nullish(),
+    availability: freetext.nullish(),
+    confidence: z.number().optional(),
+  })
+  .passthrough()
+  .refine(
+    (p) =>
+      p.price_min == null || p.price_max == null || p.price_min <= p.price_max,
+    { message: "price_min must be <= price_max" },
+  );
+
+const itemClassPayload = z
+  .object({
+    item_class: id,
+    name: freetext,
+    category: freetext,
+    description: freetext.nullish(),
+    detection_hints: z.array(z.string().max(120)).max(40).optional(),
+    confidence: z.number().optional(),
+  })
+  .passthrough();
+
 const factSchema = z.discriminatedUnion("kind", [
   z.object({
     id: z.string().optional(),
@@ -78,6 +124,16 @@ const factSchema = z.discriminatedUnion("kind", [
     id: z.string().optional(),
     kind: z.literal("alternative"),
     payload: alternativePayload,
+  }),
+  z.object({
+    id: z.string().optional(),
+    kind: z.literal("procurement_option"),
+    payload: procurementPayload,
+  }),
+  z.object({
+    id: z.string().optional(),
+    kind: z.literal("item_class"),
+    payload: itemClassPayload,
   }),
 ]);
 
@@ -124,7 +180,8 @@ export const POST = withValidation(factSchema, async (_request, { body }) => {
   return NextResponse.json(serializeFact(fact));
 });
 
-// GET /api/swapit/facts?since=<iso>&min_corroboration=<n> — pull approved community facts
+// GET /api/swapit/facts?since=<iso>&min_corroboration=<n>&kind=<k>&region=<cc>&alternative=<id>
+// Pull approved community facts. kind/region/alternative scope the public where-to-buy dataset.
 export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
@@ -134,7 +191,14 @@ export async function GET(request: Request): Promise<Response> {
       Number(url.searchParams.get("min_corroboration")) || 1,
     );
     const since = sinceParam ? new Date(sinceParam) : null;
-    const facts = await listApprovedSince(since, minCorroboration);
+    const kind = url.searchParams.get("kind") ?? undefined;
+    const region = url.searchParams.get("region") ?? undefined;
+    const alternative = url.searchParams.get("alternative") ?? undefined;
+    const facts = await listApprovedSince(since, minCorroboration, {
+      kind,
+      region,
+      alternative,
+    });
     return NextResponse.json(facts.map(serializeFact));
   } catch {
     return NextResponse.json({ error: "internal error" }, { status: 500 });
