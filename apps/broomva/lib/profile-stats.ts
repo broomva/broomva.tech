@@ -114,7 +114,9 @@ const TARGET_CRATES = [
 async function fetchCrateMeta(name: string) {
   try {
     const res = await fetch(`https://crates.io/api/v1/crates/${name}`, {
-      headers: { "User-Agent": "broomva.tech profile page (carlos@broomva.tech)" },
+      headers: {
+        "User-Agent": "broomva.tech profile page (carlos@broomva.tech)",
+      },
     });
     if (!res.ok) {
       return null;
@@ -211,6 +213,63 @@ async function fetchBookkeepingSnapshot(): Promise<BookkeepingSnapshot | null> {
 
 export async function getBookkeepingSnapshot(): Promise<BookkeepingSnapshot | null> {
   return fetchBookkeepingSnapshot();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hugging Face aggregate — models published under the Broomva author namespace
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface HuggingFaceAggregateStats {
+  totalModels: number;
+}
+
+async function fetchHuggingFaceAggregate(
+  author: string,
+): Promise<HuggingFaceAggregateStats> {
+  "use cache";
+  cacheLife("hours");
+
+  try {
+    const res = await fetch(
+      `https://huggingface.co/api/models?author=${encodeURIComponent(author)}&limit=1000`,
+      { headers: { Accept: "application/json" } },
+    );
+    if (!res.ok) {
+      return { totalModels: 0 };
+    }
+    const models = (await res.json()) as unknown[];
+    return { totalModels: Array.isArray(models) ? models.length : 0 };
+  } catch {
+    return { totalModels: 0 };
+  }
+}
+
+export async function getHuggingFaceAggregate(
+  author = "Broomva",
+): Promise<HuggingFaceAggregateStats> {
+  return fetchHuggingFaceAggregate(author);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Derived career metrics — self-updating so hardcoded "N+ years" never rots
+// ─────────────────────────────────────────────────────────────────────────────
+
+// First professional engineering role (INSA Ingeniería, Digitalization Leader).
+// Years of experience are derived from this anchor so the number increments on
+// its own every year instead of drifting out of date.
+const CAREER_START_ISO = "2019-05-01";
+
+async function fetchExperienceYears(): Promise<number> {
+  "use cache";
+  cacheLife("hours");
+
+  const start = new Date(CAREER_START_ISO).getTime();
+  const years = (Date.now() - start) / (365.25 * 24 * 60 * 60 * 1000);
+  return Math.max(0, Math.floor(years));
+}
+
+export async function getExperienceYears(): Promise<number> {
+  return fetchExperienceYears();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
