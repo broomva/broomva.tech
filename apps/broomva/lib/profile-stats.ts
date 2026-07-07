@@ -33,29 +33,52 @@ async function fetchGitHubAggregate(
     headers.Authorization = `Bearer ${token}`;
   }
 
+  type Repo = {
+    name: string;
+    description: string | null;
+    stargazers_count: number;
+    html_url: string;
+    topics: string[];
+    pushed_at: string;
+    fork: boolean;
+    language: string | null;
+  };
+
   try {
-    const res = await fetch(
-      `https://api.github.com/users/${username}/repos?type=owner&sort=updated&direction=desc&per_page=100`,
-      { headers },
+    // The API returns at most 100 repos per page, so a single request
+    // undercounts any account with more than 100 repos — dropping both stars
+    // and stale-but-starred repos from the top list. Fetch pages in parallel
+    // (bounded) and stop at the first empty page; cached hourly, so the extra
+    // requests are cheap and never loop unbounded.
+    const perPage = 100;
+    const maxPages = 5;
+    const pages = await Promise.all(
+      Array.from({ length: maxPages }, async (_unused, i) => {
+        const res = await fetch(
+          `https://api.github.com/users/${username}/repos?type=owner&sort=updated&direction=desc&per_page=${perPage}&page=${i + 1}`,
+          { headers },
+        );
+        if (!res.ok) {
+          return [] as Repo[];
+        }
+        const batch = (await res.json()) as unknown;
+        return Array.isArray(batch) ? (batch as Repo[]) : [];
+      }),
     );
-    if (!res.ok) {
+    const repos = pages.flat();
+
+    if (repos.length === 0) {
       return { totalStars: 0, totalRepos: 0, topRepos: [] };
     }
-    const repos = (await res.json()) as Array<{
-      name: string;
-      description: string | null;
-      stargazers_count: number;
-      html_url: string;
-      topics: string[];
-      pushed_at: string;
-      fork: boolean;
-      language: string | null;
-    }>;
 
-    const owned = repos.filter((r) => !r.fork);
-    const totalStars = owned.reduce((sum, r) => sum + r.stargazers_count, 0);
+    // Stars: sum across every owned public repo (matches GitHub's own "Total
+    // Stars Earned"). Repo count: all public repos (matches the count GitHub
+    // shows on the profile). Top repos: non-fork only, so forks never surface
+    // in "most-starred repos".
+    const totalStars = repos.reduce((sum, r) => sum + r.stargazers_count, 0);
     const now = Date.now();
-    const topRepos = owned
+    const topRepos = repos
+      .filter((r) => !r.fork)
       .toSorted((a, b) => b.stargazers_count - a.stargazers_count)
       .slice(0, 6)
       .map((r) => ({
@@ -69,7 +92,7 @@ async function fetchGitHubAggregate(
         language: r.language,
       }));
 
-    return { totalStars, totalRepos: owned.length, topRepos };
+    return { totalStars, totalRepos: repos.length, topRepos };
   } catch {
     return { totalStars: 0, totalRepos: 0, topRepos: [] };
   }
