@@ -379,8 +379,8 @@ export default async function ProfilePage() {
               totalRepos: github.totalRepos,
               totalStars: github.totalStars,
             }}
-            lastPushRelative={github.topRepos[0]?.pushedAtRelative ?? "—"}
-            lastPushRepo={github.topRepos[0]?.name ?? "—"}
+            lastPushRelative={github.lastPush?.pushedAtRelative ?? "—"}
+            lastPushRepo={github.lastPush?.name ?? "—"}
             recentCount={writing.length + notes.length}
             recentLabel="Recent writing"
           />

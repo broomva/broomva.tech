@@ -19,6 +19,13 @@ export interface GitHubAggregateStats {
     pushedAtRelative: string;
     language: string | null;
   }>;
+  // The genuinely most-recently-pushed repo (max pushed_at), independent of the
+  // star-sorted topRepos list. Null when no repos are available.
+  lastPush: {
+    name: string;
+    pushedAt: string;
+    pushedAtRelative: string;
+  } | null;
 }
 
 async function fetchGitHubAggregate(
@@ -68,7 +75,7 @@ async function fetchGitHubAggregate(
     const repos = pages.flat();
 
     if (repos.length === 0) {
-      return { totalStars: 0, totalRepos: 0, topRepos: [] };
+      return { totalStars: 0, totalRepos: 0, topRepos: [], lastPush: null };
     }
 
     // Stars: sum across every owned public repo (matches GitHub's own "Total
@@ -77,8 +84,8 @@ async function fetchGitHubAggregate(
     // in "most-starred repos".
     const totalStars = repos.reduce((sum, r) => sum + r.stargazers_count, 0);
     const now = Date.now();
-    const topRepos = repos
-      .filter((r) => !r.fork)
+    const nonFork = repos.filter((r) => !r.fork);
+    const topRepos = nonFork
       .toSorted((a, b) => b.stargazers_count - a.stargazers_count)
       .slice(0, 6)
       .map((r) => ({
@@ -92,9 +99,24 @@ async function fetchGitHubAggregate(
         language: r.language,
       }));
 
-    return { totalStars, totalRepos: repos.length, topRepos };
+    // "Most recent push" must be the repo with the newest pushed_at — NOT
+    // topRepos[0], which is star-sorted. Restrict to non-fork so a passive
+    // fork sync doesn't masquerade as authored activity.
+    const mostRecent = nonFork.toSorted(
+      (a, b) =>
+        new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime(),
+    )[0];
+    const lastPush = mostRecent
+      ? {
+          name: mostRecent.name,
+          pushedAt: mostRecent.pushed_at,
+          pushedAtRelative: relativeFrom(mostRecent.pushed_at, now),
+        }
+      : null;
+
+    return { totalStars, totalRepos: repos.length, topRepos, lastPush };
   } catch {
-    return { totalStars: 0, totalRepos: 0, topRepos: [] };
+    return { totalStars: 0, totalRepos: 0, topRepos: [], lastPush: null };
   }
 }
 
