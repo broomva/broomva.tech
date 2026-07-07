@@ -9,66 +9,89 @@ import { useEffect, useState } from "react";
  * that re-renders from the GitHub API on request, so the visuals stay current
  * with zero maintenance.
  *
+ * The cards are themed to the Arcan Glass tokens (see app/globals.css --ag-*):
+ * transparent backgrounds so the surrounding glass shows through, internal
+ * titles hidden in favour of one consistent site-styled caption per card, and
+ * ai-blue accents throughout — so they read as native panels, not embeds.
+ *
  * Theme-aware: the site uses class-based `next-themes` (dark by default), so we
- * read `resolvedTheme` and pick the matching card variant. Mount-gated to keep
- * SSR output (dark) identical to the first client render — no hydration flash.
+ * read `resolvedTheme` and pick the matching token set. Mount-gated to keep SSR
+ * output (dark) identical to the first client render — no hydration flash.
  */
 
 const USER = "broomva";
+
+// Arcan Glass tokens as hex (SVG endpoints need hex, not oklch). Kept in sync
+// with the --ag-* custom properties in app/globals.css. ai-blue is theme-stable.
+type Tokens = {
+  aiBlue: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+};
+
+const TOKENS: Record<"dark" | "light", Tokens> = {
+  dark: {
+    aiBlue: "5480C7",
+    textPrimary: "F8F8F8",
+    textSecondary: "9A9EAB",
+    textMuted: "60636F",
+  },
+  light: {
+    aiBlue: "5480C7",
+    textPrimary: "101321",
+    textSecondary: "414453",
+    textMuted: "686B79",
+  },
+};
 
 interface PlotSpec {
   key: string;
   title: string;
   alt: string;
   span: "half" | "full";
-  src: (dark: boolean) => string;
+  center?: boolean;
+  src: (t: Tokens) => string;
 }
 
 const PLOTS: PlotSpec[] = [
   {
     key: "stats",
     title: "Overall stats & rank",
-    alt: "GitHub stats card — total commits, stars, PRs, issues, and rank",
+    alt: "GitHub stats — total stars, commits, PRs, issues, and rank",
     span: "half",
-    src: (dark) =>
-      `https://broomva-github-stats.vercel.app/api?username=${USER}&show_icons=true&theme=${dark ? "tokyonight" : "default"}&hide_border=true&count_private=true&include_all_commits=true&rank_icon=github&bg_color=00000000&title_color=${dark ? "5B9BFF" : "0A3D8F"}&icon_color=5B9BFF`,
+    src: (t) =>
+      `https://broomva-github-stats.vercel.app/api?username=${USER}&show_icons=true&hide_border=true&hide_title=true&count_private=true&include_all_commits=true&rank_icon=default&bg_color=00000000&title_color=${t.aiBlue}&text_color=${t.textSecondary}&icon_color=${t.aiBlue}&ring_color=${t.aiBlue}`,
   },
   {
     key: "langs",
     title: "Top languages",
-    alt: "Top languages breakdown across public and private repositories",
+    alt: "Most-used languages across public repositories",
     span: "half",
-    src: (dark) =>
-      `https://broomva-github-stats.vercel.app/api/top-langs/?username=${USER}&layout=compact&theme=${dark ? "tokyonight" : "default"}&hide_border=true&langs_count=10&hide=jupyter%20notebook,html,css&bg_color=00000000&title_color=${dark ? "5B9BFF" : "0A3D8F"}`,
+    src: (t) =>
+      `https://broomva-github-stats.vercel.app/api/top-langs/?username=${USER}&layout=compact&hide_border=true&hide_title=true&langs_count=8&hide=jupyter%20notebook,html,css&bg_color=00000000&text_color=${t.textSecondary}`,
   },
   {
     key: "activity",
     title: "Contribution activity",
-    alt: "Contribution activity graph over time",
+    alt: "Contribution activity over the past weeks",
     span: "full",
-    src: (dark) =>
-      `https://github-readme-activity-graph.vercel.app/graph?username=${USER}&theme=${dark ? "tokyo-night" : "github-light"}&hide_border=true&area=true&custom_title=Contribution%20Activity&bg_color=00000000&color=${dark ? "5B9BFF" : "0A3D8F"}&line=5B9BFF&point=B8D4FF`,
+    src: (t) =>
+      `https://github-readme-activity-graph.vercel.app/graph?username=${USER}&hide_border=true&area=true&bg_color=00000000&color=${t.textSecondary}&line=${t.aiBlue}&point=${t.aiBlue}&area_color=${t.aiBlue}&title_color=${t.aiBlue}&custom_title=%20`,
   },
   {
     key: "streak",
     title: "Contribution streak",
-    alt: "GitHub contribution streak — current and longest streak",
-    span: "half",
-    src: (dark) =>
-      `https://github-readme-streak-stats.herokuapp.com/?user=${USER}&theme=${dark ? "tokyonight" : "default"}&hide_border=true&date_format=j%20M%5B%20Y%5D&background=00000000&ring=5B9BFF&fire=5B9BFF&currStreakLabel=5B9BFF`,
-  },
-  {
-    key: "productive-time",
-    title: "When the commits land",
-    alt: "Productive time of day for commits (UTC-5)",
-    span: "half",
-    src: (dark) =>
-      `https://github-profile-summary-cards.vercel.app/api/cards/productive-time?username=${USER}&theme=${dark ? "tokyonight" : "default"}&utcOffset=-5`,
+    alt: "Current and longest GitHub contribution streak",
+    span: "full",
+    center: true,
+    src: (t) =>
+      `https://github-readme-streak-stats.herokuapp.com/?user=${USER}&hide_border=true&date_format=j%20M%5B%20Y%5D&background=00000000&ring=${t.aiBlue}&fire=${t.aiBlue}&currStreakLabel=${t.aiBlue}&stroke=${t.aiBlue}&sideLabels=${t.textSecondary}&dates=${t.textMuted}&currStreakNum=${t.textPrimary}&sideNums=${t.textPrimary}`,
   },
 ];
 
-function Plot({ spec, dark }: { spec: PlotSpec; dark: boolean }) {
-  const src = spec.src(dark);
+function Plot({ spec, tokens }: { spec: PlotSpec; tokens: Tokens }) {
+  const src = spec.src(tokens);
   const [failed, setFailed] = useState(false);
 
   if (failed) {
@@ -77,20 +100,20 @@ function Plot({ spec, dark }: { spec: PlotSpec; dark: boolean }) {
 
   return (
     <figure
-      className={`overflow-hidden rounded-2xl glass p-3 ${
+      className={`rounded-2xl glass p-5 ${
         spec.span === "full" ? "lg:col-span-2" : ""
       }`}
     >
+      <figcaption className="mb-3 text-xs uppercase tracking-wider text-text-muted">
+        {spec.title}
+      </figcaption>
       <img
         alt={spec.alt}
-        className="h-auto w-full"
+        className={`h-auto w-full ${spec.center ? "mx-auto max-w-xl" : ""}`}
         loading="lazy"
         onError={() => setFailed(true)}
         src={src}
       />
-      <figcaption className="mt-2 px-1 text-xs text-text-muted">
-        {spec.title}
-      </figcaption>
     </figure>
   );
 }
@@ -105,14 +128,16 @@ export function GitHubPlots() {
 
   // Default to dark (the site's default theme) until mounted, so the server
   // render and first client render agree.
-  const dark = !mounted || resolvedTheme !== "light";
+  const tokens =
+    !mounted || resolvedTheme !== "light" ? TOKENS.dark : TOKENS.light;
+  const themeKey = tokens === TOKENS.dark ? "d" : "l";
 
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
       {PLOTS.map((spec) => (
         // Key includes the theme so a toggle remounts the figure, resetting the
         // load-error state cleanly (no effect needed).
-        <Plot dark={dark} key={`${spec.key}-${dark ? "d" : "l"}`} spec={spec} />
+        <Plot key={`${spec.key}-${themeKey}`} spec={spec} tokens={tokens} />
       ))}
     </div>
   );
