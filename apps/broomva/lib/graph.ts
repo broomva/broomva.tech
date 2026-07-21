@@ -37,13 +37,21 @@ export interface GraphData {
   links: GraphLink[];
 }
 
-const CONTENT_KINDS: ContentKind[] = ["notes", "projects", "writing", "prompts"];
+const CONTENT_KINDS: ContentKind[] = [
+  "notes",
+  "projects",
+  "writing",
+  "prompts",
+  "posts",
+];
 
 const KIND_TO_NODE_TYPE: Record<ContentKind, NodeType> = {
   notes: "note",
   projects: "project",
   writing: "writing",
   prompts: "prompt",
+  // Blog posts render as writing nodes in the public graph.
+  posts: "writing",
 };
 
 export async function buildPublicGraph(): Promise<GraphData> {
