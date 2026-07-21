@@ -42,7 +42,6 @@ const CONTENT_KINDS: ContentKind[] = [
   "projects",
   "writing",
   "prompts",
-  "posts",
 ];
 
 const KIND_TO_NODE_TYPE: Record<ContentKind, NodeType> = {
@@ -50,8 +49,6 @@ const KIND_TO_NODE_TYPE: Record<ContentKind, NodeType> = {
   projects: "project",
   writing: "writing",
   prompts: "prompt",
-  // Blog posts render as writing nodes in the public graph.
-  posts: "writing",
 };
 
 export async function buildPublicGraph(): Promise<GraphData> {

@@ -11,7 +11,7 @@ import {
   rewriteMarkdownAssets,
 } from "./lago-assets";
 
-export type ContentKind = "notes" | "projects" | "writing" | "prompts" | "posts";
+export type ContentKind = "notes" | "projects" | "writing" | "prompts";
 
 export interface PromptVariable {
   name: string;
