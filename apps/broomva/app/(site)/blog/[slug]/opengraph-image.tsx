@@ -44,7 +44,7 @@ export default async function OGImage({
             gap: "12px",
             fontSize: 22,
             letterSpacing: "0.12em",
-            color: "#5B9BFF",
+            color: "#7B8FCC",
             fontWeight: 700,
           }}
         >
@@ -68,7 +68,7 @@ export default async function OGImage({
               style={{
                 fontSize: 22,
                 lineHeight: 1.45,
-                color: "#7EB8FF",
+                color: "#A1B2D4",
                 maxWidth: "900px",
               }}
             >
@@ -96,7 +96,7 @@ export default async function OGImage({
                   borderRadius: "999px",
                   background: "rgba(123, 143, 204, 0.15)",
                   border: "1px solid rgba(123, 143, 204, 0.3)",
-                  color: "#5B9BFF",
+                  color: "#A1B2D4",
                 }}
               >
                 {tag}
@@ -106,11 +106,11 @@ export default async function OGImage({
           <div
             style={{
               fontSize: 16,
-              color: "#3B7BF7",
+              color: "#7B8FCC",
               letterSpacing: "0.08em",
             }}
           >
-            note
+            post
           </div>
         </div>
       </div>

@@ -152,6 +152,15 @@ async function readFile(
   kind: ContentKind,
   slug: string,
 ): Promise<string | null> {
+  // Path-traversal guard (root predicate — covers every caller). `slug` is a
+  // filename stem, never a path: getContentBySlug passes the raw route param
+  // (Next.js dynamicParams defaults to true, so /blog/<anything> reaches here),
+  // while getContentList derives slugs from readdir and stays within this set.
+  // Reject anything with separators, dot-dot, or characters outside the
+  // filename allowlist before touching the filesystem.
+  if (!/^[A-Za-z0-9._-]+$/.test(slug) || slug.includes("..")) {
+    return null;
+  }
   // readDirectory lists both .mdx and .md — try both extensions here too,
   // otherwise .md entries are listed but silently dropped at read time.
   for (const ext of ["mdx", "md"]) {
