@@ -11,7 +11,7 @@ import {
   rewriteMarkdownAssets,
 } from "./lago-assets";
 
-export type ContentKind = "notes" | "projects" | "writing" | "prompts";
+export type ContentKind = "notes" | "projects" | "writing" | "prompts" | "posts";
 
 export interface PromptVariable {
   name: string;
@@ -152,21 +152,25 @@ async function readFile(
   kind: ContentKind,
   slug: string,
 ): Promise<string | null> {
-  const fullPath = path.join(CONTENT_ROOT, kind, `${slug}.mdx`);
-
-  try {
-    return await fs.readFile(fullPath, "utf8");
-  } catch (error: unknown) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "ENOENT"
-    ) {
-      return null;
+  // readDirectory lists both .mdx and .md — try both extensions here too,
+  // otherwise .md entries are listed but silently dropped at read time.
+  for (const ext of ["mdx", "md"]) {
+    const fullPath = path.join(CONTENT_ROOT, kind, `${slug}.${ext}`);
+    try {
+      return await fs.readFile(fullPath, "utf8");
+    } catch (error: unknown) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
+        continue;
+      }
+      throw error;
     }
-    throw error;
   }
+  return null;
 }
 
 export async function getContentList(

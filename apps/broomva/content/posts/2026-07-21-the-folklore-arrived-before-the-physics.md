@@ -2,7 +2,7 @@
 title: "The Folklore Arrived Before the Physics"
 summary: In six months the field converged on a belief — the harness, not the model, is what matters — and backed it with striking empirics. What it doesn't have is a single theorem about when the loop it now worships converges, oscillates, or collapses. A map of the gap, and the four results that would fill it.
 date: 2026-07-21
-published: false
+published: true
 tags:
   - rcs
   - harness-engineering
@@ -13,9 +13,7 @@ tags:
   - verification
 links:
   - label: "Part 1 of this pair: The Benchmark Ran Out Before the Loop Did"
-    url: "/posts/2026-07-21-the-benchmark-ran-out-before-the-loop-did"
-  - label: "Part 0: The Field Rediscovered the Independence Principle"
-    url: "/posts/the-field-rediscovered-the-independence-principle"
+    url: "/blog/2026-07-21-the-benchmark-ran-out-before-the-loop-did"
   - label: "Adapting the Interface, Not the Model (PKU)"
     url: "https://arxiv.org/abs/2605.22166"
   - label: "LEVI — Stronger Search Architectures Can Substitute for Larger LLMs"

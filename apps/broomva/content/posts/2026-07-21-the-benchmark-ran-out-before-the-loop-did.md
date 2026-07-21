@@ -2,7 +2,7 @@
 title: "The Benchmark Ran Out Before the Loop Did"
 summary: We pre-registered a self-improvement experiment, and it was over in one generation — the model aced every task and the selection gate became mathematically unsatisfiable. Two weeks later another lab hit the same wall. The instrument didn't fail. The instrument class did.
 date: 2026-07-21
-published: false
+published: true
 tags:
   - rcs
   - self-improvement
@@ -20,8 +20,8 @@ links:
     url: "https://www.weco.ai/blog/first-evidence-of-recursive-self-improvement"
   - label: "MetaSkill-Evolve (LMU/CUHK) — the independent replication"
     url: "https://arxiv.org/abs/2607.05297"
-  - label: "Part 0 of this series: The Field Rediscovered the Independence Principle"
-    url: "/posts/the-field-rediscovered-the-independence-principle"
+  - label: "Part 2 of this pair: The Folklore Arrived Before the Physics"
+    url: "/blog/2026-07-21-the-folklore-arrived-before-the-physics"
 ---
 
 Three weeks ago I set out to reproduce the most interesting result in the
