@@ -9,10 +9,10 @@ const plans = [
     price: "$0",
     period: "forever",
     description: "Get started with AI-powered chat and exploration.",
-    credits: "500 credits/month",
+    credits: "50 included credits",
     features: [
-      "AI chat with community models",
-      "500 AI credits included monthly",
+      "AI chat with selected models",
+      "50 AI credits on entry to the Free plan",
       "Blog and writing access",
       "Basic conversation history",
     ],
@@ -25,25 +25,24 @@ const plans = [
     price: "$29",
     period: "/month",
     description:
-      "For builders who need full model access and deeper capabilities.",
+      "For builders who need the full deployed model catalog and deeper capabilities.",
     credits: "5,000 credits/month",
     features: [
-      "All AI models (Claude, GPT, Gemini, and more)",
+      "Deployed model catalog (including selected Claude, GPT, and Gemini models)",
       "5,000 AI credits included monthly",
-      "Usage-based overage at $0.01/credit",
       "Console access with usage dashboard",
       "1 API key for programmatic access",
       "Deep research and agent skills",
-      "Priority support",
+      "Support through the published contact channel",
     ],
-    cta: "Start Pro",
-    ctaHref: "/login?plan=pro",
+    cta: "Contact Us",
+    ctaHref: "mailto:contact@broomva.tech?subject=Pro%20Plan",
     highlighted: true,
   },
   {
     name: "Team",
-    price: "$50",
-    period: "/seat/month",
+    price: "Contact",
+    period: "",
     description: "Collaborative workspace for teams building with AI agents.",
     credits: "20,000 credits/month",
     features: [
@@ -51,12 +50,11 @@ const plans = [
       "20,000 AI credits included monthly",
       "Shared workspace and conversations",
       "Up to 10 API keys",
-      "Priority model access",
       "Team member management",
-      "Usage analytics per member",
+      "Team usage dashboard",
     ],
-    cta: "Start Team",
-    ctaHref: "/login?plan=team",
+    cta: "Contact Us",
+    ctaHref: "mailto:contact@broomva.tech?subject=Team%20Plan",
     highlighted: false,
   },
   {
@@ -65,15 +63,15 @@ const plans = [
     period: "",
     description:
       "Managed Life Agent OS deployment with dedicated infrastructure.",
-    credits: "Unlimited credits",
+    credits: "Custom allocation under signed agreement",
     features: [
       "Everything in Team",
       "Managed Life Agent OS instance",
       "Dedicated Arcan, Lago, and Autonomic services",
       "Custom subdomain (you.broomva.tech)",
       "Unlimited API keys",
-      "SLA guarantees with financial backing",
-      "Data residency and compliance controls",
+      "SLA commitments under a separate written agreement",
+      "Data residency options subject to technical validation",
       "Dedicated support and onboarding",
     ],
     cta: "Contact Us",
@@ -96,8 +94,9 @@ export default function PricingPage() {
           Open AI for all
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          The platform is open source. The AI is pay-as-you-go. Start free,
-          scale when you need to.
+          Published components use the license included with their repository or
+          package. Hosted AI plans are subscriptions. Start free, then scale
+          when you need to.
         </p>
       </div>
 
@@ -173,9 +172,7 @@ export default function PricingPage() {
       </div>
 
       <div className="mt-16 text-center">
-        <h2 className="text-2xl font-semibold mb-4">
-          How credits work
-        </h2>
+        <h2 className="text-2xl font-semibold mb-4">How credits work</h2>
         <div className="mx-auto max-w-2xl text-muted-foreground space-y-3 text-sm">
           <p>
             Every AI request costs credits based on the model and tokens used.
@@ -183,19 +180,23 @@ export default function PricingPage() {
             Premium models like Claude Opus cost more.
           </p>
           <p>
-            1 credit = $0.01. Your plan includes a monthly credit allocation.
-            Pro and Team plans allow overage at $0.01/credit, billed via Stripe
-            at the end of the billing period.
+            Credits are usage units, not stored monetary value. Paid plans use
+            monthly allocations; the Free plan does not. Usage pauses at the
+            plan limit, and overage billing is not currently enabled.
           </p>
           <p>
-            Free tier credits reset monthly. Unused credits do not roll over.
+            The Free plan receives 50 credits on initial registration and when a
+            paid subscription transitions back to Free; they do not reset
+            monthly. Paid allocations reset with the applicable billing period.
+            Unused credits do not roll over.
           </p>
         </div>
       </div>
 
       <div className="mt-12 text-center text-sm text-muted-foreground">
         <p>
-          All plans include the open-source agent platform.{" "}
+          Published source code is available under the license included with the
+          relevant repository or package. Hosted plans are subscriptions.{" "}
           <Link href="/terms" className="underline hover:text-foreground">
             Terms of Service
           </Link>{" "}

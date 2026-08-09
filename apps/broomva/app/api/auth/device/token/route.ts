@@ -4,10 +4,8 @@ import { deviceAuthCode, agent } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { JWT_ACCESS_EXPIRY_MS } from "@/lib/ai/vault/jwt";
 import { mintTier1ForConsumer } from "@/lib/auth/lifegw-jwt";
-import {
-  checkDeviceTokenRateLimit,
-  getClientIP,
-} from "@/lib/utils/rate-limit";
+import { checkDeviceTokenRateLimit, getClientIP } from "@/lib/utils/rate-limit";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 /**
  * POST /api/auth/device/token
@@ -41,7 +39,7 @@ export async function POST(request: Request) {
             ? "Internal server error"
             : String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -55,14 +53,14 @@ async function handleTokenRequest(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "invalid_request", error_description: "Missing device_code" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   if (!deviceCode) {
     return NextResponse.json(
       { error: "invalid_request", error_description: "Missing device_code" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -89,7 +87,7 @@ async function handleTokenRequest(request: Request) {
   if (!record) {
     return NextResponse.json(
       { error: "invalid_grant", error_description: "Unknown device code" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -103,7 +101,7 @@ async function handleTokenRequest(request: Request) {
 
     return NextResponse.json(
       { error: "expired_token", error_description: "Device code has expired" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -114,7 +112,7 @@ async function handleTokenRequest(request: Request) {
           error: "authorization_pending",
           error_description: "User has not yet authorized",
         },
-        { status: 400 }
+        { status: 400 },
       );
 
     case "denied":
@@ -122,11 +120,28 @@ async function handleTokenRequest(request: Request) {
       await db.delete(deviceAuthCode).where(eq(deviceAuthCode.id, record.id));
 
       return NextResponse.json(
-        { error: "access_denied", error_description: "User denied authorization" },
-        { status: 400 }
+        {
+          error: "access_denied",
+          error_description: "User denied authorization",
+        },
+        { status: 400 },
       );
 
     case "approved": {
+      if (!record.userId || !(await hasCurrentLegalAcceptance(record.userId))) {
+        await db
+          .update(deviceAuthCode)
+          .set({ status: "denied" })
+          .where(eq(deviceAuthCode.id, record.id));
+        return NextResponse.json(
+          {
+            error: "access_denied",
+            error_description: "Current legal acceptance required",
+          },
+          { status: 403 },
+        );
+      }
+
       // Clean up used record
       await db.delete(deviceAuthCode).where(eq(deviceAuthCode.id, record.id));
 
@@ -235,7 +250,7 @@ async function handleTokenRequest(request: Request) {
     default:
       return NextResponse.json(
         { error: "server_error", error_description: "Unexpected state" },
-        { status: 500 }
+        { status: 500 },
       );
   }
 }

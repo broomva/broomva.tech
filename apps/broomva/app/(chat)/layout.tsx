@@ -7,6 +7,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getSafeSession } from "@/lib/auth";
 import type { AppModelId } from "@/lib/ai/app-model-id";
 import { config } from "@/lib/config";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-acceptance-gate";
 import { ANONYMOUS_LIMITS } from "@/lib/types/anonymous";
 import { ContextSidebarProvider } from "@/hooks/use-context-sidebar";
 import { ChatModelsProvider } from "@/providers/chat-models-provider";
@@ -28,6 +29,10 @@ export default async function ChatLayout({
     fetchOptions: { headers: await headers() },
   });
   const isCollapsed = cookieStore.get("sidebar:state")?.value !== "true";
+
+  if (session?.user?.id) {
+    await requireCurrentLegalAcceptance(session.user.id);
+  }
 
   const cookieModel = cookieStore.get("chat-model")?.value;
   const isAnonymous = !session?.user;

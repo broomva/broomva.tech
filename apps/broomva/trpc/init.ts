@@ -14,6 +14,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 import { getSafeSession } from "@/lib/auth";
 import { upsertUserFromSession } from "@/lib/db/queries";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 /**
  * 1. CONTEXT
@@ -125,7 +126,7 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
@@ -133,6 +134,12 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!id) {
     console.error("User ID missing in session callback");
     throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  if (!(await hasCurrentLegalAcceptance(id))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Current legal acceptance required",
+    });
   }
   return next({
     ctx: {

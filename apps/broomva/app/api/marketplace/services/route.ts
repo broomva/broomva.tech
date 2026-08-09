@@ -63,7 +63,24 @@ export async function GET(request: NextRequest) {
       offset,
     });
 
-    return NextResponse.json({ services });
+    return NextResponse.json({
+      services: services.map((service) => ({
+        id: service.id,
+        agentId: service.agentId,
+        name: service.name,
+        description: service.description,
+        category: service.category,
+        pricing: service.pricing,
+        capabilities: service.capabilities,
+        trustMinimum: service.trustMinimum,
+        status: service.status,
+        createdAt: service.createdAt,
+        updatedAt: service.updatedAt,
+        agentName: service.agentName,
+        agentTrustScore: service.agentTrustScore,
+        agentTrustLevel: service.agentTrustLevel,
+      })),
+    });
   } catch (err) {
     console.error("[marketplace/services] Failed to list services:", err);
     return NextResponse.json(

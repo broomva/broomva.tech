@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
 import { TopNav } from "@/components/site/top-nav";
+import { getSafeSession } from "@/lib/auth";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-acceptance-gate";
 
 /**
  * /maestro is a top-level route (outside the `(site)` group), so it doesn't get
@@ -9,7 +13,17 @@ import { TopNav } from "@/components/site/top-nav";
  * `AudioPlaybackProvider` is `ToolbarDockProvider`. No full site header/footer —
  * the console keeps its own chrome, just gains the dock.
  */
-export default function MaestroLayout({ children }: { children: ReactNode }) {
+export default async function MaestroLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const { data: session } = await getSafeSession({
+    fetchOptions: { headers: await headers() },
+  });
+  if (!session?.user) redirect("/login");
+  await requireCurrentLegalAcceptance(session.user.id);
+
   return (
     <ToolbarDockProvider>
       {children}

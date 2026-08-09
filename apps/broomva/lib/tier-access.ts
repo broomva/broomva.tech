@@ -8,7 +8,7 @@ import { PLAN_TIERS } from "@/lib/stripe";
 // ---------------------------------------------------------------------------
 
 export type TierFeature =
-  | "all_models" // Pro+: access all AI models (free = community only)
+  | "all_models" // Pro+: access the deployed model catalog
   | "console" // Pro+: console dashboard access
   | "api_keys" // Pro+: create API keys
   | "deep_research" // Pro+: deep research agent skill
@@ -61,9 +61,8 @@ const TIER_LIMITS: Record<
 // ---------------------------------------------------------------------------
 
 /**
- * Community models available on the free tier.
- * Must be a superset of ANONYMOUS_LIMITS.AVAILABLE_MODELS — authenticated
- * free users should never be blocked from models that anonymous users can use.
+ * Selected deployed models available on the free tier. Anonymous prompt
+ * processing is disabled independently at the request boundaries.
  */
 const FREE_TIER_MODELS = [
   "openai/gpt-5-nano",
@@ -135,7 +134,7 @@ export function canSpendCredits(
 export function getUpgradeMessage(feature: TierFeature): string {
   const messages: Record<TierFeature, string> = {
     all_models:
-      "This model requires a Pro plan or higher. Upgrade at /pricing to unlock all AI models.",
+      "This model requires a Pro plan or higher. See /pricing for access to the deployed model catalog.",
     console:
       "The console dashboard is available on Pro plans and above. Upgrade at /pricing.",
     api_keys:
@@ -151,7 +150,7 @@ export function getUpgradeMessage(feature: TierFeature): string {
     custom_domain:
       "Custom domains are an Enterprise feature. Contact sales for details.",
     sla_guarantee:
-      "SLA guarantees are available on Enterprise plans. Contact sales for details.",
+      "SLA commitments may be available under a separate signed Enterprise agreement. Contact sales for details.",
   };
 
   return messages[feature];

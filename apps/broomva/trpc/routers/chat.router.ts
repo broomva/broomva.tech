@@ -287,7 +287,7 @@ export const chatRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  generateTitle: publicProcedure
+  generateTitle: protectedProcedure
     .input(
       z.object({
         message: z.string().min(1).max(MAX_MESSAGE_CHARS),

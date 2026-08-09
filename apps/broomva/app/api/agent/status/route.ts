@@ -5,19 +5,10 @@
  */
 
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { getSafeSession } from "@/lib/auth";
 import { signLifeJWT } from "@/lib/ai/vault/jwt";
+import { withAuth } from "@/lib/api/with-auth";
 
-export async function GET() {
-  const { data: sessionData } = await getSafeSession({
-    fetchOptions: { headers: await headers() },
-  });
-
-  if (!sessionData?.user?.id) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-
+export const GET = withAuth(async (_request, { userId, email }) => {
   const arcanUrl = process.env.ARCAN_URL;
   if (!arcanUrl) {
     return NextResponse.json(
@@ -27,8 +18,8 @@ export async function GET() {
   }
 
   const token = await signLifeJWT({
-    id: sessionData.user.id,
-    email: sessionData.user.email ?? "",
+    id: userId,
+    email: email ?? "",
   });
 
   const res = await fetch(`${arcanUrl}/status`, {
@@ -37,4 +28,4 @@ export async function GET() {
 
   const data = await res.json();
   return NextResponse.json(data, { status: res.status });
-}
+});

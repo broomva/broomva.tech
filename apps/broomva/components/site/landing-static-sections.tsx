@@ -10,7 +10,7 @@ const stack = [
     name: "bstack",
     role: "Agent skills platform",
     description:
-      "24 curated agent skills across 7 layers — install the full Broomva development workflow with one command.",
+      "A layered catalog of curated agent skills — install the Broomva development workflow with one command.",
     href: "/skills",
   },
   {
@@ -64,7 +64,7 @@ export function StackSection() {
             The stack
           </h2>
           <p className="text-pretty mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-            10 Rust crates, 24 agent skills, 500+ tests. A control-theory-native
+            Rust services, a layered agent-skill catalog, and tested control infrastructure. A control-theory-native
             ecosystem for autonomous software development.
           </p>
 

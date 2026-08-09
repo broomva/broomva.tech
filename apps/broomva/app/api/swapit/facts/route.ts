@@ -1,11 +1,9 @@
 import { createHmac } from "node:crypto";
 
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { withValidation } from "@/lib/api/with-auth";
-import { getSafeSession } from "@/lib/auth";
 import {
   commonsStats,
   type FactInput,
@@ -16,6 +14,7 @@ import {
 } from "@/lib/db/swapit-facts";
 import { checkSwapitWriteRateLimit } from "@/lib/swapit/rate-limit";
 import { getClientIP } from "@/lib/utils/rate-limit";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 const MAX_PAYLOAD_BYTES = 32_768;
 const MAX_FREETEXT = 600;
@@ -27,6 +26,14 @@ const MAX_FREETEXT = 600;
 const freetext = z.string().max(MAX_FREETEXT);
 const id = z.string().max(120);
 const idList = z.array(id).max(40).optional();
+const publicHttpUrl = z
+  .string()
+  .url()
+  .max(2048)
+  .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
+    message: "URL must use HTTP or HTTPS",
+  });
+const publicSources = z.array(publicHttpUrl).max(20).optional();
 
 const productPayload = z
   .object({
@@ -37,10 +44,10 @@ const productPayload = z
     observed_hazards: idList,
     recycling_code: z.string().max(32).nullish(),
     label_terms: z.array(z.string().max(120)).max(20).optional(),
-    evidence: z.unknown().optional(),
+    evidence: publicSources,
     confidence: z.number().optional(),
   })
-  .passthrough();
+  .strict();
 
 const hazardPayload = z
   .object({
@@ -48,10 +55,10 @@ const hazardPayload = z
     hazard_id: id,
     presence_likelihood: z.number().optional(),
     rationale: freetext.optional(),
-    sources: z.unknown().optional(),
+    sources: publicSources,
     confidence: z.number().optional(),
   })
-  .passthrough();
+  .strict();
 
 const alternativePayload = z
   .object({
@@ -60,10 +67,10 @@ const alternativePayload = z
     avoids_hazards: idList,
     material: freetext.optional(),
     rationale: freetext.optional(),
-    sources: z.unknown().optional(),
+    sources: publicSources,
     confidence: z.number().optional(),
   })
-  .passthrough();
+  .strict();
 
 // ISO-3166-1 alpha-2 region / ISO-4217 currency, normalized to upper so the content-hash key
 // (and the denormalized region column) match the Python client byte-for-byte.
@@ -85,7 +92,7 @@ const procurementPayload = z
     retailer: freetext,
     region,
     area: freetext.nullish(),
-    url: z.string().max(2048).nullish(),
+    url: publicHttpUrl.nullish(),
     price_min: price.nullish(),
     price_max: price.nullish(),
     currency: currency.nullish(),
@@ -93,7 +100,7 @@ const procurementPayload = z
     availability: freetext.nullish(),
     confidence: z.number().optional(),
   })
-  .passthrough()
+  .strict()
   .refine(
     (p) =>
       p.price_min == null || p.price_max == null || p.price_min <= p.price_max,
@@ -109,34 +116,44 @@ const itemClassPayload = z
     detection_hints: z.array(z.string().max(120)).max(40).optional(),
     confidence: z.number().optional(),
   })
-  .passthrough();
+  .strict();
 
-const factSchema = z.discriminatedUnion("kind", [
-  z.object({
-    id: z.string().optional(),
-    kind: z.literal("product"),
-    payload: productPayload,
-  }),
-  z.object({
-    id: z.string().optional(),
-    kind: z.literal("item_class_hazard"),
-    payload: hazardPayload,
-  }),
-  z.object({
-    id: z.string().optional(),
-    kind: z.literal("alternative"),
-    payload: alternativePayload,
-  }),
-  z.object({
-    id: z.string().optional(),
-    kind: z.literal("procurement_option"),
-    payload: procurementPayload,
-  }),
-  z.object({
-    id: z.string().optional(),
-    kind: z.literal("item_class"),
-    payload: itemClassPayload,
-  }),
+export const factSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      id: z.string().optional(),
+      kind: z.literal("product"),
+      payload: productPayload,
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().optional(),
+      kind: z.literal("item_class_hazard"),
+      payload: hazardPayload,
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().optional(),
+      kind: z.literal("alternative"),
+      payload: alternativePayload,
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().optional(),
+      kind: z.literal("procurement_option"),
+      payload: procurementPayload,
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().optional(),
+      kind: z.literal("item_class"),
+      payload: itemClassPayload,
+    })
+    .strict(),
 ]);
 
 // Server-held HMAC key so a stored contributorHash can't be reversed to an IP by anyone with
@@ -167,17 +184,19 @@ function contributorHash(
     : null;
 }
 
-// POST /api/swapit/facts — contribute an anonymized fact (anonymous-by-IP or Better-Auth-identified)
+// POST /api/swapit/facts — contribute from an accepted browser or Life bearer identity
 export const POST = withValidation(factSchema, async (request, { body }) => {
-  // One session read serves both the rate-limit key and the contributor identity.
-  const h = await headers();
-  const { data: session } = await getSafeSession({
-    fetchOptions: { headers: h },
-  });
-  const userId = session?.user?.id ?? null;
+  const auth = await resolveAuth(request);
+  if (!auth) {
+    return NextResponse.json(
+      { error: "current legal acceptance required", code: "forbidden" },
+      { status: 403 },
+    );
+  }
+  const userId = auth.userId;
 
-  // Per-IP (anonymous) / per-user rate limit — the route is public (proxy allowlist),
-  // so this is the abuse guard on the anonymous write path.
+  // Per-IP / per-user rate limiting remains an abuse guard after the proxy's
+  // current-session or Life-bearer acceptance check.
   const rate = checkSwapitWriteRateLimit({ request, userId });
   if (!rate.allowed) {
     const retryAfter = Math.max(

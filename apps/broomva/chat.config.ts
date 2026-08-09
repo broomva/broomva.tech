@@ -16,7 +16,7 @@ const config = {
     "Rust Agent OS stack, control metalayers, and harness engineering for AI-native workflows. Chat, projects, writing, and notes by Carlos D. Escobar-Valbuena.",
   appUrl: "https://broomva.tech",
   organization: {
-    name: "Broomva Tech Corp",
+    name: "Carlos D. Escobar-Valbuena, operating as Broomva",
     contact: {
       privacyEmail: "contact@broomva.tech",
       legalEmail: "contact@broomva.tech",
@@ -50,8 +50,9 @@ const config = {
     urlRetrieval: false, // Requires FIRECRAWL_API_KEY
     deepResearch: true, // Requires webSearch
     mcp: false, // Requires MCP_ENCRYPTION_KEY
-    imageGeneration: true, // Requires BLOB_READ_WRITE_TOKEN
-    attachments: true, // Requires BLOB_READ_WRITE_TOKEN
+    // Disabled until generated images and uploads use private signed storage.
+    imageGeneration: false,
+    attachments: false,
     followupSuggestions: true,
     knowledgeGraph: true, // Requires VAULT_PATH
     memoryVault: true, // Requires LAGO_URL
@@ -61,28 +62,28 @@ const config = {
     currency: "USD",
     free: {
       name: "Free",
-      summary: "500 AI credits/month, community models",
+      summary: "50 AI credits on entry to Free, selected models",
     },
     pro: {
       name: "Pro",
       monthlyPrice: 29,
       summary:
-        "5,000 AI credits/month, all models, console access, 1 API key",
+        "5,000 AI credits/month, deployed model catalog, console access, 1 API key",
     },
   },
   legal: {
-    minimumAge: 13,
-    governingLaw: "United States",
-    refundPolicy: "no-refunds",
+    minimumAge: 18,
+    governingLaw: "Republic of Colombia",
+    refundPolicy: "non-refundable-except-where-required-by-law",
   },
   policies: {
     privacy: {
       title: "Privacy Policy",
-      lastUpdated: "March 21, 2026",
+      lastUpdated: "August 9, 2026",
     },
     terms: {
       title: "Terms of Service",
-      lastUpdated: "March 21, 2026",
+      lastUpdated: "August 9, 2026",
     },
   },
   authentication: {
@@ -135,15 +136,10 @@ const config = {
     },
   },
   anonymous: {
-    // Enough for a meaningful conversation on the public agent — visitors
-    // shouldn't hit the credit wall mid-discussion. Each message costs 1.
-    credits: isProd ? 50 : 1000,
-    // The Arcan agent's whole purpose on broomva.tech is to surface the open
-    // knowledge graph to anyone who interacts with it, signed in or not.
-    // These three tools read public data (public/agent-knowledge.json generated
-    // at build time) and never write state or cost external APIs, so they're
-    // safe to expose anonymously.
-    availableTools: ["searchKnowledge", "readKnowledgeNote", "traverseKnowledge"],
+    // Legacy schema fields retained for compatibility. Anonymous prompt
+    // processing is disabled at the route and tRPC boundaries.
+    credits: 0,
+    availableTools: [],
     rateLimit: {
       requestsPerMinute: isProd ? 5 : 60,
       requestsPerMonth: isProd ? 50 : 1000,

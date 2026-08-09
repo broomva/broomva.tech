@@ -15,12 +15,8 @@ vi.mock("@/lib/analytics/posthog", () => ({
   captureServerEvent: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({
-  getSafeSession: vi.fn(),
-}));
-
-vi.mock("next/headers", () => ({
-  headers: () => Promise.resolve(new Headers()),
+vi.mock("@/lib/prompts/resolve-auth", () => ({
+  resolveAuth: vi.fn(),
 }));
 
 import { POST } from "./route";
@@ -30,13 +26,13 @@ import {
 } from "@/lib/db/queries";
 import { logInvocation } from "@/lib/telemetry/log-invocation";
 import { captureServerEvent } from "@/lib/analytics/posthog";
-import { getSafeSession } from "@/lib/auth";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 const mockIncrement = vi.mocked(incrementPromptCopyCount);
 const mockGetPrompt = vi.mocked(getPromptBySlug);
 const mockLog = vi.mocked(logInvocation);
 const mockCapture = vi.mocked(captureServerEvent);
-const mockGetSession = vi.mocked(getSafeSession);
+const mockResolveAuth = vi.mocked(resolveAuth);
 
 function makeReq() {
   return new Request("http://localhost/api/prompts/code-review/copy", {
@@ -54,9 +50,12 @@ describe("POST /api/prompts/[slug]/copy", () => {
     mockGetPrompt.mockReset();
     mockLog.mockReset();
     mockCapture.mockReset();
-    mockGetSession.mockReset();
+    mockResolveAuth.mockReset();
 
-    mockGetSession.mockResolvedValue({ data: null } as never);
+    mockResolveAuth.mockResolvedValue({
+      userId: "user-1",
+      email: "u@example.com",
+    });
     mockLog.mockResolvedValue({
       id: "inv-1",
       promptSlug: "x",
@@ -103,6 +102,17 @@ describe("POST /api/prompts/[slug]/copy", () => {
     expect(callArg.input.source).toBe("web");
     expect(mockCapture).toHaveBeenCalledOnce();
     expect(mockCapture.mock.calls[0][1]).toBe("prompt_copied");
+  });
+
+  test("fails closed before side effects when identity cannot be resolved", async () => {
+    mockResolveAuth.mockResolvedValue(null);
+
+    const res = await POST(makeReq(), makeParams("code-review"));
+
+    expect(res.status).toBe(403);
+    expect(mockIncrement).not.toHaveBeenCalled();
+    expect(mockLog).not.toHaveBeenCalled();
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
   test("MDX-only prompt — increment fails, falls back to version='unknown'", async () => {

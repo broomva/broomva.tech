@@ -20,12 +20,12 @@ Both tables use the `prompt_invocation_source` enum
 
 ## Write paths
 
-- `POST /api/invocations` — anonymous-OK, idempotent on `id`,
-  rate-limited per IP. Used by CLI and skill.
+- `POST /api/invocations` — requires a current browser session or Life bearer
+  token, is idempotent on `id`, and is rate-limited. Used by CLI and skill.
 - `PATCH /api/invocations/[id]` — completion update. Computes
   `cost_usd` server-side from `lib/prompts/pricing.ts`.
-- `POST /api/feedback` — anonymous-OK, rate-limited.
-- `POST /api/prompts/[slug]/copy` — existing endpoint, now also writes
+- `POST /api/feedback` — requires current acceptance and is rate-limited.
+- `POST /api/prompts/[slug]/copy` — requires current acceptance and also writes
   a `PromptInvocation` row with `source='web'`, `status='completed'`.
 
 ## Read paths

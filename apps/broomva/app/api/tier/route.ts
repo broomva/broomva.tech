@@ -35,6 +35,7 @@ export async function GET() {
       planCreditsRemaining: organization.planCreditsRemaining,
       planCreditsMonthly: organization.planCreditsMonthly,
       stripeCustomerId: organization.stripeCustomerId,
+      role: organizationMember.role,
     })
     .from(organizationMember)
     .innerJoin(
@@ -53,6 +54,8 @@ export async function GET() {
     plan,
     organizationId: membership?.organizationId ?? null,
     hasStripeCustomer: !!membership?.stripeCustomerId,
+    canManageBilling:
+      membership?.role === "owner" || membership?.role === "admin",
     features: getTierFeatures(plan),
     limits: getTierLimits(plan),
     credits: {

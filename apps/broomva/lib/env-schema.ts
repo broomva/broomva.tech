@@ -33,6 +33,13 @@ export const serverEnvSchema = {
     .optional()
     .describe("Vercel Blob storage token for file uploads"),
 
+  SELF_SERVICE_CHECKOUT_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .describe(
+      "Commercial launch gate; leave false/unset until operator identity, Stripe configuration, consumer disclosures, tax/currency, refund, and checkout E2E evidence are validated",
+    ),
+
   // Authentication providers (enable in chat.config.ts)
   AUTH_GOOGLE_ID: z.string().optional().describe("Google OAuth client ID"),
   AUTH_GOOGLE_SECRET: z
@@ -126,20 +133,22 @@ export const serverEnvSchema = {
     .url()
     .optional()
     .describe(
-      "Arcan agent runtime URL (e.g. http://localhost:7000). When set, chat routes through Arcan instead of direct streamText"
+      "Arcan agent runtime URL (e.g. http://localhost:7000). When set, chat routes through Arcan instead of direct streamText",
     ),
   LAGO_URL: z
     .string()
     .url()
     .optional()
-    .describe("Lago daemon URL for user memory vault (e.g. http://localhost:8080)"),
+    .describe(
+      "Lago daemon URL for user memory vault (e.g. http://localhost:8080)",
+    ),
 
   // App URL (for non-Vercel deployments) - full URL including https://
   APP_URL: z
     .url()
     .optional()
     .describe(
-      "App URL for non-Vercel deployments (full URL including https://)"
+      "App URL for non-Vercel deployments (full URL including https://)",
     ),
 
   // Langfuse observability (set in Vercel, read by langfuse-vercel LangfuseExporter)

@@ -27,7 +27,24 @@ export async function GET(
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ service });
+    return NextResponse.json({
+      service: {
+        id: service.id,
+        agentId: service.agentId,
+        name: service.name,
+        description: service.description,
+        category: service.category,
+        pricing: service.pricing,
+        capabilities: service.capabilities,
+        trustMinimum: service.trustMinimum,
+        status: service.status,
+        createdAt: service.createdAt,
+        updatedAt: service.updatedAt,
+        agentName: service.agentName,
+        agentTrustScore: service.agentTrustScore,
+        agentTrustLevel: service.agentTrustLevel,
+      },
+    });
   } catch (err) {
     console.error("[marketplace/services/id] Failed to get service:", err);
     return NextResponse.json(

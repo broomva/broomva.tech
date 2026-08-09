@@ -5,11 +5,17 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db/queries", () => ({
   getRecentInvocations: vi.fn(),
 }));
+vi.mock("@/lib/prompts/resolve-auth", () => ({ resolveAuth: vi.fn() }));
+vi.mock("@/lib/prompts/admin", () => ({ isAdmin: vi.fn() }));
 
 import { GET } from "./route";
 import { getRecentInvocations } from "@/lib/db/queries";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
+import { isAdmin } from "@/lib/prompts/admin";
 
 const mockGetRuns = vi.mocked(getRecentInvocations);
+const mockResolveAuth = vi.mocked(resolveAuth);
+const mockIsAdmin = vi.mocked(isAdmin);
 
 function makeReq(qs: string) {
   return new Request(`http://localhost/api/metrics/runs${qs ? `?${qs}` : ""}`);
@@ -20,6 +26,13 @@ const FROZEN = new Date("2026-05-11T00:00:00Z");
 describe("GET /api/metrics/runs", () => {
   beforeEach(() => {
     mockGetRuns.mockReset();
+    mockResolveAuth.mockReset();
+    mockIsAdmin.mockReset();
+    mockResolveAuth.mockResolvedValue({
+      userId: "admin-1",
+      email: "admin@example.com",
+    });
+    mockIsAdmin.mockReturnValue(true);
     mockGetRuns.mockResolvedValue([
       {
         id: "row-1",
@@ -80,6 +93,13 @@ describe("GET /api/metrics/runs", () => {
   test("400 — invalid source enum value", async () => {
     const res = await GET(makeReq("source=bogus"));
     expect(res.status).toBe(400);
+    expect(mockGetRuns).not.toHaveBeenCalled();
+  });
+
+  test("403 — raw runs are not public", async () => {
+    mockResolveAuth.mockResolvedValue(null);
+    const res = await GET(makeReq(""));
+    expect(res.status).toBe(403);
     expect(mockGetRuns).not.toHaveBeenCalled();
   });
 });
