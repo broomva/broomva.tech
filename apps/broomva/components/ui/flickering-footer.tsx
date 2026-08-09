@@ -300,6 +300,14 @@ const footerLinks = [
       { id: 10, title: "X", url: "https://x.com/broomva_tech" },
     ],
   },
+  {
+    title: "Legal",
+    links: [
+      { id: 11, title: "Terms", url: "/terms" },
+      { id: 12, title: "Privacy", url: "/privacy" },
+      { id: 13, title: "Pricing", url: "/pricing" },
+    ],
+  },
 ];
 
 export function FlickeringFooter() {

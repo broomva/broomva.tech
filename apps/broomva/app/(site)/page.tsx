@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import { Suspense } from "react";
 import { HeroSection, InstallSection } from "@/components/site/landing-sections";
 import {
   ContentSection,
@@ -28,10 +27,12 @@ const jsonLd = {
 };
 
 export default async function Home() {
-  const [writing, notes] = await Promise.all([
+  const [writing, notes, session] = await Promise.all([
     getLatest("writing", 3),
     getLatest("notes", 3),
+    getSafeSession({ fetchOptions: { headers: await headers() } }),
   ]);
+  const userName = session.data?.user?.name ?? null;
 
   return (
     <>
@@ -41,12 +42,7 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <main className="relative">
-        {/* Hero personalization (session lookup) streams in via Suspense.
-            Anonymous fallback renders immediately, then swaps to the
-            personalized greeting when the session resolves. */}
-        <Suspense fallback={<HeroSection userName={null} />}>
-          <PersonalizedHero />
-        </Suspense>
+        <HeroSection userName={userName} />
         <div className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6">
           <InstallSection />
           <StackSection />
@@ -55,11 +51,4 @@ export default async function Home() {
       </main>
     </>
   );
-}
-
-async function PersonalizedHero() {
-  const session = await getSafeSession({
-    fetchOptions: { headers: await headers() },
-  });
-  return <HeroSection userName={session.data?.user?.name ?? null} />;
 }
