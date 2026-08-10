@@ -4,7 +4,7 @@
     {
       "package": "better-auth",
       "owner": "security",
-      "topologySha256": "18c95a967756738746ad2bee8ccf59a3031ae5e5fc84d6d5b973a26518fb74d0",
+      "topologySha256": "07c5be51f1ad72f48add5d590bca05b8eaef50d2a7646cb37261bd3490e91565",
       "rationale": "Neon Auth 0.4.2-beta pins Better Auth 1.4.18 for client, cookie, and type adapters. The affected OIDC-provider, MCP-provider, organization, magic-link, and email-OTP server plugins are not instantiated through this adapter; the app's own agent-auth server uses Better Auth 1.6.26. Replacing Neon's exact pin is prohibited until Neon publishes a compatible release.",
       "advisories": [
         "critical|https://github.com/advisories/GHSA-pw9m-5jxm-xr6h",
@@ -21,7 +21,7 @@
     {
       "package": "undici",
       "owner": "security",
-      "topologySha256": "a187b27ab3aa2c4c46e152a7237416608447fe009b768744bfd7ed4b4216b215",
+      "topologySha256": "d48ce5da54428e084bd9524d8ad521825556ccc504b150d629f1c1a6b76e6cae",
       "rationale": "Patched Undici 7.29 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.28. The remaining vulnerable 5.29 runtime branch belongs to the ConnectRPC v1 client for an operator-configured Life gateway; no patched 5.x release exists. Migrating it requires tested ConnectRPC v2 and Protobuf regeneration. Caller-controlled proxy, cookie, WebSocket, and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until that migration.",
       "advisories": [
         "high|https://github.com/advisories/GHSA-v9p9-hfj2-hcw8",
@@ -81,7 +81,7 @@
     {
       "package": "nanoid",
       "owner": "security",
-      "topologySha256": "3bfcb31b4fe60173cb2b4f6ab83243eac8fe55f6c8924ba64d922e95e3360ae5",
+      "topologySha256": "944b9930e2fcefbc29fd36ba5b30d5e3e15be6a51c26b1f9238329edc0a3545b",
       "rationale": "The residual copy belongs to Neon Auth UI's Triplit dependency. Application code does not invoke the vulnerable negative-size non-secure generator.",
       "advisories": [
         "high|https://github.com/advisories/GHSA-28wg-ghj8-5hjv"
@@ -90,7 +90,7 @@
     {
       "package": "esbuild",
       "owner": "security",
-      "topologySha256": "45942746cbf295c003c9b36cad5dafe28c9517cc1ea8de73397865fe11b10e8d",
+      "topologySha256": "779e3668f17705b155fa874193ed310648c486fd2792b58362549af3f4b86614",
       "rationale": "The vulnerable copy is a Drizzle development-tool dependency. No esbuild development server is exposed in production.",
       "advisories": [
         "moderate|https://github.com/advisories/GHSA-67mh-4wv8-2f99"
