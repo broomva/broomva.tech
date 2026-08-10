@@ -219,9 +219,13 @@
      foreground-on-button, and 3.99:1 for text-on-card, which matches the
      4.01:1 this app had before the migration.
 
-     Residual, tracked separately: `text-destructive` on dark cards is still
-     under AA. Closing it needs a dedicated destructive-text token at the
-     component layer, not a different value here. */
+     Residual, tracked separately and scoped honestly: `text-destructive` is
+     under AA on every dark surface, not only cards — 3.99:1 on card, 4.21:1
+     on the page ground, 3.77:1 on --app-elevated, against a 4.5:1 floor. It
+     was equally under AA before this migration. Closing it means routing
+     error text through --ag-error (4.71:1) or adding a dedicated
+     destructive-text token at the component layer; no single value of
+     --destructive can fix it without breaking the button pairing above. */
   --ag-error: oklch(0.62 0.21 27);
   --destructive: oklch(0.58 0.21 27);
   --ag-glass-light: 0.70;
@@ -325,8 +329,13 @@
     --app-text-secondary: #b4b7bf;
     --app-text-disabled: #595d68;
     --ag-error: #ea3d38;
-    --destructive: #e03330;
+    /* Computed conversion of oklch(0.58 0.21 27), not an eyeballed one: it
+       gives 4.56:1 under #f9fafc and so matches the OKLCH path exactly. An
+       earlier hand-picked #e03330 measured 4.29:1 and silently put the
+       fallback below AA while the OKLCH path passed. */
+    --destructive: #db2c2b;
     --destructive-foreground: #f9fafc;
+    --ag-bg-subtle: #0b0e18;
     --sidebar-primary-foreground: #0e111c;
     --sidebar-border: rgba(150, 158, 178, 0.09);
     --sidebar-accent: rgba(84, 128, 199, 0.14);
@@ -711,12 +720,20 @@
    9. WIDE GAMUT ENHANCEMENTS
    ============================================================================ */
 
-@media (color-gamut: p3) {
-  :root {
-    --ag-ai-blue: oklch(0.62 0.14 260);
-    --ag-accent-blue: oklch(0.67 0.16 235);
-    --ag-shadow-glow-blue: 0 0 24px oklch(0.62 0.14 260 / 0.22);
-    --ag-shadow-glow-accent: 0 0 20px oklch(0.67 0.16 235 / 0.30);
+/* Guarded on OKLCH support as well as gamut. This block sits after the
+   no-OKLCH fallback, so without the @supports it would re-override four of
+   those fallback values with OKLCH a non-supporting browser cannot parse —
+   and Firefox 111-112 on any modern Mac display matches color-gamut: p3, so
+   that combination is reachable rather than theoretical. A wide-gamut OKLCH
+   enhancement should only apply where OKLCH itself parses. */
+@supports (color: oklch(0 0 0)) {
+  @media (color-gamut: p3) {
+    :root {
+      --ag-ai-blue: oklch(0.62 0.14 260);
+      --ag-accent-blue: oklch(0.67 0.16 235);
+      --ag-shadow-glow-blue: 0 0 24px oklch(0.62 0.14 260 / 0.22);
+      --ag-shadow-glow-accent: 0 0 20px oklch(0.67 0.16 235 / 0.30);
+    }
   }
 }
 
