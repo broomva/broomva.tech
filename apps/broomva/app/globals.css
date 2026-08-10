@@ -75,6 +75,13 @@
   --ag-error: var(--bv-danger);
   --ag-info: var(--bv-info);
 
+  /* Consumed by console and admin components — 28 references to --ag-accent
+     for focus rings and tinted panels, one to --ag-bg-subtle — but never
+     defined here or on origin/main, so those rings and panels resolved to
+     nothing. Both are theme-aware aliases, so they need no dark override. */
+  --ag-accent: var(--bv-blue);
+  --ag-bg-subtle: var(--secondary);
+
   /* --- Borders: Whisper / Visible / Emphasis --- */
   --ag-border-subtle: var(--bv-border-5);
   --ag-border-default: var(--bv-border-15);
@@ -200,13 +207,23 @@
      flattened every xs-elevated surface. Given its own dark value here. */
   --ag-shadow-xs: 0 1px 0 oklch(0 0 0 / 0.35);
 
-  /* Intervention red lifted from L=0.56 to L=0.62 for dark surfaces only.
-     Blue-axis's canonical red measures 3.67:1 on the dark card, under the
-     4.5:1 AA floor for normal text; the light theme already passes and is
-     left alone. Hue and chroma are unchanged, so this is the smallest lift
-     that clears AA: 4.71:1 on card, 4.97:1 on the page ground. */
+  /* Intervention red, split by role because one value cannot serve both.
+     --ag-error is only ever a text color, so it takes the lift that clears
+     AA against the dark card: L=0.62 gives 4.71:1.
+
+     --destructive is different: shadcn uses it as a BUTTON BACKGROUND under
+     near-white --destructive-foreground as well as a text color, and those
+     pull in opposite directions. Raising it to 0.62 fixed the text case and
+     broke the button, dropping the foreground to 3.86:1. L=0.58 is the value
+     that satisfies the role it actually carries in components: 4.56:1 for
+     foreground-on-button, and 3.99:1 for text-on-card, which matches the
+     4.01:1 this app had before the migration.
+
+     Residual, tracked separately: `text-destructive` on dark cards is still
+     under AA. Closing it needs a dedicated destructive-text token at the
+     component layer, not a different value here. */
   --ag-error: oklch(0.62 0.21 27);
-  --destructive: oklch(0.62 0.21 27);
+  --destructive: oklch(0.58 0.21 27);
   --ag-glass-light: 0.70;
   --ag-glass-medium: 0.78;
   --ag-glass-heavy: 0.90;
@@ -259,6 +276,31 @@
     --app-elevated: #f9fafd;
     --app-text-secondary: #3d424d;
     --app-text-disabled: #95989f;
+
+    --destructive: #d42325;
+    --destructive-foreground: #ffffff;
+    --success: #00a24f;
+    --sidebar-primary: #5480c7;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-border: rgba(60, 66, 82, 0.07);
+    --sidebar-accent: rgba(84, 128, 199, 0.09);
+    --sidebar-accent-foreground: #0c101a;
+    --sidebar-ring: #5480c7;
+    --ag-accent: #5480c7;
+    --ag-bg-subtle: #f3f4f6;
+
+    /* The shadow chain is consumed by @theme inline as --shadow-xs..2xl. Left
+       OKLCH-only, every one of those computes to an invalid value and the
+       elevation disappears entirely rather than degrading. */
+    --bv-shadow-edge: 0 1px 0 rgba(56, 62, 78, 0.06);
+    --bv-shadow-card-hover: 0 6px 16px rgba(96, 105, 130, 0.09), 0 1px 0 rgba(56, 62, 78, 0.06);
+    --bv-shadow-feature: 0 4px 80px 8px rgba(105, 128, 178, 0.08);
+    --app-shadow-sm: 0 1px 2px rgba(56, 62, 78, 0.05);
+    --app-shadow-md: 0 4px 10px rgba(76, 84, 106, 0.07);
+    --app-shadow-lg: 0 6px 16px rgba(96, 105, 130, 0.09);
+    --app-shadow-xl: 0 12px 28px rgba(76, 84, 106, 0.10);
+    --app-shadow-2xl: 0 20px 44px rgba(76, 84, 106, 0.12);
+    --app-shadow-glow-accent: 0 4px 64px 8px rgba(0, 155, 216, 0.08);
   }
 
   [data-theme="dark"] {
@@ -283,7 +325,31 @@
     --app-text-secondary: #b4b7bf;
     --app-text-disabled: #595d68;
     --ag-error: #ea3d38;
-    --destructive: #ea3d38;
+    --destructive: #e03330;
+    --destructive-foreground: #f9fafc;
+    --sidebar-primary-foreground: #0e111c;
+    --sidebar-border: rgba(150, 158, 178, 0.09);
+    --sidebar-accent: rgba(84, 128, 199, 0.14);
+    --sidebar-accent-foreground: #f2f3f6;
+
+    /* The border primitives are declared in the light fallback above, which is
+       unlayered and therefore outranks the foundation's layered dark values.
+       Without these three the dark fallback would inherit light borders and
+       edges would all but vanish. */
+    --bv-border-5: rgba(150, 158, 178, 0.09);
+    --bv-border-15: rgba(150, 158, 178, 0.18);
+    --bv-border-25: rgba(150, 158, 178, 0.28);
+
+    --ag-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.35);
+    --bv-shadow-edge: 0 1px 0 rgba(0, 0, 0, 0.35);
+    --bv-shadow-card-hover: 0 6px 16px rgba(0, 0, 0, 0.35);
+    --bv-shadow-feature: 0 4px 64px 8px rgba(84, 128, 199, 0.13);
+    --app-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.30);
+    --app-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.34);
+    --app-shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.35);
+    --app-shadow-xl: 0 14px 32px rgba(0, 0, 0, 0.42);
+    --app-shadow-2xl: 0 22px 48px rgba(0, 0, 0, 0.48);
+    --app-shadow-glow-accent: 0 4px 64px 8px rgba(0, 155, 216, 0.12);
   }
 }
 
