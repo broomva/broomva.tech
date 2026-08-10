@@ -7,7 +7,14 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "../../../design-system/broomva/broomva-foundation.css";
+
+/* Imported into `base` deliberately. The foundation ships bare `h1`, `h2`,
+   `h3` and `p` rules carrying fixed font sizes. An unlayered import outranks
+   every layered Tailwind utility regardless of specificity, so `text-4xl` on
+   an <h1> would silently lose to the foundation's 28px. Landing it in `base`
+   puts it below the `utilities` layer, where utilities win and the foundation
+   still supplies defaults for unstyled elements. */
+@import "../../../design-system/broomva/broomva-foundation.css" layer(base);
 
 /* next-themes sets both `class` and `data-theme` (see app/layout.tsx). The
    foundation keys its palette off [data-theme]; Tailwind's `dark:` variant
@@ -187,9 +194,97 @@
   --app-shadow-glow-accent: 0 4px 64px 8px oklch(0.65 0.14 235 / 0.12);
   --destructive-foreground: oklch(0.985 0.004 265);
   --sidebar-primary-foreground: oklch(0.155 0.022 270);
+
+  /* The foundation never redefines --bv-shadow-edge for dark, so aliasing
+     --ag-shadow-xs straight through leaked a light-theme edge into dark and
+     flattened every xs-elevated surface. Given its own dark value here. */
+  --ag-shadow-xs: 0 1px 0 oklch(0 0 0 / 0.35);
+
+  /* Intervention red lifted from L=0.56 to L=0.62 for dark surfaces only.
+     Blue-axis's canonical red measures 3.67:1 on the dark card, under the
+     4.5:1 AA floor for normal text; the light theme already passes and is
+     left alone. Hue and chroma are unchanged, so this is the smallest lift
+     that clears AA: 4.71:1 on card, 4.97:1 on the page ground. */
+  --ag-error: oklch(0.62 0.21 27);
+  --destructive: oklch(0.62 0.21 27);
   --ag-glass-light: 0.70;
   --ag-glass-medium: 0.78;
   --ag-glass-heavy: 0.90;
+}
+
+/* ============================================================================
+   2b. NO-OKLCH FALLBACK
+
+   Next.js supports Firefox 111+, but OKLCH is only enabled by default from
+   Firefox 113, so two supported versions cannot parse this palette.
+
+   The previous revision carried a fallback that redefined --ag-* as hex. That
+   worked while --ag-* held literal colors; it stopped working the moment
+   --ag-* became aliases, because the values they point at are OKLCH. The
+   fallback therefore has to land on the tokens at the bottom of the chain —
+   the foundation's --bv-* primitives and the semantic tokens — which is what
+   this block does. Values are the sRGB conversions of the same OKLCH colors,
+   so the fallback is a degraded rendering rather than a different design.
+   ============================================================================ */
+
+@supports not (color: oklch(0 0 0)) {
+  :root {
+    --bv-blue: #5480c7;
+    --bv-blue-accent: #009bd8;
+    --bv-success: #00a24f;
+    --bv-warning: #dca81c;
+    --bv-danger: #d42325;
+    --bv-border-5: rgba(60, 66, 82, 0.07);
+    --bv-border-15: rgba(60, 66, 82, 0.16);
+    --bv-border-25: rgba(60, 66, 82, 0.26);
+
+    --background: #ffffff;
+    --foreground: #0c101a;
+    --card: #ffffff;
+    --card-foreground: #0c101a;
+    --primary: #0c101a;
+    --primary-foreground: #ffffff;
+    --secondary: #f3f4f6;
+    --secondary-foreground: #0c101a;
+    --muted: #f3f4f6;
+    --muted-foreground: #5f636c;
+    --accent: rgba(84, 128, 199, 0.09);
+    --accent-foreground: #3d424d;
+    --border: rgba(60, 66, 82, 0.07);
+    --input: #e6e8ec;
+    --ring: #5480c7;
+    --sidebar: #f3f4f6;
+    --sidebar-foreground: #0c101a;
+
+    --app-elevated: #f9fafd;
+    --app-text-secondary: #3d424d;
+    --app-text-disabled: #95989f;
+  }
+
+  [data-theme="dark"] {
+    --background: #060810;
+    --foreground: #f2f3f6;
+    --card: #0d101c;
+    --card-foreground: #f2f3f6;
+    --primary: #f2f3f6;
+    --primary-foreground: #0e111c;
+    --secondary: #0b0e18;
+    --secondary-foreground: #f2f3f6;
+    --muted: #0f1220;
+    --muted-foreground: #818693;
+    --accent: rgba(84, 128, 199, 0.13);
+    --accent-foreground: #d5d8e0;
+    --border: rgba(150, 158, 178, 0.11);
+    --input: #1f2332;
+    --sidebar: #04050b;
+    --sidebar-foreground: #f2f3f6;
+
+    --app-elevated: #131623;
+    --app-text-secondary: #b4b7bf;
+    --app-text-disabled: #595d68;
+    --ag-error: #ea3d38;
+    --destructive: #ea3d38;
+  }
 }
 
 
