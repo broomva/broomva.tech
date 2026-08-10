@@ -112,6 +112,11 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
     {
+      name: "privacy",
+      testMatch: /analytics-consent.spec.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
       name: "anima-usdc",
       testMatch: /anima-usdc.spec.ts/,
       // Chromium-only — relies on the WebAuthn debugger CDP surface.
@@ -129,6 +134,13 @@ export default defineConfig({
     : {
         webServer: {
           command: "bun dev",
+          env: {
+            ...process.env,
+            NEXT_PUBLIC_POSTHOG_KEY:
+              process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "phc_consent_e2e",
+            NEXT_PUBLIC_POSTHOG_HOST:
+              process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://posthog.invalid",
+          },
           url: baseURL,
           timeout: 120 * 1000,
           reuseExistingServer: !process.env.CI,

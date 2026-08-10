@@ -81,6 +81,7 @@ const mocks = vi.hoisted(() => ({
   canSpendCredits: vi.fn(),
   getUpgradeMessage: vi.fn(),
   getAppModelDefinition: vi.fn(),
+  hasCurrentLegalAcceptance: vi.fn(),
 }));
 
 // ── Module-level mocks ─────────────────────────────────────────────────
@@ -120,6 +121,10 @@ vi.mock("@/lib/db/queries", () => ({
 vi.mock("@/lib/db/credits", () => ({
   canSpend: mocks.canSpend,
   deductCredits: mocks.deductCredits,
+}));
+
+vi.mock("@/lib/db/legal-acceptance", () => ({
+  hasCurrentLegalAcceptance: mocks.hasCurrentLegalAcceptance,
 }));
 
 vi.mock("@/lib/db/usage", () => ({
@@ -402,6 +407,7 @@ beforeEach(() => {
     output: { text: true },
   });
   mocks.captureServerEvent.mockReturnValue(undefined);
+  mocks.hasCurrentLegalAcceptance.mockResolvedValue(true);
 
   vi.stubEnv("LIFED_GATEWAY_URL", "https://gw.example.test");
   // Disable Redis (resumable stream context bypassed)
@@ -415,192 +421,63 @@ afterEach(() => {
 
 // ── Tests ──────────────────────────────────────────────────────────────
 
-describe("POST /api/chat — anonymous flow", () => {
-  it("dispatches via lifegw with an anon consumer and streams Vercel-AI-SDK SSE", async () => {
-    const createSessionCalls: FakeOpts["createSessionCalls"] = [];
-    const streamCalls: FakeOpts["streamCalls"] = [];
-    __setSessionClientFactoryForTests(() =>
-      makeFakeClient({ createSessionCalls, streamCalls }),
-    );
-
-    const chatId = "11111111-1111-1111-1111-111111111111";
-    const req = makeRequest({
-      id: chatId,
-      message: makeChatMessage("Hello", ANON_MODEL),
-      prevMessages: [],
-    });
-
-    const resp = await POST(req);
-    expect(resp.status).toBe(200);
-    expect(resp.headers.get("Content-Type")).toBe("text/event-stream");
-
-    const body = await drainBody(resp);
-    // The translator emits text-start + text-delta + text-end and the
-    // SDK's createUIMessageStream owns the finish event.
-    expect(body).toContain("text-start");
-    expect(body).toContain("text-delta");
-    expect(body).toContain("Hello!");
-    // SSE wire framing — `data: ...` per chunk plus a `[DONE]` sentinel
-    expect(body).toMatch(/data: \{[^}]+\}/);
-    expect(body).toContain("[DONE]");
-    // Anonymous users don't get `data-chatConfirmed` (the chat record
-    // isn't persisted for anon users); that fires only on the
-    // authenticated isNewChat path — see the authenticated test below.
-
-    expect(createSessionCalls).toHaveLength(1);
-    // anon consumer id comes from the anonymous-session cookie (NOT
-    // chatId — same anon session can have multiple chats, all minted
-    // under the same Tier-0 subject)
-    expect(createSessionCalls![0].userId).toBe("anon:anon-abc");
-    // sticky sid is the chatId — per-chat continuity
-    expect(createSessionCalls![0].resumeSid).toBe(chatId);
-    expect(mocks.mintTier1ForConsumer).toHaveBeenCalledWith({
-      consumer: { kind: "anon", id: "anon-abc" },
-      projectSlug: "default",
-    });
-
-    // Anon credits pre-deducted
-    expect(mocks.setAnonymousSession).toHaveBeenCalledWith(
-      expect.objectContaining({ remainingCredits: 4 }),
-    );
-
-    // Arcan was NOT invoked
-    expect(arcanGuard.executeViaArcan).not.toHaveBeenCalled();
-    expect(arcanGuard.resolveArcanEndpoints).not.toHaveBeenCalled();
-  });
-
-  it("stamps assistant metadata on the stream (message-metadata chunks)", async () => {
-    __setSessionClientFactoryForTests(() => makeFakeClient({}));
-
-    const userMessage = makeChatMessage("Hello", ANON_MODEL);
-    const resp = await POST(
-      makeRequest({
-        id: "44444444-4444-4444-4444-444444444444",
-        message: userMessage,
-        prevMessages: [],
-      }),
-    );
-    expect(resp.status).toBe(200);
-
-    const body = await drainBody(resp);
-    const chunks = body
-      .split("\n")
-      .filter((line) => line.startsWith("data: ") && !line.includes("[DONE]"))
-      .map((line) => JSON.parse(line.slice("data: ".length)));
-    const metadataChunks = chunks.filter(
-      (chunk) => chunk.type === "message-metadata",
-    );
-
-    // The route wrapper owns `start` emission too: without a `start`
-    // chunk carrying the server's messageId, the client invents its own
-    // assistant id and (for authenticated users) the DB-synced row
-    // becomes a phantom version sibling of the live message.
-    const startChunks = chunks.filter((chunk) => chunk.type === "start");
-    expect(startChunks.length).toBeGreaterThanOrEqual(1);
-    expect(typeof startChunks[0].messageId).toBe("string");
-    expect(startChunks[0].messageId.length).toBeGreaterThan(0);
-
-    // The route wrapper owns message-metadata emission (the canonical
-    // translator deliberately does not) — without these chunks the
-    // client's live assistant message has no parentMessageId and
-    // lib/stores/with-threads.ts renders consecutive turns as version
-    // siblings.
-    expect(metadataChunks.length).toBeGreaterThanOrEqual(2);
-
-    const first = metadataChunks[0].messageMetadata;
-    expect(first.parentMessageId).toBe(userMessage.id);
-    expect(first.selectedModel).toBe(ANON_MODEL);
-
-    const last = metadataChunks.at(-1).messageMetadata;
-    expect(last.parentMessageId).toBe(userMessage.id);
-    expect(last.activeStreamId).toBeNull();
-  });
-
-  it("prepends recent conversation context to the lifegw user message (multi-turn)", async () => {
-    const streamCalls: FakeOpts["streamCalls"] = [];
-    __setSessionClientFactoryForTests(() => makeFakeClient({ streamCalls }));
-
-    const chatId = "22222222-2222-2222-2222-222222222222";
-    const priorUser = { ...makeChatMessage("My code word is ARCANGEL."), id: "prev-u" };
-    const priorAssistant = {
-      id: "prev-a",
-      role: "assistant" as const,
-      parts: [{ type: "text" as const, text: "Got it — ARCANGEL." }],
-      metadata: {
-        createdAt: new Date(),
-        parentMessageId: "prev-u",
-        selectedModel: ANON_MODEL,
-        activeStreamId: null,
-      },
-    };
-
-    const resp = await POST(
-      makeRequest({
-        id: chatId,
-        message: makeChatMessage("What is my code word?"),
-        prevMessages: [priorUser, priorAssistant],
-      }),
-    );
-    expect(resp.status).toBe(200);
-    await drainBody(resp);
-
-    // The content lifegw forwards to the LLM carries the prior turns as
-    // labelled context plus the current message — so the model can
-    // "remember" earlier turns despite lifed's per-turn dispatch.
-    expect(streamCalls).toHaveLength(1);
-    const sent = streamCalls![0].userMessage;
-    expect(sent).toContain("User: My code word is ARCANGEL.");
-    expect(sent).toContain("Assistant: Got it — ARCANGEL.");
-    expect(sent).toContain("What is my code word?");
-  });
-
-  it("sends only the current message when there is no prior context", async () => {
-    const streamCalls: FakeOpts["streamCalls"] = [];
-    __setSessionClientFactoryForTests(() => makeFakeClient({ streamCalls }));
-
-    const resp = await POST(
-      makeRequest({
-        id: "33333333-3333-3333-3333-333333333333",
-        message: makeChatMessage("Just one message"),
-        prevMessages: [],
-      }),
-    );
-    expect(resp.status).toBe(200);
-    await drainBody(resp);
-
-    // First turn: byte-for-byte the bare user text (no transcript wrapper).
-    expect(streamCalls![0].userMessage).toBe("Just one message");
-  });
-
-  it("rejects anonymous request when model is not in ANONYMOUS_LIMITS", async () => {
-    __setSessionClientFactoryForTests(() => makeFakeClient({}));
-    const req = makeRequest({
-      id: "22222222-2222-2222-2222-222222222222",
-      message: makeChatMessage("Hi", "anthropic/claude-opus-4"),
-      prevMessages: [],
-    });
-    const resp = await POST(req);
-    expect(resp.status).toBe(403);
-  });
-
-  it("rejects when anonymous credits are exhausted", async () => {
+describe("POST /api/chat — anonymous legal gate", () => {
+  it("rejects before anonymous credit/rate/model setup even at zero credits", async () => {
     mocks.getAnonymousSession.mockResolvedValue({
-      id: "anon-empty",
+      id: "anon-abc",
       remainingCredits: 0,
       createdAt: new Date(),
     });
-    __setSessionClientFactoryForTests(() => makeFakeClient({}));
-    const req = makeRequest({
-      id: "33333333-3333-3333-3333-333333333333",
-      message: makeChatMessage("Hi", ANON_MODEL),
-      prevMessages: [],
+    mocks.createAnonymousSession.mockResolvedValue({
+      id: "anon-abc",
+      remainingCredits: 0,
+      createdAt: new Date(),
     });
-    const resp = await POST(req);
-    expect(resp.status).toBe(402);
+
+    const resp = await POST(
+      makeRequest({
+        id: "11111111-1111-1111-1111-111111111111",
+        message: makeChatMessage("Hello", ANON_MODEL),
+        prevMessages: [],
+      }),
+    );
+
+    expect(resp.status).toBe(403);
+    await expect(resp.json()).resolves.toMatchObject({
+      error: "legal_acceptance_required",
+      registerUrl: "/register",
+    });
+    expect(mocks.checkAnonymousRateLimit).not.toHaveBeenCalled();
+    expect(mocks.createAnonymousSession).not.toHaveBeenCalled();
+    expect(mocks.getAppModelDefinition).not.toHaveBeenCalled();
   });
 });
 
 describe("POST /api/chat — authenticated flow", () => {
+  it("rejects an authenticated user without the current legal acceptance", async () => {
+    mocks.getSafeSession.mockResolvedValue({
+      data: {
+        user: { id: "user_pending", email: "pending@x", name: "Pending" },
+      },
+      error: null,
+    });
+    mocks.hasCurrentLegalAcceptance.mockResolvedValue(false);
+
+    const resp = await POST(
+      makeRequest({
+        id: "44444444-4444-4444-4444-444444444445",
+        message: makeChatMessage("Hello", AUTH_MODEL),
+        prevMessages: [],
+      }),
+    );
+
+    expect(resp.status).toBe(403);
+    await expect(resp.json()).resolves.toMatchObject({
+      error: "legal_acceptance_required",
+      acceptanceUrl: "/legal-acceptance",
+    });
+  });
+
   it("dispatches via lifegw with a user consumer and persists assistant message", async () => {
     mocks.getSafeSession.mockResolvedValue({
       data: {
@@ -677,10 +554,15 @@ describe("POST /api/chat — authenticated flow", () => {
 describe("POST /api/chat — lifegw configuration", () => {
   it("returns 503 when LIFED_GATEWAY_URL is unset", async () => {
     vi.stubEnv("LIFED_GATEWAY_URL", "");
+    mocks.getSafeSession.mockResolvedValue({
+      data: { user: { id: "user-config", email: "c@x", name: "C" } },
+      error: null,
+    });
+    mocks.hasCurrentLegalAcceptance.mockResolvedValue(true);
     __setSessionClientFactoryForTests(() => makeFakeClient({}));
     const req = makeRequest({
       id: "55555555-5555-5555-5555-555555555555",
-      message: makeChatMessage("hi", ANON_MODEL),
+      message: makeChatMessage("hi", AUTH_MODEL),
       prevMessages: [],
     });
     const resp = await POST(req);

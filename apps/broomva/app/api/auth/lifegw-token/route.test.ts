@@ -10,12 +10,27 @@ vi.mock("@/lib/ai/vault/jwt", () => ({
   verifyLifeJWT: vi.fn(),
 }));
 
+vi.mock("@/lib/db/legal-acceptance", () => ({
+  hasCurrentLegalAcceptance: vi.fn(),
+}));
+
 import { POST, GET } from "./route";
 import { mintTier1ForConsumer } from "@/lib/auth/lifegw-jwt";
 import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 const mockMint = vi.mocked(mintTier1ForConsumer);
 const mockVerify = vi.mocked(verifyLifeJWT);
+const mockAcceptance = vi.mocked(hasCurrentLegalAcceptance);
+
+const validClaims = {
+  sub: "user-abc",
+  email: "a@b.com",
+  termsVersion: "2026-08-09",
+  privacyVersion: "2026-08-09",
+  termsHash: "terms-hash",
+  privacyHash: "privacy-hash",
+};
 
 function makeReq(headers: Record<string, string> = {}) {
   return new Request("http://localhost/api/auth/lifegw-token", {
@@ -28,17 +43,20 @@ describe("POST /api/auth/lifegw-token", () => {
   beforeEach(() => {
     mockMint.mockReset();
     mockVerify.mockReset();
+    mockAcceptance.mockResolvedValue(true);
   });
 
   test("200 — valid HS256 → mints + returns Tier-1 in snake_case keys", async () => {
-    mockVerify.mockResolvedValue({ sub: "user-abc", email: "a@b.com" });
+    mockVerify.mockResolvedValue(validClaims);
     mockMint.mockResolvedValue({
       token: "eyJalg.tier1.token",
       expiresAt: 1779400000,
       kid: "kid-1",
     } as never);
 
-    const resp = await POST(makeReq({ authorization: "Bearer hs256.valid.token" }));
+    const resp = await POST(
+      makeReq({ authorization: "Bearer hs256.valid.token" }),
+    );
 
     expect(resp.status).toBe(200);
     const body = await resp.json();
@@ -84,7 +102,7 @@ describe("POST /api/auth/lifegw-token", () => {
   test("401 invalid_token — verifyLifeJWT returns claims without sub", async () => {
     // Defensive: shouldn't happen per verifyLifeJWT's contract, but
     // belt-and-braces in case the contract drifts.
-    mockVerify.mockResolvedValue({ sub: "", email: "x@y.z" });
+    mockVerify.mockResolvedValue({ ...validClaims, sub: "", email: "x@y.z" });
 
     const resp = await POST(makeReq({ authorization: "Bearer hs256.no.sub" }));
 
@@ -94,10 +112,12 @@ describe("POST /api/auth/lifegw-token", () => {
   });
 
   test("502 mint_failed — signer/KMS downstream error", async () => {
-    mockVerify.mockResolvedValue({ sub: "user-abc", email: "a@b.com" });
+    mockVerify.mockResolvedValue(validClaims);
     mockMint.mockRejectedValue(new Error("signer unavailable"));
 
-    const resp = await POST(makeReq({ authorization: "Bearer hs256.valid.token" }));
+    const resp = await POST(
+      makeReq({ authorization: "Bearer hs256.valid.token" }),
+    );
 
     expect(resp.status).toBe(502);
     const body = await resp.json();
@@ -106,14 +126,16 @@ describe("POST /api/auth/lifegw-token", () => {
   });
 
   test("case-insensitive Bearer prefix", async () => {
-    mockVerify.mockResolvedValue({ sub: "user-abc", email: "a@b.com" });
+    mockVerify.mockResolvedValue(validClaims);
     mockMint.mockResolvedValue({
       token: "tier1",
       expiresAt: 1779400000,
       kid: "kid-1",
     } as never);
 
-    const resp = await POST(makeReq({ authorization: "bearer hs256.valid.token" }));
+    const resp = await POST(
+      makeReq({ authorization: "bearer hs256.valid.token" }),
+    );
 
     expect(resp.status).toBe(200);
     expect(mockVerify).toHaveBeenCalledWith("hs256.valid.token");

@@ -1,104 +1,70 @@
 ---
 title: "Billing & Plans"
-description: "Plans, credits, usage metering, and Stripe-powered billing."
+description: "Current public plans, usage credits, and Stripe-powered billing."
 ---
 
 # Billing & Plans
 
-Broomva uses a credit-based billing system where 1 credit equals 1 cent USD. Each plan allocates a monthly credit budget that is consumed by API calls, chat messages, and agent executions. Billing is managed through Stripe.
-
-## Plans
+Broomva credits are internal usage units, not cash or stored value. Public
+Free registration remains available. New paid self-service checkout is
+temporarily suspended pending operator, consumer-flow, and Stripe validation.
 
 <CardGroup cols={2}>
   <Card title="Free" icon="seedling">
-    **$0/month**
-    - 50 credits ($0.50) per month
-    - Community models (OpenRouter, Ollama)
-    - Personal workspace
-    - Hard credit limit — blocked when exhausted
+    **$0** - 50 usage credits on initial registration or transition back from
+    paid - Usage pauses when the allocation is exhausted - Unused credits do not
+    roll over
   </Card>
   <Card title="Pro" icon="rocket">
-    **$29/month**
-    - 5,000 credits ($50.00) per month
-    - All models (Claude, GPT, Gemini)
-    - Console access
-    - Soft limit — 120% ceiling with warnings
+    **Contact — intended price $29/month** - 5,000 usage credits per month -
+    Usage pauses when the allocation is exhausted - Metered overage is not
+    enabled
   </Card>
   <Card title="Team" icon="users">
-    **$99/seat/month**
-    - 20,000 credits ($200.00) per month
-    - Shared team workspace
-    - API keys, member management
-    - Warning-only overage policy
+    **Contact — no self-service checkout** - Shared workspace and member
+    management - Commercial terms require separate validation
   </Card>
   <Card title="Enterprise" icon="building">
-    **Custom pricing**
-    - Custom credit allocation
-    - Managed Life instances
-    - SLA guarantees
-    - Dedicated support
-    - Contact [sales@broomva.tech](mailto:sales@broomva.tech)
+    **Custom pricing** - Custom allocation and support - Residency and SLA
+    commitments only when validated and signed - Contact
+    [contact@broomva.tech](mailto:contact@broomva.tech)
   </Card>
 </CardGroup>
 
+Prices shown here are the current public USD offer. Taxes, all-in pricing,
+currency presentation, and mandatory consumer remedies depend on the purchaser
+and applicable law and must be shown in Checkout where required.
+
 ## Credits
 
-Credits are the internal unit of account for all platform usage. Every interaction with the platform — sending a chat message, making an API call, running an agent — costs credits proportional to the compute consumed.
+Model and feature costs can vary. The current hosted behavior is a monthly
+allocation with a hard stop when the available credits are exhausted. Credits
+are not redeemable for cash. Internal billing-library policy types are not a
+public offer and do not override Pricing, Checkout, or a signed agreement.
 
-### How credits are consumed
+## Checkout and renewal
 
-Credit cost is determined by the model used and the number of tokens processed:
+When re-enabled after validation, Pro checkout will be hosted by Stripe. Review the price, billing interval, automatic
+renewal, cancellation timing, taxes, and applicable refund terms before paying.
+Subscriptions renew monthly until canceled. Eligible subscriptions can be
+managed through Stripe's Customer Portal.
 
-| Model tier | Approximate cost |
-|-----------|-----------------|
-| Small models (Haiku, GPT-4o-mini, Flash) | ~1 credit per 10K tokens |
-| Medium models (Sonnet, GPT-4o) | ~3 credits per 10K tokens |
-| Large models (Opus, o1) | ~15 credits per 10K tokens |
-| Local models (Ollama) | 0 credits (self-hosted) |
+Only organization owners and admins may start Checkout or open the billing
+portal. Team and Enterprise are not available through public self-service.
 
-Token counts include both input and output tokens. Cached input tokens may be charged at a reduced rate depending on the provider.
+## Payment and PCI boundary
 
-### Credit balance
+Stripe-hosted Checkout handles card entry, and Broomva does not intend to store
+full card numbers. This can reduce PCI scope; it does not by itself prove PCI
+DSS compliance or remove the merchant's ongoing duties.
 
-Your credit balance is visible in the console dashboard. The billing package tracks:
+## Webhook status
 
-- **Allocated** — your plan's monthly credit budget
-- **Consumed** — credits used so far this period
-- **Remaining** — credits available for the rest of the period
-- **Projected runway** — estimated days until credits are exhausted, based on your daily burn rate
+Stripe webhook signatures are verified. Event-ID deduplication and
+transactional, invoice-keyed credit grants remain open. Webhook processing must
+not be described as idempotent until those controls are implemented and tested.
 
-### Billing period
-
-Credits reset on the first day of each billing period (30-day cycles starting from your subscription date). Unused credits do not roll over.
-
-## Overage handling
-
-Each plan has a different overage policy that determines what happens when you approach or exceed your credit allocation:
-
-| Plan | Policy | Behavior |
-|------|--------|----------|
-| **Free** | Hard limit | Requests are blocked when credits are exhausted. Upgrade to continue. |
-| **Pro** | Soft limit | Requests are allowed up to 120% of your allocation. Blocked beyond that ceiling. |
-| **Team** | Warning | Warnings are shown but requests are rarely blocked. Overage is billed at the end of the period. |
-| **Enterprise** | Custom | Configured during provisioning. Typically warning-only with custom ceilings. |
-
-## Plan changes
-
-You can upgrade or downgrade your plan at any time from the console:
-
-- **Upgrades** take effect immediately. Your credit balance is increased by the difference between the new and old allocations, prorated for the remainder of the billing period. Stripe creates prorated charges.
-- **Downgrades** take effect immediately. Your remaining credits are capped at the new allocation if they exceed it. The Stripe subscription is updated without proration.
-- **Enterprise** upgrades require a conversation with our sales team. Contact [sales@broomva.tech](mailto:sales@broomva.tech).
-
-## Payment methods
-
-Payments are processed through Stripe. You can add a credit card or debit card from the console billing page. Stripe handles PCI compliance — Broomva never stores card details directly.
-
-## Invoices
-
-Monthly invoices are generated by Stripe and available from the console billing page. Each invoice shows:
-
-- Base subscription charge
-- Any overage charges (for soft-limit plans)
-- Applied discounts or credits
-- Tax (if applicable)
+Mandatory withdrawal, refund, reversal, guarantee, and cancellation rights
+remain available where applicable. See the public
+[Terms](https://broomva.tech/terms), [Privacy](https://broomva.tech/privacy),
+and [Pricing](https://broomva.tech/pricing) pages for the current offer.

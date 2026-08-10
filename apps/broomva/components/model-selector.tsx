@@ -403,7 +403,7 @@ function PureModelSelector({
               <div className="p-3">
                 <LoginCtaBanner
                   compact
-                  message="Sign in to unlock all models."
+                  message="Sign in to view your available model catalog."
                   variant="default"
                 />
               </div>

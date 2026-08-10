@@ -10,6 +10,7 @@ import {
   JWT_ACCESS_EXPIRY_MS,
   JWT_REFRESH_EXPIRY_MS,
 } from "@/lib/ai/vault/jwt";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 /**
  * GET /api/auth/api-token
@@ -38,6 +39,13 @@ export async function GET() {
 
   const userId = sessionData.user.id;
   const email = sessionData.user.email ?? "";
+
+  if (!(await hasCurrentLegalAcceptance(userId))) {
+    return NextResponse.json(
+      { error: "Current legal acceptance required" },
+      { status: 403 },
+    );
+  }
 
   // Issue access JWT (24h)
   const token = await signLifeJWT({ id: userId, email });

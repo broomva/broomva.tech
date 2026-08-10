@@ -43,7 +43,7 @@ function baseRow(over: Partial<Record<string, unknown>> = {}) {
     promptVersion: "1.0",
     source: "cli",
     caller: null,
-    userId: null,
+    userId: "owner-user",
     agentId: null,
     sessionId: null,
     clientIpHash: null,
@@ -69,7 +69,10 @@ describe("PATCH /api/invocations/[id]", () => {
     mockResolveAuth.mockReset();
     mockGet.mockReset();
     mockUpdate.mockReset();
-    mockResolveAuth.mockResolvedValue(null);
+    mockResolveAuth.mockResolvedValue({
+      userId: "owner-user",
+      email: "owner@example.com",
+    });
   });
 
   test("happy path — updates with computed cost", async () => {
@@ -133,6 +136,16 @@ describe("PATCH /api/invocations/[id]", () => {
   test("403 — anonymous request against user-owned row", async () => {
     mockResolveAuth.mockResolvedValue(null);
     mockGet.mockResolvedValue(baseRow({ userId: "owner-user" }));
+    const res = await PATCH(
+      makeReq({ status: "completed" }),
+      makeParams(),
+    );
+    expect(res.status).toBe(403);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  test("403 — legacy invocation without ownership evidence fails closed", async () => {
+    mockGet.mockResolvedValue(baseRow({ userId: null }));
     const res = await PATCH(
       makeReq({ status: "completed" }),
       makeParams(),

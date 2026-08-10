@@ -179,6 +179,13 @@ function PureMultimodalInput({
   const submission = useMemo(():
     | { enabled: false; message: string }
     | { enabled: true } => {
+    if (isAnonymous) {
+      return {
+        enabled: false,
+        message:
+          "Create an account and accept the current Terms and data notice before sending prompts.",
+      };
+    }
     if (isModelDisallowedForAnonymous) {
       return { enabled: false, message: "Log in to use this model" };
     }
@@ -201,7 +208,13 @@ function PureMultimodalInput({
       };
     }
     return { enabled: true };
-  }, [isEmpty, isModelDisallowedForAnonymous, status, uploadQueue.length]);
+  }, [
+    isAnonymous,
+    isEmpty,
+    isModelDisallowedForAnonymous,
+    status,
+    uploadQueue.length,
+  ]);
 
   // Helper function to process and validate files
   const processFiles = useCallback(
@@ -690,6 +703,12 @@ function PureMultimodalInput({
             submitForm={submitForm}
           />
         </PromptInput>
+        {!isEditMode ? (
+          <p className="mt-1 px-2 text-center text-[11px] leading-4 text-text-muted">
+            You are interacting with AI. Responses can be wrong or incomplete;
+            verify important information before relying on them.
+          </p>
+        ) : null}
       </div>
     </div>
   );

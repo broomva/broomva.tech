@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getSafeSession, type Session } from "@/lib/auth";
 import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,10 +21,7 @@ export interface AuthContext {
 type RouteHandler = (request: Request) => Promise<Response>;
 
 /** Handler that receives the authenticated context. */
-type AuthHandler = (
-  request: Request,
-  ctx: AuthContext,
-) => Promise<Response>;
+type AuthHandler = (request: Request, ctx: AuthContext) => Promise<Response>;
 
 /** Handler that receives both auth context and a validated body. */
 type AuthValidatedHandler<T> = (
@@ -36,6 +34,11 @@ type ValidatedHandler<T> = (
   request: Request,
   ctx: { body: T },
 ) => Promise<Response>;
+
+interface AuthOptions {
+  /** False only for routes users must reach without accepting new terms. */
+  requireLegalAcceptance?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -81,7 +84,10 @@ async function parseJsonBody(request: Request): Promise<unknown> {
  * });
  * ```
  */
-export function withAuth(handler: AuthHandler): RouteHandler {
+export function withAuth(
+  handler: AuthHandler,
+  options: AuthOptions = {},
+): RouteHandler {
   return async (request: Request) => {
     try {
       const { data: session } = await getSafeSession({
@@ -90,6 +96,13 @@ export function withAuth(handler: AuthHandler): RouteHandler {
 
       if (!session?.user?.id) {
         return errorResponse("Not authenticated", 401);
+      }
+
+      if (
+        options.requireLegalAcceptance !== false &&
+        !(await hasCurrentLegalAcceptance(session.user.id))
+      ) {
+        return errorResponse("Current legal acceptance required", 403);
       }
 
       const ctx: AuthContext = {
@@ -177,6 +190,7 @@ export function withValidation<T extends z.ZodType>(
 export function withAuthAndValidation<T extends z.ZodType>(
   schema: T,
   handler: AuthValidatedHandler<z.infer<T>>,
+  options: AuthOptions = {},
 ): RouteHandler {
   return async (request: Request) => {
     try {
@@ -187,6 +201,13 @@ export function withAuthAndValidation<T extends z.ZodType>(
 
       if (!session?.user?.id) {
         return errorResponse("Not authenticated", 401);
+      }
+
+      if (
+        options.requireLegalAcceptance !== false &&
+        !(await hasCurrentLegalAcceptance(session.user.id))
+      ) {
+        return errorResponse("Current legal acceptance required", 403);
       }
 
       // --- Validation ---
@@ -281,6 +302,9 @@ export function withRelayAuth(
     try {
       const ctx = await resolveRelayAuth(request);
       if (!ctx) return errorResponse("Not authenticated", 401);
+      if (!(await hasCurrentLegalAcceptance(ctx.userId))) {
+        return errorResponse("Current legal acceptance required", 403);
+      }
       return await handler(request, ctx);
     } catch (err) {
       console.error("[withRelayAuth] Unhandled error:", err);
@@ -304,6 +328,9 @@ export function withRelayAuthAndValidation<T extends z.ZodType>(
       // --- Auth ---
       const authCtx = await resolveRelayAuth(request);
       if (!authCtx) return errorResponse("Not authenticated", 401);
+      if (!(await hasCurrentLegalAcceptance(authCtx.userId))) {
+        return errorResponse("Current legal acceptance required", 403);
+      }
 
       // --- Validation ---
       const raw = await parseJsonBody(request);
@@ -315,7 +342,10 @@ export function withRelayAuthAndValidation<T extends z.ZodType>(
         return errorResponse("Validation failed", 400, result.error.issues);
       }
 
-      return await handler(request, { ...authCtx, body: result.data as z.infer<T> });
+      return await handler(request, {
+        ...authCtx,
+        body: result.data as z.infer<T>,
+      });
     } catch (err) {
       console.error("[withRelayAuthAndValidation] Unhandled error:", err);
       return errorResponse("Internal server error", 500, err);

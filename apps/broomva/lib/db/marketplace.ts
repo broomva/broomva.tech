@@ -34,7 +34,6 @@ export async function listMarketplaceTasks(filters: {
     MarketplaceTask & {
       agentName: string;
       agentTrustLevel: string;
-      organizationId: string | null;
     }
   >
 > {
@@ -68,7 +67,6 @@ export async function listMarketplaceTasks(filters: {
       updatedAt: marketplaceTask.updatedAt,
       agentName: agentRegistration.name,
       agentTrustLevel: agentRegistration.trustLevel,
-      organizationId: agentRegistration.organizationId,
     })
     .from(marketplaceTask)
     .innerJoin(

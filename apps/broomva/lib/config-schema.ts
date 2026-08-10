@@ -343,7 +343,7 @@ export const configSchema = z.object({
     .default({
       minimumAge: 13,
       governingLaw: "United States",
-      refundPolicy: "no-refunds",
+      refundPolicy: "non-refundable-except-where-required-by-law",
     }),
 
   policies: z

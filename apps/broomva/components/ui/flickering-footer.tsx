@@ -306,6 +306,9 @@ const footerLinks = [
       { id: 11, title: "Terms", url: "/terms" },
       { id: 12, title: "Privacy", url: "/privacy" },
       { id: 13, title: "Pricing", url: "/pricing" },
+      { id: 14, title: "Subprocessors", url: "/subprocessors" },
+      { id: 15, title: "Security", url: "/security" },
+      { id: 16, title: "SIC Colombia", url: "https://www.sic.gov.co/" },
     ],
   },
 ];

@@ -20,8 +20,8 @@ const jsonLd = {
     url: config.appUrl,
   },
   publisher: {
-    "@type": "Organization",
-    name: config.organization.name,
+    "@type": "Person",
+    name: "Carlos D. Escobar-Valbuena",
     url: config.appUrl,
   },
 };

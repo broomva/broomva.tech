@@ -37,6 +37,7 @@ import {
 import { getSafeSession } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { createAnonymousSession } from "@/lib/create-anonymous-session";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 import { CostAccumulator } from "@/lib/credits/cost-accumulator";
 import { db as tierDb } from "@/lib/db/client";
 import { canSpend, deductCredits } from "@/lib/db/credits";
@@ -550,10 +551,8 @@ type SessionSetupResult =
     };
 
 async function validateAndSetupSession({
-  request,
   selectedModelId,
 }: {
-  request: NextRequest;
   selectedModelId: AppModelId;
 }): Promise<SessionSetupResult> {
   const log = createModuleLogger("api:chat:setup");
@@ -564,29 +563,46 @@ async function validateAndSetupSession({
   const userId = session?.user?.id ?? null;
   const isAnonymous = userId === null;
 
-  let anonymousSession: AnonymousSession | null = null;
+  const anonymousSession: AnonymousSession | null = null;
 
-  if (userId) {
-    await upsertUserFromSession({ sessionUser: session.user });
-    const user = await getUserById({ userId });
-    if (!user) {
-      log.warn("User not found");
-      return {
-        success: false,
-        error: new Response("User not found", { status: 404 }),
-      };
-    }
-  } else {
-    const result = await handleAnonymousSession({
-      request,
-      redis: redisPublisher,
-      selectedModelId,
-    });
+  // Account formation and current service-data authorization are required
+  // before anonymous credit/rate/model setup or any prompt-related work.
+  if (!userId) {
+    return {
+      success: false,
+      error: Response.json(
+        {
+          error: "legal_acceptance_required",
+          message:
+            "Create an account and accept the current Terms and data notice before sending prompts.",
+          registerUrl: "/register",
+        },
+        { status: 403 },
+      ),
+    };
+  }
+  if (!(await hasCurrentLegalAcceptance(userId))) {
+    return {
+      success: false,
+      error: Response.json(
+        {
+          error: "legal_acceptance_required",
+          message: "Review and accept the current legal terms before continuing.",
+          acceptanceUrl: "/legal-acceptance",
+        },
+        { status: 403 },
+      ),
+    };
+  }
 
-    if (!result.success) {
-      return result;
-    }
-    anonymousSession = result.session;
+  await upsertUserFromSession({ sessionUser: session.user });
+  const user = await getUserById({ userId });
+  if (!user) {
+    log.warn("User not found");
+    return {
+      success: false,
+      error: new Response("User not found", { status: 404 }),
+    };
   }
 
   let modelDefinition: AppModelDefinition;
@@ -1234,7 +1250,6 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionSetup = await validateAndSetupSession({
-      request,
       selectedModelId,
     });
 
@@ -1244,6 +1259,30 @@ export async function POST(request: NextRequest) {
 
     const { userId, isAnonymous, anonymousSession, modelDefinition } =
       sessionSetup;
+
+    if (isAnonymous || !userId) {
+      return Response.json(
+        {
+          error: "legal_acceptance_required",
+          message:
+            "Create an account and accept the current Terms and data notice before sending prompts.",
+          registerUrl: "/register",
+        },
+        { status: 403 },
+      );
+    }
+
+    if (!(await hasCurrentLegalAcceptance(userId))) {
+      return Response.json(
+        {
+          error: "legal_acceptance_required",
+          message:
+            "Review and accept the current legal terms before continuing.",
+          acceptanceUrl: "/legal-acceptance",
+        },
+        { status: 403 },
+      );
+    }
 
     // ---- Tier-based model & credit gate (authenticated users only) ----
     // userPlan is hoisted so downstream checks can build a tier-appropriate

@@ -11,6 +11,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AccountNav } from "@/components/account/account-nav";
 import { getSafeSession } from "@/lib/auth";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-acceptance-gate";
 
 // BRO-1229 — `export const dynamic = "force-dynamic"` is incompatible
 // with `nextConfig.cacheComponents` (Next.js 16). The `await headers()`
@@ -29,6 +30,8 @@ export default async function AccountLayout({
   if (!session?.user) {
     redirect("/login");
   }
+
+  await requireCurrentLegalAcceptance(session.user.id);
 
   return (
     <div className="mx-auto flex h-dvh max-h-dvh w-full max-w-4xl flex-1 flex-col px-2 py-2 md:px-4">

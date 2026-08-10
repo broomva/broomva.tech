@@ -4,15 +4,21 @@ import {
   getPromptBySlug,
 } from "@/lib/db/queries";
 import { captureServerEvent } from "@/lib/analytics/posthog";
-import { getSafeSession } from "@/lib/auth";
-import { headers } from "next/headers";
 import { logInvocation } from "@/lib/telemetry/log-invocation";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
+  const auth = await resolveAuth(request);
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Current legal acceptance required" },
+      { status: 403 },
+    );
+  }
 
   // Increment DB counter (best-effort — may fail for MDX-only prompts)
   let copyCount: number | null = null;
@@ -34,21 +40,7 @@ export async function POST(
     // DB not ready — fall through
   }
 
-  // Resolve session (best-effort — anonymous users land in PostHog as
-  // "anonymous" and on the invocation row with userId=null)
-  let userId = "anonymous";
-  let sessionUserId: string | null = null;
-  try {
-    const { data: session } = await getSafeSession({
-      fetchOptions: { headers: await headers() },
-    });
-    if (session?.user?.id) {
-      userId = session.user.id;
-      sessionUserId = session.user.id;
-    }
-  } catch {
-    // Not logged in — track as anonymous
-  }
+  const userId = auth.userId;
 
   // Write prompt_invocation row (source=web, status=completed). This is
   // best-effort: if the DB is down we still want the PostHog event and
@@ -62,9 +54,7 @@ export async function POST(
         source: "web",
         caller: request.headers.get("user-agent")?.slice(0, 128) ?? undefined,
       },
-      auth: sessionUserId
-        ? { userId: sessionUserId, email: "" }
-        : null,
+      auth,
     });
   } catch (error) {
     console.error("logInvocation failed in /copy:", error);

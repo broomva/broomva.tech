@@ -25,9 +25,9 @@ broomva.tech is the personal platform of Carlos D. Escobar-Valbuena. It serves a
 
 - \`GET /api/prompts\` — List all prompts (filterable by category, tag)
 - \`GET /api/prompts/[slug]\` — Get a single prompt by slug
-- \`GET /api/chat\` — AI chat endpoint (authenticated)
+- \`POST /api/chat\` — streaming AI chat endpoint (authenticated, current policy acceptance required)
 - \`GET /sitemap.xml\` — Full sitemap
-- \`GET /llms-full.txt\` — Extended documentation for LLMs
+- \`GET /llms-full.txt\` — Extended site index for LLMs
 - \`GET /<kind>/<slug>.md\` — Raw markdown for any content page (kind: writing, projects, notes, prompts)
 
 ## Key Topics

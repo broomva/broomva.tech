@@ -7,7 +7,11 @@ export async function GET() {
       name: config.appName,
       description: config.appDescription,
     },
-    features: config.features,
+    featureConfiguration: {
+      note:
+        "Configuration flags express intended capability, not verified runtime availability; credentials, services, and account entitlements still apply.",
+      flags: config.features,
+    },
     conventions: {
       packageManager: "Bun",
       linter: "Biome",

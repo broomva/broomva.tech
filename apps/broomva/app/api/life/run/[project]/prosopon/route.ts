@@ -19,30 +19,22 @@
  */
 
 import { type Envelope } from "@broomva/prosopon";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateTitleFromUserMessage } from "@/app/(chat)/actions";
-import { getAnonymousSession } from "@/lib/anonymous-session-server";
-import { getSafeSession } from "@/lib/auth";
 import { mintTier1ForConsumer } from "@/lib/auth/lifegw-jwt";
 import type { TierUserCap } from "@/lib/life-runtime/agent-session/types";
 import { userHasCreditsFor } from "@/lib/life-runtime/billing";
 import { createLifeRuntime } from "@/lib/life-runtime/canonical";
+import { resolveAcceptedLifeConsumer } from "@/lib/life-runtime/legal-access";
 import {
   getOrCreateChatForLifeSession,
   getProjectBySlug,
   maybeSetChatTitle,
 } from "@/lib/life-runtime/queries";
-import {
-  isProjectSlug,
-  type ProjectSlug,
-} from "@/lib/life-runtime/projects";
+import { isProjectSlug, type ProjectSlug } from "@/lib/life-runtime/projects";
 import { makeInitialScene } from "@/lib/life-runtime/prosopon-emitter";
-import {
-  type ConsumerIdentity,
-  RunRequestSchema,
-} from "@/lib/life-runtime/types";
+import { RunRequestSchema } from "@/lib/life-runtime/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,23 +59,6 @@ function sseHeaders(): Record<string, string> {
 
 function sseFrame(envelope: Envelope): string {
   return `event: envelope\ndata: ${JSON.stringify(envelope)}\n\n`;
-}
-
-async function resolveConsumer(): Promise<ConsumerIdentity | null> {
-  const hdrs = await headers();
-  const session = await getSafeSession({ fetchOptions: { headers: hdrs } });
-  if (session?.user?.id) {
-    return { kind: "user", id: session.user.id };
-  }
-  const anon = await getAnonymousSession();
-  if (anon) return { kind: "anon", id: anon.id };
-  if (hdrs.get("x-payment") || hdrs.get("authorization")?.startsWith("x402 ")) {
-    return {
-      kind: "agent",
-      id: hdrs.get("x-payment-sender") ?? "unknown-wallet",
-    };
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,9 +106,12 @@ async function handlePost(
   const slug: ProjectSlug = rawSlug;
 
   // ── 2. Auth + body parse ──────────────────────────────────────
-  let consumer = await resolveConsumer();
+  const consumer = await resolveAcceptedLifeConsumer();
   if (!consumer) {
-    consumer = { kind: "agent", id: "anonymous" };
+    return jsonError(
+      403,
+      "Authentication and current legal acceptance are required.",
+    );
   }
 
   let body: unknown;
@@ -287,10 +265,7 @@ async function handlePost(
         // node_added envelope; this catch is belt-and-suspenders for
         // unexpected throws (e.g. the underlying fetch tearing down
         // the stream mid-iteration).
-        console.error(
-          "[life/run/prosopon] envelope stream errored:",
-          err,
-        );
+        console.error("[life/run/prosopon] envelope stream errored:", err);
       } finally {
         controller.close();
       }

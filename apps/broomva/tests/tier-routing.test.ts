@@ -108,10 +108,10 @@ test.describe("tier routing – API smoke", () => {
 // Free-tier model gate regression (regression for issue where gpt-5-mini
 // was not in FREE_TIER_MODELS causing all authenticated free users to get 403)
 // ---------------------------------------------------------------------------
-test.describe("free-tier model gate regression", () => {
-  test("POST /api/chat with gpt-5-mini does not return 403 for anonymous", async ({ request }) => {
-    // Anonymous users should be allowed to use gpt-5-mini (default model)
-    // This test posts via the raw API to detect model_not_allowed errors
+test.describe("anonymous prompt-processing boundary", () => {
+  test("POST /api/chat requires a current authenticated acceptance", async ({
+    request,
+  }) => {
     const response = await request.post(url("/api/chat"), {
       data: {
         id: "test-regression-" + Date.now(),
@@ -124,26 +124,6 @@ test.describe("free-tier model gate regression", () => {
       },
       headers: { "Content-Type": "application/json" },
     });
-    // Anonymous uses credits — 200 (streaming) or 429 (credits exhausted) are OK
-    // 403 means model_not_allowed — that's the regression we're guarding against
-    expect(response.status()).not.toBe(403);
-  });
-
-  test("POST /api/chat with claude-haiku-4.5 does not return 403 for anonymous", async ({
-    request,
-  }) => {
-    const response = await request.post(url("/api/chat"), {
-      data: {
-        id: "test-haiku-" + Date.now(),
-        message: {
-          role: "user",
-          parts: [{ type: "text", text: "ping" }],
-          metadata: { selectedModel: "anthropic/claude-haiku-4.5" },
-        },
-        prevMessages: [],
-      },
-      headers: { "Content-Type": "application/json" },
-    });
-    expect(response.status()).not.toBe(403);
+    expect(response.status()).toBe(403);
   });
 });

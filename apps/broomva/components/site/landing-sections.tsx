@@ -71,8 +71,12 @@ export function HeroSection({ userName }: { userName?: string | null }) {
   const submitChat = useCallback(() => {
     const trimmed = chatInput.trim();
     if (!trimmed) return;
-    router.push(`/chat?q=${encodeURIComponent(trimmed)}`);
-  }, [chatInput, router]);
+    if (!userName) {
+      router.push("/register");
+      return;
+    }
+    router.push("/chat");
+  }, [chatInput, router, userName]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -220,8 +224,10 @@ export function HeroSection({ userName }: { userName?: string | null }) {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="flex size-10 items-center justify-center rounded-lg text-text-muted/50 transition-[background-color,color,transform] hover:bg-bg-elevated/60 hover:text-text-secondary active:scale-[0.96]"
-                  aria-label="Attach file"
+                  className="flex size-10 cursor-not-allowed items-center justify-center rounded-lg text-text-muted/30"
+                  aria-label="File attachments unavailable"
+                  disabled
+                  title="File attachments are currently unavailable"
                 >
                   <Paperclip className="size-4" aria-hidden="true" />
                 </button>
@@ -343,7 +349,7 @@ export function InstallSection() {
           </h2>
           <p className="text-pretty mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
             One command installs the Broomva CLI, the broomva.tech skill, and
-            the full bstack (24 agent skills across 7 layers).
+            the full bstack across its layered agent-skill catalog.
           </p>
 
           <div className="mt-6">

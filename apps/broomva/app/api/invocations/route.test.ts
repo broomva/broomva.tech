@@ -39,7 +39,7 @@ describe("POST /api/invocations", () => {
     mockLogInvocation.mockReset();
     mockRateLimit.mockReset();
 
-    mockResolveAuth.mockResolvedValue(null);
+    mockResolveAuth.mockResolvedValue({ userId: "user-1", email: "u@example.com" });
     mockRateLimit.mockReturnValue({
       allowed: true,
       remaining: 59,
@@ -51,7 +51,7 @@ describe("POST /api/invocations", () => {
       promptVersion: "1.0",
       source: "cli",
       caller: null,
-      userId: null,
+      userId: "user-1",
       agentId: null,
       sessionId: null,
       clientIpHash: null,
@@ -84,6 +84,21 @@ describe("POST /api/invocations", () => {
     expect(body.id).toBe("abc-uuid");
     expect(body.created_at).toBeDefined();
     expect(mockLogInvocation).toHaveBeenCalledOnce();
+  });
+
+  test("403 — rejects writes when handler auth cannot be resolved", async () => {
+    mockResolveAuth.mockResolvedValue(null);
+
+    const res = await POST(
+      makeReq({
+        prompt_slug: "code-review-agent",
+        prompt_version: "1.0",
+        source: "cli",
+      }),
+    );
+
+    expect(res.status).toBe(403);
+    expect(mockLogInvocation).not.toHaveBeenCalled();
   });
 
   test("400 — missing prompt_slug", async () => {
