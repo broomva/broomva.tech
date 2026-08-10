@@ -145,6 +145,11 @@ export default async function RootLayout({
       // markup with the default theme keeps the first paint on the dark ground
       // instead of flashing the foundation's light default.
       data-theme="dark"
+      // Opts this document into the CalSans display accent. DESIGN.md makes
+      // system sans the default heading face, so the accent is requested
+      // explicitly here rather than being the token layer's default. Removing
+      // this attribute drops every heading to the system stack.
+      data-display-font="calsans"
       // `next-themes` injects an extra classname to the body element to avoid
       // visual flicker before hydration. Hence the `suppressHydrationWarning`
       // prop is necessary to avoid the React hydration mismatch warning.

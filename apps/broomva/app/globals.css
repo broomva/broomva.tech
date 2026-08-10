@@ -99,9 +99,17 @@
   --ag-radius-full: var(--bv-radius-full);
   --ag-radius-glass: var(--bv-radius-xl);
 
-  /* --- Typography. CalSans remains the heading face until the typography
-         pass demotes it to the [data-display-font="calsans"] opt-in. --- */
-  --ag-font-heading: var(--font-calsans), "Poppins", system-ui, sans-serif;
+  /* --- Typography. System sans is the default heading face, per the
+         DESIGN.md contract; CalSans is a display accent reached only through
+         the [data-display-font="calsans"] opt-in below.
+
+         The app opt-in points at var(--font-calsans) rather than reusing the
+         foundation's literal "CalSans" so the declaration names the family
+         this app actually loads. Both resolve to the same font — CSS matches
+         family names case-insensitively, so the foundation's "CalSans" does
+         reach next/font's 'calSans' — but only the variable stays correct if
+         the loader's generated family name ever changes. --- */
+  --ag-font-heading: var(--bv-font-sans);
   --ag-font-body: var(--font-geist), var(--bv-font-sans);
   --ag-font-mono: var(--font-geist-mono), var(--bv-font-mono);
 
@@ -155,6 +163,17 @@
    the same attribute as the foundation so that both move together, including
    during server render before next-themes hydrates.
    ============================================================================ */
+
+/* Display-font opt-in. Governs everything reading --ag-font-heading, which
+   includes the font-heading and font-display Tailwind utilities used across
+   55 files. Applied at the document root for now, which preserves the current
+   heading treatment exactly; narrowing it to the marketing subtree belongs to
+   the typography pass, where the change is visible and can be verified route
+   by route. Verified to discriminate: removing the attribute drops headings
+   to the system stack. */
+[data-display-font="calsans"] {
+  --ag-font-heading: var(--font-calsans), "Poppins", var(--bv-font-sans);
+}
 
 [data-theme="dark"] {
   --app-elevated: oklch(0.205 0.026 272);
