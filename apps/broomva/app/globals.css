@@ -1,239 +1,178 @@
 /* ============================================================================
-   broomva.tech — Arcan Glass Theme
-   Broomva trademark web styling + app-specific overrides
+   broomva.tech — Broomva blue-axis theme
+   Palette owned by design-system/broomva/broomva-foundation.css (materialized
+   from the broomva-design skill; checksum-verified by `materialize.py verify`,
+   so it must never be edited in place).
    ============================================================================ */
 
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../../../design-system/broomva/broomva-foundation.css";
 
-@custom-variant dark (&:is(.dark *));
+/* next-themes sets both `class` and `data-theme` (see app/layout.tsx). The
+   foundation keys its palette off [data-theme]; Tailwind's `dark:` variant
+   keys off the class. Matching both keeps utilities and tokens consistent
+   during server render, before next-themes hydrates. */
+@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
 
 @plugin "@tailwindcss/typography";
 @source "../node_modules/streamdown/dist/index.js";
 
 /* ============================================================================
-   1. ARCAN GLASS CUSTOM PROPERTIES — Dark Mode (Default)
+   1. BLUE-AXIS COMPATIBILITY LAYER
+
+   The palette is owned by design-system/broomva/broomva-foundation.css, which
+   is materialized from the broomva-design skill and checksum-verified by
+   `materialize.py verify`. Never edit it; bridge to it here.
+
+   92 files in this app reference --ag-* custom properties directly. Rather
+   than rewrite every call site, --ag-* is redefined as a thin alias layer over
+   the foundation. Retargeting the aliases retargets every consumer at once.
+
+   Two rules govern this block:
+
+   1. Alias onto SEMANTIC tokens (--background, --card, --muted-foreground),
+      never onto --bv-ink / --bv-white / --bv-gray-*. The foundation's dark
+      block redefines only the semantics; the gray primitives are
+      light-theme-fixed, so aliasing to them renders light values in dark mode.
+
+   2. Never alias an --ag-* token to a semantic token that is itself defined in
+      terms of that --ag-* token. The previous revision mapped
+      --background: var(--ag-bg-deep); inverting that here without removing it
+      would create a custom-property cycle, which resolves to unset and blanks
+      the theme. The foundation now owns the semantics outright and this file
+      supplies only the tokens the foundation does not define.
    ============================================================================ */
 
 :root {
   /* --- Brand --- */
-  --ag-ai-blue: oklch(0.60 0.12 260);
-  --ag-accent-blue: oklch(0.65 0.14 235);
+  --ag-ai-blue: var(--bv-blue);
+  --ag-accent-blue: var(--bv-blue-accent);
 
-  /* --- Surfaces (hue 275 blue-purple) --- */
-  --ag-bg-deep: oklch(0.12 0.02 275);
-  --ag-bg-dark: oklch(0.15 0.04 245);
-  --ag-bg-surface: oklch(0.17 0.03 275);
-  --ag-bg-elevated: oklch(0.22 0.03 275);
-  --ag-bg-hover: oklch(0.26 0.03 275);
+  /* --- Surfaces --- */
+  --ag-bg-deep: var(--background);
+  --ag-bg-dark: var(--sidebar);
+  --ag-bg-surface: var(--card);
+  --ag-bg-elevated: var(--app-elevated);
+  --ag-bg-hover: var(--secondary);
 
-  /* --- Text hierarchy --- */
-  --ag-text-primary: oklch(0.98 0 0);
-  --ag-text-secondary: oklch(0.70 0.02 275);
-  --ag-text-muted: oklch(0.50 0.02 275);
-  --ag-text-disabled: oklch(0.38 0.02 275);
+  /* --- Text --- */
+  --ag-text-primary: var(--foreground);
+  --ag-text-secondary: var(--app-text-secondary);
+  --ag-text-muted: var(--muted-foreground);
+  --ag-text-disabled: var(--app-text-disabled);
 
-  /* --- Semantic --- */
-  --ag-success: oklch(0.72 0.19 155);
-  --ag-warning: oklch(0.87 0.18 85);
-  --ag-error: oklch(0.58 0.24 27);
-  --ag-info: oklch(0.60 0.12 260);
+  /* --- Functional state --- */
+  --ag-success: var(--bv-success);
+  --ag-warning: var(--bv-warning);
+  --ag-error: var(--bv-danger);
+  --ag-info: var(--bv-info);
 
-  /* --- Borders --- */
-  --ag-border-subtle: oklch(0.30 0.02 275 / 0.40);
-  --ag-border-default: oklch(0.40 0.02 275 / 0.50);
-  --ag-border-strong: oklch(0.50 0.02 275 / 0.60);
-  --ag-border-focus: oklch(0.60 0.12 260);
+  /* --- Borders: Whisper / Visible / Emphasis --- */
+  --ag-border-subtle: var(--bv-border-5);
+  --ag-border-default: var(--bv-border-15);
+  --ag-border-strong: var(--bv-border-25);
+  --ag-border-focus: var(--bv-blue);
 
-  /* --- Glass opacity scale --- */
-  --ag-glass-light: 0.40;
-  --ag-glass-medium: 0.60;
-  --ag-glass-heavy: 0.80;
-
-  /* --- Glass backdrop --- */
+  /* --- Frost geometry. Blue-axis: 22px light frost, 32px heavy. --- */
   --ag-blur-sm: 4px;
   --ag-blur-md: 8px;
-  --ag-blur-lg: 16px;
-  --ag-blur-xl: 24px;
+  --ag-blur-lg: 22px;
+  --ag-blur-xl: 32px;
 
-  /* --- Shadows --- */
-  --ag-shadow-xs: 0 1px 2px oklch(0 0 0 / 0.30);
-  --ag-shadow-sm: 0 2px 4px oklch(0 0 0 / 0.35);
-  --ag-shadow-md: 0 4px 8px oklch(0 0 0 / 0.40);
-  --ag-shadow-lg: 0 8px 16px oklch(0 0 0 / 0.45);
-  --ag-shadow-xl: 0 16px 32px oklch(0 0 0 / 0.50);
-  --ag-shadow-2xl: 0 24px 48px oklch(0 0 0 / 0.55);
-  --ag-shadow-glow-blue: 0 0 24px oklch(0.60 0.12 260 / 0.20);
-  --ag-shadow-glow-accent: 0 0 20px oklch(0.65 0.14 235 / 0.25);
+  /* --- Elevation. Depth is rare and meaningful; the broad bloom belongs to
+         one focal control, never to ambient decoration. --- */
+  --ag-shadow-xs: var(--bv-shadow-edge);
+  --ag-shadow-sm: var(--app-shadow-sm);
+  --ag-shadow-md: var(--app-shadow-md);
+  --ag-shadow-lg: var(--app-shadow-lg);
+  --ag-shadow-xl: var(--app-shadow-xl);
+  --ag-shadow-2xl: var(--app-shadow-2xl);
+  --ag-shadow-glow-blue: var(--bv-shadow-feature);
+  --ag-shadow-glow-accent: var(--app-shadow-glow-accent);
 
-  /* --- Radius --- */
-  --ag-radius-sm: 4px;
-  --ag-radius-md: 8px;
-  --ag-radius-lg: 12px;
-  --ag-radius-xl: 16px;
-  --ag-radius-full: 9999px;
-  --ag-radius-glass: 12px;
+  /* --- Radii --- */
+  --ag-radius-sm: var(--bv-radius-chip);
+  --ag-radius-md: var(--bv-radius-lg);
+  --ag-radius-lg: var(--bv-radius-xl);
+  --ag-radius-xl: var(--bv-radius-2xl);
+  --ag-radius-full: var(--bv-radius-full);
+  --ag-radius-glass: var(--bv-radius-xl);
 
-  /* --- Typography --- */
+  /* --- Typography. CalSans remains the heading face until the typography
+         pass demotes it to the [data-display-font="calsans"] opt-in. --- */
   --ag-font-heading: var(--font-calsans), "Poppins", system-ui, sans-serif;
-  --ag-font-body: var(--font-geist), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --ag-font-mono: var(--font-geist-mono), "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+  --ag-font-body: var(--font-geist), var(--bv-font-sans);
+  --ag-font-mono: var(--font-geist-mono), var(--bv-font-mono);
 
-  /* --- Transitions --- */
-  --ag-transition-fast: 150ms ease;
-  --ag-transition-normal: 250ms ease;
-  --ag-transition-slow: 350ms ease;
-  --ag-transition-morph: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* --- Motion tiers: fast / common / slow / morph --- */
+  --ag-transition-fast: var(--bv-dur-fast) var(--bv-ease-standard);
+  --ag-transition-normal: var(--bv-dur-common) var(--bv-ease-standard);
+  --ag-transition-slow: var(--bv-dur-slow) var(--bv-ease-standard);
+  --ag-transition-morph: 0.5s var(--bv-ease-standard);
   --ag-transition-glow: 1500ms ease-in-out;
 
-  /* --- shadcn/ui compatibility mapping --- */
-  --background: var(--ag-bg-deep);
-  --foreground: var(--ag-text-primary);
-  --card: var(--ag-bg-surface);
-  --card-foreground: var(--ag-text-primary);
-  --popover: var(--ag-bg-elevated);
-  --popover-foreground: var(--ag-text-primary);
-  --primary: var(--ag-ai-blue);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: var(--ag-bg-hover);
-  --secondary-foreground: var(--ag-text-primary);
-  --muted: var(--ag-bg-surface);
-  --muted-foreground: var(--ag-text-muted);
-  --accent: var(--ag-accent-blue);
-  --accent-foreground: oklch(0.12 0.02 275);
-  --destructive: var(--ag-error);
+  /* --- Tokens the foundation does not define --- */
+  --popover: var(--app-elevated);
+  --popover-foreground: var(--foreground);
+  --destructive: var(--bv-danger);
   --destructive-foreground: oklch(0.98 0 0);
-  --success: var(--ag-success);
-  --border: var(--ag-border-default);
-  --input: var(--ag-border-default);
-  --ring: var(--ag-ai-blue);
-  --radius: var(--ag-radius-glass);
-
-  /* --- Sidebar --- */
-  --sidebar: var(--ag-bg-dark);
-  --sidebar-foreground: var(--ag-text-primary);
-  --sidebar-primary: var(--ag-ai-blue);
+  --success: var(--bv-success);
+  --sidebar-primary: var(--bv-blue);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: var(--ag-bg-hover);
-  --sidebar-accent-foreground: var(--ag-text-primary);
-  --sidebar-border: var(--ag-border-subtle);
-  --sidebar-ring: var(--ag-ai-blue);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-ring: var(--bv-blue);
 
-  /* --- Charts --- */
-  --chart-1: var(--ag-ai-blue);
-  --chart-2: var(--ag-accent-blue);
-  --chart-3: oklch(0.65 0.22 330);
-  --chart-4: var(--ag-warning);
-  --chart-5: oklch(0.60 0.20 30);
+  --chart-1: var(--bv-blue);
+  --chart-2: var(--bv-blue-accent);
+  --chart-3: var(--bv-success);
+  --chart-4: var(--bv-warning);
+  --chart-5: var(--bv-danger);
 
-  /* --- Spacing --- */
+  --radius: var(--bv-radius-xl);
   --spacing: 0.25rem;
+
+  /* --- App-level theme-aware tokens (light) --- */
+  --app-elevated: oklch(0.985 0.004 265);
+  --app-text-secondary: oklch(0.38 0.020 265);
+  --app-text-disabled: oklch(0.68 0.010 265);
+  --app-shadow-sm: 0 1px 2px oklch(0.25 0.05 265 / 0.05), var(--bv-shadow-edge);
+  --app-shadow-md: 0 4px 10px oklch(0.35 0.06 262 / 0.07), var(--bv-shadow-edge);
+  --app-shadow-lg: var(--bv-shadow-card-hover);
+  --app-shadow-xl: 0 12px 28px oklch(0.35 0.06 262 / 0.10), var(--bv-shadow-edge);
+  --app-shadow-2xl: 0 20px 44px oklch(0.35 0.06 262 / 0.12), var(--bv-shadow-edge);
+  --app-shadow-glow-accent: 0 4px 64px 8px oklch(0.65 0.14 235 / 0.08);
+  --ag-glass-light: 0.80;
+  --ag-glass-medium: 0.86;
+  --ag-glass-heavy: 0.93;
 }
 
 /* ============================================================================
-   2. LIGHT MODE OVERRIDES
+   2. DARK THEME — app-level tokens only
+
+   The foundation already flips its own semantics under [data-theme="dark"].
+   This block covers only what the foundation does not define. It is keyed off
+   the same attribute as the foundation so that both move together, including
+   during server render before next-themes hydrates.
    ============================================================================ */
 
-.light,
-:root:not(.dark) {
-  --ag-bg-deep: oklch(0.965 0.014 275);
-  --ag-bg-dark: oklch(0.930 0.020 275);
-  --ag-bg-surface: oklch(0.985 0.008 275);
-  --ag-bg-elevated: oklch(0.955 0.016 275);
-  --ag-bg-hover: oklch(0.910 0.024 275);
-  --ag-text-primary: oklch(0.190 0.030 275);
-  --ag-text-secondary: oklch(0.390 0.026 275);
-  --ag-text-muted: oklch(0.530 0.022 275);
-  --ag-text-disabled: oklch(0.680 0.016 275);
-  --ag-border-subtle: oklch(0.650 0.030 275 / 0.22);
-  --ag-border-default: oklch(0.560 0.035 275 / 0.32);
-  --ag-border-strong: oklch(0.450 0.045 275 / 0.42);
-  --ag-shadow-xs: 0 1px 2px oklch(0.200 0.030 275 / 0.06);
-  --ag-shadow-sm: 0 2px 5px oklch(0.200 0.030 275 / 0.08), 0 1px 0 oklch(1 0 0 / 0.70) inset;
-  --ag-shadow-md: 0 8px 24px oklch(0.200 0.030 275 / 0.10), 0 1px 0 oklch(1 0 0 / 0.72) inset;
-  --ag-shadow-lg: 0 16px 40px oklch(0.200 0.030 275 / 0.14), 0 1px 0 oklch(1 0 0 / 0.76) inset;
-  --ag-shadow-xl: 0 24px 56px oklch(0.200 0.030 275 / 0.16), 0 1px 0 oklch(1 0 0 / 0.78) inset;
-  --ag-shadow-2xl: 0 36px 72px oklch(0.200 0.030 275 / 0.18), 0 1px 0 oklch(1 0 0 / 0.80) inset;
-  --ag-shadow-glow-blue: 0 0 24px oklch(0.60 0.12 260 / 0.16);
-  --ag-shadow-glow-accent: 0 0 20px oklch(0.65 0.14 235 / 0.16);
-  --ag-glass-light: 0.66;
+[data-theme="dark"] {
+  --app-elevated: oklch(0.205 0.026 272);
+  --app-text-secondary: oklch(0.78 0.012 268);
+  --app-text-disabled: oklch(0.48 0.018 270);
+  --app-shadow-sm: 0 2px 4px oklch(0 0 0 / 0.30);
+  --app-shadow-md: 0 4px 10px oklch(0 0 0 / 0.34);
+  --app-shadow-lg: var(--bv-shadow-card-hover);
+  --app-shadow-xl: 0 14px 32px oklch(0 0 0 / 0.42);
+  --app-shadow-2xl: 0 22px 48px oklch(0 0 0 / 0.48);
+  --app-shadow-glow-accent: 0 4px 64px 8px oklch(0.65 0.14 235 / 0.12);
+  --destructive-foreground: oklch(0.985 0.004 265);
+  --sidebar-primary-foreground: oklch(0.155 0.022 270);
+  --ag-glass-light: 0.70;
   --ag-glass-medium: 0.78;
-  --ag-glass-heavy: 0.88;
+  --ag-glass-heavy: 0.90;
 }
 
-.dark {
-  --ag-bg-deep: oklch(0.12 0.02 275);
-  --ag-bg-dark: oklch(0.15 0.04 245);
-  --ag-bg-surface: oklch(0.17 0.03 275);
-  --ag-bg-elevated: oklch(0.22 0.03 275);
-  --ag-bg-hover: oklch(0.26 0.03 275);
-  --ag-text-primary: oklch(0.98 0 0);
-  --ag-text-secondary: oklch(0.70 0.02 275);
-  --ag-text-muted: oklch(0.50 0.02 275);
-  --ag-text-disabled: oklch(0.38 0.02 275);
-  --ag-border-subtle: oklch(0.30 0.02 275 / 0.40);
-  --ag-border-default: oklch(0.40 0.02 275 / 0.50);
-  --ag-border-strong: oklch(0.50 0.02 275 / 0.60);
-  --ag-shadow-xs: 0 1px 2px oklch(0 0 0 / 0.30);
-  --ag-shadow-sm: 0 2px 4px oklch(0 0 0 / 0.35);
-  --ag-shadow-md: 0 4px 8px oklch(0 0 0 / 0.40);
-  --ag-shadow-lg: 0 8px 16px oklch(0 0 0 / 0.45);
-  --ag-shadow-xl: 0 16px 32px oklch(0 0 0 / 0.50);
-  --ag-shadow-2xl: 0 24px 48px oklch(0 0 0 / 0.55);
-  --ag-glass-light: 0.40;
-  --ag-glass-medium: 0.60;
-  --ag-glass-heavy: 0.80;
-  --sidebar: hsl(240 5.9% 10%);
-  --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
-  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
-}
-
-/* ============================================================================
-   3. HEX FALLBACKS
-   ============================================================================ */
-
-@supports not (color: oklch(0 0 0)) {
-  :root {
-    --ag-ai-blue: #7088b8;
-    --ag-accent-blue: #6b8bc4;
-    --ag-bg-deep: #12121a;
-    --ag-bg-dark: #001f3f;
-    --ag-bg-surface: #1a1a2e;
-    --ag-bg-elevated: #232340;
-    --ag-bg-hover: #2a2a4a;
-    --ag-text-primary: #ffffff;
-    --ag-text-secondary: #a0a0b8;
-    --ag-text-muted: #6b6b80;
-    --ag-text-disabled: #4a4a5c;
-  }
-
-  .light,
-  :root:not(.dark) {
-    --ag-bg-deep: #f2eff8;
-    --ag-bg-dark: #e6e0ef;
-    --ag-bg-surface: #fbfaff;
-    --ag-bg-elevated: #eee9f5;
-    --ag-bg-hover: #dcd5e8;
-    --ag-text-primary: #211f2b;
-    --ag-text-secondary: #575063;
-    --ag-text-muted: #787181;
-    --ag-text-disabled: #aaa4b0;
-    --ag-border-subtle: rgba(80, 68, 100, 0.22);
-    --ag-border-default: rgba(74, 62, 94, 0.32);
-    --ag-border-strong: rgba(64, 52, 84, 0.42);
-    --ag-shadow-xs: 0 1px 2px rgba(36, 30, 50, 0.06);
-    --ag-shadow-sm: 0 2px 5px rgba(36, 30, 50, 0.08), 0 1px 0 rgba(255, 255, 255, 0.70) inset;
-    --ag-shadow-md: 0 8px 24px rgba(36, 30, 50, 0.10), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
-    --ag-shadow-lg: 0 16px 40px rgba(36, 30, 50, 0.14), 0 1px 0 rgba(255, 255, 255, 0.76) inset;
-    --ag-shadow-xl: 0 24px 56px rgba(36, 30, 50, 0.16), 0 1px 0 rgba(255, 255, 255, 0.78) inset;
-    --ag-shadow-2xl: 0 36px 72px rgba(36, 30, 50, 0.18), 0 1px 0 rgba(255, 255, 255, 0.80) inset;
-  }
-}
 
 /* ============================================================================
    4. TAILWIND v4 @theme inline
