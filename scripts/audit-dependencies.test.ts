@@ -75,4 +75,8 @@ describe("dependency advisory policy", () => {
       dependencyTopologyHash("example@1\n  parent@2\n"),
     );
   });
+
+  it("allows a clean audit to use an empty exception baseline", () => {
+    expect(() => assertExactPolicy(new Set(), new Set())).not.toThrow();
+  });
 });

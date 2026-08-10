@@ -115,8 +115,8 @@ async function main(): Promise<void> {
     new URL("./dependency-audit-baseline.json", import.meta.url),
   ).json()) as Baseline;
   assertReviewDate(baseline.reviewBy);
-  if (!Array.isArray(baseline.exceptions) || baseline.exceptions.length === 0) {
-    throw new Error("Dependency baseline must contain reviewed exceptions.");
+  if (!Array.isArray(baseline.exceptions)) {
+    throw new Error("Dependency baseline exceptions must be an array.");
   }
 
   const audit = Bun.spawnSync(["bun", "audit", "--json"], {
