@@ -812,3 +812,51 @@
   -webkit-backdrop-filter: blur(var(--ag-blur-xl, 24px)) saturate(1.5) brightness(1.06);
   border: 1px solid var(--ag-border-default, var(--ag-border-subtle));
 }
+
+/* ============================================================================
+   11. NO-COLOR-MIX FALLBACK FOR GLASS SURFACES
+
+   The glass surfaces build their background with color-mix(), which shipped in
+   Firefox 113 alongside oklch(). The browsers that cannot parse the palette
+   therefore cannot parse these backgrounds either, and an invalid background
+   computes to nothing, leaving every glass surface fully transparent with text
+   floating over whatever is behind it.
+
+   This predates the migration: origin/main has the same 19 color-mix call
+   sites and its fallback never covered them. It is closed here because the
+   fallback machinery now exists, and because `@supports not (color: oklch())`
+   is an exact proxy for "no color-mix" given both landed in the same release.
+
+   Declared solid rather than translucent: a browser without color-mix cannot
+   express the blend, and a legible opaque surface beats an invisible one.
+   Placed last so it follows every glass declaration in this file.
+   ============================================================================ */
+
+@supports not (color: oklch(0 0 0)) {
+  .glass,
+  .glass-subtle,
+  .glass-heavy,
+  .glass-card,
+  .glass-badge,
+  .ag-glass,
+  .ag-glass-subtle,
+  .ag-glass-heavy {
+    background: var(--card);
+  }
+
+  .glass-nav {
+    background: var(--sidebar);
+  }
+
+  .glass-button {
+    background: var(--secondary);
+  }
+
+  .glass-button-primary {
+    background: var(--primary);
+  }
+
+  .glass-button-accent {
+    background: var(--ag-accent-blue);
+  }
+}
