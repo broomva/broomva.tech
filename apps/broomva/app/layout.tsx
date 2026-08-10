@@ -108,8 +108,9 @@ const calSans = localFont({
   variable: "--font-calsans",
 });
 
-const LIGHT_THEME_COLOR = "hsl(0 0% 97%)";
-const DARK_THEME_COLOR = "oklch(0.12 0.02 275)";
+// Blue-axis grounds: Paper white and Deep current canvas.
+const LIGHT_THEME_COLOR = "oklch(1 0 0)";
+const DARK_THEME_COLOR = "oklch(0.135 0.020 272)";
 const THEME_COLOR_SCRIPT = `\
 (function() {
   var html = document.documentElement;
@@ -120,11 +121,14 @@ const THEME_COLOR_SCRIPT = `\
     document.head.appendChild(meta);
   }
   function updateThemeColor() {
-    var isDark = html.classList.contains('dark');
+    // The design-system foundation keys its palette off data-theme, so read
+    // that first and fall back to the class for any pre-hydration frame.
+    var isDark = html.getAttribute('data-theme') === 'dark'
+      || (!html.hasAttribute('data-theme') && html.classList.contains('dark'));
     meta.setAttribute('content', isDark ? '${DARK_THEME_COLOR}' : '${LIGHT_THEME_COLOR}');
   }
   var observer = new MutationObserver(updateThemeColor);
-  observer.observe(html, { attributes: true, attributeFilter: ['class'] });
+  observer.observe(html, { attributes: true, attributeFilter: ['class', 'data-theme'] });
   updateThemeColor();
 })();`;
 
@@ -136,6 +140,16 @@ export default async function RootLayout({
   return (
     <html
       className={`${geist.variable} ${geistMono.variable} ${calSans.variable}`}
+      // The blue-axis foundation keys its palette off `data-theme`, and
+      // next-themes only sets that once it hydrates. Seeding the server-rendered
+      // markup with the default theme keeps the first paint on the dark ground
+      // instead of flashing the foundation's light default.
+      data-theme="dark"
+      // Opts this document into the CalSans display accent. DESIGN.md makes
+      // system sans the default heading face, so the accent is requested
+      // explicitly here rather than being the token layer's default. Removing
+      // this attribute drops every heading to the system stack.
+      data-display-font="calsans"
       // `next-themes` injects an extra classname to the body element to avoid
       // visual flicker before hydration. Hence the `suppressHydrationWarning`
       // prop is necessary to avoid the React hydration mismatch warning.
@@ -158,7 +172,7 @@ export default async function RootLayout({
         <NuqsAdapter>
           <PostHogProvider>
             <ThemeProvider
-              attribute="class"
+              attribute={["class", "data-theme"]}
               defaultTheme="dark"
               disableTransitionOnChange
               enableSystem
