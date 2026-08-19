@@ -103,7 +103,8 @@ const CREDENTIAL_PATTERNS = [
   ["npm token", /\bnpm_[A-Za-z0-9]{30,}/g],
   // Only with userinfo — a credential-free connection string is a hostname.
   ["SQL URI with credentials", /\b(?:postgres(?:ql)?|mysql):\/\/[^\s"'<>/]+:[^\s"'<>@]+@[^\s"'<>]+/g],
-  ["Redis URI with credentials", /\brediss?:\/\/[^\s"'<>:]+:[^\s"'<>@]+@[^\s"'<>]+/g],
+  // Username is optional: `redis://:password@host` is the common form.
+  ["Redis URI with credentials", /\brediss?:\/\/[^\s"'<>:@]*:[^\s"'<>@]+@[^\s"'<>]+/g],
   ["JSON Web Token", /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g],
   ["Bearer credential", /Bearer\s+[A-Za-z0-9._-]{20,}/g],
   ["Vercel Blob RW token", /vercel_blob_rw_[A-Za-z0-9_]+/g],
@@ -119,6 +120,16 @@ const CREDENTIAL_PATTERNS = [
  * real but separate failure — `NEXT_PUBLIC_` misuse — and needs its own check.
  */
 const SCANNABLE = new Set([".rsc", ".meta", ".segments", ".html", ".body"]);
+
+/**
+ * JS bundles get the EXACT detector only. A real configured secret compiled
+ * into a bundle is a genuine leak worth failing on (`NEXT_PUBLIC_` misuse), but
+ * the heuristic shapes fire constantly on third-party text — a
+ * syntax-highlighting grammar contains `postgres://`, a key-parsing library
+ * contains a PEM header — and flagging those trains everyone to ignore the
+ * gate. Splitting by detector gets the coverage without the noise.
+ */
+const EXACT_ONLY_SCANNABLE = new Set([".js", ".mjs", ".cjs"]);
 
 /**
  * A URL with no embedded credentials is an endpoint, not a secret, and
@@ -139,6 +150,11 @@ function isCredentialFreeUrl(key, value) {
     try {
       const parsed = new URL(candidate);
       if (parsed.username !== "" || parsed.password !== "") return false;
+      // A tokenised webhook (`https://hooks.slack.com/services/T00/B00/XXXX`)
+      // carries its secret in the PATH, with no userinfo at all. Only a bare
+      // endpoint — no path, query, or fragment — is safe to call public.
+      if (parsed.pathname.replace(/\/+$/, "") !== "") return false;
+      if (parsed.search !== "" || parsed.hash !== "") return false;
       if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(parsed.hostname)) return true;
     } catch {
       // try the next candidate
@@ -200,7 +216,7 @@ function representations(value) {
   return [...variants];
 }
 
-function findSecrets(haystack, secrets, label, findings, allowlist = new Set()) {
+function findSecrets(haystack, secrets, label, findings, allowlist = new Set(), exactOnly = false) {
   // Exact: a real configured secret, in any representation build output uses.
   // No suppression path — if one of these is in the cache it is public.
   for (const [key, value] of secrets) {
@@ -213,6 +229,8 @@ function findSecrets(haystack, secrets, label, findings, allowlist = new Set()) 
     }
   }
   // Heuristic: credentials that never passed through this environment.
+  // Skipped for third-party bundle text, where these shapes appear innocently.
+  if (exactOnly) return;
   for (const [name, pattern] of CREDENTIAL_PATTERNS) {
     pattern.lastIndex = 0;
     const matches = (haystack.match(pattern) ?? []).filter(
@@ -224,14 +242,34 @@ function findSecrets(haystack, secrets, label, findings, allowlist = new Set()) 
   }
 }
 
-/** Key names the app itself declares. The authoritative source. */
+/**
+ * Key names the app itself declares — the authoritative source, and the only
+ * reason `LIFEGW_TIER1_SIGNING_JWK` is covered at all. If it cannot be read or
+ * yields nothing, coverage silently collapses back to name-guessing, so this
+ * throws rather than degrading.
+ */
 async function keysFromEnvSchema(appDir) {
+  const path = join(appDir, "lib", "env-schema.ts");
+  let source;
+  try {
+    source = await readFile(path, "utf8");
+  } catch (error) {
+    throw new Error(
+      `Cannot read the app env schema at ${path} (${error.code ?? error.message}). ` +
+        "It is the authoritative list of this app's secrets; without it the gate " +
+        "would fall back to name heuristics and miss keys like " +
+        "LIFEGW_TIER1_SIGNING_JWK. Fix the path rather than removing this check.",
+    );
+  }
   const keys = new Set();
-  const source = await readFile(join(appDir, "lib", "env-schema.ts"), "utf8").catch(
-    () => "",
-  );
   for (const match of source.matchAll(/^\s{2}([A-Z][A-Z0-9_]*)\s*:/gm)) {
     keys.add(match[1]);
+  }
+  if (keys.size === 0) {
+    throw new Error(
+      `Parsed 0 declarations from ${path}. Its shape changed and this gate is no ` +
+        "longer reading the app's real secret list.",
+    );
   }
   return keys;
 }
@@ -300,7 +338,9 @@ async function* walk(dir, errors) {
       yield* walk(full, errors);
     } else if (entry.isFile()) {
       const dot = entry.name.lastIndexOf(".");
-      if (SCANNABLE.has(dot === -1 ? "" : entry.name.slice(dot))) yield full;
+      const ext = dot === -1 ? "" : entry.name.slice(dot);
+      if (SCANNABLE.has(ext)) yield { file: full, exactOnly: false };
+      else if (EXACT_ONLY_SCANNABLE.has(ext)) yield { file: full, exactOnly: true };
     }
   }
 }
@@ -337,11 +377,39 @@ function assertDecoderContract(stdout, stderr) {
         "wrong. Refusing to report a pass on an empty scan.",
     );
   }
-  if (postponed > 0 && !stdout.includes("REACT POSTPONED STATE")) {
+  // A `.meta` with no `postponed` field is normal (a fully static page), so we
+  // cannot require every file to decode. What we CAN require is that this app
+  // still produces both kinds of payload: it sets `cacheComponents: true` and
+  // reliably emits postponed states and use-cache values. Zero of either means
+  // the on-disk format changed under us, and every file would then be counted
+  // as "scanned" while nothing was actually inspected — a pass that means
+  // nothing. Fail closed and make someone re-vendor the decoder.
+  if (postponed === 0) {
     throw new Error(
-      "Decoder reported postponed states but emitted no section for them. " +
-        "Refusing to pass on output this gate cannot parse.",
+      `Decoder read ${metaFiles} .meta file(s) but decoded 0 postponed states. ` +
+        "This app uses Cache Components and always emits them, so the format " +
+        "has changed and this gate is no longer inspecting anything.",
     );
+  }
+  if (useCache === 0) {
+    throw new Error(
+      `Decoder read ${metaFiles} .meta file(s) but decoded 0 use-cache values. ` +
+        "Those are the payloads this gate exists to inspect; zero means the " +
+        "cache format changed. Re-vendor scripts/vendor/ppr-rdc-inspect.mjs.",
+    );
+  }
+  // Every reported section type must actually appear in the output we scan.
+  for (const [count, marker] of [
+    [postponed, "REACT POSTPONED STATE"],
+    [useCache, "USE CACHE VALUE"],
+    [fetchBodies, "FETCH"],
+  ]) {
+    if (count > 0 && !stdout.includes(marker)) {
+      throw new Error(
+        `Decoder reported ${count} ${marker} entrie(s) but emitted no such section. ` +
+          "Refusing to pass on output this gate cannot parse.",
+      );
+    }
   }
   return { metaFiles, postponed, useCache, fetchBodies, skipped };
 }
@@ -573,19 +641,31 @@ async function main() {
   const findings = [];
   const ioErrors = [];
   let scanned = 0;
+  let bundlesScanned = 0;
 
   for (const dir of [join(nextDir, "server"), join(nextDir, "static")]) {
-    for await (const file of walk(dir, ioErrors)) {
+    for await (const { file, exactOnly } of walk(dir, ioErrors)) {
       const blob = await readFile(file, "utf8").catch((error) => {
         ioErrors.push(`read ${file}: ${error.message}`);
         return null;
       });
       if (blob === null) continue;
       scanned += 1;
-      findSecrets(blob, secrets, file.replace(`${nextDir}/`, ""), findings, allowlist);
+      if (exactOnly) bundlesScanned += 1;
+      findSecrets(
+        blob,
+        secrets,
+        file.replace(`${nextDir}/`, ""),
+        findings,
+        allowlist,
+        exactOnly,
+      );
     }
   }
-  console.log(`  scanned ${scanned} raw artifact(s)`);
+  console.log(
+    `  scanned ${scanned} raw artifact(s) ` +
+      `(${bundlesScanned} JS bundle(s), exact-secret detector only)`,
+  );
 
   // Decode only `.next/server` — the deployed prerender surface. `.next/dev`
   // (local Turbopack dev cache) and `.next/cache` (build cache) hold binary
