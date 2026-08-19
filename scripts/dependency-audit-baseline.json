@@ -70,15 +70,6 @@
       ]
     },
     {
-      "package": "@hono/node-server",
-      "owner": "security",
-      "topologySha256": "cdda914c37a7c34dde7978750695a2704a8e0ee4e55adafe1a480ad20d819899",
-      "rationale": "The remaining 1.19 branch is used only by the AI SDK Devtools CLI. The deployed Next.js service does not start this server, and the advisory requires its Windows static-file path handling. The separate runtime MCP branch resolves patched 2.1.",
-      "advisories": [
-        "moderate|https://github.com/advisories/GHSA-frvp-7c67-39w9"
-      ]
-    },
-    {
       "package": "nanoid",
       "owner": "security",
       "topologySha256": "944b9930e2fcefbc29fd36ba5b30d5e3e15be6a51c26b1f9238329edc0a3545b",

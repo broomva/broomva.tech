@@ -218,19 +218,50 @@ function assertDecoderContract(stdout, stderr) {
   }
 }
 
-function findSecrets(haystack, secrets, label, findings) {
+/**
+ * Illustrative credentials, not real ones. This site publishes writing about
+ * infrastructure, and that prose is cached — a post containing
+ * `postgres://user:password@localhost:5432/db` must not be able to fail a
+ * production deploy. Applied only to the heuristic shape scan; the precise
+ * env-value check is exact and never suppressed.
+ */
+const EXAMPLE_CREDENTIAL = /localhost|127\.0\.0\.1|example\.(com|org)|\byour[-_]|<[^>]+>|\$\{|:\s*password@|user:pass|USERNAME|PLACEHOLDER|changeme|xxxxx|AKIAIOSFODNN7EXAMPLE/i;
+
+function isIllustrative(match, allowlist) {
+  return EXAMPLE_CREDENTIAL.test(match) || allowlist.has(match.trim());
+}
+
+function findSecrets(haystack, secrets, label, findings, allowlist = new Set()) {
+  // Exact check: a real configured secret. No suppression path — if one of
+  // these is in the cache it is public, full stop.
   for (const [key, value] of secrets) {
     if (haystack.includes(value)) {
       findings.push(`${key} (env secret) found in ${label}`);
     }
   }
+  // Heuristic check: catches credentials that arrived from somewhere other
+  // than this environment, minus anything recognisably illustrative.
   for (const [name, pattern] of CREDENTIAL_PATTERNS) {
     pattern.lastIndex = 0;
-    const matches = haystack.match(pattern);
-    if (matches) {
+    const matches = (haystack.match(pattern) ?? []).filter(
+      (m) => !isIllustrative(m, allowlist),
+    );
+    if (matches.length > 0) {
       findings.push(`${name} — ${matches.length} match(es) in ${label}`);
     }
   }
+}
+
+/**
+ * Reviewed exceptions, committed so a waiver is visible in git history rather
+ * than applied by quietly switching the gate off.
+ */
+async function loadAllowlist() {
+  const path = join(import.meta.dirname, "prerender-cache-allowlist.json");
+  const raw = await readFile(path, "utf8").catch(() => null);
+  if (raw === null) return new Set();
+  const parsed = JSON.parse(raw);
+  return new Set(parsed.allow ?? []);
 }
 
 async function selfTest() {
@@ -260,7 +291,39 @@ async function selfTest() {
     process.exit(1);
   }
 
-  console.log(`self-test PASSED — ${findings.length} detector(s) fired, 0 false positives`);
+  // Illustrative credentials in published writing must not fail a deploy…
+  const prose = [];
+  findSecrets(
+    'Set <code>postgres://user:password@localhost:5432/mydb</code> in your .env, ' +
+      "then export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE and retry.",
+    new Map(),
+    "prose fixture",
+    prose,
+  );
+  if (prose.length > 0) {
+    console.error(`self-test FAILED — example credentials in prose flagged: ${prose.join("; ")}`);
+    process.exit(1);
+  }
+
+  // …but the suppression must not have blinded the detector to a live one.
+  const live = [];
+  findSecrets(
+    "postgres://svc_prod:9f3ad81c7b2e@db-prod-01.internal:5432/appdb",
+    new Map(),
+    "live fixture",
+    live,
+  );
+  if (live.length === 0) {
+    console.error(
+      "self-test FAILED — illustrative filter suppressed a real connection string",
+    );
+    process.exit(1);
+  }
+
+  console.log(
+    `self-test PASSED — ${findings.length} detector(s) fired, prose suppressed, ` +
+      "live credential still caught, 0 false positives",
+  );
 }
 
 async function main() {
@@ -300,6 +363,11 @@ async function main() {
     );
   }
 
+  const allowlist = await loadAllowlist();
+  if (allowlist.size > 0) {
+    console.log(`  ${allowlist.size} reviewed allowlist exception(s)`);
+  }
+
   const findings = [];
 
   // Pass 1 — raw artifacts.
@@ -308,7 +376,8 @@ async function main() {
     for await (const file of walk(dir)) {
       scanned += 1;
       const blob = await readFile(file, "utf8").catch(() => "");
-      if (blob) findSecrets(blob, secrets, file.replace(`${nextDir}/`, ""), findings);
+      if (blob)
+        findSecrets(blob, secrets, file.replace(`${nextDir}/`, ""), findings, allowlist);
     }
   }
   console.log(`  scanned ${scanned} raw artifact(s)`);
@@ -316,7 +385,7 @@ async function main() {
   // Pass 2 — decoded postponed state + use-cache values. This is the pass that
   // sees compressed RDC payloads, which pass 1 structurally cannot.
   const decoded = await decodePrerenderData(nextDir);
-  findSecrets(decoded, secrets, "decoded prerender data", findings);
+  findSecrets(decoded, secrets, "decoded prerender data", findings, allowlist);
 
   if (findings.length > 0) {
     console.error("\nFAIL — secret material reached the prerender cache:\n");
