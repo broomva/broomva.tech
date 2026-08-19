@@ -132,6 +132,20 @@ const SCANNABLE = new Set([".rsc", ".meta", ".segments", ".html", ".body"]);
 const EXACT_ONLY_SCANNABLE = new Set([".js", ".mjs", ".cjs"]);
 
 /**
+ * Bundle scanning is OPT-IN (`--include-bundles`), and deliberately not part of
+ * the deploy-blocking path.
+ *
+ * This gate exists for the prerender cache. Secrets in a client bundle are a
+ * real but different problem, and the two have different false-positive
+ * profiles: plenty of non-secret configuration (service base URLs, project
+ * IDs, public endpoints) is *supposed* to be compiled in, so gating deploys on
+ * "an env value appears in a bundle" fails builds for correct code. Catching
+ * that properly needs its own allowlist of intentionally-public config, which
+ * is a separate piece of work — not a flag smuggled into this one.
+ */
+const includeBundles = process.argv.includes("--include-bundles");
+
+/**
  * A URL with no embedded credentials is an endpoint, not a secret, and
  * endpoints belong in pages. `VERCEL_BRANCH_URL` is the preview deployment
  * host; it appears in canonical links and OG tags on every prerendered page,
@@ -151,10 +165,18 @@ function isCredentialFreeUrl(key, value) {
       const parsed = new URL(candidate);
       if (parsed.username !== "" || parsed.password !== "") return false;
       // A tokenised webhook (`https://hooks.slack.com/services/T00/B00/XXXX`)
-      // carries its secret in the PATH, with no userinfo at all. Only a bare
-      // endpoint — no path, query, or fragment — is safe to call public.
-      if (parsed.pathname.replace(/\/+$/, "") !== "") return false;
+      // carries its secret in the PATH with no userinfo at all, so a path is
+      // not automatically safe. But demanding an EMPTY path reclassified every
+      // service base URL — `NEON_AUTH_BASE_URL` is `…/neondb/auth` — as a
+      // secret, and those legitimately appear in build output.
+      //
+      // The distinguishing property is opacity, not presence: `/neondb/auth`
+      // is meaningful, `/T00/B00/XoxB1a2b3c4d5e6f7g8h` is a credential.
       if (parsed.search !== "" || parsed.hash !== "") return false;
+      const opaque = parsed.pathname
+        .split("/")
+        .some((seg) => seg.length >= 16 && /^[A-Za-z0-9_-]+$/.test(seg) && /\d/.test(seg));
+      if (opaque) return false;
       if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(parsed.hostname)) return true;
     } catch {
       // try the next candidate
@@ -355,7 +377,9 @@ async function* walk(dir, errors) {
       const dot = entry.name.lastIndexOf(".");
       const ext = dot === -1 ? "" : entry.name.slice(dot);
       if (SCANNABLE.has(ext)) yield { file: full, exactOnly: false };
-      else if (EXACT_ONLY_SCANNABLE.has(ext)) yield { file: full, exactOnly: true };
+      else if (includeBundles && EXACT_ONLY_SCANNABLE.has(ext)) {
+        yield { file: full, exactOnly: true };
+      }
     }
   }
 }
@@ -571,6 +595,12 @@ async function selfTest() {
     ["VERCEL_BRANCH_URL", "app-git-branch-team.vercel.app", true],
     ["SOME_FUTURE_PLATFORM_URL", "preview-xyz.vercel.app", true],
     ["LAGO_URL", "https://lago.arcan.la", true],
+    // service base URLs carry a meaningful path and are endpoints, not secrets
+    ["NEON_AUTH_BASE_URL", "https://api.example.dev/neondb/auth", true],
+    ["SOME_API_URL", "https://svc.internal.dev/api/v1", true],
+    // an opaque high-entropy path segment IS the credential
+    ["SLACK_WEBHOOK_URL", "https://hooks.slack.com/services/T00/B00/XoxB1a2b3c4d5e6f7g8h", false],
+    ["SOME_ENDPOINT_URL", "https://svc.dev/hook/a1b2c3d4e5f6g7h8i9", false],
     ["DATABASE_URL", "postgres://user:s3cret@db.host:5432/app", false],
     ["REDIS_URL", "redis://default:pw123456@redis.host:6379", false],
     ["KV_REST_API_TOKEN", "https://not-really-a-url-token-value", false],
@@ -708,8 +738,10 @@ async function main() {
     }
   }
   console.log(
-    `  scanned ${scanned} raw artifact(s) ` +
-      `(${bundlesScanned} JS bundle(s), exact-secret detector only)`,
+    `  scanned ${scanned} raw artifact(s)` +
+      (includeBundles
+        ? ` (${bundlesScanned} JS bundle(s), exact-secret detector only)`
+        : " (JS bundles excluded; pass --include-bundles to add them)"),
   );
 
   // Decode only `.next/server` — the deployed prerender surface. `.next/dev`
