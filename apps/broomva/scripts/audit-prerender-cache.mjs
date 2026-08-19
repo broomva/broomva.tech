@@ -205,16 +205,20 @@ function representations(value) {
   } catch {
     // non-encodable value; the literal form still applies
   }
-  // React/Next emit hex entities (`&#x27;`) where many escapers emit decimal
-  // (`&#39;`), and `encodeURIComponent` leaves apostrophes untouched — so a
-  // secret containing one could otherwise evade every representation.
+  // Escapers mix forms: React emits `&quot;` for a double quote but `&#x27;`
+  // for an apostrophe, so pairing them by "all named" or "all hex" misses the
+  // combination actually produced. Take the cross-product instead — a secret
+  // containing both quote characters otherwise evades every representation,
+  // and `encodeURIComponent` leaves apostrophes untouched too.
   const named = value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
-  variants.add(named.replaceAll('"', "&quot;").replaceAll("'", "&#39;"));
-  variants.add(named.replaceAll('"', "&#x22;").replaceAll("'", "&#x27;"));
-  variants.add(named.replaceAll('"', "&#34;").replaceAll("'", "&#39;"));
+  for (const dq of ["&quot;", "&#x22;", "&#34;"]) {
+    for (const sq of ["&#39;", "&#x27;"]) {
+      variants.add(named.replaceAll('"', dq).replaceAll("'", sq));
+    }
+  }
   return [...variants];
 }
 
@@ -612,6 +616,19 @@ async function selfTest() {
   findSecrets(`x ${hexForm} y`, new Map([["APOS_SECRET", apos]]), "hex-entity", aposHits);
   if (aposHits.length === 0) {
     console.error("self-test FAILED — hex-entity (&#x27;) representation was missed");
+    process.exit(1);
+  }
+
+  // React's actual mixed escaping: &quot; for double, &#x27; for single.
+  const bothQuotes = `pa"ss'word&x`;
+  const reactForm = bothQuotes
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#x27;");
+  const mixedHits = [];
+  findSecrets(`a ${reactForm} b`, new Map([["MIXED_SECRET", bothQuotes]]), "mixed", mixedHits);
+  if (mixedHits.length === 0) {
+    console.error("self-test FAILED — React's mixed quote escaping was missed");
     process.exit(1);
   }
 
