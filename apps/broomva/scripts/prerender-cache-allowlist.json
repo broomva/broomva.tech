@@ -1,0 +1,4 @@
+{
+  "//": "Reviewed exceptions for scripts/audit-prerender-cache.mjs. Each entry is an exact string the heuristic shape-scan matched and a human confirmed is not a live credential (for example, a sample connection string inside published writing). Committed on purpose: a waiver belongs in git history, not in a disabled gate. Real configured secrets from .env* can never be allowlisted.",
+  "allow": []
+}
