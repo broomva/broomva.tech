@@ -174,12 +174,42 @@ function isIllustrative(match, allowlist) {
   return PLACEHOLDER_MARKERS.test(credential);
 }
 
+/**
+ * The same secret can appear in build output in more than one representation.
+ * RSC payloads are JSON (backslash escapes), HTML escapes `&<>"'`, and URLs
+ * percent-encode. A literal-substring search misses every one of those, so a
+ * secret could sit in the cache fully reconstructable while the gate reports
+ * clean.
+ */
+function representations(value) {
+  const variants = new Set([value]);
+  variants.add(JSON.stringify(value).slice(1, -1));
+  try {
+    variants.add(encodeURIComponent(value));
+  } catch {
+    // non-encodable value; the literal form still applies
+  }
+  variants.add(
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;"),
+  );
+  return [...variants];
+}
+
 function findSecrets(haystack, secrets, label, findings, allowlist = new Set()) {
-  // Exact: a real configured secret. No suppression path — if one of these is
-  // in the cache it is public, full stop.
+  // Exact: a real configured secret, in any representation build output uses.
+  // No suppression path — if one of these is in the cache it is public.
   for (const [key, value] of secrets) {
-    if (haystack.includes(value)) {
-      findings.push(`${key} (env secret) found in ${label}`);
+    for (const variant of representations(value)) {
+      if (haystack.includes(variant)) {
+        const how = variant === value ? "" : " (encoded)";
+        findings.push(`${key} (env secret)${how} found in ${label}`);
+        break;
+      }
     }
   }
   // Heuristic: credentials that never passed through this environment.
@@ -473,6 +503,22 @@ async function selfTest() {
   for (const key of ["LIFEGW_TIER1_SIGNING_JWK", "IP_HASH_SALT", "AUTH_SECRET"]) {
     if (!SECRET_NAME_PATTERN.test(key)) {
       console.error(`self-test FAILED — ${key} is not recognised as a secret name`);
+      process.exit(1);
+    }
+  }
+
+  // Encoded representations of the same secret must also be caught.
+  const encSecret = 'p@ss/w+rd?a&b"c';
+  for (const [how, rendered] of [
+    ["literal", encSecret],
+    ["json-escaped", JSON.stringify(encSecret).slice(1, -1)],
+    ["percent-encoded", encodeURIComponent(encSecret)],
+    ["html-escaped", encSecret.replaceAll("&", "&amp;").replaceAll('"', "&quot;")],
+  ]) {
+    const hits = [];
+    findSecrets(`prefix ${rendered} suffix`, new Map([["ENC_SECRET", encSecret]]), how, hits);
+    if (hits.length === 0) {
+      console.error(`self-test FAILED — ${how} representation of a secret was missed`);
       process.exit(1);
     }
   }
