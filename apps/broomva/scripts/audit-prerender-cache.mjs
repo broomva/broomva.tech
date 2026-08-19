@@ -205,14 +205,16 @@ function representations(value) {
   } catch {
     // non-encodable value; the literal form still applies
   }
-  variants.add(
-    value
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;"),
-  );
+  // React/Next emit hex entities (`&#x27;`) where many escapers emit decimal
+  // (`&#39;`), and `encodeURIComponent` leaves apostrophes untouched — so a
+  // secret containing one could otherwise evade every representation.
+  const named = value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  variants.add(named.replaceAll('"', "&quot;").replaceAll("'", "&#39;"));
+  variants.add(named.replaceAll('"', "&#x22;").replaceAll("'", "&#x27;"));
+  variants.add(named.replaceAll('"', "&#34;").replaceAll("'", "&#39;"));
   return [...variants];
 }
 
@@ -285,7 +287,13 @@ async function secretsFromEnv(appDir) {
     ".env.production",
     ".env.production.local",
   ]) {
-    const text = await readFile(join(appDir, name), "utf8").catch(() => "");
+    // Missing is normal; unreadable is not. Swallowing every error would let a
+    // permissions problem silently masquerade as "this file does not exist",
+    // quietly shrinking coverage.
+    const text = await readFile(join(appDir, name), "utf8").catch((error) => {
+      if (error.code === "ENOENT") return "";
+      throw new Error(`Cannot read ${join(appDir, name)}: ${error.message}`);
+    });
     for (const line of text.split("\n")) {
       const trimmed = line.trim().replace(/^export\s+/, "");
       if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
@@ -303,8 +311,10 @@ async function secretsFromEnv(appDir) {
   }
 
   const secrets = new Map();
+  const fromEnvironment = new Set();
   for (const key of declared) {
     if (key.startsWith("NEXT_PUBLIC_") || PUBLIC_ENV_KEYS.has(key)) continue;
+    const fromEnv = process.env[key] !== undefined;
     const value = process.env[key] ?? fallback.get(key);
     if (!value || value.length < MIN_SECRET_LENGTH) continue;
     // A placeholder committed in .env.example is not worth searching for. Only
@@ -320,8 +330,9 @@ async function secretsFromEnv(appDir) {
     // reasons that have nothing to do with the cache.
     if (value.startsWith("/") || /^[A-Za-z]:\\/.test(value)) continue;
     secrets.set(key, value);
+    if (fromEnv) fromEnvironment.add(key);
   }
-  return secrets;
+  return { secrets, fromEnvironment };
 }
 
 async function* walk(dir, errors) {
@@ -398,16 +409,19 @@ function assertDecoderContract(stdout, stderr) {
         "cache format changed. Re-vendor scripts/vendor/ppr-rdc-inspect.mjs.",
     );
   }
-  // Every reported section type must actually appear in the output we scan.
+  // Reconcile counts, not mere presence. A single matching substring would
+  // otherwise satisfy any reported count, so output that silently dropped most
+  // of its sections would still pass.
   for (const [count, marker] of [
-    [postponed, "REACT POSTPONED STATE"],
-    [useCache, "USE CACHE VALUE"],
-    [fetchBodies, "FETCH"],
+    [postponed, "----- REACT POSTPONED STATE"],
+    [useCache, "----- USE CACHE VALUE"],
+    [fetchBodies, "----- FETCH CACHE BODY"],
   ]) {
-    if (count > 0 && !stdout.includes(marker)) {
+    const emitted = stdout.split(marker).length - 1;
+    if (emitted < count) {
       throw new Error(
-        `Decoder reported ${count} ${marker} entrie(s) but emitted no such section. ` +
-          "Refusing to pass on output this gate cannot parse.",
+        `Decoder reported ${count} "${marker.slice(6)}" entrie(s) but emitted ${emitted}. ` +
+          "Part of the cache was never rendered into the output this gate scans.",
       );
     }
   }
@@ -582,6 +596,7 @@ async function selfTest() {
     ["json-escaped", JSON.stringify(encSecret).slice(1, -1)],
     ["percent-encoded", encodeURIComponent(encSecret)],
     ["html-escaped", encSecret.replaceAll("&", "&amp;").replaceAll('"', "&quot;")],
+    ["html-hex-escaped", "pre &#x27;quoted&#x27; " + encSecret.replaceAll("&", "&amp;").replaceAll('"', "&#x22;")],
   ]) {
     const hits = [];
     findSecrets(`prefix ${rendered} suffix`, new Map([["ENC_SECRET", encSecret]]), how, hits);
@@ -589,6 +604,15 @@ async function selfTest() {
       console.error(`self-test FAILED — ${how} representation of a secret was missed`);
       process.exit(1);
     }
+  }
+
+  const apos = "pa'ss&word/with'quotes";
+  const hexForm = apos.replaceAll("&", "&amp;").replaceAll("'", "&#x27;");
+  const aposHits = [];
+  findSecrets(`x ${hexForm} y`, new Map([["APOS_SECRET", apos]]), "hex-entity", aposHits);
+  if (aposHits.length === 0) {
+    console.error("self-test FAILED — hex-entity (&#x27;) representation was missed");
+    process.exit(1);
   }
 
   await encodingChainProof();
@@ -620,14 +644,18 @@ async function main() {
   // those differ when the gate runs from a git worktree, and getting it wrong
   // silently shrinks coverage to whatever `.env.example` happens to declare.
   const appDir = dirname(nextDir);
-  const secrets = await secretsFromEnv(appDir);
+  const { secrets, fromEnvironment } = await secretsFromEnv(appDir);
   const allowlist = await loadAllowlist();
 
   console.log(`Auditing prerender cache in ${nextDir}`);
   console.log(`  env declarations read from ${appDir}`);
   console.log(`  ${secrets.size} secret-bearing env var(s) under test`);
 
-  const absent = REQUIRED_SECRETS.filter((key) => !secrets.has(key));
+  // Must come from the actual environment. A realistic-looking placeholder in
+  // a committed `.env.example` would otherwise satisfy this while the
+  // deployment supplies nothing, and the exact check would scan for a value
+  // that exists nowhere.
+  const absent = REQUIRED_SECRETS.filter((key) => !fromEnvironment.has(key));
   if (absent.length > 0) {
     throw new Error(
       `Required secret(s) not resolved: ${absent.join(", ")}. The app's environment ` +
