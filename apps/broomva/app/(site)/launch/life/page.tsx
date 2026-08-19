@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  Brain,
+  Database,
+  Globe,
+  KeyRound,
+  Radio,
+  Ruler,
+  Scale,
+  Search,
+  Wallet,
+  Wrench,
+} from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Life Agent OS — Open-Source Rust Runtime for Autonomous AI Agents",
+  title: "Life Agent OS: open-source Rust runtime for autonomous AI agents",
   description:
     "The first event-sourced, Rust-native Agent Operating System. 10 subsystems, 62 crates, 1,077 tests. Event-sourced persistence, homeostatic self-regulation, cryptographic identity, native finance.",
   openGraph: {
@@ -18,61 +30,61 @@ const subsystems = [
     name: "Arcan",
     role: "Agent Runtime",
     description: "LLM orchestration, tool execution, SSE streaming",
-    icon: "🧠",
+    icon: Brain,
   },
   {
     name: "Lago",
     role: "Persistence",
     description: "Append-only journal, blob store, knowledge index",
-    icon: "💾",
+    icon: Database,
   },
   {
     name: "Autonomic",
     role: "Self-Regulation",
     description: "Three-pillar homeostasis, 6 economic modes",
-    icon: "⚖️",
+    icon: Scale,
   },
   {
     name: "Haima",
     role: "Finance",
     description: "x402 payments, secp256k1 wallets, per-task billing",
-    icon: "💰",
+    icon: Wallet,
   },
   {
     name: "Anima",
     role: "Identity",
     description: "Soul profiles, dual keypairs, DID identifiers",
-    icon: "🔑",
+    icon: KeyRound,
   },
   {
     name: "Nous",
     role: "Evaluation",
     description: "LLM-as-judge, inline heuristics, EGRI loop",
-    icon: "🔍",
+    icon: Search,
   },
   {
     name: "aiOS",
     role: "Kernel Contract",
     description: "Canonical types, traits, event taxonomy",
-    icon: "📐",
+    icon: Ruler,
   },
   {
     name: "Praxis",
     role: "Tool Sandbox",
     description: "Hashline editing, MCP bridge, skill registry",
-    icon: "🔧",
+    icon: Wrench,
   },
   {
     name: "Spaces",
     role: "Networking",
     description: "SpacetimeDB 2.0, real-time agent communication",
-    icon: "🌐",
+    icon: Globe,
   },
   {
     name: "Vigil",
     role: "Observability",
     description: "OpenTelemetry tracing, GenAI semantic conventions",
-    icon: "📡",
+    icon: Radio,
   },
 ];
 
@@ -107,7 +119,7 @@ const differentiators = [
   {
     title: "Cryptographic Identity",
     description:
-      "Every agent has a soul — Ed25519 + secp256k1 dual keypairs derived via HKDF-SHA256. DID identifiers. Immutable policy manifests.",
+      "Every agent has a soul: Ed25519 + secp256k1 dual keypairs derived via HKDF-SHA256. DID identifiers. Immutable policy manifests.",
   },
   {
     title: "Contract-First",
@@ -132,7 +144,7 @@ export default function LaunchLifePage() {
         </h1>
         <p className="relative mt-6 mx-auto max-w-2xl text-lg leading-relaxed text-text-secondary sm:text-xl">
           The first Rust-native, event-sourced Agent Operating System. 10
-          subsystems that treat AI agent infrastructure as an OS — not a library.
+          subsystems that treat AI agent infrastructure as an OS, not a library.
         </p>
 
         <div className="relative mt-10 flex flex-wrap items-center justify-center gap-4">
@@ -188,8 +200,8 @@ export default function LaunchLifePage() {
           Why Life?
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-text-secondary">
-          Every major agent framework — LangChain, CrewAI, AutoGen, OpenAI
-          Agents SDK — shares the same architectural DNA: Python runtimes,
+          Every major agent framework (LangChain, CrewAI, AutoGen, OpenAI
+          Agents SDK) shares the same architectural DNA: Python runtimes,
           mutable state, trust-based execution, and bolt-on persistence. 62% of
           practitioners cite security as their top challenge. Life breaks from
           this pattern entirely.
@@ -226,7 +238,7 @@ export default function LaunchLifePage() {
               key={s.name}
               className="glass-card flex items-start gap-4 px-5 py-4"
             >
-              <span className="text-2xl">{s.icon}</span>
+              <s.icon className="mt-0.5 size-5 shrink-0 text-ai-blue" aria-hidden="true" />
               <div>
                 <p className="font-display text-base text-text-primary">
                   {s.name}{" "}
@@ -274,7 +286,7 @@ curl http://localhost:3000/sessions/{id}/events/stream`}</code>
           Honest Assessment
         </h2>
         <p className="mt-4 text-base text-text-secondary">
-          v0.2.0 — production infrastructure takes time to get right.
+          v0.2.0. Production infrastructure takes time to get right.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {[

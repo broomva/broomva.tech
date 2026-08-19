@@ -58,7 +58,7 @@ const PLOTS: PlotSpec[] = [
   {
     key: "stats",
     title: "Overall stats & rank",
-    alt: "GitHub stats — total stars, commits, PRs, issues, and rank",
+    alt: "GitHub stats: total stars, commits, PRs, issues, and rank",
     span: "half",
     src: (t) =>
       `https://broomva-github-stats.vercel.app/api?username=${USER}&show_icons=true&hide_border=true&hide_title=true&count_private=true&include_all_commits=true&rank_icon=default&bg_color=00000000&title_color=${t.aiBlue}&text_color=${t.textSecondary}&icon_color=${t.aiBlue}&ring_color=${t.aiBlue}`,

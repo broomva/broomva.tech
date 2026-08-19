@@ -4,16 +4,48 @@ import { motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { Card } from "@/components/ui/card";
 
-const CHART_COLORS = [
-  "#22c55e", // green
-  "#3b82f6", // blue
-  "#f59e0b", // amber
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#ef4444", // red
-  "#84cc16", // lime
-];
+import { useEffect, useState } from "react";
+
+// The chart palette is the brand's, read from the design tokens at runtime (ECharts paints to a canvas, so
+// CSS var() strings cannot be passed through — the computed values can). Series cycle through the five
+// chart tokens, then the functional colours; text/grid/tooltip come from the same token sheet.
+const CHART_TOKENS = [
+  "--chart-1",
+  "--chart-2",
+  "--chart-3",
+  "--chart-4",
+  "--chart-5",
+  "--ag-success",
+  "--ag-warning",
+  "--ag-error",
+] as const;
+
+type ChartTheme = {
+  series: string[];
+  text: string;
+  grid: string;
+  tooltipBg: string;
+};
+
+function readChartTheme(): ChartTheme {
+  const cs = getComputedStyle(document.documentElement);
+  const read = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+  return {
+    series: CHART_TOKENS.map((t) => read(t, "currentColor")),
+    text: read("--ag-text-primary", "currentColor"),
+    grid: read("--ag-border-subtle", "currentColor"),
+    tooltipBg: read("--ag-bg-elevated", "transparent"),
+  };
+}
+
+function useChartTheme(theme: string | undefined): ChartTheme | null {
+  const [t, setT] = useState<ChartTheme | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `theme` is the trigger — tokens are re-read when the theme flips
+  useEffect(() => {
+    setT(readChartTheme());
+  }, [theme]);
+  return t;
+}
 
 export type BaseChart = {
   type: string;
@@ -26,14 +58,11 @@ export type BaseChart = {
 
 function InteractiveChart({ chart }: { chart: BaseChart }) {
   const { resolvedTheme } = useTheme();
-  // TOOD: Update for multitheme support
-  // const textColor = theme === 'dark' ? '#e5e5e5' : '#171717';
-  const textColor = "#e5e5e5";
-  // const gridColor =
-  //   theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-  const gridColor = "rgba(255, 255, 255, 0.1)";
-  // const tooltipBg = theme === 'dark' ? '#171717' : '#ffffff';
-  const tooltipBg = "#171717";
+  const palette = useChartTheme(resolvedTheme);
+  const CHART_COLORS = palette?.series ?? ["currentColor"];
+  const textColor = palette?.text ?? "currentColor";
+  const gridColor = palette?.grid ?? "currentColor";
+  const tooltipBg = palette?.tooltipBg ?? "transparent";
 
   const sharedOptions: EChartsOption = {
     backgroundColor: "transparent",
@@ -62,7 +91,7 @@ function InteractiveChart({ chart }: { chart: BaseChart }) {
       textStyle: {
         color: textColor,
         fontSize: 13,
-        fontFamily: "system-ui, -apple-system, sans-serif",
+        fontFamily: "var(--ag-font-body)",
       },
     },
   };
@@ -110,6 +139,7 @@ function InteractiveChart({ chart }: { chart: BaseChart }) {
         areaStyle:
           chart.type === "line"
             ? {
+                opacity: 0.1,
                 color: {
                   type: "linear",
                   x: 0,
@@ -119,14 +149,11 @@ function InteractiveChart({ chart }: { chart: BaseChart }) {
                   colorStops: [
                     {
                       offset: 0,
-                      color: `${CHART_COLORS[index % CHART_COLORS.length]}15`, // 15 = 10% opacity
+                      color: CHART_COLORS[index % CHART_COLORS.length],
                     },
                     {
                       offset: 1,
-                      color: "rgba(23, 23, 23, 0)",
-                      // theme === 'dark'
-                      //   ? 'rgba(23, 23, 23, 0)'
-                      //   : 'rgba(255, 255, 255, 0)',
+                      color: "transparent",
                     },
                   ],
                 },

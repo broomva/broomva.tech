@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion } from "motion/react";
 import type { BstackLayer, BstackSkill } from "@/lib/skills-data";
@@ -46,7 +47,8 @@ function SkillCard({ skill, index }: { skill: BstackSkill; index: number }) {
             </h3>
             {typeof skill.stars === "number" && skill.stars > 0 ? (
               <span className="shrink-0 font-mono text-[10px] text-text-muted/60">
-                ★ {skill.stars}
+                <Star className="mr-0.5 inline size-2.5" aria-hidden="true" />
+                {skill.stars}
               </span>
             ) : null}
           </div>
@@ -123,7 +125,7 @@ function SkillRow({ skill }: { skill: BstackSkill }) {
         <div className="flex items-baseline gap-2">
           <span className="font-display text-sm text-text-primary">{skill.name}</span>
           {typeof skill.stars === "number" && skill.stars > 0 ? (
-            <span className="font-mono text-[10px] text-text-muted/60">★ {skill.stars}</span>
+            <span className="font-mono text-[10px] text-text-muted/60"><Star className="mr-0.5 inline size-2.5" aria-hidden="true" />{skill.stars}</span>
           ) : null}
         </div>
         {skill.updatedAt ? (
@@ -204,7 +206,7 @@ export function SkillsGrid({ layers }: { layers: BstackLayer[] }) {
   const pillClass = (active: boolean) =>
     `rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm min-h-10 transition-[background-color,border-color,color,box-shadow,transform] duration-200 active:scale-[0.96] ${
       active
-        ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
+        ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-glow-soft"
         : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
     }`;
 

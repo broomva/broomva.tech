@@ -39,7 +39,7 @@ export function ConfirmIntent({ node, sid }: Props) {
   };
 
   return (
-    <div className="mb-[22px] rounded-[10px] border border-white/10 bg-white/[0.02] px-3 py-3">
+    <div className="mb-[22px] rounded-lg border border-white/10 bg-white/[0.02] px-3 py-3">
       {intent.prompt && (
         <div className="mb-2 text-[13px] opacity-90">{intent.prompt}</div>
       )}

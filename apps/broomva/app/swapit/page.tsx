@@ -7,7 +7,7 @@ import { swapitFact } from "@/lib/db/schema";
 import { commonsStats, listApprovedSince } from "@/lib/db/swapit-facts";
 
 export const metadata = {
-  title: "Swapit Commons — household toxics knowledge",
+  title: "Swapit Commons · household toxics knowledge",
   description:
     "The anonymized, crowd-sourced knowledge commons behind the swapit skill: products, hazards, and safer alternatives. Private inventory never appears here.",
 };
@@ -110,11 +110,11 @@ export default async function SwapitCommonsPage({
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <header className="mb-8">
-        <h1 className="font-bold text-3xl tracking-tight">🧪 Swapit Commons</h1>
+        <h1 className="font-bold text-3xl tracking-tight">Swapit Commons</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
           The anonymized, crowd-sourced knowledge behind the{" "}
           <code className="rounded bg-muted px-1.5 py-0.5 text-sm">swapit</code>{" "}
-          skill — products, hazards, and safer alternatives that every
+          skill: products, hazards, and safer alternatives that every
           contributor enriches. Your private household inventory is never sent
           here; only generic, corroborated facts.
         </p>
@@ -169,7 +169,7 @@ export default async function SwapitCommonsPage({
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
             <p className="mb-3">
-              No community facts yet — be the first to contribute.
+              No community facts yet: be the first to contribute.
             </p>
             <pre className="mx-auto inline-block rounded-md bg-muted px-4 py-3 text-left text-sm">
               {`npx skills add broomva/skills --skill swapit
@@ -185,7 +185,7 @@ swapit sync`}
             <section>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b pb-2">
                 <h2 className="font-semibold text-xl">
-                  🛒 Where to buy{regionFilter ? ` · ${regionFilter}` : ""}
+                  Where to buy{regionFilter ? ` · ${regionFilter}` : ""}
                 </h2>
                 <div className="flex flex-wrap gap-1.5 text-sm">
                   <a
@@ -213,7 +213,7 @@ swapit sync`}
               </p>
               {offersByAlt.size === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No offers for {regionFilter} yet — contribute one with{" "}
+                  No offers for {regionFilter} yet: contribute one with{" "}
                   <code className="rounded bg-muted px-1 py-0.5">
                     swapit procure
                   </code>

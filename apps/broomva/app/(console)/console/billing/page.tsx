@@ -410,7 +410,7 @@ export default function BillingPage() {
             <CardTitle className="text-lg">Usage This Period</CardTitle>
             <CardDescription>
               {usage
-                ? `${new Date(usage.periodStart).toLocaleDateString()} — ${new Date(usage.periodEnd).toLocaleDateString()}`
+                ? `${new Date(usage.periodStart).toLocaleDateString()} – ${new Date(usage.periodEnd).toLocaleDateString()}`
                 : "Current billing period"}
             </CardDescription>
           </CardHeader>

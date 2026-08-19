@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { ProjectIcon } from "@/components/project-icon";
 import { Button } from "@/components/ui/button";
 import type { ProjectColorName, ProjectIconName } from "@/lib/project-icons";
@@ -51,7 +51,7 @@ export function ProjectConfig({
         variant="outline"
       >
         {hasInstructions ? (
-          <span className="text-sm leading-none">✓</span>
+          <Check className="size-4" aria-hidden="true" />
         ) : (
           <span className="text-base leading-none">+</span>
         )}

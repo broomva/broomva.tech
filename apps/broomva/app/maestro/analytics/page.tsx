@@ -8,7 +8,7 @@ import type { HandoffStatus } from "@/lib/db/schema";
 import { buildThroughputChart, statusSegments } from "./lib";
 
 export const metadata = {
-  title: "Maestro — queue analytics",
+  title: "Maestro · queue analytics",
   robots: { index: false, follow: false },
 };
 
@@ -17,7 +17,7 @@ const STATUS_COLOR: Record<HandoffStatus, string> = {
   queued: "var(--ag-accent-blue)",
   in_progress: "var(--ag-ai-blue)",
   done: "var(--ag-success)",
-  archived: "var(--muted-foreground, #8a8f98)",
+  archived: "var(--muted-foreground)",
   superseded: "var(--ag-error)",
 };
 const STATUS_LABEL: Record<HandoffStatus, string> = {
@@ -164,7 +164,7 @@ export default async function MaestroAnalyticsPage() {
         </div>
         {a.total === 0 ? (
           <p className="py-6 text-center text-muted-foreground text-xs">
-            No handoffs yet — push one to see throughput.
+            No handoffs yet: push one to see throughput.
           </p>
         ) : (
           <svg

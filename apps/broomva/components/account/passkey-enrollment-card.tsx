@@ -204,7 +204,7 @@ function EnrolledView({
           Need to enroll a new device that doesn't share iCloud Keychain or
           Google Password Manager with this one? That flow lands with
           rotation in M9-D. For now, open broomva.tech on your existing
-          device first — the passkey will sync automatically.
+          device first: the passkey will sync automatically.
         </p>
       </CardFooter>
     </Card>

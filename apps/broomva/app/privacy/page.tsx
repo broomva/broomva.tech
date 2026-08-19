@@ -132,8 +132,8 @@ export default function PrivacyPage() {
         will assess and honor the objection where required.
       </p>
       <p>
-        Langfuse may receive model, chat, user, trace, and—depending on active
-        telemetry settings—prompt or output data for service observability.
+        Langfuse may receive model, chat, user, trace, and (depending on active
+        telemetry settings) prompt or output data for service observability.
       </p>
       <p>
         We do not sell personal data. We do not use optional analytics for

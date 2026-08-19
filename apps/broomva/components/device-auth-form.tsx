@@ -115,7 +115,7 @@ export function DeviceAuthForm({
                         <span className="font-mono text-xs">{cap}</span>
                         {CAPABILITY_LABELS[cap] && (
                           <span className="ml-1 text-muted-foreground/70">
-                            &mdash; {CAPABILITY_LABELS[cap]}
+                            · {CAPABILITY_LABELS[cap]}
                           </span>
                         )}
                       </span>
@@ -188,7 +188,7 @@ export function DeviceAuthForm({
                         <span className="font-mono text-xs">{cap}</span>
                         {CAPABILITY_LABELS[cap] && (
                           <span className="ml-1 text-muted-foreground/70">
-                            &mdash; {CAPABILITY_LABELS[cap]}
+                            · {CAPABILITY_LABELS[cap]}
                           </span>
                         )}
                       </span>

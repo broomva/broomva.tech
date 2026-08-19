@@ -39,7 +39,7 @@ export function ProseIntent({ node }: Props) {
         }
         style={
           isUser
-            ? { fontFamily: "Inter, -apple-system, sans-serif" }
+            ? { fontFamily: "var(--ag-font-body)" }
             : {
                 fontFamily:
                   "'Source Serif Pro', Charter, Cambria, Georgia, serif",

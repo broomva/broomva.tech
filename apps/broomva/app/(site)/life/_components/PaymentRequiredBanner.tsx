@@ -101,7 +101,7 @@ export function PaymentRequiredBanner({
         </h2>
         <p className="ag-payment-body">
           <strong>{projectSlug}</strong> is a paid project. Approve to settle
-          the quote via x402 — the agent will then stream the run into the
+          the quote via x402: the agent will then stream the run into the
           workspace like any other Life project.
         </p>
         <div className="ag-payment-meta">

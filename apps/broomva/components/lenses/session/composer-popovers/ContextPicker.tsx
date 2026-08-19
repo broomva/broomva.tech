@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState } from "react";
 import { FilePicker } from "./FilePicker";
 
@@ -49,7 +50,7 @@ export function ContextPicker({ open, onSelect, onClose }: Props) {
           aria-label="Close"
           className="px-3 py-1.5 font-mono text-[10.5px] opacity-55 hover:opacity-90"
         >
-          ✕
+          <X className="size-3.5" aria-hidden="true" />
         </button>
       </div>
       <div className="max-h-[40vh] overflow-y-auto">
@@ -65,11 +66,11 @@ export function ContextPicker({ open, onSelect, onClose }: Props) {
           />
         ) : tab === "memory" ? (
           <div className="px-3 py-6 text-center font-mono text-[11px] opacity-50">
-            Memory picker — coming in v1.1
+            Memory picker: coming in v1.1
           </div>
         ) : (
           <div className="px-3 py-6 text-center font-mono text-[11px] opacity-50">
-            Agents picker — coming in v1.1
+            Agents picker: coming in v1.1
           </div>
         )}
       </div>

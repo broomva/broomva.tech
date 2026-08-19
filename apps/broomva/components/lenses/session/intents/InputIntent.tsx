@@ -41,7 +41,7 @@ export function InputIntent({ node, sid }: Props) {
 
   if (submitted) {
     return (
-      <div className="mb-[22px] rounded-[10px] border border-[color:var(--ag-success)]/25 bg-[color:var(--ag-success)]/[0.05] px-3 py-2.5">
+      <div className="mb-[22px] rounded-lg border border-[color:var(--ag-success)]/25 bg-[color:var(--ag-success)]/[0.05] px-3 py-2.5">
         <div className="font-mono text-[11px] opacity-80">
           submitted: <span className="opacity-100">{value}</span>
         </div>
@@ -50,7 +50,7 @@ export function InputIntent({ node, sid }: Props) {
   }
 
   return (
-    <div className="mb-[22px] rounded-[10px] border border-white/10 bg-white/[0.02] px-3 py-3">
+    <div className="mb-[22px] rounded-lg border border-white/10 bg-white/[0.02] px-3 py-3">
       {intent.prompt && (
         <div className="mb-2 text-[13px] opacity-90">{intent.prompt}</div>
       )}

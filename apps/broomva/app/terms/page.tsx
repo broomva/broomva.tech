@@ -104,8 +104,8 @@ export default function TermsPage() {
         advance notice of price changes that affect a future renewal.
       </p>
       <p>
-        Enterprise commitments—including service levels, credits, security
-        schedules, data residency, support, and data-processing terms—apply only
+        Enterprise commitments (service levels, credits, security
+        schedules, data residency, support, and data-processing terms) apply only
         when included in a separate signed agreement. Marketing descriptions do
         not independently create an SLA or compliance certification.
       </p>

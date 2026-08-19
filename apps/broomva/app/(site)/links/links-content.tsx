@@ -30,7 +30,7 @@ const featuredPost = {
   title: "The Agentic Control Loop",
   subtitle: "Re-Engineering LLMs as Supervisory Controllers",
   description:
-    "Why treating LLMs as supervisory controllers — not autonomous agents — produces systems that scale, recover from failure, and improve over time.",
+    "Why treating LLMs as supervisory controllers (not autonomous agents) produces systems that scale, recover from failure, and improve over time.",
   videoThumbnail: "/images/writing/agentic-control-loop/hero.jpg",
   href: "/writing/agentic-control-loop",
   tag: "New post",

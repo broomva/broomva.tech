@@ -166,7 +166,7 @@ function ToolsSection() {
   return (
     <SectionHeader icon={WrenchIcon} title={`Tools (${tools.length} · preview)`}>
       <p className="mb-2 text-[11px] text-muted-foreground">
-        Tool execution isn&apos;t wired into the live agent runtime yet — the
+        Tool execution isn&apos;t wired into the live agent runtime yet; the
         agent answers from its grounded knowledge. The inventory below is the
         roadmap surface, arriving with the runtime tool harness.
       </p>

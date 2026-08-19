@@ -105,6 +105,35 @@
   --ag-shadow-glow-blue: var(--bv-shadow-feature);
   --ag-shadow-glow-accent: var(--app-shadow-glow-accent);
 
+  /* --- Elevation additions (BRO-2184): the named states that previously lived as arbitrary
+         shadow-[…] classes. Derived from the foundation where a token exists; the glows keep
+         their oklch values because the foundation defines no per-status glow. --- */
+  --ag-shadow-glow-soft: 0 0 12px oklch(0.60 0.12 260 / 0.08);          /* resting glass glow */
+  --ag-shadow-glow-status: 0 0 8px var(--ag-ai-blue);                    /* small status/fill glow */
+  --ag-shadow-inset-highlight: inset 0 1px 0 oklch(1 0 0 / 0.06);        /* glass top-edge highlight */
+  --ag-shadow-glass-card: var(--ag-shadow-inset-highlight), 0 0 16px oklch(0.60 0.12 260 / 0.12);
+  --ag-shadow-glow-success: 0 0 6px oklch(0.72 0.19 155 / 0.5);
+  --ag-shadow-glow-warning: 0 0 6px oklch(0.87 0.18 85 / 0.5);
+  --ag-shadow-glow-error: 0 0 6px oklch(0.65 0.22 27 / 0.7);
+  --ag-shadow-glow-accent-soft: 0 0 6px oklch(0.65 0.14 235 / 0.5);
+  --ag-shadow-glow-violet: 0 0 6px oklch(0.70 0.15 300 / 0.5);
+  --ag-shadow-glow-muted: 0 0 5px oklch(0.70 0.10 85 / 0.3);
+  --ag-shadow-inset-well: 0 0 0 1px oklch(1 0 0 / 0.08), inset 0 0 8px oklch(0 0 0 / 0.4);
+
+  /* Categorical data-viz palette (BRO-2184): the brand's hue families (260 / 300 / 85 / 45 / 155 /
+     275 / 27 / 330), lightness tuned for the deep background. sRGB triplets because canvas painters
+     need numeric channels; the DOM uses rgb(var(--ag-viz-note) / 0.2). Derived from OKLCH. */
+  --ag-viz-note: 111 164 252;
+  --ag-viz-project: 180 141 244;
+  --ag-viz-writing: 253 196 54;
+  --ag-viz-prompt: 251 134 77;
+  --ag-viz-skill: 56 208 128;
+  --ag-viz-tag: 130 133 147;
+  --ag-viz-memory: 255 101 90;
+  --ag-viz-conversation: 228 114 220;
+  --ag-viz-artifact: 220 222 229;
+  --ag-viz-canvas: 4 5 13;
+
   /* --- Radii --- */
   --ag-radius-sm: var(--bv-radius-chip);
   --ag-radius-md: var(--bv-radius-lg);
@@ -433,6 +462,13 @@
   --shadow-xl: var(--ag-shadow-xl);
   --shadow-2xl: var(--ag-shadow-2xl);
   --shadow-glow-blue: var(--ag-shadow-glow-blue);
+  --shadow-glow-soft: var(--ag-shadow-glow-soft);
+  --shadow-glow-status: var(--ag-shadow-glow-status);
+  --shadow-inset-highlight: var(--ag-shadow-inset-highlight);
+  --shadow-glass-card: var(--ag-shadow-glass-card);
+  --shadow-glow-success: var(--ag-shadow-glow-success);
+  --shadow-glow-warning: var(--ag-shadow-glow-warning);
+  --shadow-glow-error: var(--ag-shadow-glow-error);
   --shadow-glow-accent: var(--ag-shadow-glow-accent);
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;

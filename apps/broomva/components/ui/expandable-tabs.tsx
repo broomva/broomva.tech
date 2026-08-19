@@ -107,7 +107,7 @@ export function ExpandableTabs({
                 className={cn(
                   "relative flex min-h-10 items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors duration-300",
                   isSelected
-                    ? cn("bg-bg-elevated/70 shadow-[inset_0_1px_0_oklch(1_0_0/0.05)]", activeColor)
+                    ? cn("bg-bg-elevated/70 shadow-inset-highlight", activeColor)
                     : "text-muted-foreground hover:bg-bg-elevated/50 hover:text-foreground",
                 )}
               >

@@ -13,7 +13,7 @@ import {
 } from "@/lib/analytics/events";
 
 export const metadata: Metadata = {
-  title: "Welcome — Set up your workspace",
+  title: "Welcome · Set up your workspace",
   description: "Create your organization and choose a plan.",
 };
 

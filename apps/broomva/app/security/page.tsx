@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Security and vulnerability disclosure — broomva.tech",
+  title: "Security and vulnerability disclosure · broomva.tech",
   description: "How to report a security vulnerability to broomva.tech.",
 };
 

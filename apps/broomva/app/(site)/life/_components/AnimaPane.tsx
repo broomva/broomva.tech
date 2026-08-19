@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
 export interface LifeUserIdentity {
@@ -58,7 +59,7 @@ function deriveSoul(
             "Payments settle through Haima; x402 for external callers.",
           ]
         : [
-            "Guest view — no authenticated principal and no prompt processing.",
+            "Guest view: no authenticated principal and no prompt processing.",
             "Sign in and accept the current policies to start a run.",
             "Public project information remains available without an account.",
           ],
@@ -164,7 +165,7 @@ export function AnimaPane({ user, projectSlug, liveMeta }: Props) {
           <div className="bar">
             <div
               className="bar__fill"
-              style={{ width: `${v * 100}%` }}
+              style={{ "--fill": v } as CSSProperties}
             />
           </div>
         </div>

@@ -9,7 +9,7 @@ import { QueueBoard } from "./queue-board";
 import { QueueStream } from "./queue-stream";
 
 export const metadata = {
-  title: "Maestro — handoff queue",
+  title: "Maestro · handoff queue",
   robots: { index: false, follow: false },
 };
 
@@ -58,7 +58,7 @@ export default async function MaestroQueuePage() {
           <h1 className="font-semibold text-2xl">Queue</h1>
         </div>
         <p className="mt-1 text-muted-foreground text-sm">
-          The handoff queue — what to hand to the next session. Push one with{" "}
+          The handoff queue: what to hand to the next session. Push one with{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">
             broomva handoff push file.md
           </code>

@@ -31,7 +31,7 @@ export default async function AccountIndexPage() {
           <AlertTitle>You don't have a passkey yet</AlertTitle>
           <AlertDescription>
             Passkeys replace passwords with on-device cryptographic keys. They
-            unlock signing Life transactions from broomva.tech without shipping
+            let you sign Life transactions from broomva.tech without shipping
             your private key off the device.
           </AlertDescription>
         </Alert>

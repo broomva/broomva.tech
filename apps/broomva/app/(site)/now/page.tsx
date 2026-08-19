@@ -14,14 +14,14 @@ export const metadata = {
 };
 
 const focus = [
-  "Shipping multi-tenant agentic platforms in production — governed tool use, audit-grade lineage, lakehouse-native data substrates.",
-  "Maintaining the open-source Rust Agent OS stack — Life, Lago, Vigil, Haima — as the substrate behind everything else I build.",
-  "Productizing the Life Runtime through partner distribution and direct tenants — turning the substrate into recurring revenue.",
+  "Shipping multi-tenant agentic platforms in production: governed tool use, audit-grade lineage, lakehouse-native data substrates.",
+  "Maintaining the open-source Rust Agent OS stack (Life, Lago, Vigil, Haima) as the substrate behind everything else I build.",
+  "Productizing the Life Runtime through partner distribution and direct tenants, turning the substrate into recurring revenue.",
 ];
 
 const learning = [
   "Lakehouse-native streaming patterns (Zerobus, Iceberg, Unity Catalog medallion) and how they replace traditional message-bus architectures.",
-  "Recursive Controlled Systems theory — formalizing LLM-as-controller agents with hierarchical stability budgets.",
+  "Recursive Controlled Systems theory: formalizing LLM-as-controller agents with hierarchical stability budgets.",
   "Audit-grade governance as a default property of agent orchestration, not an afterthought.",
 ];
 
@@ -36,7 +36,7 @@ export default function NowPage() {
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <FadeIn>
         <PageHero
-          description="A monthly snapshot of where my attention is — themes, not project names. For specifics on roles, engagements, and the OSS substrate, see /profile."
+          description="A monthly snapshot of where my attention is: themes, not project names. For specifics on roles, engagements, and the OSS substrate, see /profile."
           title="Now"
         />
       </FadeIn>
@@ -81,8 +81,8 @@ export default function NowPage() {
           <h2 className="font-display text-2xl">Collaborate</h2>
           <p className="mt-3 text-sm leading-relaxed text-text-secondary">
             If you're building production agent systems, multi-tenant
-            lakehouses, or governed AI platforms — and want to compare
-            architectures, constraints, or tooling — open the contact page and
+            lakehouses, or governed AI platforms and want to compare
+            architectures, constraints, or tooling, open the contact page and
             include your specific bottleneck.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">

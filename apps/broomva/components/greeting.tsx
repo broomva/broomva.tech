@@ -30,7 +30,7 @@ export const Greeting = () => (
       transition={{ delay: 0.7 }}
     >
       You are interacting with an AI system. Responses can be wrong or
-      incomplete—verify important information before relying on it.
+      incomplete; verify important information before relying on it.
     </motion.p>
   </div>
 );

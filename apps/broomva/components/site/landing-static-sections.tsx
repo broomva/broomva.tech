@@ -10,7 +10,7 @@ const stack = [
     name: "bstack",
     role: "Agent skills platform",
     description:
-      "A layered catalog of curated agent skills — install the Broomva development workflow with one command.",
+      "A layered catalog of curated agent skills: install the Broomva development workflow with one command.",
     href: "/skills",
   },
   {
@@ -31,7 +31,7 @@ const stack = [
     name: "Life",
     role: "Agent OS monorepo",
     description:
-      "Arcan runtime, Lago persistence, Vigil observability, Praxis tool execution, Haima finance, and Spaces networking — unified in one Cargo workspace.",
+      "Arcan runtime, Lago persistence, Vigil observability, Praxis tool execution, Haima finance, and Spaces networking, unified in one Cargo workspace.",
     href: "/projects/life",
     demoHref: "/life",
     demoLabel: "Try the live demo →",
@@ -40,14 +40,14 @@ const stack = [
     name: "Autoany",
     role: "Recursive improvement",
     description:
-      "Evaluator-Governed Recursive Improvement (EGRI) — safe, measurable, rollback-capable optimization loops.",
+      "Evaluator-Governed Recursive Improvement (EGRI): safe, measurable, rollback-capable optimization loops.",
     href: "/projects/autoany",
   },
   {
     name: "aiOS",
     role: "Kernel contract",
     description:
-      "The canonical type system — state vectors, event taxonomy, trait interfaces, and operating modes for all Agent OS crates.",
+      "The canonical type system: state vectors, event taxonomy, trait interfaces, and operating modes for all Agent OS crates.",
     href: "/projects/aios",
   },
 ];

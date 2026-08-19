@@ -41,7 +41,7 @@ export function AnimaPopover({ onClose }: Props) {
             "color-mix(in oklab, var(--ag-bg-surface) 78%, transparent)",
           backdropFilter: "blur(20px) saturate(1.4) brightness(1.05)",
           boxShadow:
-            "inset 0 1px 0 oklch(1 0 0 / 0.06), var(--ag-shadow-xl)",
+            "var(--ag-shadow-inset-highlight), var(--ag-shadow-xl)",
         }}
       >
         <div className="row" style={{ gap: 12, marginBottom: 12 }}>

@@ -37,13 +37,13 @@ import {
 } from "@/lib/profile-stats";
 
 export const metadata: Metadata = {
-  title: "Profile — Carlos D. Escobar-Valbuena",
+  title: "Profile · Carlos D. Escobar-Valbuena",
   description:
     "Agent OS architect and AI engineering lead. AI Lead at Stimulus, Data Architect contractor at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). Builder of Life Agent OS, bstack, broomva/skills, Lago, Vigil, and the RCS paper series.",
   alternates: { canonical: "/profile" },
   openGraph: {
     title:
-      "Carlos D. Escobar-Valbuena — Agent OS Architect & AI Engineering Lead",
+      "Carlos D. Escobar-Valbuena: Agent OS Architect & AI Engineering Lead",
     description:
       "AI-native, multi-tenant data platforms in production. AI Lead at Stimulus, Data Architect at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). MSc AI at Universidad de los Andes.",
     type: "profile",
@@ -118,7 +118,7 @@ const concurrent = [
     org: "Wedi Pay",
     period: "Oct 2024 – Jun 2026",
     blurb:
-      "Agentic cross-border B2B payment orchestration. Multi-tenant Postgres RLS, Kafka/Redpanda event-driven backbone, Databricks gold-table ETLs. Wedi Agents execute payment actions under strict policy/consent/scoped credentials with full audit trails. Signed and shipped payment-rail integrations — Prometeo (open-banking A2A), TruBit/VelaFi (USDC on/off-ramp), Thirdweb (web3-native) — on a provider-agnostic integration layer.",
+      "Agentic cross-border B2B payment orchestration. Multi-tenant Postgres RLS, Kafka/Redpanda event-driven backbone, Databricks gold-table ETLs. Wedi Agents execute payment actions under strict policy/consent/scoped credentials with full audit trails. Signed and shipped payment-rail integrations. Prometeo (open-banking A2A), TruBit/VelaFi (USDC on/off-ramp), Thirdweb (web3-native), on a provider-agnostic integration layer.",
   },
   {
     icon: Database,
@@ -135,7 +135,7 @@ const engagements = [
     metric: "3 payment rails · multi-country",
     label: "LATAM payments integration layer",
     blurb:
-      "Signed and shipped integrations with Prometeo (open-banking account-to-account), TruBit — now VelaFi (USDC on/off-ramp), and Thirdweb (web3-native) behind one provider-agnostic layer at Wedi Pay.",
+      "Signed and shipped integrations with Prometeo (open-banking account-to-account), TruBit (now VelaFi, USDC on/off-ramp), and Thirdweb (web3-native) behind one provider-agnostic layer at Wedi Pay.",
   },
   {
     metric: "~70,000 wells · multi-basin",
@@ -147,13 +147,13 @@ const engagements = [
     metric: "FIFA 2026 + Olympics Committee scale",
     label: "Tier-1 sports + procurement enterprise",
     blurb:
-      "Stimulus customer surface — agentic supplier intelligence with policy-bounded tool adapters and multi-document retrieval.",
+      "Stimulus customer surface: agentic supplier intelligence with policy-bounded tool adapters and multi-document retrieval.",
   },
   {
     metric: "AWS Premier Consulting Partner",
     label: "US-based AI advisory",
     blurb:
-      "Production-grade agentic RAG over an internal SageMaker engineering knowledge base — pgvector + FAISS, three switchable interaction modes (graph-based, tools agent, conversational). Delivery accepted at evaluation stage.",
+      "Production-grade agentic RAG over an internal SageMaker engineering knowledge base: pgvector + FAISS, three switchable interaction modes (graph-based, tools agent, conversational). Delivery accepted at evaluation stage.",
   },
   {
     metric: "Tier-1 LATAM e-commerce + fintech",
@@ -192,13 +192,13 @@ const ossProjects = [
     icon: Workflow,
     name: "bstack + broomva/skills",
     href: "https://github.com/broomva/bstack",
-    desc: "Agentic development harness — 20 irreducible automation primitives (policy gates, knowledge bookkeeping, CI productive-wait, persistent cross-context loops, cross-model adversarial review) that turn an agent-driven workspace into a self-operating system, plus 48 portable agent skills (agentskills.io spec) for Claude Code, Codex, Cursor, Gemini CLI, Goose, and Copilot.",
+    desc: "Agentic development harness: 20 irreducible automation primitives (policy gates, knowledge bookkeeping, CI productive-wait, persistent cross-context loops, cross-model adversarial review) that turn an agent-driven workspace into a self-operating system, plus 48 portable agent skills (agentskills.io spec) for Claude Code, Codex, Cursor, Gemini CLI, Goose, and Copilot.",
   },
   {
     icon: Shield,
     name: "Recursive Controlled Systems (RCS)",
     href: "/notes",
-    desc: "Five-paper series formalizing LLM-as-controller agents as a 7-tuple Σ = (X, Y, U, f, h, S, Π) with recursive stability budgets across hierarchical control levels (L0–L3). Control-native architecture for autonomous workflows — verification causally independent of the acting model — and the ongoing autonomy / search / intelligence research program. Foundations paper complete; 4 papers in progress.",
+    desc: "Five-paper series formalizing LLM-as-controller agents as a 7-tuple Σ = (X, Y, U, f, h, S, Π) with recursive stability budgets across hierarchical control levels (L0–L3). Control-native architecture for autonomous workflows (verification causally independent of the acting model) and the ongoing autonomy / search / intelligence research program. Foundations paper complete; 4 papers in progress.",
   },
 ];
 
@@ -268,7 +268,7 @@ const stackClusters = [
 const cvDownloads = [
   {
     label: "Master CV",
-    description: "Full surface — every role, OSS, research, education.",
+    description: "Full surface: every role, OSS, research, education.",
     href: "/cv/carlos-escobar-cv-master.pdf",
     pages: "5 pp",
   },
@@ -308,7 +308,7 @@ const elsewhereLinks = [
     href: "https://x.com/broomva_tech",
     icon: Sparkles,
     blurb:
-      "Notes from the build — agent OS, RCS papers, and what I'm thinking about.",
+      "Notes from the build: agent OS, RCS papers, and what I'm thinking about.",
   },
 ];
 
@@ -355,7 +355,7 @@ export default async function ProfilePage() {
 
       <FadeIn>
         <PageHero
-          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production — across regulated and high-stakes domains. Concurrent senior leadership across Stimulus (AI Lead), TEAM International (Data Architect), and Wedi Pay (Co-founder/CTO, 2024–2026). Open-source author of Life Agent OS, the bstack agentic harness + broomva/skills, Lago, Vigil, and the RCS paper series. MSc AI at Universidad de los Andes (2026)."
+          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production across regulated and high-stakes domains. Concurrent senior leadership across Stimulus (AI Lead), TEAM International (Data Architect), and Wedi Pay (Co-founder/CTO, 2024–2026). Open-source author of Life Agent OS, the bstack agentic harness + broomva/skills, Lago, Vigil, and the RCS paper series. MSc AI at Universidad de los Andes (2026)."
           title="Carlos D. Escobar-Valbuena"
         />
       </FadeIn>
@@ -367,7 +367,7 @@ export default async function ProfilePage() {
             Live signals
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
-            Pulled directly from GitHub and crates.io — what the substrate is
+            Pulled directly from GitHub and crates.io: what the substrate is
             actually doing this week.
           </p>
           <ProfileKPIs
@@ -385,13 +385,13 @@ export default async function ProfilePage() {
             recentLabel="Recent writing"
           />
           <p className="mt-3 text-xs text-text-muted">
-            Updated hourly · {formatNumber(github.totalStars)} ★ ·{" "}
+            Updated hourly · {formatNumber(github.totalStars)} GitHub stars ·{" "}
             {formatNumber(crates.totalDownloads)} crate downloads
           </p>
         </section>
       </FadeIn>
 
-      {/* GitHub activity — live plots mirrored from the GitHub profile */}
+      {/* GitHub activity: live plots mirrored from the GitHub profile */}
       <FadeIn delay={0.11}>
         <section className="mt-12">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -408,8 +408,8 @@ export default async function ProfilePage() {
                   target="_blank"
                 >
                   GitHub profile
-                </a>{" "}
-                — each card is a live SVG that re-renders from the GitHub API,
+                </a>
+                . Each card is a live SVG that re-renders from the GitHub API,
                 so it stays current on its own.
               </p>
             </div>
@@ -445,7 +445,7 @@ export default async function ProfilePage() {
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
               The Broomva bookkeeping pipeline scores and promotes raw extracts
               into a queryable entity graph. This is what's in the graph right
-              now — last sync {bookkeeping.lastRunRelative || "recent"}.
+              now: last sync {bookkeeping.lastRunRelative || "recent"}.
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl glass p-5">
@@ -509,7 +509,7 @@ export default async function ProfilePage() {
             Concurrent leadership
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
-            Three Principal-tier roles in parallel since late 2024 — compressed
+            Three Principal-tier roles in parallel since late 2024: compressed
             surface area across fintech / payments, agentic procurement, and
             enterprise data platforms.
           </p>
@@ -551,7 +551,7 @@ export default async function ProfilePage() {
             Selected engagements
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
-            Anonymized references — case studies available under mutual NDA.
+            Anonymized references: case studies available under mutual NDA.
           </p>
           <Stagger className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {engagements.map((eng) => (
@@ -580,7 +580,7 @@ export default async function ProfilePage() {
             Open source & research
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
-            The substrate behind everything else — published as MIT/Apache OSS.
+            The substrate behind everything else, published as MIT/Apache OSS.
           </p>
           <Stagger className="mt-6 grid gap-4 lg:grid-cols-2">
             {ossProjects.map((p) => {
@@ -612,7 +612,7 @@ export default async function ProfilePage() {
         </section>
       </FadeIn>
 
-      {/* Top repos — live from GitHub */}
+      {/* Top repos: live from GitHub */}
       {github.topRepos.length > 0 && (
         <FadeIn delay={0.3}>
           <section className="mt-16">
@@ -660,12 +660,12 @@ export default async function ProfilePage() {
         </FadeIn>
       )}
 
-      {/* Top crates — live from crates.io */}
+      {/* Top crates: live from crates.io */}
       {crates.topCrates.length > 0 && (
         <FadeIn delay={0.35}>
           <section className="mt-16">
             <h2 className="font-display text-2xl text-text-primary sm:text-3xl">
-              Life Agent OS — published crates
+              Life Agent OS: published crates
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
               Live from crates.io. The Rust substrate of the agent runtime.
@@ -838,7 +838,7 @@ export default async function ProfilePage() {
             Download CV
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
-            Three lengths — pick the one that fits your read time.
+            Three lengths: pick the one that fits your read time.
           </p>
           <Stagger className="mt-6 grid gap-4 sm:grid-cols-3">
             {cvDownloads.map((cv) => (
@@ -880,8 +880,8 @@ export default async function ProfilePage() {
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary">
             If you're building production agent systems, multi-tenant
-            lakehouses, or governed AI platforms — and want to compare
-            architectures or discuss a role — open the contact page with your
+            lakehouses, or governed AI platforms and want to compare
+            architectures or discuss a role: open the contact page with your
             specific bottleneck. Detailed engagement narratives available under
             mutual NDA.
           </p>

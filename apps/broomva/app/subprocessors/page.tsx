@@ -85,7 +85,7 @@ const providers = [
 ];
 
 export const metadata = {
-  title: "Subprocessors — broomva.tech",
+  title: "Subprocessors · broomva.tech",
   description: "Service providers that may process data for broomva.tech.",
 };
 

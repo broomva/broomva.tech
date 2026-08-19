@@ -86,7 +86,7 @@ export function QueueBoard({ handoffs }: { handoffs: HandoffSummary[] }) {
       }
       startTransition(() => router.refresh());
     } catch {
-      setError("Network error — please retry.");
+      setError("Network error: please retry.");
     } finally {
       setPendingId(null);
       setConfirmId(null);
@@ -120,7 +120,7 @@ export function QueueBoard({ handoffs }: { handoffs: HandoffSummary[] }) {
       }
       startTransition(() => router.refresh());
     } catch {
-      setError("Network error — please retry.");
+      setError("Network error: please retry.");
     } finally {
       setPendingId(null);
     }
@@ -142,7 +142,7 @@ export function QueueBoard({ handoffs }: { handoffs: HandoffSummary[] }) {
       setCopiedId(h.id);
       setTimeout(() => setCopiedId((cur) => (cur === h.id ? null : cur)), 1500);
     } catch {
-      setError("Clipboard unavailable — open the handoff and copy manually.");
+      setError("Clipboard unavailable: open the handoff and copy manually.");
     }
   }
 
@@ -378,7 +378,7 @@ function HandoffCard({
             <p className="text-muted-foreground text-xs">Loading handoff…</p>
           ) : bodyError ? (
             <p className="text-destructive text-xs">
-              Couldn't load the handoff body — collapse and re-open to retry.
+              Couldn't load the handoff body: collapse and re-open to retry.
             </p>
           ) : (
             <div className="prose prose-invert prose-sm max-w-none prose-headings:text-sm prose-headings:font-semibold prose-p:text-xs prose-li:text-xs prose-code:text-[11px] prose-pre:text-[11px] text-muted-foreground">
@@ -448,7 +448,7 @@ function HandoffCard({
           <button
             type="button"
             onClick={onCopy}
-            title="Copy the continue-prompt — paste into a fresh session (Omnara, etc.)"
+            title="Copy the continue-prompt · paste into a fresh session (Omnara, etc.)"
             className={SECONDARY_BTN}
           >
             {copied ? "Copied" : "Copy"}

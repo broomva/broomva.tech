@@ -1,5 +1,6 @@
 "use client";
 
+import { Settings } from "lucide-react";
 import type { LifeUserIdentity } from "./AnimaPane";
 
 interface Props {
@@ -59,7 +60,7 @@ export function Topbar({
             aria-label="Pane preferences"
             title="Pane preferences"
           >
-            ⚙
+            <Settings className="size-4" aria-hidden="true" />
           </button>
         )}
       </div>

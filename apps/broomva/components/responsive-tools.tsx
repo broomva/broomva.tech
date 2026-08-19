@@ -1,4 +1,4 @@
-import { Settings2, X } from "lucide-react";
+import { Check, Settings2, X } from "lucide-react";
 import {
   createElement,
   type Dispatch,
@@ -117,7 +117,7 @@ export function ResponsiveTools({
                   <Icon size={14} />
                   <span>{tool.name}</span>
                   {tools === key && (
-                    <span className="text-xs opacity-70">✓</span>
+                    <Check className="size-3 opacity-70" aria-hidden="true" />
                   )}
                   {hasUnspecifiedFeatures && (
                     <span className="text-xs opacity-60">(not supported)</span>

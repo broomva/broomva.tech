@@ -4,7 +4,7 @@ import { getSkillsRoster } from "@/lib/github";
 import { BSTACK_LAYERS, TOTAL_SKILLS, TOTAL_LAYERS } from "@/lib/skills-data";
 
 export const metadata: Metadata = {
-  title: "Skills — The Broomva Stack",
+  title: "Skills · The Broomva Stack",
   description: `${TOTAL_SKILLS}+ curated agent skills synced live from github.com/broomva. Install with one command.`,
 };
 
@@ -41,7 +41,7 @@ export default async function SkillsPage() {
               >
                 github.com/broomva
               </a>
-              {" "}— every repo with{" "}
+              {" "}· every repo with{" "}
               <code className="rounded bg-bg-elevated/40 px-1 py-0.5 font-mono text-[11px]">
                 SKILL.md
               </code>{" "}

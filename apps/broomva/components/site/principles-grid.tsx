@@ -41,7 +41,7 @@ export function PrinciplesGrid() {
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
           Whether it&apos;s a Databricks pipeline, an agent runtime, or a
-          breath-hold training block — the same six principles apply.
+          breath-hold training block: the same six principles apply.
         </p>
       </ScrollReveal>
 

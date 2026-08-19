@@ -18,11 +18,11 @@ import { buildPublicGraph } from "@/lib/graph/build-public";
 export const metadata: Metadata = {
   title: "Knowledge Graph",
   description:
-    "Explore the connected knowledge architecture of broomva.tech — documentation, projects, prompts, skills, and (when signed in) your personal agent memory.",
+    "Explore the connected knowledge architecture of broomva.tech: documentation, projects, prompts, skills, and (when signed in) your personal agent memory.",
   openGraph: {
     title: "Knowledge Graph | broomva.tech",
     description:
-      "Force-directed graph of all notes, projects, skills, and prompts — plus your personal Lago memory vault when signed in.",
+      "Force-directed graph of all notes, projects, skills, and prompts, plus your personal Lago memory vault when signed in.",
     url: "https://broomva.tech/graph",
   },
 };
@@ -53,7 +53,7 @@ export default async function GraphPage() {
         </div>
       </div>
 
-      {/* Graph canvas — fills remaining height */}
+      {/* Graph canvas: fills remaining height */}
       <div className="min-h-0 flex-1 overflow-hidden">
         <KnowledgeGraph
           initialData={initialData}

@@ -13,9 +13,9 @@ const CHIP_LABELS: Record<ProjectChipColor, string> = {
 export const metadata: Metadata = {
   title: "Life · An Operating System for AI Agents",
   description:
-    "Identity, memory, custody, payments, and execution as primitives — not bolt-ons. Rust-native, event-sourced, MIT licensed. Spec D 100% complete (May 2, 2026).",
+    "Identity, memory, custody, payments, and execution as primitives, not bolt-ons. Rust-native, event-sourced, MIT licensed. Spec D 100% complete (May 2, 2026).",
   openGraph: {
-    title: "Life — Agent Operating System",
+    title: "Life · Agent Operating System",
     description:
       "An operating system for AI agents. 8 subsystems on one kernel contract. Production custody (6 backends), event-sourced persistence, native finance, cryptographic identity.",
     type: "website",
@@ -41,7 +41,7 @@ const SUBSYSTEMS: ReadonlyArray<{
     name: "Arcan",
     role: "Runtime",
     description:
-      "Agent loop — reconstruct from journal, call provider, execute tools, stream events.",
+      "Agent loop: reconstruct from journal, call provider, execute tools, stream events.",
     hash: "#arcan",
   },
   {
@@ -62,7 +62,7 @@ const SUBSYSTEMS: ReadonlyArray<{
     name: "Autonomic",
     role: "Homeostasis",
     description:
-      "Three-pillar regulation — operational, cognitive, economic. Hysteresis anti-flapping.",
+      "Three-pillar regulation: operational, cognitive, economic. Hysteresis anti-flapping.",
     hash: "#autonomic",
   },
   {
@@ -103,7 +103,7 @@ const CUSTODY_BACKENDS: ReadonlyArray<{
   {
     name: "VaultTransitAnima",
     surface: "Server-side",
-    desc: "HashiCorp Vault Transit — keys never leave the KMS. Per-user namespaces.",
+    desc: "HashiCorp Vault Transit: keys never leave the KMS. Per-user namespaces.",
   },
   {
     name: "TpmAnima",
@@ -146,7 +146,7 @@ export default function LifeLandingPage() {
           </h1>
 
           <p className="life-landing__sub">
-            Identity, memory, custody, payments, and execution &mdash;
+            Identity, memory, custody, payments, and execution as
             primitives, not bolt-ons. Rust-native, event-sourced, MIT licensed.
           </p>
 
@@ -201,8 +201,8 @@ export default function LifeLandingPage() {
             <p className="life-landing__kicker">The substrate</p>
             <h2 className="life-landing__h2">Eight subsystems, one kernel contract.</h2>
             <p className="life-landing__lede">
-              Every subsystem implements traits from <code>aios-protocol</code>{" "}
-              &mdash; the contract that defines events, state, policy, and the
+              Every subsystem implements traits from <code>aios-protocol</code>,
+              the contract that defines events, state, policy, and the
               agent lifecycle. Swap or extend any part without breaking the rest.
             </p>
           </header>
@@ -302,7 +302,7 @@ cargo run -p arcand -- --port 3000`}</code>
             <p className="life-landing__kicker">See it run</p>
             <h2 className="life-landing__h2">Live demos.</h2>
             <p className="life-landing__lede">
-              Each demo opens a three-column agent workspace &mdash; streaming
+              Each demo opens a three-column agent workspace: streaming
               chat, live filesystem and journal, identity + economic + reasoning
               inspectors on the right.
             </p>

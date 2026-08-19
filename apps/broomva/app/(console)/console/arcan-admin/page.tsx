@@ -87,7 +87,7 @@ function EnterpriseBadge({ plan }: { plan: string }) {
     <div className="rounded-md border border-[var(--ag-accent)]/30 bg-[var(--ag-accent)]/5 p-4 text-sm">
       <p className="font-medium text-text-primary">Enterprise plan required</p>
       <p className="mt-1 text-xs text-text-secondary">
-        Upgrade to Enterprise to unlock custom MCP server registration and
+        Enterprise adds custom MCP server registration and
         dedicated Life instance management.
       </p>
       <a href="/pricing" className="glass-button mt-3 inline-flex items-center gap-2 text-xs">
@@ -220,7 +220,7 @@ function CapabilityPolicyTab({ org }: { org: OrgInfo }) {
         {loading ? (
           <Loader2 className="size-5 animate-spin text-text-muted" />
         ) : roles.length === 0 ? (
-          <p className="text-sm text-text-secondary">No overrides — tier defaults apply.</p>
+          <p className="text-sm text-text-secondary">No overrides: tier defaults apply.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>

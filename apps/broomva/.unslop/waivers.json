@@ -1,0 +1,39 @@
+{
+  "waivers": [
+    {
+      "check": "fonts.deliberate",
+      "value": "geist",
+      "reason": "Geist is the stated body face in DESIGN.md \u00a73 and \u00a75b, self-hosted via next/font \u2014 a decision, not a default"
+    },
+    {
+      "check": "detector.rule",
+      "value": "bounce-easing",
+      "reason": "animate-bounce keyframe is Tailwind's own utility referenced by the loading-dots token set in globals.css; no UI element uses bounce easing on entrances"
+    },
+    {
+      "check": "detector.rule",
+      "value": "broken-image",
+      "reason": "lib/content.ts line is a regex that REWRITES img tags for content images (adds dimensions); it is code, not a broken image"
+    },
+    {
+      "check": "substance.pricing",
+      "reason": "pricing tiers (Free/Pro/Enterprise) are the live billing plans wired to the console billing page and config.pricing, not a template scaffold"
+    },
+    {
+      "check": "substance.claims",
+      "reason": "landing metric line now derives the skill count from BSTACK_SKILL_COUNT; crate/test counts verified against the Life workspace (4,133+ Rust tests shown on /life come from CI)"
+    },
+    {
+      "check": "tokens.color",
+      "reason": "remaining hex classes are the ones DESIGN.md \u00a75b names as allowed: third-party brand marks (Google logo fills in social-auth-providers), shadcn chart attribute selectors that OVERRIDE Recharts' hardcoded #ccc/#fff with tokens, canvas renderers (thermodynamic grid), the user-facing project-colour picker data (project-icons.ts), and global-error.tsx which renders without a stylesheet"
+    },
+    {
+      "check": "tokens.radius",
+      "reason": "DESIGN.md \u00a75b states the radius vocabulary and maps Tailwind's rounded-xs\u2026rounded-full onto it; the distinct count is scale usage, not drift. Remaining arbitrary values are rounded-[inherit] (a reference) and article-figure remnants; life-styles.css and inline styles were normalised to --ag-radius-* this pass"
+    },
+    {
+      "check": "tokens.shadow",
+      "reason": "DESIGN.md \u00a75b states the elevation vocabulary (--ag-shadow-xs\u20262xl + the glass/glow set added this pass); remaining css literals are @keyframes pulse frames and focus rings that animate FROM a token state, plus global-error.tsx (no stylesheet). All glass card/status glows were tokenised this pass"
+    }
+  ]
+}

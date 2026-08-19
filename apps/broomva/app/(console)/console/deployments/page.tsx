@@ -520,8 +520,8 @@ export default function DeploymentsPage() {
               </h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-text-secondary">
                 Provision a dedicated Life Agent OS stack for your organization.
-                This deploys four services &mdash; Arcan (orchestration), Lago
-                (memory), Autonomic (self-regulation), and Haima (finance) &mdash;
+                This deploys four services: Arcan (orchestration), Lago
+                (memory), Autonomic (self-regulation), and Haima (finance),
                 on managed infrastructure.
               </p>
             </div>

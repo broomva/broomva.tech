@@ -169,7 +169,7 @@ export function LifeShell({
 
   const crumb = {
     brand: "broomva.tech",
-    project: `${projectSlug} — ${displayName.split(" — ")[1] ?? displayName}`,
+    project: `${projectSlug} · ${displayName.split(" — ")[1] ?? displayName}`,
   };
 
   return (
@@ -222,7 +222,7 @@ export function LifeShell({
         <Dock state={state} />
       </div>
 
-      {/* Mobile-only bottom tab bar — CSS hides it above 768px. Uses
+      {/* Mobile-only bottom tab bar. CSS hides it above 768px. Uses
           a <div role="tablist"> rather than <nav> so the WAI-ARIA
           tablist semantics aren't double-wrapped inside a landmark. */}
       <div

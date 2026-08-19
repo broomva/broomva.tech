@@ -65,7 +65,7 @@ export default async function PasskeyPage() {
         <h3 className="font-medium text-sm">New device without sync</h3>
         <p className="text-muted-foreground text-sm">
           If your new device doesn't share iCloud Keychain or Google Password
-          Manager with your existing device, you'll need a rotation cap — a
+          Manager with your existing device, you'll need a rotation cap: a
           short-lived enrollment session you initiate from your existing
           device. That flow lands in the next release (BRO-1214 / M9-D). For
           now, please enroll on a device that already has your passkey

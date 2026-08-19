@@ -1,17 +1,28 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Bot,
+  Files,
+  Activity,
+  BookOpen,
+  MessageSquare,
+  Settings,
+  Shield,
+} from "lucide-react";
+
 interface LensDef {
   id: "session" | "files" | "memory" | "operations" | "agents" | "policy";
   label: string;
-  glyph: string;
+  icon: LucideIcon;
   v1: boolean;
 }
 
 const LENSES: readonly LensDef[] = [
-  { id: "session", label: "Session lens", glyph: "⌂", v1: true },
-  { id: "files", label: "Files lens", glyph: "▦", v1: true },
-  { id: "memory", label: "Memory lens", glyph: "✦", v1: false },
-  { id: "operations", label: "Operations lens", glyph: "⊟", v1: false },
-  { id: "agents", label: "Agents lens", glyph: "◉", v1: true },
-  { id: "policy", label: "Policy lens", glyph: "❖", v1: false },
+  { id: "session", label: "Session lens", icon: MessageSquare, v1: true },
+  { id: "files", label: "Files lens", icon: Files, v1: true },
+  { id: "memory", label: "Memory lens", icon: BookOpen, v1: false },
+  { id: "operations", label: "Operations lens", icon: Activity, v1: false },
+  { id: "agents", label: "Agents lens", icon: Bot, v1: true },
+  { id: "policy", label: "Policy lens", icon: Shield, v1: false },
 ];
 
 /**
@@ -33,10 +44,10 @@ export function Dock() {
           type="button"
           aria-label={l.label}
           disabled={!l.v1}
-          title={l.v1 ? l.label : `${l.label} — coming in v1.1`}
+          title={l.v1 ? l.label : `${l.label} · coming in v1.1`}
           className="flex h-8 w-8 items-center justify-center rounded-md text-[14px] hover:bg-[color:var(--ag-bg-hover)] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {l.glyph}
+          <l.icon className="mx-auto size-4" aria-hidden="true" />
         </button>
       ))}
       <span
@@ -55,7 +66,7 @@ export function Dock() {
         aria-label="Settings"
         className="h-8 w-8 rounded-md hover:bg-[color:var(--ag-bg-hover)]"
       >
-        ⚙
+        <Settings className="mx-auto size-4" aria-hidden="true" />
       </button>
     </nav>
   );

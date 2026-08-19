@@ -47,7 +47,7 @@ export function SessionHeader({ sid }: Props) {
             background: connected
               ? "var(--ag-success)"
               : "var(--ag-text-muted)",
-            boxShadow: connected ? "0 0 8px rgba(34,197,94,.6)" : undefined,
+            boxShadow: connected ? "var(--ag-shadow-glow-success)" : undefined,
           }}
         />
         <span

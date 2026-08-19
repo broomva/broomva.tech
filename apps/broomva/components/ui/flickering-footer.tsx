@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRightIcon } from "@radix-ui/react-icons";
+import { ChevronRight } from "lucide-react";
 import * as Color from "color-bits";
 import type { Route } from "next";
 import Link from "next/link";
@@ -56,7 +56,7 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
   squareSize = 3,
   gridGap = 3,
   flickerChance = 0.2,
-  color = "#B4B4B4",
+  color = "var(--ag-text-secondary)",
   width,
   height,
   className,
@@ -359,7 +359,7 @@ export function FlickeringFooter() {
                       </Link>
                     )}
                     <div className="flex size-4 items-center justify-center border border-[var(--ag-border-subtle)] rounded translate-x-0 transform opacity-0 transition-all duration-300 ease-out group-hover:translate-x-1 group-hover:opacity-100">
-                      <ChevronRightIcon className="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4" />
                     </div>
                   </li>
                 ))}
@@ -377,7 +377,7 @@ export function FlickeringFooter() {
             className="h-full w-full"
             squareSize={2}
             gridGap={tablet ? 2 : 3}
-            color="#6B7280"
+            color="var(--ag-text-secondary)"
             maxOpacity={0.3}
             flickerChance={0.1}
           />

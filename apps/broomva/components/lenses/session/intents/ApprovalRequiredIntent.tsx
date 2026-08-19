@@ -54,7 +54,7 @@ export function ApprovalRequiredIntent({ node, sid }: Props) {
   };
 
   return (
-    <div className="mb-[22px] rounded-[10px] border border-[color:var(--ag-warning)]/30 bg-gradient-to-b from-[color:var(--ag-warning)]/10 to-[color:var(--ag-warning)]/[0.02] px-4 py-3.5">
+    <div className="mb-[22px] rounded-lg border border-[color:var(--ag-warning)]/30 bg-gradient-to-b from-[color:var(--ag-warning)]/10 to-[color:var(--ag-warning)]/[0.02] px-4 py-3.5">
       <div className="mb-2 flex items-center gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[color:var(--ag-warning)]">
           approval required

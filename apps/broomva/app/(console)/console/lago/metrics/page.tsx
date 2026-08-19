@@ -68,7 +68,7 @@ export default function LagoMetricsPage() {
             Metrics
           </h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Prometheus metrics from lagod — auto-refreshes every 15s
+            Prometheus metrics from lagod: auto-refreshes every 15s
           </p>
         </div>
         <div className="flex gap-2">

@@ -81,7 +81,7 @@ const plans = [
 ];
 
 export const metadata = {
-  title: "Pricing — broomva.tech",
+  title: "Pricing · broomva.tech",
   description:
     "AI-powered platform for builders. Free to start, scale as you grow.",
 };

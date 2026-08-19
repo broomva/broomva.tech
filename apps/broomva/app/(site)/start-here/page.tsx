@@ -29,7 +29,7 @@ export default async function StartHerePage() {
     <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
       <PageHero
         title="Start here"
-        description="I build AI-native, multi-tenant data platforms and agent systems in production — from open-source Rust runtime substrates to live commercial deployments. This page is the shortest route to my best work and to me."
+        description="I build AI-native, multi-tenant data platforms and agent systems in production: from open-source Rust runtime substrates to live commercial deployments. This page is the shortest route to my best work and to me."
       />
 
       <section className="mt-10 grid gap-4 rounded-2xl glass p-6 sm:grid-cols-2 sm:gap-6">
@@ -39,7 +39,7 @@ export default async function StartHerePage() {
             AI Lead at Stimulus (governed agentic procurement) and Data
             Architect at TEAM International; previously Co-founder &amp; CTO at
             Wedi Pay (agentic cross-border payments, 2024–2026). On the
-            substrate side: the Rust Agent OS stack — Life, Symphony, the
+            substrate side: the Rust Agent OS stack: Life, Symphony, the
             control metalayer, bstack + broomva/skills, and the RCS paper
             series.
           </p>
@@ -49,7 +49,7 @@ export default async function StartHerePage() {
           <p className="mt-3 text-sm leading-relaxed text-text-secondary">
             Most failures are not model failures. They are harness failures. I
             focus on the systems-level primitives that make agents
-            controllable, observable, and useful under real constraints — with
+            controllable, observable, and useful under real constraints, with
             audit-grade governance as a default property, not an afterthought.
           </p>
         </div>

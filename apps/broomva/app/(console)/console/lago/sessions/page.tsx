@@ -69,7 +69,7 @@ export default function LagoSessionsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      {/* Upgrade banner — shown when free tier limit reached */}
+      {/* Upgrade banner: shown when free tier limit reached */}
       {sessions.length >= 3 && (
         <a
           href="https://lago-platform.com"

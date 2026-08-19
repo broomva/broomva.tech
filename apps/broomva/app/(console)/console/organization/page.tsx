@@ -500,7 +500,7 @@ export default function OrganizationPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-text-primary">
-                  Unlock more with Pro
+                  More with Pro
                 </p>
                 <p className="mt-1 text-xs text-text-secondary">
                   Get access to the deployed model catalog, console, API keys, and 5,000

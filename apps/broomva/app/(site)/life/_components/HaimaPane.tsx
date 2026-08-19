@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { formatCents } from "../_lib/autonomy";
 import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
@@ -59,7 +60,7 @@ export function HaimaPane({ liveMeta }: Props) {
         <div className="bar">
           <div
             className={`bar__fill ${pct > 0.85 ? "bar__fill--warn" : ""}`}
-            style={{ width: `${pct * 100}%` }}
+            style={{ "--fill": pct } as CSSProperties}
           />
         </div>
         <div className="gauge__sub" style={{ marginTop: 8 }}>

@@ -97,7 +97,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
       }
       startTransition(() => router.refresh());
     } catch {
-      setError("Network error — please retry.");
+      setError("Network error: please retry.");
     } finally {
       setPendingId(null);
       setConfirmId(null);
@@ -139,7 +139,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
       }
       startTransition(() => router.refresh());
     } catch {
-      setError("Network error — please retry.");
+      setError("Network error: please retry.");
     } finally {
       setPendingId(null);
     }
@@ -152,7 +152,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
       setCopiedId(d.id);
       setTimeout(() => setCopiedId((cur) => (cur === d.id ? null : cur)), 1500);
     } catch {
-      setError("Clipboard unavailable — open the spec and copy manually.");
+      setError("Clipboard unavailable: open the spec and copy manually.");
     }
   }
 
@@ -254,7 +254,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
             <button
               type="button"
               onClick={() => copyPrompt(d)}
-              title="Copy the continue-prompt — paste into a new Omnara session from your phone"
+              title="Copy the continue-prompt · paste into a new Omnara session from your phone"
               className={SECONDARY_BTN}
             >
               {copiedId === d.id ? "Copied" : "Copy"}
@@ -399,7 +399,7 @@ export function MaestroBoard({ docs }: { docs: SpecDocSummary[] }) {
         ))
       )}
 
-      {/* Archived — collapsed manage section, off the control view */}
+      {/* Archived: collapsed manage section, off the control view */}
       {archived.length > 0 && !filter ? (
         <details className="rounded-xl border border-border/60 bg-bg-surface/20">
           <summary className="cursor-pointer select-none px-4 py-2.5 text-muted-foreground text-sm">

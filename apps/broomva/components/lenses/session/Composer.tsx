@@ -132,7 +132,7 @@ export function Composer({ sid }: Props) {
           style={{
             background: "transparent",
             color: "rgba(255,255,255,.95)",
-            fontFamily: "Inter, -apple-system, sans-serif",
+            fontFamily: "var(--ag-font-body)",
             fontSize: 14,
             lineHeight: 1.65,
             resize: "none",

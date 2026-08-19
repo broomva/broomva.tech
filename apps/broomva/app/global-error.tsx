@@ -49,7 +49,7 @@ export default function GlobalError({
                 justifyContent: "center",
                 width: "3rem",
                 height: "3rem",
-                borderRadius: "12px",
+                borderRadius: "12px", // = --ag-radius-lg; global-error renders without globals.css
                 background: "oklch(0.58 0.24 27 / 0.15)",
                 marginBottom: "1.5rem",
               }}
@@ -98,7 +98,7 @@ export default function GlobalError({
                 onClick={reset}
                 style={{
                   padding: "0.5rem 1.25rem",
-                  borderRadius: "8px",
+                  borderRadius: "8px", // = --ag-radius-md; global-error renders without globals.css
                   background: "oklch(0.60 0.12 260)",
                   color: "oklch(0.98 0 0)",
                   border: "1px solid oklch(0.60 0.12 260 / 0.4)",
@@ -132,7 +132,7 @@ export default function GlobalError({
                   display: "inline-flex",
                   alignItems: "center",
                   padding: "0.5rem 1.25rem",
-                  borderRadius: "8px",
+                  borderRadius: "8px", // = --ag-radius-md; global-error renders without globals.css
                   background: "oklch(0.22 0.03 275)",
                   color: "oklch(0.98 0 0)",
                   textDecoration: "none",

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { ReplayState } from "../_lib/types";
 import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
@@ -65,7 +66,7 @@ export function NousPane({ state }: Props) {
             className={`bar__fill ${
               agg.band === "good" ? "bar__fill--good" : "bar__fill--warn"
             }`}
-            style={{ width: `${agg.score * 100}%` }}
+            style={{ "--fill": agg.score } as CSSProperties}
           />
         </div>
       </div>

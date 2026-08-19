@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 /**
  * KnowledgeGraph — BRO-233
  *
@@ -31,18 +32,36 @@ const ForceGraph2D = dynamic(
 );
 
 // ─── Node colour palette ────────────────────────────────────────────────────
+// The brand's categorical viz palette lives in app/globals.css as `--ag-viz-*` sRGB triplets ("111 164 252").
+// Canvas painters need numeric channels, the DOM uses rgb(var(--ag-viz-x) / a). Read once per mount.
 
-const NODE_COLORS: Record<NodeType, string> = {
-  note: "#60a5fa", // blue-400
-  project: "#a78bfa", // violet-400
-  writing: "#facc15", // yellow-400
-  prompt: "#fb923c", // orange-400
-  skill: "#4ade80", // green-400
-  tag: "#71717a", // zinc-500
-  memory: "#f87171", // red-400
-  conversation: "#c084fc", // purple-400
-  artifact: "#e4e4e7", // zinc-200
+type Rgb = [number, number, number];
+const VIZ_TOKEN: Record<NodeType, string> = {
+  note: "--ag-viz-note",
+  project: "--ag-viz-project",
+  writing: "--ag-viz-writing",
+  prompt: "--ag-viz-prompt",
+  skill: "--ag-viz-skill",
+  tag: "--ag-viz-tag",
+  memory: "--ag-viz-memory",
+  conversation: "--ag-viz-conversation",
+  artifact: "--ag-viz-artifact",
 };
+const LINK_TOKEN: Record<LinkType, NodeType> = {
+  wikilink: "note",
+  tag: "tag",
+  reference: "project",
+  conversation: "conversation",
+};
+
+function readTriplet(name: string, fallback: Rgb): Rgb {
+  if (typeof window === "undefined") return fallback;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const parts = raw.split(/[\s,]+/).map(Number);
+  return parts.length === 3 && parts.every((n) => Number.isFinite(n)) ? (parts as Rgb) : fallback;
+}
+const rgba = ([r, g, b]: Rgb, a = 1) => `rgba(${r},${g},${b},${a})`;
+const cssRgb = (token: string, a = 1) => `rgb(var(${token}) / ${a})`;
 
 const NODE_LABELS: Record<NodeType, string> = {
   note: "Note",
@@ -54,20 +73,6 @@ const NODE_LABELS: Record<NodeType, string> = {
   memory: "Memory",
   conversation: "Conversation",
   artifact: "Artifact",
-};
-
-const LINK_COLORS: Record<LinkType, string> = {
-  wikilink: "#60a5fa40", // blue, muted
-  tag: "#71717a30", // zinc, very subtle
-  reference: "#a78bfa50", // violet
-  conversation: "#c084fc40", // purple
-};
-
-const LINK_PARTICLE_COLORS: Record<LinkType, string> = {
-  wikilink: "#60a5fa",
-  tag: "#71717a",
-  reference: "#a78bfa",
-  conversation: "#c084fc",
 };
 
 const PUBLIC_TYPES: NodeType[] = [
@@ -114,15 +119,6 @@ function getNeighborIds(
 
 // ─── Hex color helpers ──────────────────────────────────────────────────────
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  return [
-    Number.parseInt(h.slice(0, 2), 16),
-    Number.parseInt(h.slice(2, 4), 16),
-    Number.parseInt(h.slice(4, 6), 16),
-  ];
-}
-
 // ─── Side panel ──────────────────────────────────────────────────────────────
 
 function NodePanel({
@@ -138,8 +134,8 @@ function NodePanel({
         <span
           className="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
           style={{
-            backgroundColor: NODE_COLORS[node.type] + "33",
-            color: NODE_COLORS[node.type],
+            backgroundColor: cssRgb(VIZ_TOKEN[node.type], 0.2),
+            color: cssRgb(VIZ_TOKEN[node.type]),
           }}
         >
           {NODE_LABELS[node.type]}
@@ -150,7 +146,7 @@ function NodePanel({
           className="text-text-muted hover:text-text-primary transition-colors"
           aria-label="Close"
         >
-          ✕
+          <X className="size-4" aria-hidden="true" />
         </button>
       </div>
 
@@ -226,11 +222,11 @@ function FilterChips({
           className="rounded-full border px-2.5 py-0.5 text-xs font-medium transition-all duration-200"
           style={{
             borderColor: active.has(type)
-              ? NODE_COLORS[type]
+              ? cssRgb(VIZ_TOKEN[type])
               : "var(--ag-border-default)",
-            color: active.has(type) ? NODE_COLORS[type] : "var(--text-muted)",
+            color: active.has(type) ? cssRgb(VIZ_TOKEN[type]) : "var(--text-muted)",
             backgroundColor: active.has(type)
-              ? NODE_COLORS[type] + "1a"
+              ? cssRgb(VIZ_TOKEN[type], 0.1)
               : "transparent",
           }}
         >
@@ -264,6 +260,18 @@ export function KnowledgeGraph({
   const [activeTypes, setActiveTypes] = useState<Set<NodeType>>(
     new Set([...PUBLIC_TYPES]),
   );
+  // brand viz palette (sRGB triplets from --ag-viz-*), read once on mount for the canvas painter
+  const [palette, setPalette] = useState<Record<NodeType, Rgb> | null>(null);
+  const [canvasBg, setCanvasBg] = useState<Rgb>([4, 5, 13]);
+  useEffect(() => {
+    const out = {} as Record<NodeType, Rgb>;
+    (Object.keys(VIZ_TOKEN) as NodeType[]).forEach((t) => {
+      out[t] = readTriplet(VIZ_TOKEN[t], [130, 133, 147]);
+    });
+    setPalette(out);
+    setCanvasBg(readTriplet("--ag-viz-canvas", [4, 5, 13]));
+  }, []);
+  const rgbOf = useCallback((t: NodeType): Rgb => palette?.[t] ?? [130, 133, 147], [palette]);
 
   // Neighbors of hovered node — for highlighting
   const hoverNeighbors = useMemo(() => {
@@ -326,7 +334,6 @@ export function KnowledgeGraph({
   const paintNode = useCallback(
     (node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const n = node as GraphNode & { x: number; y: number };
-      const color = NODE_COLORS[n.type];
       const radius = Math.sqrt(Math.max(n.val, 1)) * 3 + 1.5;
 
       const isHovered = hoveredNode?.id === n.id;
@@ -336,7 +343,7 @@ export function KnowledgeGraph({
         search && !n.label.toLowerCase().includes(search.toLowerCase());
 
       const alpha = isDimmed || isSearchDimmed ? 0.15 : 1;
-      const [r, g, b] = hexToRgb(color);
+      const [r, g, b] = rgbOf(n.type);
 
       // Glow halo for hovered and neighbor nodes
       if (isHovered || isNeighbor) {
@@ -373,22 +380,22 @@ export function KnowledgeGraph({
         ctx.fillText(n.label, n.x, n.y + radius + 2);
       }
     },
-    [hoveredNode, hoverNeighbors, search],
+    [hoveredNode, hoverNeighbors, search, rgbOf],
   );
 
   // Link styling
   const linkColor = useCallback(
     (link: object) => {
       const l = link as GraphLink;
-      if (!hoveredNode) return LINK_COLORS[l.type] ?? "#27272a30";
+      if (!hoveredNode) return rgba(rgbOf(LINK_TOKEN[l.type] ?? "tag"), l.type === "tag" ? 0.19 : 0.25);
 
       const s = typeof l.source === "object" ? (l.source as GraphNode).id : l.source;
       const t = typeof l.target === "object" ? (l.target as GraphNode).id : l.target;
       const isConnected = s === hoveredNode.id || t === hoveredNode.id;
-      if (isConnected) return LINK_PARTICLE_COLORS[l.type] ?? "#60a5fa";
-      return "#27272a15";
+      if (isConnected) return rgba(rgbOf(LINK_TOKEN[l.type] ?? "note"));
+      return rgba(rgbOf("tag"), 0.08);
     },
-    [hoveredNode],
+    [hoveredNode, rgbOf],
   );
 
   const linkWidth = useCallback(
@@ -406,8 +413,8 @@ export function KnowledgeGraph({
 
   const linkParticleColor = useCallback((link: object) => {
     const l = link as GraphLink;
-    return LINK_PARTICLE_COLORS[l.type] ?? "#60a5fa";
-  }, []);
+    return rgba(rgbOf(LINK_TOKEN[l.type] ?? "note"));
+  }, [rgbOf]);
 
   const nodeLabel = useCallback((node: object) => (node as GraphNode).label, []);
 
@@ -463,7 +470,7 @@ export function KnowledgeGraph({
           graphData={filteredData}
           width={dimensions.width - (selectedNode ? 288 : 0)}
           height={dimensions.height}
-          backgroundColor="#0a0a0f"
+          backgroundColor={rgba(canvasBg)}
           nodeCanvasObject={paintNode}
           nodePointerAreaPaint={(node: object, color: string, ctx: CanvasRenderingContext2D) => {
             const n = node as GraphNode & { x: number; y: number };
@@ -503,7 +510,7 @@ export function KnowledgeGraph({
           {filteredData.nodes.length} nodes · {filteredData.links.length} edges
         </span>
         {hoveredNode && (
-          <span className="truncate" style={{ color: NODE_COLORS[hoveredNode.type] }}>
+          <span className="truncate" style={{ color: cssRgb(VIZ_TOKEN[hoveredNode.type]) }}>
             {hoveredNode.label}
           </span>
         )}

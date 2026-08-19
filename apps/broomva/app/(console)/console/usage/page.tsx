@@ -167,7 +167,7 @@ export default function UsagePage() {
         <div>
           <h1 className="font-heading text-2xl font-semibold">Usage</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            API usage and token consumption &mdash; {periodLabel(period)}.
+            API usage and token consumption: {periodLabel(period)}.
           </p>
         </div>
         <button type="button" onClick={fetchUsage} className="glass-button">

@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import type { TweaksState } from "../_lib/types";
 
 interface Props {
@@ -57,7 +58,7 @@ export function TweaksPanel({ tweaks, setTweaks, open, onClose }: Props) {
           onClick={onClose}
           aria-label="Close preferences"
         >
-          ✕
+          <X className="size-4" aria-hidden="true" />
         </button>
       </div>
       <Segmented

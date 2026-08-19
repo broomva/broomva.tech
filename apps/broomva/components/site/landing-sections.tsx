@@ -146,7 +146,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
           )}
         </motion.h1>
 
-        {/* Subtitle — changes when logged in */}
+        {/* Subtitle: changes when logged in */}
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -159,10 +159,10 @@ export function HeroSection({ userName }: { userName?: string | null }) {
         >
           {firstName
             ? "How can I help you today?"
-            : "Agent OS architect and AI engineering lead. Builder of multi-tenant agentic platforms, lakehouse-native data substrates, and the open-source Rust Agent OS — reliability engineering across software, body, and craft."}
+            : "Agent OS architect and AI engineering lead. Builder of multi-tenant agentic platforms, lakehouse-native data substrates, and the open-source Rust Agent OS: reliability engineering across software, body, and craft."}
         </motion.p>
 
-        {/* Social links — only when not logged in */}
+        {/* Social links: only when not logged in */}
         {!firstName && (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -179,7 +179,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
                 <Link
                   key={item.href}
                   href={item.href as Route}
-                  className="inline-flex min-h-10 items-center rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)] active:scale-[0.96]"
+                  className="inline-flex min-h-10 items-center rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-inset-highlight backdrop-blur-md transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-glass-card active:scale-[0.96]"
                 >
                   {item.label}
                 </Link>
@@ -189,7 +189,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-10 items-center rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-[inset_0_1px_0_oklch(1_0_0/0.06)] backdrop-blur-md transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-[inset_0_1px_0_oklch(1_0_0/0.08),0_0_16px_oklch(0.60_0.12_260/0.12)] active:scale-[0.96]"
+                  className="inline-flex min-h-10 items-center rounded-full border border-border/40 bg-bg-elevated/40 px-5 py-2 text-xs font-medium tracking-wide text-text-secondary shadow-inset-highlight backdrop-blur-md transition-[background-color,border-color,color,box-shadow,transform] duration-200 hover:border-ai-blue/40 hover:bg-bg-elevated/60 hover:text-text-primary hover:shadow-glass-card active:scale-[0.96]"
                 >
                   {item.label}
                 </a>
@@ -209,7 +209,7 @@ export function HeroSection({ userName }: { userName?: string | null }) {
           }}
           className={`pointer-events-auto mx-auto w-full max-w-xl ${firstName ? "mt-10" : "mt-8"}`}
         >
-          <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-[color-mix(in_oklab,var(--ag-bg-surface)_calc(var(--ag-glass-medium)*100%),transparent)] shadow-[inset_0_1px_0_oklch(1_0_0/0.04),var(--ag-shadow-md)] backdrop-blur-[var(--ag-blur-lg)] backdrop-saturate-[1.4] backdrop-brightness-[1.05] transition-[border-color,box-shadow] duration-200 focus-within:border-ai-blue/40 focus-within:shadow-[inset_0_1px_0_oklch(1_0_0/0.06),0_0_24px_oklch(0.60_0.12_260/0.10)]">
+          <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-[color-mix(in_oklab,var(--ag-bg-surface)_calc(var(--ag-glass-medium)*100%),transparent)] shadow-[inset_0_1px_0_oklch(1_0_0/0.04),var(--ag-shadow-md)] backdrop-blur-[var(--ag-blur-lg)] backdrop-saturate-[1.4] backdrop-brightness-[1.05] transition-[border-color,box-shadow] duration-200 focus-within:border-ai-blue/40 focus-within:shadow-glass-card">
             <textarea
               ref={inputRef}
               value={chatInput}

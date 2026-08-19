@@ -126,6 +126,43 @@ Compose the foundation around the product's actual objects: products and carts, 
 - Maintain WCAG 2.2 AA contrast, visible keyboard focus, semantic regions, and approximately `44px` touch targets for primary mobile controls.
 - Adapt safely to native mobile, desktop, embedded, and constrained surfaces by translating semantic roles rather than copying CSS values blindly.
 
+## 5b. Stated decisions (what a review gate reads)
+
+These are choices, written down so no tool mistakes them for defaults. A tell-list *detects* what an
+unattended generator emits; it does not ban. Where a Broomva surface uses something that also appears on
+such a list, the decision is stated here and that settles it.
+
+- **Typefaces.** Per the foundation above: system sans is the default heading face; **Cal Sans** is a
+  display accent reached only through the `[data-display-font="calsans"]` opt-in. The web app's body face
+  is **Geist** and its code face **Geist Mono**, both self-hosted at build via `next/font` and layered
+  over the foundation stack (`--ag-font-body: var(--font-geist), var(--bv-font-sans)`). Any component that
+  needs a face reads `var(--ag-font-body)` / `var(--ag-font-mono)` / `var(--ag-font-heading)`; no
+  component declares a family literal.
+- **Icons.** One system: **Lucide** (`lucide-react`), 1.5–2px stroke, `size-4` inline / `size-5` in cards /
+  `size-6` empty states, `currentColor`. Emoji, dingbats and typed glyphs (✓ ✕ ★ ⚙ ✦) are never icons;
+  they are drawn with Lucide. This is a decision, not the shadcn default surviving by inertia.
+- **Voice.** Sentence case for headings, labels and buttons. Buttons are verb + noun. No em dashes in
+  interface strings (titles use ` · `, explanations use a colon or a full sentence; ranges use an en dash);
+  em dashes stay available in long-form writing under `content/writing`. No "it's not X, it's Y". No
+  filler verbs (supercharge, unlock, unleash, seamless, effortless, elevate). Numbers on the site derive
+  from their source of truth (`BSTACK_SKILL_COUNT`), never from a hand-typed literal.
+- **Radius vocabulary.** The legacy `--ag-radius-sm/md/lg/xl/full` aliases resolve to the foundation's
+  `--bv-radius-chip/lg/xl/2xl/full`; components use the aliases (or Tailwind's mapped
+  `rounded-xs…rounded-full`). Arbitrary values (`rounded-[10px]`, `border-radius: 14px`) are drift and
+  get normalised to the nearest step.
+- **Elevation vocabulary.** The foundation's ambient chain (`--ag-shadow-xs…2xl` over `--bv/--app`
+  shadows; depth stays rare and meaningful), plus the named glass/status set:
+  `--ag-shadow-glow-blue`, `--ag-shadow-glow-accent`, `--ag-shadow-glow-soft` (resting glass glow),
+  `--ag-shadow-glow-status` (small status/fill glow), `--ag-shadow-inset-highlight` (glass top edge),
+  `--ag-shadow-glass-card`. Exposed to Tailwind as `shadow-glow-soft`, `shadow-glass-card`, etc. Any
+  shadow not in this set is drift.
+- **Where literals are allowed.** `opengraph-image` / `twitter-image` routes render through satori and
+  need literal colours; canvas/WebGL renderers (knowledge graph, thermodynamic grid) read the same palette
+  values; third-party brand marks (auth providers, project icons) and the PWA manifest keep their own
+  colours. Nothing else declares a hex literal outside `app/globals.css`.
+- **Motion.** Authored motion respects `prefers-reduced-motion` (already global); layout properties
+  (`width`, `height`) are never transitioned — fills scale with `transform`.
+
 ## 6. Design System Notes for Stitch Generation
 
 Generate a calm Broomva interface for the named product and platform. Start from a light or deep-blue canvas, system typography for application UI, Blue-black ink (`oklch(0.175 0.022 265)`), cool hue-265 neutrals, and Resonant AI Blue (`oklch(0.60 0.12 260)`) only for focus, selection, information, and rare brand emphasis. Keep cards and chrome matte. Reserve frosted glass for surfaces that actually float. Use `0.75rem` cards, `1rem` dialogs, compact controls, and the 4px spacing ladder.

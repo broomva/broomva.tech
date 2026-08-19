@@ -44,9 +44,9 @@ describe("legal acceptance ledger", () => {
         termsVersion: "2026-08-09",
         privacyVersion: "2026-08-09",
         termsHash:
-          "fd429331e1e2604ff5a41abf2dfdb05df607a44e813e0b6b5b0ab7c1fe23766a",
+          "db86a31e2ee62e6e4976ae5c183b6b9eb71f77c875ef8ce9584c9ae81e407bd1",
         privacyHash:
-          "0c6edd35cb8da4d3aaa1ede053cd03ab2ebbbd6c50c5c93537e22a11340119f4",
+          "4e459447cd32abd248b3e9a67029ea793403de5b0894a35deab6522fd6add9b4",
         processingAuthorized: true,
         ageConfirmed: true,
         source: "legal-acceptance-page",

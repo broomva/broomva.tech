@@ -53,7 +53,7 @@ export default function LagoDashboardPage() {
           Lago Console
         </h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Storage engine dashboard — sessions, blobs, policy, and observability.
+          Storage engine dashboard: sessions, blobs, policy, and observability.
         </p>
       </div>
 

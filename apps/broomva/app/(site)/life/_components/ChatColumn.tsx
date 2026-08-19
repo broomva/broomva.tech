@@ -99,7 +99,7 @@ export function ChatColumn({
             </div>
             <div style={{ marginBottom: 18 }}>
               {emptyStateHint ??
-                "Arcan is wired to your workspace — filesystem, Lago journal, Nous, Autonomic, Haima."}
+                "Arcan is wired to your workspace: filesystem, Lago journal, Nous, Autonomic, Haima."}
             </div>
             {suggestions && suggestions.length > 0 && onSendMessage && (
               <div

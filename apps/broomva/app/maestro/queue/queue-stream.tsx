@@ -126,7 +126,7 @@ export function QueueStream({ initial }: { initial: TimelineEvent[] }) {
 
       {events.length === 0 ? (
         <p className="py-3 text-muted-foreground text-xs">
-          Push a handoff to start the stream —{" "}
+          Push a handoff to start the stream with{" "}
           <code className="rounded bg-muted px-1 py-0.5">
             broomva handoff push file.md
           </code>

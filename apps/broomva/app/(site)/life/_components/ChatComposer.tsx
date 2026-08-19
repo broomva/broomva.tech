@@ -38,7 +38,7 @@ export function ChatComposer({ onSend, modelLabel }: Props) {
         placeholder={
           onSend
             ? "Ask Arcan anything. Shift+Enter for newline."
-            : "Chat is in demo-replay mode — the composer is inert on this project."
+            : "Chat is in demo-replay mode: the composer is inert on this project."
         }
         value={v}
         onChange={(e) => setV(e.target.value)}

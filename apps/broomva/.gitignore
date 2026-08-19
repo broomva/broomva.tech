@@ -72,3 +72,4 @@ public/video/
 
 # Redis runtime dump
 dump.rdb
+.unslop/evidence/

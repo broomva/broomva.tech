@@ -33,15 +33,15 @@ function RelayCenterEmpty() {
         <div className="w-full max-w-lg space-y-8">
           {/* Hero */}
           <div className="space-y-3 text-center">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 ring-1 ring-indigo-500/20">
-              <Radio className="size-6 text-indigo-400" />
+            <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-ai-blue/10 ring-1 ring-ai-blue/20">
+              <Radio className="size-6 text-ai-blue" />
             </div>
             <h2 className="text-xl font-semibold tracking-tight">
               Remote Agent Sessions
             </h2>
             <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted-foreground">
               Run Claude Code, Codex, or Arcan on any machine and control them
-              from this console. Your code stays local — only the conversation
+              from this console. Your code stays local; only the conversation
               streams here.
             </p>
           </div>
@@ -176,12 +176,12 @@ export default function RelayPage() {
     <RelayShell>
       <RelayLeftPanel />
 
-      {/* Center — context-aware empty state */}
+      {/* Center: context-aware empty state */}
       <div className="flex flex-1 flex-col border-x bg-background">
         <RelayCenterEmpty />
       </div>
 
-      {/* Right panel — no session context yet */}
+      {/* Right panel: no session context yet */}
       <RelayRightPanel session={null} />
     </RelayShell>
   );

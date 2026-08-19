@@ -167,7 +167,7 @@ export function WritingList({ entries }: WritingListProps) {
             onClick={() => setActiveTag(null)}
             className={`rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm min-h-10 transition-[background-color,border-color,color,box-shadow,transform] duration-200 active:scale-[0.96] ${
               !activeTag
-                ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
+                ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-glow-soft"
                 : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
             }`}
           >
@@ -183,7 +183,7 @@ export function WritingList({ entries }: WritingListProps) {
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
               className={`rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm min-h-10 transition-[background-color,border-color,color,box-shadow,transform] duration-200 active:scale-[0.96] ${
                 activeTag === tag
-                  ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
+                  ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-glow-soft"
                   : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
               }`}
             >

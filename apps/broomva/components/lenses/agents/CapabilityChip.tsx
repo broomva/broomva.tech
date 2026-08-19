@@ -1,5 +1,8 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
+import { AlertTriangle, Check, X } from "lucide-react";
+
 type Variant = "ok" | "warn" | "no";
 
 interface Props {
@@ -7,22 +10,22 @@ interface Props {
   variant?: Variant;
 }
 
-const VARIANT_STYLE: Record<Variant, { bg: string; fg: string; mark: string }> =
+const VARIANT_STYLE: Record<Variant, { bg: string; fg: string; mark: LucideIcon }> =
   {
     ok: {
       bg: "color-mix(in oklab, var(--ag-success) 18%, transparent)",
       fg: "var(--ag-success)",
-      mark: "✓",
+      mark: Check,
     },
     warn: {
       bg: "color-mix(in oklab, var(--ag-warning) 18%, transparent)",
       fg: "var(--ag-warning)",
-      mark: "!",
+      mark: AlertTriangle,
     },
     no: {
       bg: "color-mix(in oklab, var(--ag-text-muted) 12%, transparent)",
       fg: "var(--ag-text-muted)",
-      mark: "✕",
+      mark: X,
     },
   };
 
@@ -38,7 +41,7 @@ export function CapabilityChip({ label, variant = "ok" }: Props) {
       className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10px]"
       style={{ background: s.bg, color: s.fg }}
     >
-      <span aria-hidden>{s.mark}</span>
+      <s.mark className="size-2.5" aria-hidden="true" />
       <span>{label}</span>
     </span>
   );

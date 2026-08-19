@@ -28,9 +28,9 @@ const trustBadgeStyles: Record<TrustLevel, string> = {
   silver:
     "border-slate-400/40 bg-slate-700/20 text-slate-300",
   gold:
-    "border-yellow-500/40 bg-yellow-900/20 text-yellow-400 shadow-[0_0_8px_oklch(0.80_0.12_85/0.10)]",
+    "border-yellow-500/40 bg-yellow-900/20 text-yellow-400 shadow-glow-soft",
   platinum:
-    "border-emerald-400/40 bg-emerald-900/20 text-emerald-400 shadow-[0_0_10px_oklch(0.70_0.15_155/0.12)]",
+    "border-emerald-400/40 bg-emerald-900/20 text-emerald-400 shadow-glow-soft",
 };
 
 const statusBadgeStyles: Record<string, string> = {
@@ -175,7 +175,7 @@ function AgentCard({
 function pillClass(active: boolean): string {
   return `rounded-full border px-3.5 py-1.5 text-xs font-medium tracking-wide backdrop-blur-sm min-h-10 transition-[background-color,border-color,color,box-shadow,transform] duration-200 active:scale-[0.96] ${
     active
-      ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-[0_0_12px_oklch(0.60_0.12_260/0.08)]"
+      ? "border-ai-blue/40 bg-ai-blue/12 text-ai-blue shadow-glow-soft"
       : "border-border/40 bg-bg-elevated/30 text-text-muted hover:border-border/60 hover:text-text-secondary"
   }`;
 }
@@ -303,7 +303,7 @@ export function AgentDiscoveryGrid({
           <div className="glass-card inline-flex flex-col items-center gap-3 px-8 py-10">
             <span className="text-3xl opacity-40">0</span>
             <p className="text-sm text-text-muted">
-              No certified agents yet. Be the first &mdash; register yours at{" "}
+              No certified agents yet. Be the first: register yours at{" "}
               <code className="rounded border border-border/30 bg-bg-elevated/40 px-1.5 py-0.5 text-xs text-ai-blue/70">
                 /api/discovery/register
               </code>

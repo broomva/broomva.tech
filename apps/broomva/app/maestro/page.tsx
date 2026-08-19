@@ -7,7 +7,7 @@ import { listBoardSpecDocs } from "@/lib/db/spec-doc-queries";
 import { MaestroBoard } from "./maestro-board";
 
 export const metadata = {
-  title: "Maestro — spec console",
+  title: "Maestro · spec console",
   robots: { index: false, follow: false },
 };
 
@@ -53,8 +53,8 @@ export default async function MaestroPage() {
           Spec orchestration console. Manage the docs published at{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">
             /d/&lt;handle&gt;
-          </code>{" "}
-          — open, archive, restore, delete. Hand the next session a{" "}
+          </code>
+          : open, archive, restore, delete. Hand the next session a{" "}
           <Link
             href={"/maestro/queue" as Route}
             className="underline transition-colors hover:text-foreground"

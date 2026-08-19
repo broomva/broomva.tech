@@ -305,3 +305,7 @@ export const TOTAL_SKILLS = BSTACK_LAYERS.reduce(
   0,
 );
 export const TOTAL_LAYERS = BSTACK_LAYERS.length;
+
+/** Derived counts — the landing and /skills read these so the number can never drift from the roster. */
+export const BSTACK_LAYER_COUNT = BSTACK_LAYERS.length;
+export const BSTACK_SKILL_COUNT = BSTACK_LAYERS.reduce((sum, l) => sum + l.skills.length, 0);
