@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { getSafeSession } from "@/lib/auth";
 import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
 import { verifyAgentRequest } from "@/lib/agent-auth";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 interface ResolvedAuth {
   userId: string;
@@ -28,11 +29,18 @@ export async function resolveAuth(
     if (token) {
       // 1. Try Agent Auth Protocol JWT first (Ed25519 signed)
       const agentSession = await resolveFromAgentJWT(request);
-      if (agentSession) return agentSession;
+      if (
+        agentSession &&
+        (await hasCurrentLegalAcceptance(agentSession.userId))
+      ) {
+        return agentSession;
+      }
 
       // 2. Try Life JWT (HS256 signed with AUTH_SECRET)
       const lifeAuth = await resolveFromBearerToken(token);
-      if (lifeAuth) return lifeAuth;
+      if (lifeAuth && (await hasCurrentLegalAcceptance(lifeAuth.userId))) {
+        return lifeAuth;
+      }
     }
   }
 
@@ -41,7 +49,10 @@ export async function resolveAuth(
     fetchOptions: { headers: await headers() },
   });
 
-  if (sessionData?.user?.id) {
+  if (
+    sessionData?.user?.id &&
+    (await hasCurrentLegalAcceptance(sessionData.user.id))
+  ) {
     return {
       userId: sessionData.user.id,
       email: sessionData.user.email ?? "",

@@ -1,6 +1,32 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const productionScriptSources = [
+  "'self'",
+  "'unsafe-inline'",
+  "https://va.vercel-scripts.com",
+];
+const scriptSources =
+  process.env.NODE_ENV === "production"
+    ? productionScriptSources
+    : [...productionScriptSources, "'unsafe-eval'", "https://unpkg.com"];
+
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src ${scriptSources.join(" ")}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https: wss:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "form-action 'self' https://checkout.stripe.com",
+  ...(process.env.NODE_ENV === "production"
+    ? ["upgrade-insecure-requests"]
+    : []),
+].join("; ");
+
 const nextConfig: NextConfig = {
   typedRoutes: true,
   cacheComponents: true,
@@ -85,10 +111,18 @@ const nextConfig: NextConfig = {
             value: "max-age=31536000; includeSubDomains",
           },
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=()",
+          },
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy,
           },
         ],
       },

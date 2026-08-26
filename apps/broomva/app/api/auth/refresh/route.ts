@@ -10,10 +10,8 @@ import {
   JWT_ACCESS_EXPIRY_MS,
   JWT_REFRESH_EXPIRY_MS,
 } from "@/lib/ai/vault/jwt";
-import {
-  checkRefreshRateLimit,
-  getClientIP,
-} from "@/lib/utils/rate-limit";
+import { checkRefreshRateLimit, getClientIP } from "@/lib/utils/rate-limit";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 /**
  * POST /api/auth/refresh
@@ -41,7 +39,10 @@ export async function POST(request: Request) {
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { error: "rate_limit_exceeded", error_description: rateLimitResult.error },
+        {
+          error: "rate_limit_exceeded",
+          error_description: rateLimitResult.error,
+        },
         { status: 429, headers: rateLimitResult.headers || {} },
       );
     }
@@ -51,7 +52,10 @@ export async function POST(request: Request) {
 
     if (!rawRefreshToken || typeof rawRefreshToken !== "string") {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "Missing refreshToken in body" },
+        {
+          error: "invalid_request",
+          error_description: "Missing refreshToken in body",
+        },
         { status: 400 },
       );
     }
@@ -72,7 +76,10 @@ export async function POST(request: Request) {
 
     if (!record) {
       return NextResponse.json(
-        { error: "invalid_grant", error_description: "Refresh token not found or already revoked" },
+        {
+          error: "invalid_grant",
+          error_description: "Refresh token not found or already revoked",
+        },
         { status: 401 },
       );
     }
@@ -86,15 +93,32 @@ export async function POST(request: Request) {
         .where(eq(refreshTokenTable.id, record.id));
 
       return NextResponse.json(
-        { error: "expired_token", error_description: "Refresh token has expired" },
+        {
+          error: "expired_token",
+          error_description: "Refresh token has expired",
+        },
         { status: 401 },
       );
     }
 
     // Determine user identity — prefer the refresh token's userId,
     // but cross-check with Bearer token if present
-    let userId = record.userId;
+    const userId = record.userId;
     let email = "";
+
+    if (!(await hasCurrentLegalAcceptance(userId))) {
+      await db
+        .update(refreshTokenTable)
+        .set({ revokedAt: new Date() })
+        .where(eq(refreshTokenTable.id, record.id));
+      return NextResponse.json(
+        {
+          error: "invalid_grant",
+          error_description: "Current legal acceptance required",
+        },
+        { status: 403 },
+      );
+    }
 
     const authHeader = request.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
@@ -104,7 +128,10 @@ export async function POST(request: Request) {
         // Cross-check: refresh token must belong to the same user
         if (payload.sub !== record.userId) {
           return NextResponse.json(
-            { error: "invalid_grant", error_description: "Token user mismatch" },
+            {
+              error: "invalid_grant",
+              error_description: "Token user mismatch",
+            },
             { status: 401 },
           );
         }

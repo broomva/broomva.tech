@@ -14,6 +14,7 @@ vi.mock("@/lib/db/queries", () => ({
 vi.mock("@/lib/telemetry/rate-limit", () => ({
   checkTelemetryRateLimit: vi.fn(),
 }));
+vi.mock("@/lib/prompts/admin", () => ({ isAdmin: vi.fn() }));
 
 import { POST, GET } from "./route";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
@@ -22,11 +23,13 @@ import {
   getFeedbackForPrompt,
 } from "@/lib/db/queries";
 import { checkTelemetryRateLimit } from "@/lib/telemetry/rate-limit";
+import { isAdmin } from "@/lib/prompts/admin";
 
 const mockResolveAuth = vi.mocked(resolveAuth);
 const mockCreate = vi.mocked(createPromptFeedbackRow);
 const mockGet = vi.mocked(getFeedbackForPrompt);
 const mockRateLimit = vi.mocked(checkTelemetryRateLimit);
+const mockIsAdmin = vi.mocked(isAdmin);
 
 function makePostReq(body: unknown) {
   return new Request("http://localhost/api/feedback", {
@@ -46,8 +49,10 @@ describe("/api/feedback", () => {
     mockCreate.mockReset();
     mockGet.mockReset();
     mockRateLimit.mockReset();
+    mockIsAdmin.mockReset();
 
-    mockResolveAuth.mockResolvedValue(null);
+    mockResolveAuth.mockResolvedValue({ userId: "user-1", email: "u@example.com" });
+    mockIsAdmin.mockReturnValue(true);
     mockRateLimit.mockReturnValue({
       allowed: true,
       remaining: 59,
@@ -58,7 +63,7 @@ describe("/api/feedback", () => {
       invocationId: null,
       promptSlug: "x",
       promptVersion: "1.0",
-      userId: null,
+      userId: "user-1",
       signal: "thumbs_up",
       text: null,
       source: "web",
@@ -83,6 +88,20 @@ describe("/api/feedback", () => {
     const arg = mockCreate.mock.calls[0][0];
     expect(arg.invocationId).toBe(validUuid);
     expect(arg.signal).toBe("thumbs_up");
+  });
+
+  test("POST 403 — handler refuses an unresolved identity", async () => {
+    mockResolveAuth.mockResolvedValue(null);
+    const res = await POST(
+      makePostReq({
+        prompt_slug: "x",
+        prompt_version: "1.0",
+        signal: "thumbs_up",
+        source: "web",
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   test("POST 201 — detached feedback (no invocation_id)", async () => {
@@ -141,6 +160,13 @@ describe("/api/feedback", () => {
   test("GET 400 — missing prompt_slug", async () => {
     const res = await GET(makeGetReq(""));
     expect(res.status).toBe(400);
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  test("GET 403 — raw feedback is not public", async () => {
+    mockIsAdmin.mockReturnValue(false);
+    const res = await GET(makeGetReq("prompt_slug=x"));
+    expect(res.status).toBe(403);
     expect(mockGet).not.toHaveBeenCalled();
   });
 });

@@ -21,6 +21,12 @@ const legalLinks = [
   { href: "/pricing", label: "Pricing" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },
+  { href: "/subprocessors", label: "Subprocessors" },
+  { href: "/security", label: "Security" },
+  {
+    href: "https://www.sic.gov.co/",
+    label: "Colombia consumer authority (SIC)",
+  },
 ];
 
 export function Footer() {
@@ -46,12 +52,23 @@ export function Footer() {
             <ul className="mt-3 space-y-2">
               {navLinks.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href as Route}
-                    className="text-sm text-text-secondary transition hover:text-text-primary"
-                  >
-                    {link.label}
-                  </Link>
+                  {link.href.startsWith("/") ? (
+                    <Link
+                      href={link.href as Route}
+                      className="text-sm text-text-secondary transition hover:text-text-primary"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      className="text-sm text-text-secondary transition hover:text-text-primary"
+                      href={link.href}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      {link.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

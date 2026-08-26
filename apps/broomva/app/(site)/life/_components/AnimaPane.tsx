@@ -3,7 +3,7 @@
 import type { ProsoponRunMeta } from "../_lib/use-prosopon-run";
 
 export interface LifeUserIdentity {
-  /** Authed user id, or anon-session id, or "anonymous" for no-cookie guests. */
+  /** Accepted authenticated user id, or a display-only guest identifier. */
   id: string;
   /** Kind: "user" | "anon" | "agent" (x402 wallet). */
   kind: "user" | "anon" | "agent";
@@ -58,9 +58,9 @@ function deriveSoul(
             "Payments settle through Haima; x402 for external callers.",
           ]
         : [
-            "Guest session — no authenticated principal.",
-            "Runs are attributed to an anonymous cookie id.",
-            "Sign in to persist memory across sessions and unlock pro tier.",
+            "Guest view — no authenticated principal and no prompt processing.",
+            "Sign in and accept the current policies to start a run.",
+            "Public project information remains available without an account.",
           ],
     trust:
       kind === "user"
@@ -126,8 +126,8 @@ export function AnimaPane({ user, projectSlug, liveMeta }: Props) {
           {user?.email
             ? `authed · ${user.email}`
             : user?.kind === "anon"
-              ? "anon cookie"
-              : "no cookie · x402 eligible"}
+              ? "guest view"
+              : "prompt processing disabled"}
         </div>
       </div>
       <div className="section">Beliefs (active)</div>

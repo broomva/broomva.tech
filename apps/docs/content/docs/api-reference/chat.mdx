@@ -1,222 +1,67 @@
 ---
 title: Chat API
-description: Send messages and receive AI responses through the chat API.
+description: Call the OpenAI-compatible chat-completions endpoint.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 
 # Chat API
 
-The chat API is the primary interface for sending messages to AI models and receiving responses. It supports both streaming and non-streaming modes, multi-model selection, and tool use.
+The supported external surface is **`POST /api/v1/chat/completions`**. It uses
+the OpenAI Chat Completions request and response shapes. The in-app `/api/chat`
+route is an internal UI-message stream and is not the public SDK contract.
 
-## Send a message
+## Authentication
 
-**`POST /api/chat`** -- Send a chat message and receive an AI response.
-
-### Request body
-
-```json
-{
-  "model": "claude-sonnet-4-20250514",
-  "messages": [
-    {
-      "role": "system",
-      "content": "You are a helpful assistant."
-    },
-    {
-      "role": "user",
-      "content": "Explain event sourcing in 3 sentences."
-    }
-  ],
-  "stream": true,
-  "chatId": "optional-conversation-id"
-}
-```
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `model` | string | Yes | Model identifier (see model list below) |
-| `messages` | array | Yes | Array of message objects with `role` and `content` |
-| `stream` | boolean | No | Enable SSE streaming (default: `true`) |
-| `chatId` | string | No | Conversation ID for persistence. Generated if omitted. |
-
-### Message roles
-
-| Role | Description |
-|------|-------------|
-| `system` | System instructions (optional, one per request) |
-| `user` | User message (text, or multipart with attachments) |
-| `assistant` | Previous assistant response (for multi-turn context) |
-| `tool` | Tool result (follows a `tool_use` assistant message) |
-
-### Available models
-
-Model availability depends on the user's plan tier. The models are routed through the AI SDK v6 `customProvider` abstraction.
-
-| Provider | Model ID | Plan |
-|----------|----------|------|
-| **Anthropic** | `claude-opus-4-20250514` | Pro+ |
-| **Anthropic** | `claude-sonnet-4-20250514` | Pro+ |
-| **Anthropic** | `claude-haiku-3-5-20241022` | Pro+ |
-| **OpenAI** | `gpt-4o` | Pro+ |
-| **OpenAI** | `gpt-4o-mini` | Pro+ |
-| **OpenAI** | `o1` | Pro+ |
-| **OpenAI** | `o3` | Pro+ |
-| **Google** | `gemini-2.5-pro` | Pro+ |
-| **Google** | `gemini-2.5-flash` | Pro+ |
-| **OpenRouter** | Various (100+) | Free+ |
-| **Ollama** | Any local model | Free+ |
-
-<Callout type="info">
-  Use `GET /api/chat-model` to retrieve the exact list of models available for your plan. Model IDs may change as providers release new versions.
-</Callout>
-
-### Streaming response
-
-When `stream: true` (the default), the response is an SSE stream using the Vercel AI SDK v6 data stream format:
-
-```
-data: {"type":"text-delta","textDelta":"Event"}
-data: {"type":"text-delta","textDelta":" sourcing"}
-data: {"type":"text-delta","textDelta":" is a pattern..."}
-data: {"type":"tool-call","toolCallId":"call_1","toolName":"search","args":{"query":"..."}}
-data: {"type":"tool-result","toolCallId":"call_1","result":{"...":"..."}}
-data: {"type":"finish","finishReason":"stop","usage":{"promptTokens":42,"completionTokens":87}}
-```
-
-The stream emits `UiPart` objects that include:
-
-| Event type | Fields | Description |
-|-----------|--------|-------------|
-| `text-delta` | `textDelta` | Incremental text token |
-| `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation request |
-| `tool-result` | `toolCallId`, `result` | Tool execution result |
-| `finish` | `finishReason`, `usage` | Completion signal |
-| `error` | `error` | Error during generation |
-
-The `finish` event includes token usage in the `usage` field:
-
-```json
-{
-  "type": "finish",
-  "finishReason": "stop",
-  "usage": {
-    "promptTokens": 42,
-    "completionTokens": 87
-  }
-}
-```
-
-Token usage is used by the billing system to calculate credit consumption for the request.
-
-### Non-streaming response
-
-When `stream: false`, the response is a complete JSON object:
-
-```json
-{
-  "id": "msg_abc123",
-  "model": "claude-sonnet-4-20250514",
-  "content": "Event sourcing is a pattern where...",
-  "usage": {
-    "promptTokens": 42,
-    "completionTokens": 87
-  },
-  "finishReason": "stop"
-}
-```
-
-## List available models
-
-**`GET /api/chat-model`** -- List all available models for the authenticated user's plan.
-
-### Response
-
-```json
-{
-  "models": [
-    {
-      "id": "claude-sonnet-4-20250514",
-      "name": "Claude Sonnet 4",
-      "provider": "anthropic",
-      "available": true
-    },
-    {
-      "id": "gpt-4o",
-      "name": "GPT-4o",
-      "provider": "openai",
-      "available": true
-    },
-    {
-      "id": "gemini-2.5-pro",
-      "name": "Gemini 2.5 Pro",
-      "provider": "google",
-      "available": true
-    }
-  ]
-}
-```
-
-Model availability depends on the user's plan tier. Free-tier users have access to community models through OpenRouter and self-hosted models through Ollama. Pro and above unlock all premium providers.
-
-## Conversation persistence
-
-When a `chatId` is provided, messages are persisted to the platform database. Subsequent requests with the same `chatId` automatically include the conversation history, so you do not need to resend previous messages.
-
-If `chatId` is omitted, the platform generates one and returns it in the response headers:
+Send a current Broomva bearer token. Anonymous requests are rejected. Tokens
+are issued only after current Terms, Privacy, processing-authorization, and age
+confirmation are recorded, and are invalidated when the policy manifest changes.
 
 ```http
-X-Chat-Id: chat_abc123
+Authorization: Bearer <BROOMVA_API_TOKEN>
+Content-Type: application/json
 ```
 
-Use this ID in subsequent requests to continue the conversation.
-
-### Memory integration
-
-If the user has the memory vault enabled, the chat endpoint automatically:
-
-1. Queries the Lago knowledge index for memories relevant to the current conversation
-2. Injects retrieved memories as system context before the model call
-3. After the response, extracts new facts/preferences and stores them as memory events
-
-This is transparent to the API caller -- memory augmentation happens server-side.
-
-## Tool use
-
-The chat API supports tool calling for models that implement function calling (Claude, GPT-4o, Gemini). Tools are defined in the request and executed server-side through the MCP bridge:
+## Request
 
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
-  "messages": [{"role": "user", "content": "What's the weather in SF?"}],
-  "tools": [
-    {
-      "name": "get_weather",
-      "description": "Get current weather for a location",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "location": {"type": "string", "description": "City name"}
-        },
-        "required": ["location"]
-      }
-    }
-  ]
+  "model": "claude-sonnet-4",
+  "messages": [
+    { "role": "user", "content": "Explain event sourcing in three sentences." }
+  ],
+  "stream": true
 }
 ```
 
-When the model invokes a tool, the stream emits a `tool-call` event followed by a `tool-result` event after execution. The model then continues generating text that incorporates the tool result.
+| Field      | Type    | Required | Current behavior                                                 |
+| ---------- | ------- | -------- | ---------------------------------------------------------------- |
+| `model`    | string  | Yes      | Must resolve in the deployed edge model registry                 |
+| `messages` | array   | Yes      | OpenAI-compatible message history                                |
+| `stream`   | boolean | No       | `true` returns OpenAI-compatible SSE; `false` returns JSON       |
+| `tools`    | array   | No       | OpenAI tool definitions; support depends on the deployed runtime |
 
-### MCP server tools
+<Callout type="warn">
+  A familiar provider model name is not proof that a backend is enabled.
+  Unsupported model IDs return a model error. Image inputs and `n &gt; 1`
+  choices are not supported by this endpoint.
+</Callout>
 
-In addition to user-defined tools, the chat endpoint can bridge tools from configured MCP servers. Organization-level MCP connections are resolved at request time and their tools are merged into the available tool set. The `@ai-sdk/mcp` adapter handles protocol translation between MCP and the AI SDK's tool interface.
+## Response and errors
 
-## Error responses
+With `stream: true`, the response is OpenAI-compatible `data:` SSE chunks and
+ends with `data: [DONE]`. With `stream: false`, the response is an OpenAI-style
+chat-completion JSON object.
 
-| Status | Code | Description |
-|--------|------|-------------|
-| 400 | `validation_error` | Missing required fields or invalid model |
-| 401 | `unauthorized` | Missing or invalid token |
-| 402 | `credits_exhausted` | Credit limit reached for this billing period |
-| 429 | `rate_limited` | Too many requests |
-| 500 | `internal_error` | Model provider error or internal failure |
+| Status | Meaning                                     |
+| ------ | ------------------------------------------- |
+| `400`  | Invalid request or unsupported model        |
+| `401`  | Missing, expired, or stale-policy token     |
+| `403`  | Current legal acceptance is required        |
+| `429`  | Rate limit exceeded                         |
+| `503`  | Life gateway is not configured or available |
+| `5xx`  | Runtime or upstream failure                 |
+
+Model availability, tool support, limits, and credits depend on the deployed
+configuration and authenticated account. File attachments and generated-image
+storage are currently disabled pending private signed storage.

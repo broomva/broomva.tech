@@ -5,6 +5,7 @@ import { LifeShell } from "../_components/LifeShell";
 import type { LifeUserIdentity } from "../_components/AnimaPane";
 import { isProjectSlug, PROJECTS } from "../_lib/project-map";
 import { getSafeSession } from "@/lib/auth";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 export async function generateStaticParams() {
   return Object.keys(PROJECTS).map((project) => ({ project }));
@@ -35,9 +36,14 @@ export default async function LifeProjectPage({
 
   // Resolve identity — authed user if signed in, guest otherwise.
   const hdrs = await headers();
-  const session = await getSafeSession({ fetchOptions: { headers: hdrs } });
+  const { data: session } = await getSafeSession({
+    fetchOptions: { headers: hdrs },
+  });
   let user: LifeUserIdentity | undefined;
-  if (session?.user?.id) {
+  if (
+    session?.user?.id &&
+    (await hasCurrentLegalAcceptance(session.user.id))
+  ) {
     const email = session.user.email ?? undefined;
     const name = session.user.name ?? email?.split("@")[0] ?? "User";
     user = {

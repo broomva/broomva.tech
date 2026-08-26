@@ -2,17 +2,26 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { withAuthAndValidation } from "@/lib/api/with-auth";
-import { getOrganizationById, isOrganizationMember } from "@/lib/db/organization";
+import {
+  getOrganizationById,
+  hasOrganizationRole,
+} from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
 import { getStripe, PLAN_TIERS, type PlanTier } from "@/lib/stripe";
 import { captureServerEvent } from "@/lib/analytics/posthog";
+import {
+  PRIVACY_CONTENT_SHA256,
+  PRIVACY_VERSION,
+  TERMS_CONTENT_SHA256,
+  TERMS_VERSION,
+} from "@/lib/legal";
 import {
   EVENT_CHECKOUT_STARTED,
   EVENT_PLAN_SELECTED,
 } from "@/lib/analytics/events";
 
 const checkoutSchema = z.object({
-  plan: z.enum(["pro", "team"]),
+  plan: z.literal("pro"),
   organizationId: z.string().min(1),
 });
 
@@ -20,6 +29,16 @@ export const POST = withAuthAndValidation(
   checkoutSchema,
   async (_request, { userId, email, body }) => {
     const { plan, organizationId } = body;
+
+    if (process.env.SELF_SERVICE_CHECKOUT_ENABLED !== "true") {
+      return NextResponse.json(
+        {
+          error:
+            "Self-service checkout is temporarily unavailable pending operator and consumer-flow validation.",
+        },
+        { status: 503 },
+      );
+    }
 
     const tier = PLAN_TIERS[plan as PlanTier];
     if (!tier?.priceId) {
@@ -38,9 +57,11 @@ export const POST = withAuthAndValidation(
       );
     }
 
-    if (!(await isOrganizationMember(userId, organizationId))) {
+    if (
+      !(await hasOrganizationRole(userId, organizationId, ["owner", "admin"]))
+    ) {
       return NextResponse.json(
-        { error: "Forbidden — not a member of this organization" },
+        { error: "Forbidden — billing access requires an owner or admin" },
         { status: 403 },
       );
     }
@@ -58,11 +79,34 @@ export const POST = withAuthAndValidation(
             quantity: 1,
           },
         ],
+        consent_collection: {
+          terms_of_service: "required",
+        },
+        custom_text: {
+          submit: {
+            message:
+              "Your subscription renews monthly until canceled. Cancel before renewal in billing settings. Refunds are available where required by law.",
+          },
+        },
         success_url: `${appUrl}/console/billing?checkout=success`,
         cancel_url: `${appUrl}/console/billing?checkout=cancel`,
         metadata: {
           organizationId,
           plan,
+          termsVersion: TERMS_VERSION,
+          privacyVersion: PRIVACY_VERSION,
+          termsHash: TERMS_CONTENT_SHA256,
+          privacyHash: PRIVACY_CONTENT_SHA256,
+        },
+        subscription_data: {
+          metadata: {
+            organizationId,
+            plan,
+            termsVersion: TERMS_VERSION,
+            privacyVersion: PRIVACY_VERSION,
+            termsHash: TERMS_CONTENT_SHA256,
+            privacyHash: PRIVACY_CONTENT_SHA256,
+          },
         },
       });
 

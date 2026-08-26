@@ -102,6 +102,22 @@ const PROBES = [
     expectedStatus: (s) => s === 200,
     label: "/api/audio-playback (anon)",
   },
+  // — Swapit commons (BRO-1547): the public household-toxics knowledge dataset.
+  //   GET serves approved facts for anonymous browse/pull (the `swapit sync` CLI
+  //   has no session cookie); if the auth proxy gates it to /login the whole
+  //   "anyone can use it" commons silently breaks — exactly this probe's purpose.
+  {
+    path: "/api/swapit/facts?kind=procurement_option&region=US",
+    kind: "api",
+    expectedStatus: (s) => s === 200,
+    label: "/api/swapit/facts (anon)",
+  },
+  {
+    path: "/swapit",
+    kind: "page",
+    expectedStatus: (s) => s === 200,
+    label: "/swapit page (anon)",
+  },
 ];
 
 async function probe({ path, kind, expectedStatus, label }) {

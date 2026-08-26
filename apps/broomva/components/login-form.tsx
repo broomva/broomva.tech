@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
 import Link from "next/link";
+import { useActionState, useState } from "react";
 import { signInWithEmail } from "@/app/(auth)/login/actions";
 import { SocialAuthProviders } from "@/components/social-auth-providers";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,9 @@ export function LoginForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & { plan?: string }) {
   const [state, formAction, isPending] = useActionState(signInWithEmail, null);
+  const [socialTerms, setSocialTerms] = useState(false);
+  const [socialProcessing, setSocialProcessing] = useState(false);
+  const [socialAge, setSocialAge] = useState(false);
 
   const registerHref = plan ? `/register?plan=${plan}` : "/register";
 
@@ -65,7 +68,51 @@ export function LoginForm({
             <Button disabled={isPending} type="submit">
               {isPending ? "Signing in..." : "Sign in"}
             </Button>
-            <SocialAuthProviders />
+            <div className="grid gap-3 rounded-lg border p-3">
+              <p className="text-xs text-muted-foreground">
+                Social providers may create an account if none exists. Confirm
+                these before social sign-in; the post-provider page records the
+                authoritative receipt.
+              </p>
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  checked={socialTerms}
+                  className="mt-0.5"
+                  onChange={(event) => setSocialTerms(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>
+                  I agree to the <Link href="/terms">Terms</Link> and
+                  acknowledge the <Link href="/privacy">Privacy Policy</Link>.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  checked={socialProcessing}
+                  className="mt-0.5"
+                  onChange={(event) =>
+                    setSocialProcessing(event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                <span>
+                  I authorize the account, authentication, and service-data
+                  processing described in the Privacy Policy.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  checked={socialAge}
+                  className="mt-0.5"
+                  onChange={(event) => setSocialAge(event.target.checked)}
+                  type="checkbox"
+                />
+                <span>I confirm that I am at least 18 years old.</span>
+              </label>
+            </div>
+            <SocialAuthProviders
+              disabled={!socialTerms || !socialProcessing || !socialAge}
+            />
             <div className="text-center text-sm">
               Don&apos;t have an account?{" "}
               <a className="underline underline-offset-4" href={registerHref}>
@@ -75,11 +122,6 @@ export function LoginForm({
           </form>
         </CardContent>
       </Card>
-      <div className="text-balance text-center text-muted-foreground text-xs [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-        By clicking continue, you agree to our{" "}
-        <Link href="/terms">Terms of Service</Link> and{" "}
-        <Link href="/privacy">Privacy Policy</Link>.
-      </div>
     </div>
   );
 }

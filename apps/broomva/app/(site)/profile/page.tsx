@@ -16,6 +16,7 @@ import {
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { ContentCard } from "@/components/site/content-card";
+import { GitHubPlots } from "@/components/site/github-plots";
 import { PageHero } from "@/components/site/page-hero";
 import { ProfileKPIs } from "@/components/site/profile-kpis";
 import {
@@ -30,7 +31,9 @@ import {
   formatNumber,
   getBookkeepingSnapshot,
   getCratesAggregate,
+  getExperienceYears,
   getGitHubAggregate,
+  getHuggingFaceAggregate,
 } from "@/lib/profile-stats";
 
 export const metadata: Metadata = {
@@ -39,64 +42,66 @@ export const metadata: Metadata = {
     "Agent OS architect and AI engineering lead. AI Lead at Stimulus, Data Architect contractor at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). Builder of Life Agent OS, bstack, broomva/skills, Lago, Vigil, and the RCS paper series.",
   alternates: { canonical: "/profile" },
   openGraph: {
-    title: "Carlos D. Escobar-Valbuena — Agent OS Architect & AI Engineering Lead",
+    title:
+      "Carlos D. Escobar-Valbuena — Agent OS Architect & AI Engineering Lead",
     description:
       "AI-native, multi-tenant data platforms in production. AI Lead at Stimulus, Data Architect at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). MSc AI at Universidad de los Andes.",
     type: "profile",
   },
 };
 
-const personJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Person",
-  name: "Carlos D. Escobar-Valbuena",
-  alternateName: "broomva",
-  jobTitle: "Agent OS Architect & AI Engineering Lead",
-  description:
-    "AI Engineering Lead and data platform architect with 7+ years building AI-native, multi-tenant data platforms in production across regulated and high-stakes domains.",
-  url: "https://broomva.tech/profile",
-  sameAs: [
-    "https://linkedin.com/in/broomva",
-    "https://github.com/Broomva",
-    "https://x.com/broomva_tech",
-    "https://broomva.tech",
-  ],
-  email: "carlosdavidescobar@gmail.com",
-  address: {
-    "@type": "PostalAddress",
-    addressLocality: "Bogotá",
-    addressCountry: "Colombia",
-  },
-  knowsAbout: [
-    "Lakehouse architecture",
-    "Databricks",
-    "Unity Catalog",
-    "Medallion architecture",
-    "Production RAG",
-    "Agent orchestration",
-    "LangGraph",
-    "MCP",
-    "Data governance",
-    "OpenTelemetry",
-    "CDC and event sourcing",
-    "Multi-tenant data isolation",
-    "Rust",
-    "Python",
-    "TypeScript",
-  ],
-  alumniOf: [
-    {
-      "@type": "EducationalOrganization",
-      name: "Universidad de los Andes",
-      description: "MSc Artificial Intelligence (2026)",
+function buildPersonJsonLd(experienceYears: number) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Carlos D. Escobar-Valbuena",
+    alternateName: "broomva",
+    jobTitle: "Agent OS Architect & AI Engineering Lead",
+    description: `AI Engineering Lead and data platform architect with ${experienceYears}+ years building AI-native, multi-tenant data platforms in production across regulated and high-stakes domains.`,
+    url: "https://broomva.tech/profile",
+    sameAs: [
+      "https://linkedin.com/in/broomva",
+      "https://github.com/Broomva",
+      "https://x.com/broomva_tech",
+      "https://broomva.tech",
+    ],
+    email: "carlosdavidescobar@gmail.com",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Bogotá",
+      addressCountry: "Colombia",
     },
-    {
-      "@type": "EducationalOrganization",
-      name: "Universidad de San Buenaventura",
-      description: "BSc Mechatronics Engineering (2018, GPA 4.1/5.0)",
-    },
-  ],
-};
+    knowsAbout: [
+      "Lakehouse architecture",
+      "Databricks",
+      "Unity Catalog",
+      "Medallion architecture",
+      "Production RAG",
+      "Agent orchestration",
+      "LangGraph",
+      "MCP",
+      "Data governance",
+      "OpenTelemetry",
+      "CDC and event sourcing",
+      "Multi-tenant data isolation",
+      "Rust",
+      "Python",
+      "TypeScript",
+    ],
+    alumniOf: [
+      {
+        "@type": "EducationalOrganization",
+        name: "Universidad de los Andes",
+        description: "MSc Artificial Intelligence (2026)",
+      },
+      {
+        "@type": "EducationalOrganization",
+        name: "Universidad de San Buenaventura",
+        description: "BSc Mechatronics Engineering (2018, GPA 4.1/5.0)",
+      },
+    ],
+  } as const;
+}
 
 const concurrent = [
   {
@@ -308,13 +313,38 @@ const elsewhereLinks = [
 ];
 
 export default async function ProfilePage() {
-  const [github, crates, bookkeeping, writing, notes] = await Promise.all([
+  const [
+    github,
+    crates,
+    huggingface,
+    experienceYears,
+    bookkeeping,
+    writing,
+    notes,
+  ] = await Promise.all([
     getGitHubAggregate("broomva"),
     getCratesAggregate(),
+    getHuggingFaceAggregate("Broomva"),
+    getExperienceYears(),
     getBookkeepingSnapshot(),
     getLatest("writing", 3),
     getLatest("notes", 3),
   ]);
+
+  const personJsonLd = buildPersonJsonLd(experienceYears);
+
+  // Live, data-driven "at a glance" strip — mirrors the shield badges on the
+  // GitHub profile. Deliberately scoped to metrics NOT already shown in the
+  // "Live signals" KPIs above (stars, crates, downloads) so nothing is doubled;
+  // every number is still pulled from an API and self-updates.
+  const liveBadges = [
+    { label: "yrs shipping AI platforms", value: `${experienceYears}+` },
+    { label: "public repos", value: formatNumber(github.totalRepos) },
+    {
+      label: "Hugging Face models",
+      value: formatNumber(huggingface.totalModels),
+    },
+  ].filter((b) => b.value !== "0");
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-10 sm:px-6 sm:pt-14">
@@ -349,8 +379,8 @@ export default async function ProfilePage() {
               totalRepos: github.totalRepos,
               totalStars: github.totalStars,
             }}
-            lastPushRelative={github.topRepos[0]?.pushedAtRelative ?? "—"}
-            lastPushRepo={github.topRepos[0]?.name ?? "—"}
+            lastPushRelative={github.lastPush?.pushedAtRelative ?? "—"}
+            lastPushRepo={github.lastPush?.name ?? "—"}
             recentCount={writing.length + notes.length}
             recentLabel="Recent writing"
           />
@@ -358,6 +388,50 @@ export default async function ProfilePage() {
             Updated hourly · {formatNumber(github.totalStars)} ★ ·{" "}
             {formatNumber(crates.totalDownloads)} crate downloads
           </p>
+        </section>
+      </FadeIn>
+
+      {/* GitHub activity — live plots mirrored from the GitHub profile */}
+      <FadeIn delay={0.11}>
+        <section className="mt-12">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl text-text-primary sm:text-3xl">
+                GitHub activity
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
+                The same plots on my{" "}
+                <a
+                  className="text-ai-blue hover:underline"
+                  href="https://github.com/Broomva"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  GitHub profile
+                </a>{" "}
+                — each card is a live SVG that re-renders from the GitHub API,
+                so it stays current on its own.
+              </p>
+            </div>
+          </div>
+
+          {liveBadges.length > 0 && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {liveBadges.map((badge) => (
+                <span
+                  className="inline-flex items-baseline gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-text-secondary"
+                  key={badge.label}
+                >
+                  <span className="font-display text-sm text-text-primary">
+                    {badge.value}
+                  </span>
+                  {badge.label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <GitHubPlots />
         </section>
       </FadeIn>
 
@@ -381,9 +455,7 @@ export default async function ProfilePage() {
                 <div className="mt-3 font-display text-3xl text-text-primary">
                   {formatNumber(bookkeeping.totalEntities)}
                 </div>
-                <div className="mt-1 text-xs text-text-muted">
-                  in the graph
-                </div>
+                <div className="mt-1 text-xs text-text-muted">in the graph</div>
               </div>
               <div className="rounded-2xl glass p-5">
                 <div className="text-xs uppercase tracking-wider text-text-muted">
@@ -803,7 +875,9 @@ export default async function ProfilePage() {
       {/* Contact CTA */}
       <FadeIn delay={0.6}>
         <section className="mt-16 rounded-2xl glass p-8">
-          <h2 className="font-display text-2xl text-text-primary">Talk to me</h2>
+          <h2 className="font-display text-2xl text-text-primary">
+            Talk to me
+          </h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary">
             If you're building production agent systems, multi-tenant
             lakehouses, or governed AI platforms — and want to compare

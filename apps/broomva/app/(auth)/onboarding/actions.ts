@@ -12,6 +12,7 @@ import {
 import { upsertUserFromSession } from "@/lib/db/queries";
 import { captureServerEvent } from "@/lib/analytics/posthog";
 import { EVENT_ORG_CREATED, EVENT_ORG_SKIPPED } from "@/lib/analytics/events";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-acceptance-gate";
 
 export async function createOnboardingOrg(
   _prevState: { error?: string; orgId?: string } | null,
@@ -24,6 +25,7 @@ export async function createOnboardingOrg(
   if (!session?.user) {
     redirect("/login");
   }
+  await requireCurrentLegalAcceptance(session.user.id);
 
   const name = formData.get("orgName");
   const slug = formData.get("orgSlug");
@@ -84,6 +86,7 @@ export async function skipOnboarding(
   if (!session?.user) {
     redirect("/login");
   }
+  await requireCurrentLegalAcceptance(session.user.id);
 
   try {
     // Sync Neon Auth user into app user table before creating org

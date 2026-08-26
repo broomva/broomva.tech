@@ -1,0 +1,100 @@
+{
+  "reviewBy": "2026-09-09",
+  "exceptions": [
+    {
+      "package": "better-auth",
+      "owner": "security",
+      "topologySha256": "07c5be51f1ad72f48add5d590bca05b8eaef50d2a7646cb37261bd3490e91565",
+      "rationale": "Neon Auth 0.4.2-beta pins Better Auth 1.4.18 for client, cookie, and type adapters. The affected OIDC-provider, MCP-provider, organization, magic-link, and email-OTP server plugins are not instantiated through this adapter; the app's own agent-auth server uses Better Auth 1.6.26. Replacing Neon's exact pin is prohibited until Neon publishes a compatible release.",
+      "advisories": [
+        "critical|https://github.com/advisories/GHSA-pw9m-5jxm-xr6h",
+        "high|https://github.com/advisories/GHSA-392p-2q2v-4372",
+        "high|https://github.com/advisories/GHSA-7w99-5wm4-3g79",
+        "high|https://github.com/advisories/GHSA-86j7-9j95-vpqj",
+        "high|https://github.com/advisories/GHSA-9h47-pqcx-hjr4",
+        "high|https://github.com/advisories/GHSA-fmh4-wcc4-5jm3",
+        "high|https://github.com/advisories/GHSA-g38m-r43w-p2q7",
+        "high|https://github.com/advisories/GHSA-qq9h-g4jm-xgf3",
+        "moderate|https://github.com/advisories/GHSA-wxw3-q3m9-c3jr"
+      ]
+    },
+    {
+      "package": "undici",
+      "owner": "security",
+      "topologySha256": "d48ce5da54428e084bd9524d8ad521825556ccc504b150d629f1c1a6b76e6cae",
+      "rationale": "Patched Undici 7.29 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.28. The remaining vulnerable 5.29 runtime branch belongs to the ConnectRPC v1 client for an operator-configured Life gateway; no patched 5.x release exists. Migrating it requires tested ConnectRPC v2 and Protobuf regeneration. Caller-controlled proxy, cookie, WebSocket, and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until that migration.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-v9p9-hfj2-hcw8",
+        "high|https://github.com/advisories/GHSA-vrm6-8vpv-qv8q",
+        "high|https://github.com/advisories/GHSA-vxpw-j846-p89q",
+        "moderate|https://github.com/advisories/GHSA-2mjp-6q6p-2qxm",
+        "moderate|https://github.com/advisories/GHSA-4992-7rv2-5pvq",
+        "moderate|https://github.com/advisories/GHSA-8xcm-r25x-g524",
+        "moderate|https://github.com/advisories/GHSA-g9mf-h72j-4rw9",
+        "moderate|https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
+        "moderate|https://github.com/advisories/GHSA-p88m-4jfj-68fv",
+        "moderate|https://github.com/advisories/GHSA-v3r7-h72x-cjcm"
+      ]
+    },
+    {
+      "package": "js-yaml",
+      "owner": "security",
+      "topologySha256": "f1f921e1dff3a262fe576dd55469ae0007e7ac90f90c6e1010e426781a2fe0af",
+      "rationale": "Patched 4.x is direct. The residual 3.x/4.1 copies are build/content dependencies receiving repository-controlled Markdown frontmatter and schemas, not user-submitted YAML.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-52cp-r559-cp3m",
+        "high|https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+        "moderate|https://github.com/advisories/GHSA-h67p-54hq-rp68"
+      ]
+    },
+    {
+      "package": "image-size",
+      "owner": "security",
+      "topologySha256": "728ae2774a34b1359c875e3c32acd3c5c1d9ac44ed4641eb34268323d7a9c0c9",
+      "rationale": "Fumadocs uses this during documentation builds over repository-controlled assets; no production upload/parser path calls it.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+        "high|https://github.com/advisories/GHSA-w3rx-r6r6-pgpr"
+      ]
+    },
+    {
+      "package": "@fastify/static",
+      "owner": "security",
+      "topologySha256": "0ee7b910f1bb5f9e76491a6462a6cdb24be7e548bb391ddb84142a05093ce85c",
+      "rationale": "This is reachable only from the development-only Evalite CLI; the deployed Next.js service does not import or expose its static server.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-83w8-p2f5-377r",
+        "moderate|https://github.com/advisories/GHSA-8pvw-jcv7-9cmj",
+        "moderate|https://github.com/advisories/GHSA-pr96-94w5-mx2h",
+        "moderate|https://github.com/advisories/GHSA-x428-ghpx-8j92"
+      ]
+    },
+    {
+      "package": "nanoid",
+      "owner": "security",
+      "topologySha256": "944b9930e2fcefbc29fd36ba5b30d5e3e15be6a51c26b1f9238329edc0a3545b",
+      "rationale": "The residual copy belongs to Neon Auth UI's Triplit dependency. Application code does not invoke the vulnerable negative-size non-secure generator.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-28wg-ghj8-5hjv"
+      ]
+    },
+    {
+      "package": "esbuild",
+      "owner": "security",
+      "topologySha256": "779e3668f17705b155fa874193ed310648c486fd2792b58362549af3f4b86614",
+      "rationale": "The vulnerable copy is a Drizzle development-tool dependency. No esbuild development server is exposed in production.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-67mh-4wv8-2f99"
+      ]
+    },
+    {
+      "package": "file-type",
+      "owner": "security",
+      "topologySha256": "87a41571da977dce119c9c5ee644c2d8f3a4af2d2338ecc586c80465510b011e",
+      "rationale": "The vulnerable parser is a development-only Evalite dependency and does not process production uploads; uploads are disabled pending private storage.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-5v7r-6r5c-r473"
+      ]
+    }
+  ]
+}

@@ -3,7 +3,6 @@ import {
   type ListBlobResult,
   list,
   type PutBlobResult,
-  put,
 } from "@vercel/blob";
 import { BLOB_FILE_PREFIX } from "./constants";
 
@@ -12,18 +11,11 @@ import { BLOB_FILE_PREFIX } from "./constants";
  */
 export async function uploadFile(
   filename: string,
-  buffer: Parameters<typeof put>[1]
+  _buffer: unknown,
 ): Promise<PutBlobResult> {
-  try {
-    return await put(`${BLOB_FILE_PREFIX}${filename}`, buffer, {
-      access: "public",
-      addRandomSuffix: true,
-    });
-  } catch (error) {
-    throw new Error(
-      `Failed to upload file ${filename}: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-  }
+  throw new Error(
+    `File creation is disabled until private signed storage is implemented (${filename})`,
+  );
 }
 
 /**
@@ -36,7 +28,7 @@ export async function listFiles(): Promise<ListBlobResult> {
     });
   } catch (error) {
     throw new Error(
-      `Failed to list files: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Failed to list files: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 }
@@ -49,7 +41,7 @@ export async function deleteFilesByUrls(urls: string[]): Promise<void> {
     await del(urls);
   } catch (error) {
     throw new Error(
-      `Failed to delete ${urls.length} files: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Failed to delete ${urls.length} files: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 }

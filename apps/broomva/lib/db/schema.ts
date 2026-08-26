@@ -335,6 +335,48 @@ export const user = pgTable("user", {
     .notNull(),
 });
 
+export const legalAcceptance = pgTable(
+  "LegalAcceptance",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    // Account deletion must not automatically destroy proof of assent. The
+    // receipt is decoupled from the app-user FK and handled by the documented
+    // legal-record retention/deletion process.
+    userId: text("userId").notNull(),
+    termsVersion: text("termsVersion").notNull(),
+    privacyVersion: text("privacyVersion").notNull(),
+    termsHash: text("termsHash").notNull(),
+    privacyHash: text("privacyHash").notNull(),
+    deploymentId: text("deploymentId"),
+    processingAuthorized: boolean("processingAuthorized").notNull(),
+    ageConfirmed: boolean("ageConfirmed").notNull(),
+    source: varchar("source", {
+      enum: ["email-signup", "legal-acceptance-page"],
+    }).notNull(),
+    acceptedAt: timestamp("acceptedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    ipAddress: text("ipAddress"),
+    userAgent: text("userAgent"),
+  },
+  (table) => ({
+    userVersionSourceUnique: uniqueIndex(
+      "LegalAcceptance_user_policy_source_unique",
+    ).on(
+      table.userId,
+      table.termsVersion,
+      table.privacyVersion,
+      table.termsHash,
+      table.privacyHash,
+      table.source,
+    ),
+    userAcceptedAtIndex: index("LegalAcceptance_user_acceptedAt_idx").on(
+      table.userId,
+      table.acceptedAt,
+    ),
+  }),
+);
+
 export const session = pgTable("session", {
   id: text("id").primaryKey(),
   expiresAt: timestamp("expires_at").notNull(),
@@ -1555,7 +1597,9 @@ export const lifeModuleType = pgTable("LifeModuleType", {
   /** JSON Schema for the output shape */
   outputSchema: json("outputSchema").notNull(),
   /** Array of tool names the runner requires (['web_search'], etc.) */
-  requiredTools: json("requiredTools").notNull().default(sql`'[]'::jsonb`),
+  requiredTools: json("requiredTools")
+    .notNull()
+    .default(sql`'[]'::jsonb`),
   defaultUi: varchar("defaultUi", { length: 128 })
     .notNull()
     .default("life-interface-classic"),
@@ -1638,9 +1682,13 @@ export const lifeProject = pgTable(
     })
       .notNull()
       .default("draft"),
-    safetyFlags: json("safetyFlags").notNull().default(sql`'{}'::jsonb`),
+    safetyFlags: json("safetyFlags")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     /** Denormalized counters: { totalRuns, lastRunAt, avgCostCents } */
-    stats: json("stats").notNull().default(sql`'{}'::jsonb`),
+    stats: json("stats")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt")
       .notNull()
@@ -1921,7 +1969,9 @@ export const lifeRunEvent = pgTable(
     seq: integer("seq").notNull(),
     /** 'thinking_start' | 'thinking_delta' | 'tool_call' | 'tool_result' | 'output_delta' | 'fs_op' | 'nous_score' | 'error' | 'done' | ... */
     type: varchar("type", { length: 64 }).notNull(),
-    payload: json("payload").notNull().default(sql`'{}'::jsonb`),
+    payload: json("payload")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     at: timestamp("at").notNull().defaultNow(),
   },
   (t) => ({
@@ -1958,7 +2008,9 @@ export const lifeRunSnapshot = pgTable(
     /** Snapshot is accurate up to and INCLUDING this envelope seq. */
     atEventSeq: integer("atEventSeq").notNull(),
     sceneJson: json("sceneJson").notNull(),
-    signalsJson: json("signalsJson").notNull().default(sql`'{}'::jsonb`),
+    signalsJson: json("signalsJson")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (t) => ({
@@ -2410,3 +2462,46 @@ export const baseAuthNonce = pgTable("base_auth_nonce", {
 });
 
 export type BaseAuthNonce = InferSelectModel<typeof baseAuthNonce>;
+
+// ─── swapit commons ───────────────────────────────────────────────────────────
+// Anonymized household-toxics knowledge facts contributed by the `swapit` skill.
+// Content-addressed: identical facts from different contributors share an id and
+// corroborate (count up) rather than duplicate. Only GENERIC facts live here —
+// private inventory never reaches the server (enforced client + server side).
+export const swapitFact = pgTable(
+  "swapit_fact",
+  {
+    // sha256(kind + canonical semantic key), recomputed server-side from the payload
+    id: text("id").primaryKey(),
+    kind: text("kind", {
+      enum: [
+        "product",
+        "item_class_hazard",
+        "alternative",
+        "procurement_option",
+        "item_class",
+      ],
+    }).notNull(),
+    payload: json("payload").$type<Record<string, unknown>>().notNull(),
+    // denormalized ISO-3166-1 alpha-2 region for procurement_option facts (the geographic scale
+    // axis); null for non-geographic kinds. Indexed so "where to buy in <region>" stays cheap.
+    region: text("region"),
+    confidence: numeric("confidence").notNull().default("0.5"),
+    corroborationCount: integer("corroboration_count").notNull().default(1),
+    // sha256-truncated contributor tokens (user id or anon token); never the raw value
+    contributors: json("contributors").$type<string[]>().notNull().default([]),
+    // approved once a 2nd independent contributor corroborates (corroboration-gated)
+    status: text("status", { enum: ["pending", "approved"] })
+      .notNull()
+      .default("pending"),
+    firstSeen: timestamp("first_seen").defaultNow().notNull(),
+    lastSeen: timestamp("last_seen").defaultNow().notNull(),
+  },
+  (t) => [
+    index("swapit_fact_status_last_seen_idx").on(t.status, t.lastSeen),
+    index("swapit_fact_kind_idx").on(t.kind),
+    index("swapit_fact_kind_region_idx").on(t.kind, t.region),
+  ],
+);
+
+export type SwapitFact = InferSelectModel<typeof swapitFact>;

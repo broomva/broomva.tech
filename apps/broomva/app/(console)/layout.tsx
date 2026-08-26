@@ -16,6 +16,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 import { getSafeSession } from "@/lib/auth";
 import { captureServerEvent } from "@/lib/analytics/posthog";
 import { EVENT_CONSOLE_PAGE_VIEWED } from "@/lib/analytics/events";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-acceptance-gate";
 
 export default async function ConsoleLayout({
   children,
@@ -31,6 +32,8 @@ export default async function ConsoleLayout({
   if (!session?.user) {
     redirect("/login");
   }
+
+  await requireCurrentLegalAcceptance(session.user.id);
 
   captureServerEvent(session.user.id, EVENT_CONSOLE_PAGE_VIEWED);
 

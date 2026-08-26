@@ -22,6 +22,7 @@ import { saveChat, saveChatMessages } from "@/lib/db/queries";
 import { ArcanClient } from "@/lib/arcan/client";
 import { resolveArcanEndpoints } from "@/lib/arcan/resolve";
 import type { ChatMessage } from "@/lib/ai/types";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 interface MigrateRequest {
   /** The Arcan session ID assigned to the anonymous session. */
@@ -45,13 +46,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!(await hasCurrentLegalAcceptance(userId))) {
+    return NextResponse.json(
+      { error: "Current legal acceptance required" },
+      { status: 403 },
+    );
+  }
+
   // 2. Validate the anonymous session cookie is present (belongs to this browser).
   const cookieStore = await cookies();
   const anonCookie = cookieStore.get(ANONYMOUS_SESSION_COOKIES_KEY);
   if (!anonCookie?.value) {
     return NextResponse.json(
       { error: "No anonymous session found for this browser" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -59,7 +67,10 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 },
+    );
   }
 
   const { anonymous_session_id, messages, title, project_id } = body;
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
   if (!anonymous_session_id) {
     return NextResponse.json(
       { error: "anonymous_session_id is required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -95,7 +106,7 @@ export async function POST(request: NextRequest) {
     console.error("[migrate-anonymous] DB save failed:", err);
     return NextResponse.json(
       { error: "Failed to save conversation history" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 

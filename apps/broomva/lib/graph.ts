@@ -37,7 +37,12 @@ export interface GraphData {
   links: GraphLink[];
 }
 
-const CONTENT_KINDS: ContentKind[] = ["notes", "projects", "writing", "prompts"];
+const CONTENT_KINDS: ContentKind[] = [
+  "notes",
+  "projects",
+  "writing",
+  "prompts",
+];
 
 const KIND_TO_NODE_TYPE: Record<ContentKind, NodeType> = {
   notes: "note",

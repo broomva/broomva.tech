@@ -6,7 +6,6 @@ import {
   CreditCard,
   Loader2,
   Sparkles,
-  Zap,
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -33,6 +32,7 @@ interface TierData {
   plan: string;
   organizationId: string | null;
   hasStripeCustomer: boolean;
+  canManageBilling: boolean;
   features: string[];
   limits: { maxApiKeys: number; maxMembers: number };
   credits: { remaining: number; monthly: number };
@@ -56,10 +56,10 @@ const PLANS = [
     name: "Free",
     price: "$0",
     period: "forever",
-    credits: "500 credits/mo",
+    credits: "50 included credits",
     features: [
-      "AI chat with community models",
-      "500 AI credits included monthly",
+      "AI chat with selected models",
+      "50 AI credits on entry to the Free plan",
       "Blog and writing access",
       "Basic conversation history",
     ],
@@ -73,45 +73,43 @@ const PLANS = [
     period: "/month",
     credits: "5,000 credits/mo",
     features: [
-      "All AI models (Claude, GPT, Gemini, and more)",
+      "Deployed model catalog (including selected Claude, GPT, and Gemini models)",
       "5,000 AI credits included monthly",
-      "Usage-based overage at $0.01/credit",
       "Console access with usage dashboard",
       "1 API key for programmatic access",
       "Deep research and agent skills",
     ],
     highlighted: true,
-    purchasable: true,
+    purchasable: false,
   },
   {
     key: "team",
     name: "Team",
-    price: "$50",
-    period: "/seat/month",
+    price: "Contact",
+    period: "",
     credits: "20,000 credits/mo",
     features: [
       "Everything in Pro",
       "20,000 AI credits included monthly",
       "Shared workspace and conversations",
       "Up to 10 API keys",
-      "Priority model access",
       "Team member management",
     ],
     highlighted: false,
-    purchasable: true,
+    purchasable: false,
   },
   {
     key: "enterprise",
     name: "Enterprise",
     price: "Custom",
     period: "",
-    credits: "Unlimited credits",
+    credits: "Custom allocation under signed agreement",
     features: [
       "Everything in Team",
       "Managed Life Agent OS instance",
       "Custom subdomain (you.broomva.tech)",
       "Unlimited API keys",
-      "SLA guarantees",
+      "SLA commitments under a separate written agreement",
     ],
     highlighted: false,
     purchasable: false,
@@ -186,9 +184,15 @@ export default function BillingPage() {
   const autoUpgradeTriggered = useRef(false);
   useEffect(() => {
     const planParam = searchParams.get("plan");
-    if (planParam && tier?.organizationId && !autoUpgradeTriggered.current) {
+    const requestedPlan = PLANS.find((plan) => plan.key === planParam);
+    if (
+      requestedPlan?.purchasable &&
+      tier?.organizationId &&
+      tier.canManageBilling &&
+      !autoUpgradeTriggered.current
+    ) {
       autoUpgradeTriggered.current = true;
-      handleUpgrade(planParam);
+      handleUpgrade(requestedPlan.key);
     }
   }, [searchParams, tier]);
 
@@ -283,7 +287,9 @@ export default function BillingPage() {
           </CardHeader>
           <CardFooter>
             <Button asChild>
-              <Link href={"/console/organization" as Route}>Create Organization</Link>
+              <Link href={"/console/organization" as Route}>
+                Create Organization
+              </Link>
             </Button>
           </CardFooter>
         </Card>
@@ -309,7 +315,7 @@ export default function BillingPage() {
             Manage your subscription, credits, and usage.
           </p>
         </div>
-        {tier.hasStripeCustomer && (
+        {tier.hasStripeCustomer && tier.canManageBilling && (
           <Button
             variant="outline"
             onClick={handleManageBilling}
@@ -323,6 +329,11 @@ export default function BillingPage() {
             Manage Billing
           </Button>
         )}
+        {tier.hasStripeCustomer && !tier.canManageBilling ? (
+          <p className="text-sm text-text-muted">
+            An organization owner or admin manages billing.
+          </p>
+        ) : null}
       </div>
 
       {/* Error banner */}
@@ -339,25 +350,20 @@ export default function BillingPage() {
             <div className="flex items-center gap-2">
               <Sparkles className="size-5 text-primary" />
               <CardTitle className="text-lg">
-                Unlock the full platform
+                Paid plans are contact-only
               </CardTitle>
             </div>
             <CardDescription>
-              Upgrade to Pro for all AI models, 5,000 monthly credits, console
-              access, API keys, and deep research capabilities.
+              The intended Pro offer is $29/month with 5,000 monthly credits.
+              New self-service checkout is suspended pending commercial and
+              consumer-flow validation.
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button
-              onClick={() => handleUpgrade("pro")}
-              disabled={actionLoading === "pro"}
-            >
-              {actionLoading === "pro" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Zap className="size-4" />
-              )}
-              Upgrade to Pro — $29/mo
+            <Button asChild>
+              <a href="mailto:contact@broomva.tech?subject=Pro%20Plan">
+                Contact about Pro
+              </a>
             </Button>
           </CardFooter>
         </Card>
@@ -391,8 +397,8 @@ export default function BillingPage() {
               </div>
               <Progress value={creditPercent} />
               <p className="mt-1 text-xs text-muted-foreground">
-                {tier.credits.remaining.toLocaleString()} credits remaining this
-                period
+                {tier.credits.remaining.toLocaleString()} credits remaining
+                {isFreeTier ? "" : " this billing period"}
               </p>
             </div>
           </CardContent>
@@ -502,7 +508,12 @@ export default function BillingPage() {
                 </CardContent>
                 <CardFooter>
                   {isCurrent ? (
-                    <Button variant="outline" size="sm" className="w-full" disabled>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled
+                    >
                       Current Plan
                     </Button>
                   ) : isUpgrade ? (
@@ -519,9 +530,18 @@ export default function BillingPage() {
                       )}
                       Upgrade
                     </Button>
-                  ) : plan.key === "enterprise" ? (
-                    <Button variant="outline" size="sm" className="w-full" asChild>
-                      <a href="mailto:contact@broomva.tech?subject=Enterprise%20Plan">
+                  ) : plan.key === "pro" ||
+                    plan.key === "team" ||
+                    plan.key === "enterprise" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      asChild
+                    >
+                      <a
+                        href={`mailto:contact@broomva.tech?subject=${plan.name}%20Plan`}
+                      >
                         Contact Us
                       </a>
                     </Button>
@@ -546,10 +566,11 @@ export default function BillingPage() {
       <section className="rounded-lg border bg-muted/30 px-6 py-4">
         <h3 className="mb-2 text-sm font-semibold">How credits work</h3>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Every AI request costs credits based on the model and tokens used. 1
-          credit = $0.01. Your plan includes a monthly credit allocation. Pro and
-          Team plans allow overage at $0.01/credit, billed via Stripe at the end
-          of the billing period. Unused credits do not roll over.
+          Every AI request costs credits based on the model and tokens used.
+          Credits are usage units, not stored monetary value. Free receives 50
+          credits on initial registration or transition back from paid and does
+          not reset monthly. Paid allocations reset by billing period. Usage
+          pauses at the plan limit; overage billing is not enabled.
         </p>
       </section>
     </div>

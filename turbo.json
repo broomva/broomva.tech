@@ -115,6 +115,9 @@
     "check:content": {
       "cache": false
     },
+    "check:prerender-cache": {
+      "cache": false
+    },
     "check:public-asset-routes": {
       "cache": false
     }

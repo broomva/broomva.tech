@@ -46,7 +46,7 @@ export async function GET() {
     }),
   );
 
-  const content = `# ${config.appName} — Full Documentation
+  const content = `# ${config.appName} — Extended Site Index
 
 > ${config.appDescription}
 
@@ -61,7 +61,7 @@ The core thesis: democratize creation through AI agents. Anyone should be able t
 - **Runtime**: Next.js 16 on Vercel (Turborepo monorepo)
 - **Agent OS**: Rust workspace — Arcan (runtime), Lago (event-sourced persistence), Autonomic (homeostasis), Praxis (tool execution), Vigil (OpenTelemetry observability), Spaces (SpacetimeDB networking)
 - **Orchestration**: Symphony daemon for coding agent dispatch
-- **AI Models**: ${config.services.aiProviders.join(", ")}
+- **AI routing**: deployment-selected providers may include ${config.services.aiProviders.join(", ")}; names are not availability promises
 - **Design System**: Arcan Glass (dark-first, glass effects, Tailwind v4 + shadcn/ui)
 
 ## Projects
@@ -97,9 +97,9 @@ ${promptEntries.filter(Boolean).join("\n")}
 
 ## Features
 
-- **AI Chat**: Multi-model chat with ${config.services.aiProviders.length} providers, web search, deep research, image generation, code sandbox
+- **AI Chat**: authenticated streaming chat using the deployed model catalog; tools and provider routes depend on active configuration and credentials
 - **Knowledge Graph**: Obsidian vault integration for connected note-taking
-- **Memory Vault**: Lago-backed persistent context for AI conversations
+- **Memory**: persistence is deployment-dependent and not represented as universally available
 - **Content Platform**: MDX-based writing, projects, notes with full-text search
 - **Prompt Library**: Versioned, categorized prompts with API access
 
@@ -107,7 +107,7 @@ ${promptEntries.filter(Boolean).join("\n")}
 
 - Website: ${config.appUrl}
 - Email: ${config.organization.contact.privacyEmail}
-- Organization: ${config.organization.name}
+- Operator: ${config.organization.name}
 `;
 
   return new Response(content, {

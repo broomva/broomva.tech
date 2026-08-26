@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { withAuthAndValidation } from "@/lib/api/with-auth";
-import { getOrganizationById, isOrganizationMember } from "@/lib/db/organization";
+import { getOrganizationById, hasOrganizationRole } from "@/lib/db/organization";
 import { logAudit } from "@/lib/db/audit";
 import { getStripe } from "@/lib/stripe";
 
@@ -23,9 +23,11 @@ export const POST = withAuthAndValidation(
       );
     }
 
-    if (!(await isOrganizationMember(userId, organizationId))) {
+    if (
+      !(await hasOrganizationRole(userId, organizationId, ["owner", "admin"]))
+    ) {
       return NextResponse.json(
-        { error: "Forbidden — not a member of this organization" },
+        { error: "Forbidden — billing access requires an owner or admin" },
         { status: 403 },
       );
     }
@@ -62,4 +64,5 @@ export const POST = withAuthAndValidation(
       );
     }
   },
+  { requireLegalAcceptance: false },
 );

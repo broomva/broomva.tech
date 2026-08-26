@@ -7,13 +7,20 @@ import {
 import { createFeedbackSchema } from "@/lib/prompts/validation";
 import { serializeFeedback } from "@/lib/prompts/serialize";
 import { checkTelemetryRateLimit } from "@/lib/telemetry/rate-limit";
+import { isAdmin } from "@/lib/prompts/admin";
 
 export async function POST(request: Request) {
   const auth = await resolveAuth(request);
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Current legal acceptance required", code: "forbidden" },
+      { status: 403 },
+    );
+  }
 
   const rate = checkTelemetryRateLimit({
     request,
-    userId: auth?.userId ?? null,
+    userId: auth.userId,
   });
   if (!rate.allowed) {
     const retryAfter = Math.max(
@@ -56,7 +63,7 @@ export async function POST(request: Request) {
       invocationId: parsed.data.invocation_id ?? null,
       promptSlug: parsed.data.prompt_slug,
       promptVersion: parsed.data.prompt_version,
-      userId: auth?.userId ?? null,
+      userId: auth.userId,
       signal: parsed.data.signal,
       text: parsed.data.text ?? null,
       source: parsed.data.source,
@@ -75,6 +82,10 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const auth = await resolveAuth(request);
+  if (!auth || !isAdmin(auth.email)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const url = new URL(request.url);
   const promptSlug = url.searchParams.get("prompt_slug");
   if (!promptSlug) {

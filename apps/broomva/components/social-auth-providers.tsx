@@ -38,13 +38,19 @@ function VercelIcon({ className }: { className?: string }) {
   );
 }
 
-export function SocialAuthProviders() {
+export function SocialAuthProviders({ disabled = false }: { disabled?: boolean }) {
   return (
     <div className="space-y-2">
       {config.authentication.google ? (
         <Button
           className="w-full"
-          onClick={() => authClient.signIn.social({ provider: "google" })}
+          disabled={disabled}
+          onClick={() =>
+            authClient.signIn.social({
+              provider: "google",
+              callbackURL: "/legal-acceptance",
+            })
+          }
           type="button"
           variant="outline"
         >
@@ -55,7 +61,13 @@ export function SocialAuthProviders() {
       {config.authentication.github ? (
         <Button
           className="w-full"
-          onClick={() => authClient.signIn.social({ provider: "github" })}
+          disabled={disabled}
+          onClick={() =>
+            authClient.signIn.social({
+              provider: "github",
+              callbackURL: "/legal-acceptance",
+            })
+          }
           type="button"
           variant="outline"
         >
@@ -66,7 +78,13 @@ export function SocialAuthProviders() {
       {config.authentication.vercel ? (
         <Button
           className="w-full"
-          onClick={() => authClient.signIn.social({ provider: "vercel" })}
+          disabled={disabled}
+          onClick={() =>
+            authClient.signIn.social({
+              provider: "vercel",
+              callbackURL: "/legal-acceptance",
+            })
+          }
           type="button"
           variant="outline"
         >

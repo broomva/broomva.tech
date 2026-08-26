@@ -1,0 +1,174 @@
+---
+title: "The Folklore Arrived Before the Physics"
+summary: In six months the field converged on a belief — the harness, not the model, is what matters — and backed it with striking empirics. What it doesn't have is a single theorem about when the loop it now worships converges, oscillates, or collapses. A map of the gap, and the four results that would fill it.
+date: 2026-07-21
+published: true
+audio: /audio/writing/the-folklore-arrived-before-the-physics.mp3
+image: /images/writing/the-folklore-arrived-before-the-physics/hero.jpg
+tags:
+  - rcs
+  - harness-engineering
+  - control-theory
+  - agent-infrastructure
+  - self-improvement
+  - stability
+  - verification
+links:
+  - label: "Part 1 of this pair: The Benchmark Ran Out Before the Loop Did"
+    url: "/writing/the-benchmark-ran-out-before-the-loop-did"
+  - label: "Adapting the Interface, Not the Model (PKU)"
+    url: "https://arxiv.org/abs/2605.22166"
+  - label: "LEVI — Stronger Search Architectures Can Substitute for Larger LLMs"
+    url: "https://arxiv.org/abs/2605.09764"
+  - label: "Look Inward to Explore Outward (IntroLLM)"
+    url: "https://arxiv.org/abs/2602.13035"
+  - label: "A Control-Theoretic Foundation for Agentic Systems (Eslami & Yu)"
+    url: "https://arxiv.org/abs/2603.10779"
+  - label: "Recursive Self-Improvement — the 1,250-paper survey"
+    url: "https://arxiv.org/abs/2607.07663"
+  - label: "RCS research repo"
+    url: "https://github.com/broomva/rcs"
+---
+
+Something remarkable happened in agent research in the first half of 2026, and
+it happened quietly, across papers that do not cite each other: the field
+changed its mind about where an agent's behavior comes from.
+
+The new consensus, in the words of a Peking University group: *"An LLM agent is
+not just an LLM… it is a model embedded in a stateful interaction loop,"* whose
+behavior is *"determined not only by the model, but also by the runtime harness
+that mediates how the model observes the environment, understands tools,
+realizes actions, interprets feedback, and regulates multi-step trajectories."*
+Their system evolves that harness — never touching the model — and improves 116
+of 126 model-environment settings. The striking part: the harness was evolved
+from the failure traces of *one* small model, then transferred, unmodified, to
+seventeen others. It still worked. The harness had captured something about the
+*environment side of the loop* that no model weights contain.
+
+They are not alone. A single-author paper (LEVI) ran the cleanest version of
+the experiment: same model, same evaluation budget, different search
+architectures — and the architecture dominated, with roughly a twelve-fold
+sample-efficiency gap between the best and worst harness wrapped around the
+*identical* model. Another paper this spring is literally titled "Stop
+Comparing LLM Agents Without Disclosing the Harness." The 2026 zeitgeist is
+real, it is empirically grounded, and I believe it: **the loop around the model
+is now a first-order determinant of what these systems can do.**
+
+Here is what the field does not have: a single theorem about that loop.
+
+<video src="/images/writing/the-folklore-arrived-before-the-physics/hero.mp4" poster="/images/writing/the-folklore-arrived-before-the-physics/hero.jpg" controls autoplay muted loop playsinline preload="metadata" style="width:100%;border-radius:12px;margin:24px 0"></video>
+
+## Regulation vocabulary, no regulator theory
+
+![A glowing controller module wired into a feedback loop with clean input and output arrows, while the actual control-theory equations and stability diagram fade to near-invisibility behind it — the vocabulary of regulation without the theory.](/images/writing/the-folklore-arrived-before-the-physics/controller.jpg)
+
+Read the PKU paper closely and you find a component named the **"Trajectory
+Regulation Layer"** — it monitors the interaction, detects loops and degenerate
+trajectories, and intervenes to recover. That is a *controller*. It is named
+like one, it behaves like one, and nowhere in the paper — or its related work,
+or its stated future work — does any control-theoretic question appear. Not
+"when does this converge." Not "what perturbations can it absorb." Not "under
+what conditions does regulation fail." The gap is not acknowledged, because
+from inside the engineering frame the gap is invisible: the system improves
+benchmarks, and benchmarks are the only instrument in the room.
+
+This is not a criticism of one paper. It is the shape of the whole wave. The
+harness-engineering literature and the small control-theoretic literature that
+*does* exist — a McGill group proving exponential stability for agentic loops
+under a margin condition; a security group shipping a Lean-verified Lyapunov
+certificate for a tool-confined agent — have **zero citations between them**.
+Two communities are describing the same object, one with measurements and no
+theory, one with theory and no contact with the systems people actually run.
+
+The field's own 1,250-paper survey of self-improvement, published this month,
+names the situation precisely in its open-problems section: what is missing is
+*"stability engineering as a discipline"* — a unified treatment of *"when
+[loops] converge, oscillate, or collapse"* that *"would replace today's
+per-theme folklore."* Folklore is the survey's word, and it is the right one.
+The field believes the harness is the controller. It cannot yet state what
+that belief *commits it to*.
+
+## What the theorems would actually say
+
+![A phase portrait over a faint vector field showing three trajectories: one spiraling inward to a stable point (converge), one settling into a closed orbit (oscillate), and one diverging off the frame (collapse).](/images/writing/the-folklore-arrived-before-the-physics/phase-portrait.jpg)
+
+Part 1 of this pair showed why this matters now: benchmarks are saturating, so
+the measurable differences between systems are migrating from the model into
+the loop — and loop properties are exactly what the current toolkit cannot
+measure or guarantee. Having spent this year building the control-systems
+account of these loops (the RCS program), here is my map of the four results
+the folklore is missing, each one upgrading a thing the field already believes
+into a thing it can *rely on*.
+
+**1. "Model-agnostic harness" should be a uniform margin, not a transfer
+table.** The PKU result — one harness, seventeen models — is an empirical
+glimpse of something provable: treat the harness as a robust controller and
+the model as a bounded perturbation, and classical control gives you a
+stability margin that holds *uniformly over every model whose deviation stays
+inside the bound* — a set-certificate, one proof covering a model class,
+instead of a per-model benchmark row. The mathematics is not new; it is
+forty-year-old robust control. What is new is the reduction — and the honest
+boundary that comes with it: below a competence threshold the certificate says
+nothing, and that threshold is a *property of the harness you can engineer*,
+not a fact of nature.
+
+**2. The two thresholds move in opposite directions.** Capability scaling
+clears the competence threshold permanently — frontier models execute any
+reasonable harness's intent, and that only improves. But the same scaling
+*erodes* the independence threshold: a stronger optimizer is better at gaming
+whatever verifier closes the loop. The field has each half separately (every
+reward-hacking report is the second half; every "small model + good harness"
+result is the first) but not the composition: **there is a crossover where
+more capability starts hurting loop stability, and its location is a harness
+property.** Notably, whether verifier-gaming actually scales with optimizer
+capability has — as far as I can find — *zero direct measurements in the
+literature*. It is the most consequential unmeasured quantity in agent
+engineering.
+
+**3. The meta-level question is an observability question.** The new wave of
+meta-controlled search (AdaEvolve, ShinkaEvolve, temperature meta-policies)
+tunes exploration schedules from *reward signals* — the same information the
+base loop already has. One paper this spring did something different: it
+conditioned the schedule on the model's *internal hidden states* — a channel
+the reward signal does not carry — and something diagnostic happened in its
+baseline table. The reward-*learned* schedule controller lost to a *fixed
+heuristic*. Learning bought nothing. The internal-state controller beat both,
+and the mechanism their curves show is prevented entropy collapse: a **higher
+converged ceiling, not faster convergence**. One result, properly confounded,
+never framed this way by its authors — but it is exactly the signature the
+control account predicts: *a meta-level lifts the ceiling only if it observes
+something the base level cannot compute from its own state. Control authority
+without observability extension buys speed, never height.* That claim is
+stateable, testable, and absent from the literature.
+
+**4. The stability condition for stacked loops already has a name.** Fast
+inner loop, slow outer loop — every two-timescale system in the wave (the
+skill-evolution papers tune their meta-update horizon by sweep and describe
+the failure mode as "trading reactivity for stability") is rediscovering,
+informally, the timescale-separation condition that stochastic approximation
+theory (Borkar) and simulated annealing formalized decades ago. The theorem
+they need exists. It has simply never been carried across the street.
+
+## The honest position
+
+I want to be precise about what I am and am not claiming. The narrative — 
+develop the harness, not just the model — is the field's now; the empirics
+above belong to the groups who produced them, and all of them (including the
+survey, including my own results) are preprint-grade and should be read that
+way. What I am claiming is the *formal layer*: the reduction that makes
+"model-agnostic" a theorem, the two-threshold crossover, the
+observability-extension condition, the transferred stability theory — and a
+pre-registered experiment, currently being designed on an open-ended substrate
+with the confounds above controlled, that can falsify the most important of
+them. The independence principle from Part 0 said the checker must be causally
+independent of the worker. This pair of posts is the same principle one level
+up: a *belief* about loops is folklore until an instrument independent of the
+believer can refute it. The field built the loops. The instruments are what
+come next.
+
+---
+
+*The RCS program's theorems-in-progress, experiment pre-registrations, and
+negative results ship in the open at the repo linked above. If you are working
+on the control theory of agent loops — or you think one of the four claims
+above is wrong — I want to hear from you.*

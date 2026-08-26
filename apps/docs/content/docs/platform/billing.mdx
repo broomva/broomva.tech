@@ -1,6 +1,6 @@
 ---
 title: Billing & Plans
-description: Plans, credits, usage metering, and Stripe-powered billing.
+description: Current public plans, usage credits, and Stripe-powered billing.
 ---
 
 import { Cards, Card } from "fumadocs-ui/components/card";
@@ -8,164 +8,85 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 # Billing & Plans
 
-Broomva uses a credit-based billing system where 1 credit equals 1 cent USD. Each plan allocates a monthly credit budget that is consumed by API calls, chat messages, and agent executions. Billing is managed through Stripe.
-
-## Plans
-
-The plan definitions are maintained in the `@broomva/billing` package (`plans.ts`). These are the current tiers:
+Broomva uses credits as internal usage units. Credits are not cash, stored
+value, or a promise that one credit always equals a fixed currency amount.
+Free registration remains available. New paid self-service checkout is
+temporarily suspended pending operator, consumer-flow, and Stripe validation;
+Pro, Team, and Enterprise require contact and a separately validated agreement.
 
 <Cards>
-  <Card title="Free — $0/month" description="50 credits ($0.50) per month. Community models (OpenRouter, Ollama). Personal workspace. Hard credit limit — blocked when exhausted." />
-  <Card title="Pro — $29/month" description="5,000 credits ($50.00) per month. All models (Claude, GPT, Gemini). Console access. Soft limit — 120% ceiling with warnings." />
-  <Card title="Team — $99/seat/month" description="20,000 credits ($200.00) per month. Shared team workspace. API keys, member management. Warning-only overage policy." />
-  <Card title="Enterprise — Custom pricing" description="Custom credit allocation. Managed Life instances. SLA guarantees. Dedicated support. Contact sales@broomva.tech." />
+  <Card
+    title="Free — $0"
+    description="50 usage credits on initial registration or transition back from paid. Usage pauses when exhausted."
+  />
+  <Card
+    title="Pro — Contact"
+    description="The intended public price is $29/month, but new self-service checkout is suspended pending validation."
+  />
+  <Card
+    title="Team — Contact"
+    description="Shared workspace and member-management terms require separate validation. No self-service Team checkout."
+  />
+  <Card
+    title="Enterprise — Contact"
+    description="Custom allocation, support, residency options, and SLA commitments apply only when technically validated and included in a signed agreement."
+  />
 </Cards>
 
-### Plan definitions (from source)
-
-The billing package defines each plan as a `PlanDefinition`:
-
-```typescript
-// From @broomva/billing — plans.ts
-const PLAN_DEFINITIONS = {
-  free: {
-    tier: "free",
-    name: "Free",
-    creditsMonthly: 50,     // $0.50
-    priceMonthly: 0,         // $0.00
-  },
-  pro: {
-    tier: "pro",
-    name: "Pro",
-    creditsMonthly: 5000,   // $50.00
-    priceMonthly: 2900,      // $29.00
-  },
-  team: {
-    tier: "team",
-    name: "Team",
-    creditsMonthly: 20000,  // $200.00
-    priceMonthly: 9900,      // $99.00/seat
-  },
-  enterprise: {
-    tier: "enterprise",
-    name: "Enterprise",
-    creditsMonthly: 0,       // Custom
-    priceMonthly: 0,          // Custom
-  },
-};
-```
-
-Each plan maps to a Stripe Product and Price ID in production. The billing package itself does not import Stripe directly -- it receives a `StripeAdapter` interface that the platform provides.
+Prices shown here are the current public USD offer. Taxes, all-in pricing,
+currency presentation, and mandatory consumer remedies depend on the purchaser
+and applicable law and must be shown in the checkout flow where required.
 
 ## Credits
 
-Credits are the internal unit of account for all platform usage. Every interaction with the platform -- sending a chat message, making an API call, running an agent -- costs credits proportional to the compute consumed.
+Credits measure usage against a plan allocation. Model and feature costs can
+vary. The current public behavior is:
 
-### How credits are consumed
+- Free receives 50 credits on initial registration or transition back from paid and does not reset monthly; Pro receives a monthly allocation.
+- Usage pauses when the available allocation is exhausted.
+- Unused credits do not roll over.
+- Metered or invoice overage is not currently enabled.
+- Credits are not redeemable for cash.
 
-Credit cost is determined by the model used and the number of tokens processed:
+Internal billing libraries may contain experimental policy types or nominal
+plan definitions. Those capabilities are not a public offer and do not override
+the Pricing page, Checkout session, or signed customer agreement.
 
-| Model tier | Approximate cost |
-|-----------|-----------------|
-| Small models (Haiku, GPT-4o-mini, Flash) | ~1 credit per 10K tokens |
-| Medium models (Sonnet, GPT-4o) | ~3 credits per 10K tokens |
-| Large models (Opus, o1) | ~15 credits per 10K tokens |
-| Local models (Ollama) | 0 credits (self-hosted) |
+## Checkout and renewal
 
-Token counts include both input and output tokens. Cached input tokens may be charged at a reduced rate depending on the provider.
+When re-enabled after validation, Pro checkout will be hosted by Stripe. Before confirming payment, review the price,
+billing interval, automatic renewal, cancellation timing, taxes, and applicable
+refund terms shown in Checkout. The worktree also requests Stripe's Terms of
+Service consent control; it still requires an actual test-mode Checkout receipt
+and the correct Stripe Dashboard public Terms URL before deployment.
 
-### Credit balance
-
-Your credit balance is visible in the console dashboard. The billing package tracks a `CreditBalance` with:
-
-- **Allocated** -- your plan's monthly credit budget
-- **Consumed** -- credits used so far this period
-- **Remaining** -- credits available for the rest of the period
-- **Usage percent** -- percentage of allocation consumed
-- **Projected days remaining** -- estimated days until credits are exhausted, based on your daily burn rate
-
-### Billing period
-
-Credits reset on the first day of each billing period (30-day cycles starting from your subscription date). Unused credits do not roll over.
-
-## Overage handling
-
-Each plan has a different overage policy that determines what happens when you approach or exceed your credit allocation. The policies are defined in the `@broomva/billing` package:
-
-```typescript
-// From @broomva/billing — credits.ts
-const PLAN_OVERAGE_POLICY: Record<PlanTier, OveragePolicy> = {
-  free: "hard_limit",   // Blocked when credits are exhausted
-  pro: "soft_limit",    // Warning, then blocked at 120%
-  team: "warn",         // Warnings but rarely blocked
-  enterprise: "warn",   // Custom configuration
-};
-```
-
-| Plan | Policy | Behavior |
-|------|--------|----------|
-| **Free** | `hard_limit` | Requests return HTTP 402 (`credits_exhausted`) when credits reach 0. Upgrade to continue. |
-| **Pro** | `soft_limit` | Requests are allowed up to 120% of your allocation with warnings. Blocked beyond that ceiling. |
-| **Team** | `warn` | Warnings are shown but requests are rarely blocked. Overage is billed at the end of the period. |
-| **Enterprise** | `warn` | Configured during provisioning. Typically warning-only with custom ceilings. |
-
-The overage check returns an `OverageResult`:
-
-```typescript
-interface OverageResult {
-  inOverage: boolean;
-  overageAmount: number;  // cents, 0 if not in overage
-  policy: OveragePolicy;
-  blocked: boolean;
-  message: string;        // user-facing explanation
-}
-```
+Existing subscriptions renew under their agreed terms until canceled. The Customer Portal can manage or
+cancel an eligible subscription. Access ordinarily continues through the paid
+period, subject to mandatory law and the current Terms.
 
 <Callout type="warn">
-  When a request is blocked due to credit exhaustion, the API returns HTTP 402 with error code `credits_exhausted`. The chat UI displays a prompt to upgrade your plan or wait for the next billing period.
+  “Non-refundable” is not absolute. Mandatory withdrawal, refund, reversal,
+  guarantee, or cancellation rights remain available where applicable.
 </Callout>
 
-## Plan changes
+## Payment and PCI boundary
 
-You can upgrade or downgrade your plan at any time from the console. The `changePlan()` function in `@broomva/billing` orchestrates the change:
+Stripe-hosted Checkout handles payment-card entry, and Broomva does not intend
+to store full card numbers. Outsourcing card entry can reduce PCI scope; it does
+not by itself prove PCI DSS compliance or remove the merchant's ongoing duties.
 
-- **Upgrades** take effect immediately. Your credit balance is increased by the difference between the new and old allocations (prorated for the remainder of the billing period). Stripe creates prorated charges via `create_prorations` behavior.
-- **Downgrades** take effect immediately. Your remaining credits are capped at the new allocation if they exceed it. The Stripe subscription is updated without proration.
-- **Lateral** changes (same tier) are no-ops.
-- **Enterprise** upgrades require a conversation with our sales team. The `changePlan()` function throws a `PlanChangeNotAllowedError` if you attempt to upgrade to enterprise programmatically. Contact [sales@broomva.tech](mailto:sales@broomva.tech).
+## Billing administration
 
-Every plan change is recorded in the audit log with the previous plan, new plan, direction, and credit adjustment.
+Only organization owners and admins may start Checkout or open the billing
+portal. Team and Enterprise are not available through public self-service.
 
-## Payment methods
+## Webhook status
 
-Payments are processed through Stripe. You can add a credit card or debit card from the console billing page. Stripe handles PCI compliance -- Broomva never stores card details directly.
+Stripe webhook signatures are verified. Event-ID deduplication and
+transactional, invoice-keyed credit grants remain an open engineering control;
+until that is implemented and tested, webhook processing must not be described
+as idempotent.
 
-The billing package uses a `StripeAdapter` interface to abstract Stripe operations:
-
-- `createCustomer()` -- creates a Stripe customer for the organization
-- `createSubscription()` -- creates a subscription with the plan's Price ID
-- `updateSubscription()` -- updates the subscription on plan changes
-- `cancelSubscription()` -- cancels the subscription on downgrade to free
-
-## Stripe webhooks
-
-The platform processes Stripe webhook events at `POST /api/stripe` to keep billing state synchronized:
-
-| Webhook event | Platform action |
-|---------------|-----------------|
-| `customer.subscription.created` | Activate paid plan, set credit allocation |
-| `customer.subscription.updated` | Reflect plan changes |
-| `customer.subscription.deleted` | Downgrade to free tier |
-| `invoice.payment_succeeded` | Confirm payment, extend billing period |
-| `invoice.payment_failed` | Send notification to organization owner |
-
-Webhook events are validated using the Stripe signature and processed idempotently.
-
-## Invoices
-
-Monthly invoices are generated by Stripe and available from the console billing page. Each invoice shows:
-
-- Base subscription charge
-- Any overage charges (for soft-limit plans)
-- Applied discounts or credits
-- Tax (if applicable)
+See the [Terms of Service](https://broomva.tech/terms),
+[Privacy Policy](https://broomva.tech/privacy), and
+[Pricing](https://broomva.tech/pricing) for the current public offer.
