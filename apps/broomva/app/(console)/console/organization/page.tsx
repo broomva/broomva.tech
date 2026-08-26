@@ -42,20 +42,19 @@ interface Member {
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  free: ["Community models only", "50 credits/month"],
+  free: ["Selected models", "50 credits at signup"],
   pro: [
-    "All AI models",
+    "Deployed model catalog",
     "Console dashboard",
     "API keys (1)",
     "Deep research",
     "5,000 credits/month",
   ],
   team: [
-    "All AI models",
+    "Deployed model catalog",
     "Console dashboard",
     "API keys (10)",
     "Deep research",
-    "Priority model queue",
     "Shared workspace",
     "20,000 credits/month",
   ],
@@ -63,7 +62,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "Everything in Team",
     "Managed Life instance",
     "Custom domain",
-    "SLA guarantees",
+    "SLA commitments under a separate signed agreement",
     "Custom credits",
   ],
 };
@@ -346,7 +345,9 @@ export default function OrganizationPage() {
                 type="text"
                 value={newSlug}
                 onChange={(e) =>
-                  setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
+                  setNewSlug(
+                    e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                  )
                 }
                 placeholder="my-company"
                 className="glass-input w-full rounded-md border border-[var(--ag-border-subtle)] bg-transparent px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-[var(--ag-accent)]"
@@ -502,7 +503,7 @@ export default function OrganizationPage() {
                   Unlock more with Pro
                 </p>
                 <p className="mt-1 text-xs text-text-secondary">
-                  Get access to all AI models, console, API keys, and 5,000
+                  Get access to the deployed model catalog, console, API keys, and 5,000
                   monthly credits.
                 </p>
               </div>
@@ -695,7 +696,9 @@ export default function OrganizationPage() {
                 type="text"
                 value={newSlug}
                 onChange={(e) =>
-                  setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
+                  setNewSlug(
+                    e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                  )
                 }
                 placeholder="my-company"
                 className="w-full rounded-md border border-[var(--ag-border-subtle)] bg-transparent px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-[var(--ag-accent)]"

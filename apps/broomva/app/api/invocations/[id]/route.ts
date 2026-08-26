@@ -24,17 +24,13 @@ export async function PATCH(
 
   const auth = await resolveAuth(request);
 
-  // Ownership check: if the row is bound to a user, only that user
-  // (authenticated) may update it. Anonymous-owned rows (userId=null) are
-  // fair game for anyone holding the id — they were anonymous to begin
-  // with.
-  if (existing.userId) {
-    if (!auth || auth.userId !== existing.userId) {
-      return NextResponse.json(
-        { error: "Not your invocation", code: "auth_mismatch" },
-        { status: 403 },
-      );
-    }
+  // Anonymous invocation creation is retired. Legacy userId=null rows lack
+  // ownership evidence and fail closed rather than treating a UUID as access.
+  if (!existing.userId || !auth || auth.userId !== existing.userId) {
+    return NextResponse.json(
+      { error: "Not your invocation", code: "auth_mismatch" },
+      { status: 403 },
+    );
   }
 
   if (existing.status !== "pulled") {

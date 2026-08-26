@@ -411,8 +411,15 @@ export function getClientIP(
     return request.ip;
   }
 
-  // Fallback: use the rightmost x-forwarded-for entry (proxy-appended)
-  const forwarded = request.headers.get("x-forwarded-for");
+  return getTrustedClientIPFromHeaders(request.headers) ?? "127.0.0.1";
+}
+
+/** Extract only platform-observed IP headers, without inventing a fallback. */
+export function getTrustedClientIPFromHeaders(
+  requestHeaders: Headers,
+): string | null {
+  // Use the rightmost x-forwarded-for entry (proxy-appended).
+  const forwarded = requestHeaders.get("x-forwarded-for");
   if (forwarded) {
     const parts = forwarded.split(",").map((s) => s.trim());
     // Rightmost non-empty entry is the one the trusted proxy added
@@ -420,8 +427,8 @@ export function getClientIP(
     if (trustedIp) return trustedIp;
   }
 
-  const realIp = request.headers.get("x-real-ip");
+  const realIp = requestHeaders.get("x-real-ip");
   if (realIp) return realIp;
 
-  return "127.0.0.1";
+  return null;
 }

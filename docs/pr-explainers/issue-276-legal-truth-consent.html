@@ -1,0 +1,318 @@
+<!--
+---
+type: pr-explainer
+slug: legal-truth-consent-issue-276
+status: proposed
+created: "2026-08-09"
+related:
+  - "https://github.com/broomva/broomva.tech/issues/276"
+---
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Legal truth and consent remediation</title>
+    <style>
+      :root {
+        --bg: #101612;
+        --card: #19211b;
+        --ink: #eef3ed;
+        --muted: #aeb9af;
+        --line: #344238;
+        --blue: #7bc8ff;
+        --green: #84d8a8;
+        --amber: #f1c979;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.55 ui-sans-serif,
+          system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1100px;
+        margin: auto;
+        padding: 56px 24px 80px;
+      }
+      h1 {
+        max-width: 900px;
+        margin: 0 0 16px;
+        font:
+          700 clamp(36px, 6vw, 68px)/1 Georgia,
+          serif;
+        letter-spacing: -0.03em;
+      }
+      h2 {
+        margin-top: 38px;
+        font:
+          700 28px Georgia,
+          serif;
+      }
+      .lede {
+        max-width: 800px;
+        color: var(--muted);
+        font-size: 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+      }
+      .card,
+      .flow {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--card);
+        padding: 22px;
+      }
+      .tag {
+        color: var(--blue);
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.09em;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      .step {
+        padding: 15px;
+        border-left: 3px solid var(--green);
+      }
+      .step b {
+        display: block;
+      }
+      .step span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--card);
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 13px;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        color: var(--amber);
+      }
+      code {
+        color: var(--blue);
+      }
+      a {
+        color: var(--blue);
+      }
+      @media (max-width: 760px) {
+        .grid,
+        .flow {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="tag">ISSUE 276 · ADVERSARIAL REMEDIATION</div>
+      <h1>Make the public surface match the system that actually exists.</h1>
+      <p class="lede">
+        This worktree does not claim compliance. It removes unsupported identity
+        and product claims, adds affirmative choices at several processing and
+        payment entry points, publishes a qualified provider inventory, and
+        narrows technical exposure. Merge, deployment, operational evidence, and
+        counsel review remain separate gates.
+      </p>
+
+      <h2>Before → after</h2>
+      <div class="grid">
+        <section class="card">
+          <h3>Identity and contracts</h3>
+          <p>
+            <strong>Before:</strong> unsupported “Broomva Tech Corp,” U.S.-wide
+            venue, browsewrap, missing output allocation.
+          </p>
+          <p>
+            <strong>Worktree:</strong> replaces the unsupported label with the
+            current internal operator record, adds policy-manifest-hashed
+            clickwrap receipts for email, requires pre-OAuth confirmation plus
+            an authoritative post-OAuth receipt, requires 18+ confirmation, and
+            adds mandatory-right carve-outs plus qualified output allocation.
+            Registry, NIT, address, and authority remain unverified.
+          </p>
+        </section>
+        <section class="card">
+          <h3>Privacy and AI</h3>
+          <p>
+            <strong>Before:</strong> optional telemetry loaded automatically;
+            Sentry replay could capture prompts; provider list was incomplete.
+          </p>
+          <p>
+            <strong>Worktree:</strong> browser analytics opt-in, local-storage
+            plus cookie withdrawal persistence with a visible fail-closed error
+            if both stores are blocked, replay off, qualified disclosures
+            including Langfuse and Base flows, and an AI interaction notice
+            beside the chat composer. Historical telemetry and legacy public
+            blobs still need review.
+          </p>
+        </section>
+        <section class="card">
+          <h3>Pricing and security</h3>
+          <p>
+            <strong>Before:</strong> 500 vs 50 Free credits, nonexistent
+            overage, per-seat mismatch, broad CSP, privacy-linked security.txt.
+          </p>
+          <p>
+            <strong>Worktree:</strong> public Free claims match configured
+            credits, paid self-service and public-blob creation default off,
+            unsupported overage is withdrawn, enterprise promises are qualified,
+            production script sources are narrowed, and a scoped VDP replaces
+            the Privacy-policy destination.
+          </p>
+        </section>
+      </div>
+
+      <h2>Consent and billing flow</h2>
+      <div class="flow">
+        <div class="step">
+          <b>Visit</b
+          ><span
+            >Essential storage only; optional browser analytics remain
+            off.</span
+          >
+        </div>
+        <div class="step">
+          <b>Choose</b
+          ><span
+            >Accept analytics or Essential only; persistent control reopens
+            preferences.</span
+          >
+        </div>
+        <div class="step">
+          <b>Create account</b
+          ><span
+            >Email clickwrap, or pre-OAuth confirmation followed by an
+            authoritative post-OAuth receipt, records Terms, service-data
+            authorization, age, policy hashes, and request evidence.</span
+          >
+        </div>
+        <div class="step">
+          <b>Use service</b
+          ><span
+            >Protected pages, tRPC, chat, token issuance, and selected API
+            boundaries require the current receipt; anonymous prompt dispatch is
+            disabled. Accepted Life bearer tokens preserve supported CLI writes,
+            with handler-level identity and acceptance rechecks.</span
+          >
+        </div>
+      </div>
+
+      <h2>Boundary decisions</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Boundary</th>
+            <th>Implemented</th>
+            <th>Deliberately not claimed</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Analytics</td>
+            <td>
+              Browser PostHog, Vercel Analytics and Speed Insights are
+              consent-gated.
+            </td>
+            <td>
+              Server-side operational events are disclosed separately; no
+              blanket “zero analytics.”
+            </td>
+          </tr>
+          <tr>
+            <td>AI data</td>
+            <td>
+              Known gateway, model, telemetry, onchain, runtime, and
+              tool-provider categories are disclosed as a non-contractual
+              inventory.
+            </td>
+            <td>
+              No completeness, ZDR, or provider no-training promise without
+              runtime, dashboard, and contract evidence.
+            </td>
+          </tr>
+          <tr>
+            <td>Security</td>
+            <td>
+              Replay off, default PII off, CSP tightened, frame denial, VDP
+              published.
+            </td>
+            <td>
+              No SOC 2, penetration-test, RLS, tamper-evident log, or
+              perfect-security claim.
+            </td>
+          </tr>
+          <tr>
+            <td>Commercial readiness</td>
+            <td>
+              New paid self-service is default-off; owner/admin role is
+              enforced; the existing-customer cancellation portal remains
+              reachable.
+            </td>
+            <td>
+              No paid launch until NIT/address/phone, COP/tax, PQR/remedies,
+              Stripe dashboard, refund, PCI, and test-mode receipts are
+              validated.
+            </td>
+          </tr>
+          <tr>
+            <td>Legal readiness</td>
+            <td>
+              Unsupported claims are narrowed and current-policy reacceptance is
+              enforced at central browser/API boundaries.
+            </td>
+            <td>
+              Transfers, retention schedule, RNBD, IP chain, legacy
+              telemetry/blob review, historic users/invoices, and counsel gates
+              remain tracked.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Verification receipt</h2>
+      <div class="card">
+        <p>
+          Final-candidate receipts, run immediately before staging the
+          content-identical index:
+          <code>732 passed / 5 skipped</code> full unit tests, targeted boundary
+          suites,
+          <code>next typegen + tsc --noEmit</code>, changed-file Biome,
+          content/link checks, and <code>drizzle-kit check</code> all passed.
+          Disposable-database migration,
+          browser/preview, CI, and production receipts remain pending.
+          Engineering evidence is not legal validation.
+        </p>
+        <p>
+          Canonical tracker:
+          <a href="https://github.com/broomva/broomva.tech/issues/276"
+            >broomva.tech issue 276</a
+          >.
+        </p>
+      </div>
+    </main>
+  </body>
+</html>

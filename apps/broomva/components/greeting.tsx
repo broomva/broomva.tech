@@ -23,5 +23,14 @@ export const Greeting = () => (
     >
       How can I help you today?
     </motion.div>
+    <motion.p
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-4 max-w-xl text-sm text-text-muted"
+      initial={{ opacity: 0, y: 8 }}
+      transition={{ delay: 0.7 }}
+    >
+      You are interacting with an AI system. Responses can be wrong or
+      incomplete—verify important information before relying on it.
+    </motion.p>
   </div>
 );

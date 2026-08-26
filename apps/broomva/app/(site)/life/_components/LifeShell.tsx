@@ -63,6 +63,7 @@ export function LifeShell({
   suggestions,
   user,
 }: Props) {
+  const canRun = user?.kind === "user";
   const { tweaks, setTweaks } = usePersistedTweaks();
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const [animaOpen, setAnimaOpen] = useState(false);
@@ -93,7 +94,7 @@ export function LifeShell({
   // Live-only run state. The user's first message begins the first turn.
   const [state, setState, liveMeta] = useProsoponRun({
     projectSlug,
-    enabled: true,
+    enabled: canRun,
     autoStart: false,
     hydrateSessionId: initialHydrateIdRef.current,
   });
@@ -192,10 +193,14 @@ export function LifeShell({
           running={running}
           setToolHighlight={setToolHighlight}
           toolHighlight={toolHighlight}
-          onSendMessage={liveMeta.sendMessage}
+          onSendMessage={canRun ? liveMeta.sendMessage : undefined}
           modelLabel="openai/gpt-5-mini"
           emptyStateTitle={emptyTitle}
-          emptyStateHint={emptyHint}
+          emptyStateHint={
+            canRun
+              ? emptyHint
+              : "Sign in and accept the current Terms and Privacy Policy to run prompts."
+          }
           suggestions={suggestions}
         />
         <MiddleColumn

@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { getRecentInvocations } from "@/lib/db/queries";
 import { serializeInvocation } from "@/lib/prompts/serialize";
+import { resolveAuth } from "@/lib/prompts/resolve-auth";
+import { isAdmin } from "@/lib/prompts/admin";
 
 const VALID_SOURCES = ["web", "cli", "skill", "api"] as const;
 type Source = (typeof VALID_SOURCES)[number];
 
 export async function GET(request: Request) {
+  const auth = await resolveAuth(request);
+  if (!auth || !isAdmin(auth.email)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const url = new URL(request.url);
   const promptSlug = url.searchParams.get("prompt_slug") ?? undefined;
   const sourceParam = url.searchParams.get("source");

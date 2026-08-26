@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { mintTier1ForConsumer } from "@/lib/auth/lifegw-jwt";
 import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 /**
  * POST /api/auth/lifegw-token
@@ -50,8 +51,15 @@ export async function POST(request: Request) {
   }
 
   const claims = await verifyLifeJWT(hs256);
-  if (!claims || !claims.sub) {
+  if (!claims?.sub) {
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+  }
+
+  if (!(await hasCurrentLegalAcceptance(claims.sub))) {
+    return NextResponse.json(
+      { error: "current_legal_acceptance_required" },
+      { status: 403 },
+    );
   }
 
   try {

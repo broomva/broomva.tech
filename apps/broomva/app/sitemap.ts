@@ -6,12 +6,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
   const now = new Date();
 
-  const [projectSlugs, writingSlugs, noteSlugs, promptSlugs] = await Promise.all([
-    getAllSlugs("projects"),
-    getAllSlugs("writing"),
-    getAllSlugs("notes"),
-    getAllSlugs("prompts"),
-  ]);
+  const [projectSlugs, writingSlugs, noteSlugs, promptSlugs] =
+    await Promise.all([
+      getAllSlugs("projects"),
+      getAllSlugs("writing"),
+      getAllSlugs("notes"),
+      getAllSlugs("prompts"),
+    ]);
 
   const staticEntries: MetadataRoute.Sitemap = [
     { url: `${baseUrl}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },

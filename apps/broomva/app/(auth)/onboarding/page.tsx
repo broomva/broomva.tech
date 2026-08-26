@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { getSafeSession } from "@/lib/auth";
 import { getUserOrganizations } from "@/lib/db/organization";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-acceptance-gate";
 import { captureServerEvent } from "@/lib/analytics/posthog";
 import {
   EVENT_ONBOARDING_STARTED,
@@ -30,6 +31,8 @@ export default async function OnboardingPage({
   if (!session?.user) {
     redirect((plan ? `/login?plan=${plan}` : "/login") as Route);
   }
+
+  await requireCurrentLegalAcceptance(session.user.id);
 
   const orgs = await getUserOrganizations(session.user.id);
   const hasExistingOrg = orgs.length > 0;

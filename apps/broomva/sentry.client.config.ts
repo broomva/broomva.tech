@@ -6,16 +6,13 @@ Sentry.init({
   // Capture 10% of traces in production; 100% in preview/dev
   tracesSampleRate: process.env.VERCEL_ENV === "production" ? 0.1 : 1.0,
 
-  // Capture 10% of session replays in production
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-
-  integrations: [
-    Sentry.replayIntegration({
-      maskAllText: false,
-      blockAllMedia: false,
-    }),
-  ],
+  // Error/performance telemetry is treated as an essential security and
+  // reliability control. Session replay is deliberately disabled: it can
+  // capture prompts, account data, and user-authored content that is not
+  // necessary to diagnose an exception.
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: 0,
+  sendDefaultPii: false,
 
   debug: false,
 });

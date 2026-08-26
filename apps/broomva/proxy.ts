@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
 import { getSafeSession } from "@/lib/auth";
+import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 // ── Public route allowlists (single source of truth) ────────────────────────
 
@@ -17,6 +19,8 @@ const PUBLIC_PAGE_PREFIXES = [
   "/share/",
   "/privacy",
   "/terms",
+  "/security",
+  "/subprocessors",
   "/pricing",
   "/skills",
   // Swapit commons (BRO-1547): the public household-toxics where-to-buy dataset.
@@ -69,22 +73,18 @@ const PUBLIC_API_PREFIXES = [
   "/api/relay",
   "/api/install",
   "/api/debug",
-  // Life Runtime: the /api/life/run/[project] route does its own consumer
-  // resolution (session | anon | x402) inside the handler and responds
-  // with 402 Payment Required when payment is needed. Middleware must let
-  // the request through so the handler can pick the right path.
+  // Life Runtime handlers enforce current legal acceptance before processing
+  // prompts. Public read-only Life pages remain reachable through the proxy.
   "/api/life",
-  // Prompts eval engine (Phase 1 telemetry plane). These endpoints are
-  // anonymous-OK by design — the CLI and Claude Code skill emit
-  // invocation beacons from terminals that may have no session cookie.
-  // Per-IP and per-user rate limits enforced inside each handler.
+  // Prompt-evaluation reads remain public. Writes require either a current
+  // browser session or a current Life bearer token (enforced below).
   "/api/invocations",
   "/api/feedback",
   "/api/metrics",
   // Swapit commons (BRO-1547): the anonymized household-toxics knowledge commons.
   // GET serves only approved facts (browse/pull from the skill's `swapit sync`);
-  // POST contributes a generic, content-addressed fact. Anonymous-OK by design —
-  // the `swapit` CLI syncs from terminals with no session cookie. The handler does
+  // POST contributes a generic, content-addressed fact and requires a current
+  // browser session or Life bearer. The handler rechecks and attributes auth.
   // its own trust enforcement (per-kind Zod, the scanForbidden privacy backstop,
   // payload-size caps, server-derived contributor identity = session user OR client
   // IP) and per-IP/per-user rate limits, so it MUST NOT 307→/login (the CLI can't
@@ -116,6 +116,20 @@ const METADATA_ROUTES = [
   "/manifest.webmanifest",
   "/llms.txt",
   "/llms-full.txt",
+] as const;
+
+const ACCEPTANCE_REQUIRED_ANONYMOUS_WRITE_PREFIXES = [
+  "/api/invocations",
+  "/api/feedback",
+  "/api/prompts",
+  "/api/swapit",
+] as const;
+
+const ACCEPTED_BEARER_WRITE_PREFIXES = [
+  "/api/invocations",
+  "/api/feedback",
+  "/api/prompts",
+  "/api/swapit",
 ] as const;
 
 // ── CORS allowlist for /api/* (absorbed from former middleware.ts) ──────────
@@ -219,8 +233,41 @@ function isMetadataRoute(pathname: string): boolean {
   return (METADATA_ROUTES as readonly string[]).includes(pathname);
 }
 
+function isAcceptanceRequiredAnonymousWrite(
+  pathname: string,
+  method: string,
+): boolean {
+  if (method === "GET" || method === "HEAD") return false;
+  return ACCEPTANCE_REQUIRED_ANONYMOUS_WRITE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function mayUseAcceptedBearerForWrite(pathname: string): boolean {
+  return ACCEPTED_BEARER_WRITE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+async function acceptedBearerUserId(req: NextRequest): Promise<string | null> {
+  const authorization = req.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+
+  const claims = await verifyLifeJWT(authorization.slice(7));
+  if (!claims || !(await hasCurrentLegalAcceptance(claims.sub))) return null;
+  return claims.sub;
+}
+
 function isAuthPage(pathname: string): boolean {
   return pathname.startsWith("/login") || pathname.startsWith("/register");
+}
+
+function mayProceedWithoutCurrentAcceptance(pathname: string): boolean {
+  return (
+    pathname === "/legal-acceptance" ||
+    pathname.startsWith("/api/auth/") ||
+    pathname === "/api/stripe/portal"
+  );
 }
 
 // ── Security headers ────────────────────────────────────────────────────────
@@ -338,12 +385,50 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // Always allow metadata, public pages, and public API routes
-  if (
-    isMetadataRoute(pathname) ||
-    isPublicPage(pathname) ||
-    isPublicApiRoute(pathname)
-  ) {
+  // Always allow metadata and public pages.
+  if (isMetadataRoute(pathname) || isPublicPage(pathname)) {
+    return withSecurityHeaders(req, nextWithTenant());
+  }
+
+  // Public API routes remain reachable anonymously. If a browser session is
+  // present, however, it may not use those routes to bypass a required policy
+  // update. Bearer-token routes enforce the policy hash in their handlers.
+  if (isPublicApiRoute(pathname)) {
+    const { data: publicApiSession } = await getSafeSession({
+      fetchOptions: { headers: req.headers },
+    });
+    if (
+      !publicApiSession?.user?.id &&
+      isAcceptanceRequiredAnonymousWrite(pathname, req.method)
+    ) {
+      const bearerUserId = mayUseAcceptedBearerForWrite(pathname)
+        ? await acceptedBearerUserId(req)
+        : null;
+      if (!bearerUserId) {
+        return withSecurityHeaders(
+          req,
+          NextResponse.json(
+            {
+              error: "Authentication and current legal acceptance are required",
+            },
+            { status: 403 },
+          ),
+        );
+      }
+    }
+    if (
+      publicApiSession?.user?.id &&
+      !mayProceedWithoutCurrentAcceptance(pathname) &&
+      !(await hasCurrentLegalAcceptance(publicApiSession.user.id))
+    ) {
+      return withSecurityHeaders(
+        req,
+        NextResponse.json(
+          { error: "Current legal acceptance required" },
+          { status: 403 },
+        ),
+      );
+    }
     return withSecurityHeaders(req, nextWithTenant());
   }
 
@@ -376,6 +461,26 @@ export async function proxy(req: NextRequest) {
     const loginUrl = new URL("/login", url);
     if (plan) loginUrl.searchParams.set("plan", plan);
     return withSecurityHeaders(req, NextResponse.redirect(loginUrl));
+  }
+
+  if (
+    session?.user?.id &&
+    !mayProceedWithoutCurrentAcceptance(pathname) &&
+    !(await hasCurrentLegalAcceptance(session.user.id))
+  ) {
+    if (pathname.startsWith("/api/")) {
+      return withSecurityHeaders(
+        req,
+        NextResponse.json(
+          { error: "Current legal acceptance required" },
+          { status: 403 },
+        ),
+      );
+    }
+    return withSecurityHeaders(
+      req,
+      NextResponse.redirect(new URL("/legal-acceptance", url)),
+    );
   }
 
   return withSecurityHeaders(req, nextWithTenant());

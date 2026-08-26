@@ -1,0 +1,7 @@
+# Advisory ownership routing for security policy and risk exceptions.
+# Repository rules currently do not enforce CODEOWNERS approval.
+/scripts/audit-dependencies.ts @broomva
+/scripts/audit-dependencies.test.ts @broomva
+/scripts/dependency-audit-baseline.json @broomva
+/.github/workflows/ci.yml @broomva
+/.github/workflows/security.yml @broomva

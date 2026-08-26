@@ -32,44 +32,12 @@ const PLANS = [
     name: "Free",
     price: "$0",
     period: "forever",
-    credits: "500 credits/mo",
+    credits: "50 included credits",
     features: [
-      "AI chat with community models",
-      "500 AI credits included monthly",
+      "AI chat with selected models",
+      "50 AI credits on entry to the Free plan",
       "Blog and writing access",
       "Basic conversation history",
-    ],
-    highlighted: false,
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    price: "$29",
-    period: "/month",
-    credits: "5,000 credits/mo",
-    features: [
-      "All AI models (Claude, GPT, Gemini, and more)",
-      "5,000 AI credits included monthly",
-      "Usage-based overage at $0.01/credit",
-      "Console access with usage dashboard",
-      "1 API key for programmatic access",
-      "Deep research and agent skills",
-    ],
-    highlighted: true,
-  },
-  {
-    key: "team",
-    name: "Team",
-    price: "$50",
-    period: "/seat/month",
-    credits: "20,000 credits/mo",
-    features: [
-      "Everything in Pro",
-      "20,000 AI credits included monthly",
-      "Shared workspace and conversations",
-      "Up to 10 API keys",
-      "Priority model access",
-      "Team member management",
     ],
     highlighted: false,
   },
@@ -91,7 +59,7 @@ interface OnboardingFormProps {
 // ---------------------------------------------------------------------------
 
 export function OnboardingForm({
-  plan: initialPlan,
+  plan: _initialPlan,
   hasExistingOrg,
   existingOrgId,
   userName,
@@ -102,9 +70,7 @@ export function OnboardingForm({
   // If user already has an org, skip to step 2
   const [step, setStep] = useState<1 | 2>(hasExistingOrg ? 2 : 1);
   const [orgId, setOrgId] = useState<string | undefined>(existingOrgId);
-  const [selectedPlan, setSelectedPlan] = useState<string>(
-    initialPlan ?? "free",
-  );
+  const [selectedPlan, setSelectedPlan] = useState<string>("free");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -262,8 +228,7 @@ export function OnboardingForm({
         </Card>
 
         <div className="text-balance text-center text-muted-foreground text-xs [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-          By continuing, you agree to our{" "}
-          <Link href="/terms">Terms of Service</Link> and{" "}
+          Review our <Link href="/terms">Terms of Service</Link> and{" "}
           <Link href="/privacy">Privacy Policy</Link>.
         </div>
       </div>
@@ -282,7 +247,7 @@ export function OnboardingForm({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {PLANS.map((p) => {
           const isSelected = selectedPlan === p.key;
 
@@ -365,8 +330,7 @@ export function OnboardingForm({
             </>
           ) : (
             <>
-              Continue with{" "}
-              {PLANS.find((p) => p.key === selectedPlan)?.name}
+              Continue with {PLANS.find((p) => p.key === selectedPlan)?.name}
               <ArrowRight className="ml-2 size-4" />
             </>
           )}
@@ -397,7 +361,8 @@ export function OnboardingForm({
       </div>
 
       <div className="text-balance text-center text-muted-foreground text-xs [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-        All plans include the open-source agent platform.{" "}
+        Paid plans renew monthly until canceled. Stripe will show the price,
+        renewal terms, and required Terms acceptance before purchase.{" "}
         <Link href="/terms">Terms of Service</Link> and{" "}
         <Link href="/privacy">Privacy Policy</Link>.
       </div>

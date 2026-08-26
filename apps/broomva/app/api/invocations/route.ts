@@ -7,10 +7,16 @@ import { createInvocationSchema } from "@/lib/prompts/validation";
 
 export async function POST(request: Request) {
   const auth = await resolveAuth(request);
+  if (!auth) {
+    return NextResponse.json(
+      { error: "Current legal acceptance required", code: "forbidden" },
+      { status: 403 },
+    );
+  }
 
   const rate = checkTelemetryRateLimit({
     request,
-    userId: auth?.userId ?? null,
+    userId: auth.userId,
   });
   if (!rate.allowed) {
     const retryAfter = Math.max(

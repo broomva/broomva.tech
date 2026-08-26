@@ -8,11 +8,26 @@
  * Security model (BRO-121):
  *   - Access tokens: 24h expiry (short-lived, used for API calls)
  *   - Refresh tokens: 7d expiry (hashed in DB, rotated on use)
- *   - Existing 7-day tokens continue to verify until natural expiry
+ *   - Tokens are bound to the current legal-policy manifest hashes
  */
 
 import { createHash, randomBytes } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
+import {
+  PRIVACY_CONTENT_SHA256,
+  PRIVACY_VERSION,
+  TERMS_CONTENT_SHA256,
+  TERMS_VERSION,
+} from "@/lib/legal";
+
+interface VerifiedLifeJWT {
+  sub: string;
+  email: string;
+  termsVersion: string;
+  privacyVersion: string;
+  termsHash: string;
+  privacyHash: string;
+}
 
 /** Access token lifetime — reduced from 7d to 24h (BRO-121) */
 export const JWT_ACCESS_EXPIRY = "24h";
@@ -35,7 +50,14 @@ export async function signLifeJWT(user: {
     throw new Error("AUTH_SECRET is required for Life service JWT signing");
   }
 
-  const jwt = await new SignJWT({ sub: user.id, email: user.email })
+  const jwt = await new SignJWT({
+    sub: user.id,
+    email: user.email,
+    termsVersion: TERMS_VERSION,
+    privacyVersion: PRIVACY_VERSION,
+    termsHash: TERMS_CONTENT_SHA256,
+    privacyHash: PRIVACY_CONTENT_SHA256,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(JWT_ACCESS_EXPIRY)
@@ -50,12 +72,11 @@ export async function signLifeJWT(user: {
  * Verify a Life JWT and return the payload.
  * Returns null if the token is invalid or expired.
  *
- * Note: Tokens issued before BRO-121 with 7d expiry will continue to
- * verify successfully until they naturally expire — no hard cutover.
+ * Tokens without the current legal-policy hashes fail closed.
  */
 export async function verifyLifeJWT(
   token: string,
-): Promise<{ sub: string; email: string } | null> {
+): Promise<VerifiedLifeJWT | null> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) return null;
 
@@ -65,8 +86,23 @@ export async function verifyLifeJWT(
       new TextEncoder().encode(secret),
       { issuer: "https://broomva.tech", audience: "broomva-life-services" },
     );
-    if (!payload.sub) return null;
-    return { sub: payload.sub, email: (payload.email as string) ?? "" };
+    if (
+      !payload.sub ||
+      payload.termsVersion !== TERMS_VERSION ||
+      payload.privacyVersion !== PRIVACY_VERSION ||
+      payload.termsHash !== TERMS_CONTENT_SHA256 ||
+      payload.privacyHash !== PRIVACY_CONTENT_SHA256
+    ) {
+      return null;
+    }
+    return {
+      sub: payload.sub,
+      email: (payload.email as string) ?? "",
+      termsVersion: TERMS_VERSION,
+      privacyVersion: PRIVACY_VERSION,
+      termsHash: TERMS_CONTENT_SHA256,
+      privacyHash: PRIVACY_CONTENT_SHA256,
+    };
   } catch {
     return null;
   }
@@ -81,7 +117,7 @@ export async function verifyLifeJWT(
  */
 export async function verifyLifeJWTAllowExpired(
   token: string,
-): Promise<{ sub: string; email: string } | null> {
+): Promise<VerifiedLifeJWT | null> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) return null;
 
@@ -102,8 +138,23 @@ export async function verifyLifeJWTAllowExpired(
         clockTolerance: "365d", // allow expired tokens up to 1 year
       },
     );
-    if (!payload.sub) return null;
-    return { sub: payload.sub, email: (payload.email as string) ?? "" };
+    if (
+      !payload.sub ||
+      payload.termsVersion !== TERMS_VERSION ||
+      payload.privacyVersion !== PRIVACY_VERSION ||
+      payload.termsHash !== TERMS_CONTENT_SHA256 ||
+      payload.privacyHash !== PRIVACY_CONTENT_SHA256
+    ) {
+      return null;
+    }
+    return {
+      sub: payload.sub,
+      email: (payload.email as string) ?? "",
+      termsVersion: TERMS_VERSION,
+      privacyVersion: PRIVACY_VERSION,
+      termsHash: TERMS_CONTENT_SHA256,
+      privacyHash: PRIVACY_CONTENT_SHA256,
+    };
   } catch {
     return null;
   }

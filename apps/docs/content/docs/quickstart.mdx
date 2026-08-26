@@ -21,18 +21,20 @@ Create an account at [broomva.tech](https://broomva.tech). You can sign in with:
 Accounts with the same email address are automatically linked, so you can sign in with any method and access the same workspace.
 
 <Callout type="info">
-  The free tier gives you 50 credits ($0.50 worth of inference) per month with access to community models. No credit card required.
+  The free tier gives you 50 usage credits on initial registration (and again on
+  transition back from paid) with access to selected models. It does not reset
+  monthly. Credits are not cash or stored value. No card is required.
 </Callout>
 
 ## 2. Try the chat
 
 Navigate to [broomva.tech/chat](https://broomva.tech/chat) to start a conversation. The chat supports:
 
-- **Multiple AI models** — Claude (Anthropic), GPT (OpenAI), Gemini (Google), and local models through Ollama and OpenRouter
+- **Selected AI models** — the deployed catalog, credentials, and account entitlement determine availability
 - **Rich message rendering** — code blocks with syntax highlighting, LaTeX math, Mermaid diagrams, tables
-- **Attachments** — upload images and documents directly into the conversation
-- **Memory vault** — the platform remembers context across conversations using a Lago-backed knowledge graph
-- **MCP tools** — connect external tools and services through the Model Context Protocol
+- **Attachments** — temporarily unavailable pending private signed storage
+- **Memory capabilities** — available only when the Lago-backed feature is configured and enabled
+- **Tool integrations** — availability depends on the enabled deployment configuration
 
 Select a model from the dropdown, type a message, and send. Conversations are automatically saved to your account.
 
@@ -129,14 +131,30 @@ broomva context show
 ## 7. Explore the platform
 
 <Cards>
-  <Card title="Platform Chat" href="/docs/platform/chat" description="Deep dive into chat features, model selection, and memory vault." />
-  <Card title="API Reference" href="/docs/api-reference/overview" description="Full API documentation with authentication, endpoints, and error handling." />
-  <Card title="CLI Commands" href="/docs/cli/commands" description="Complete reference for all CLI commands and options." />
-  <Card title="Agent OS" href="/docs/life/overview" description="Understand the Life architecture and run the agent runtime locally." />
+  <Card
+    title="Platform Chat"
+    href="/docs/platform/chat"
+    description="Review current chat features, model-selection rules, and deployment-dependent memory."
+  />
+  <Card
+    title="API Reference"
+    href="/docs/api-reference/overview"
+    description="API reference material covering authentication, selected endpoints, and error handling."
+  />
+  <Card
+    title="CLI Commands"
+    href="/docs/cli/commands"
+    description="CLI reference material for documented commands and options."
+  />
+  <Card
+    title="Agent OS"
+    href="/docs/life/overview"
+    description="Understand the Life architecture and run the agent runtime locally."
+  />
 </Cards>
 
 ## What's next
 
-- **Upgrade your plan** — the [Pro tier](/docs/platform/billing) gives you 5,000 credits/month and access to all models
+- **Review plan options** — [billing](/docs/platform/billing) documents current allocations and the default-off paid launch gate
 - **Deploy a managed instance** — run your own [Life agent runtime](/docs/platform/deployments) in the cloud
 - **Build with the SDK** — use the [TypeScript SDK](/docs/sdk/typescript) to integrate Broomva into your applications

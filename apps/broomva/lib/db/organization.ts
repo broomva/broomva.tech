@@ -108,6 +108,25 @@ export async function isOrganizationMember(
   return !!row;
 }
 
+export async function hasOrganizationRole(
+  userId: string,
+  orgId: string,
+  allowedRoles: Array<OrganizationMember["role"]>,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ role: organizationMember.role })
+    .from(organizationMember)
+    .where(
+      and(
+        eq(organizationMember.organizationId, orgId),
+        eq(organizationMember.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(row && allowedRoles.includes(row.role));
+}
+
 /**
  * List all organizations a user belongs to (most recently joined first).
  */
@@ -144,9 +163,7 @@ export async function getUserOrganizations(
 /**
  * List members of an organization with user details.
  */
-export async function getOrganizationMembers(
-  orgId: string,
-): Promise<
+export async function getOrganizationMembers(orgId: string): Promise<
   Array<{
     memberId: string;
     userId: string;

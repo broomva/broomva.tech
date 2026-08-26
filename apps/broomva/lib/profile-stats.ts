@@ -19,6 +19,13 @@ export interface GitHubAggregateStats {
     pushedAtRelative: string;
     language: string | null;
   }>;
+  // The genuinely most-recently-pushed repo (max pushed_at), independent of the
+  // star-sorted topRepos list. Null when no repos are available.
+  lastPush: {
+    name: string;
+    pushedAt: string;
+    pushedAtRelative: string;
+  } | null;
 }
 
 async function fetchGitHubAggregate(
@@ -33,29 +40,52 @@ async function fetchGitHubAggregate(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  try {
-    const res = await fetch(
-      `https://api.github.com/users/${username}/repos?type=owner&sort=updated&direction=desc&per_page=100`,
-      { headers },
-    );
-    if (!res.ok) {
-      return { totalStars: 0, totalRepos: 0, topRepos: [] };
-    }
-    const repos = (await res.json()) as Array<{
-      name: string;
-      description: string | null;
-      stargazers_count: number;
-      html_url: string;
-      topics: string[];
-      pushed_at: string;
-      fork: boolean;
-      language: string | null;
-    }>;
+  type Repo = {
+    name: string;
+    description: string | null;
+    stargazers_count: number;
+    html_url: string;
+    topics: string[];
+    pushed_at: string;
+    fork: boolean;
+    language: string | null;
+  };
 
-    const owned = repos.filter((r) => !r.fork);
-    const totalStars = owned.reduce((sum, r) => sum + r.stargazers_count, 0);
+  try {
+    // The API returns at most 100 repos per page, so a single request
+    // undercounts any account with more than 100 repos — dropping both stars
+    // and stale-but-starred repos from the top list. Fetch pages in parallel
+    // (bounded) and stop at the first empty page; cached hourly, so the extra
+    // requests are cheap and never loop unbounded.
+    const perPage = 100;
+    const maxPages = 5;
+    const pages = await Promise.all(
+      Array.from({ length: maxPages }, async (_unused, i) => {
+        const res = await fetch(
+          `https://api.github.com/users/${username}/repos?type=owner&sort=updated&direction=desc&per_page=${perPage}&page=${i + 1}`,
+          { headers },
+        );
+        if (!res.ok) {
+          return [] as Repo[];
+        }
+        const batch = (await res.json()) as unknown;
+        return Array.isArray(batch) ? (batch as Repo[]) : [];
+      }),
+    );
+    const repos = pages.flat();
+
+    if (repos.length === 0) {
+      return { totalStars: 0, totalRepos: 0, topRepos: [], lastPush: null };
+    }
+
+    // Stars: sum across every owned public repo (matches GitHub's own "Total
+    // Stars Earned"). Repo count: all public repos (matches the count GitHub
+    // shows on the profile). Top repos: non-fork only, so forks never surface
+    // in "most-starred repos".
+    const totalStars = repos.reduce((sum, r) => sum + r.stargazers_count, 0);
     const now = Date.now();
-    const topRepos = owned
+    const nonFork = repos.filter((r) => !r.fork);
+    const topRepos = nonFork
       .toSorted((a, b) => b.stargazers_count - a.stargazers_count)
       .slice(0, 6)
       .map((r) => ({
@@ -69,9 +99,24 @@ async function fetchGitHubAggregate(
         language: r.language,
       }));
 
-    return { totalStars, totalRepos: owned.length, topRepos };
+    // "Most recent push" must be the repo with the newest pushed_at — NOT
+    // topRepos[0], which is star-sorted. Restrict to non-fork so a passive
+    // fork sync doesn't masquerade as authored activity.
+    const mostRecent = nonFork.toSorted(
+      (a, b) =>
+        new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime(),
+    )[0];
+    const lastPush = mostRecent
+      ? {
+          name: mostRecent.name,
+          pushedAt: mostRecent.pushed_at,
+          pushedAtRelative: relativeFrom(mostRecent.pushed_at, now),
+        }
+      : null;
+
+    return { totalStars, totalRepos: repos.length, topRepos, lastPush };
   } catch {
-    return { totalStars: 0, totalRepos: 0, topRepos: [] };
+    return { totalStars: 0, totalRepos: 0, topRepos: [], lastPush: null };
   }
 }
 
@@ -114,7 +159,9 @@ const TARGET_CRATES = [
 async function fetchCrateMeta(name: string) {
   try {
     const res = await fetch(`https://crates.io/api/v1/crates/${name}`, {
-      headers: { "User-Agent": "broomva.tech profile page (carlos@broomva.tech)" },
+      headers: {
+        "User-Agent": "broomva.tech profile page (carlos@broomva.tech)",
+      },
     });
     if (!res.ok) {
       return null;
@@ -211,6 +258,63 @@ async function fetchBookkeepingSnapshot(): Promise<BookkeepingSnapshot | null> {
 
 export async function getBookkeepingSnapshot(): Promise<BookkeepingSnapshot | null> {
   return fetchBookkeepingSnapshot();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hugging Face aggregate — models published under the Broomva author namespace
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface HuggingFaceAggregateStats {
+  totalModels: number;
+}
+
+async function fetchHuggingFaceAggregate(
+  author: string,
+): Promise<HuggingFaceAggregateStats> {
+  "use cache";
+  cacheLife("hours");
+
+  try {
+    const res = await fetch(
+      `https://huggingface.co/api/models?author=${encodeURIComponent(author)}&limit=1000`,
+      { headers: { Accept: "application/json" } },
+    );
+    if (!res.ok) {
+      return { totalModels: 0 };
+    }
+    const models = (await res.json()) as unknown[];
+    return { totalModels: Array.isArray(models) ? models.length : 0 };
+  } catch {
+    return { totalModels: 0 };
+  }
+}
+
+export async function getHuggingFaceAggregate(
+  author = "Broomva",
+): Promise<HuggingFaceAggregateStats> {
+  return fetchHuggingFaceAggregate(author);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Derived career metrics — self-updating so hardcoded "N+ years" never rots
+// ─────────────────────────────────────────────────────────────────────────────
+
+// First professional engineering role (INSA Ingeniería, Digitalization Leader).
+// Years of experience are derived from this anchor so the number increments on
+// its own every year instead of drifting out of date.
+const CAREER_START_ISO = "2019-05-01";
+
+async function fetchExperienceYears(): Promise<number> {
+  "use cache";
+  cacheLife("hours");
+
+  const start = new Date(CAREER_START_ISO).getTime();
+  const years = (Date.now() - start) / (365.25 * 24 * 60 * 60 * 1000);
+  return Math.max(0, Math.floor(years));
+}
+
+export async function getExperienceYears(): Promise<number> {
+  return fetchExperienceYears();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
