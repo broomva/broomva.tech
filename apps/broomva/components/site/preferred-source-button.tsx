@@ -1,8 +1,7 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import Script from "next/script";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -36,9 +35,26 @@ import { cn } from "@/lib/utils";
  *     putting Google's attribute on this div would silently re-scope the
  *     site's design tokens for the subtree.
  *
- * The theme is read once, when it first resolves. The library styles the button
- * at init and offers no restyle hook, so toggling the site theme afterwards
- * leaves the button in the theme it was built with until the next mount.
+ * Because manual mode disables the library's own start-up scan, this component
+ * is the only thing that can ever render the button. That makes one invariant
+ * load-bearing: `init()` must be reachable on every mount, unconditionally.
+ * The theme may decide how the button *looks*; it must never decide whether the
+ * button *exists*. An earlier revision returned early until `next-themes` had
+ * resolved, so any failure to resolve left the button permanently unrendered —
+ * the auto-scan that would otherwise have covered us being exactly what manual
+ * mode turned off.
+ *
+ * The theme is therefore read from the `data-theme` attribute on <html>, which
+ * the root layout server-renders and next-themes rewrites in a pre-paint
+ * script, and it is read when `init()` actually runs rather than when the
+ * callback is queued. Both matter: reading the DOM keeps rendering independent
+ * of the theme provider, and reading it late avoids handing the library a theme
+ * captured by an earlier mount (the first queued callback renders *every*
+ * pending host, so a value captured at push time can already be stale).
+ *
+ * The library styles the button at init and offers no restyle hook, so toggling
+ * the site theme afterwards leaves the button in the theme it was built with
+ * until the next mount.
  */
 
 type PreferredSourceApi = {
@@ -56,27 +72,30 @@ declare global {
 }
 
 export function PreferredSourceButton({ className }: { className?: string }) {
-  const { resolvedTheme } = useTheme();
-  const initialized = useRef(false);
-
   useEffect(() => {
-    // `resolvedTheme` is undefined until next-themes hydrates. Initializing
-    // before then would hand the library no theme and get its "light" default
-    // on what is a dark-by-default site.
-    if (!resolvedTheme || initialized.current) return;
-    initialized.current = true;
+    const callback: PreferredSourceCallback = (preferredSource) => {
+      const domTheme = document.documentElement.getAttribute("data-theme");
+      // `lang` is deliberately omitted: the library localizes the button from
+      // the reader's browser settings, which beats pinning it to the site's.
+      preferredSource.init({ theme: domTheme === "light" ? "light" : "dark" });
+    };
 
     if (!globalThis.PREFERRED_SOURCE) {
       globalThis.PREFERRED_SOURCE = [];
     }
-    globalThis.PREFERRED_SOURCE.push((preferredSource) => {
-      // `lang` is deliberately omitted: the library localizes the button from
-      // the reader's browser settings, which beats pinning it to the site's.
-      preferredSource.init({
-        theme: resolvedTheme === "dark" ? "dark" : "light",
-      });
-    });
-  }, [resolvedTheme]);
+    globalThis.PREFERRED_SOURCE.push(callback);
+
+    return () => {
+      const queue = globalThis.PREFERRED_SOURCE;
+      // Only a pre-load queue is a real array with a pending entry to withdraw.
+      // Once loaded, the library swaps in a push-only object that runs
+      // callbacks immediately, so nothing is left outstanding to clean up.
+      if (Array.isArray(queue)) {
+        const index = queue.indexOf(callback);
+        if (index !== -1) queue.splice(index, 1);
+      }
+    };
+  }, []);
 
   return (
     // The width is load-bearing, not decorative. The library styles the host
