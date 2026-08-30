@@ -1,31 +1,9 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-const productionScriptSources = [
-  "'self'",
-  "'unsafe-inline'",
-  "https://va.vercel-scripts.com",
-];
-const scriptSources =
-  process.env.NODE_ENV === "production"
-    ? productionScriptSources
-    : [...productionScriptSources, "'unsafe-eval'", "https://unpkg.com"];
+import { buildContentSecurityPolicy } from "./lib/security/content-security-policy";
 
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src ${scriptSources.join(" ")}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https: wss:",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "form-action 'self' https://checkout.stripe.com",
-  ...(process.env.NODE_ENV === "production"
-    ? ["upgrade-insecure-requests"]
-    : []),
-].join("; ");
+const contentSecurityPolicy = buildContentSecurityPolicy();
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
@@ -175,10 +153,7 @@ const nextConfig: NextConfig = {
   },
 
   outputFileTracingExcludes: {
-    "*": [
-      "./public/audio/**",
-      "./public/images/**",
-    ],
+    "*": ["./public/audio/**", "./public/images/**"],
   },
   // outputFileTracingIncludes intentionally empty post-PR-3 (#194). The
   // /api/chat route no longer reads public/agent-knowledge.json — the

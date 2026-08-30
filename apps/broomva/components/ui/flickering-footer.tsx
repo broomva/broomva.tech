@@ -6,6 +6,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PreferredSourceButton } from "@/components/site/preferred-source-button";
 import { cn } from "@/lib/utils";
 
 export const getRGBA = (
@@ -328,6 +329,7 @@ export function FlickeringFooter() {
           <p className="tracking-tight text-text-muted font-medium text-sm">
             Reliability engineering for complex systems.
           </p>
+          <PreferredSourceButton />
         </div>
         <div className="pt-5 md:w-1/2">
           <div className="flex flex-col items-start justify-start md:flex-row md:items-center md:justify-between gap-y-5 lg:pl-10">
