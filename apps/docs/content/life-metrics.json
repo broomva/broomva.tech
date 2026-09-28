@@ -1,9 +1,9 @@
 {
   "version": "0.3.0",
-  "crateCount": 139,
-  "testCount": 4510,
-  "testFileCount": 622,
-  "loc": 286062,
+  "crateCount": 143,
+  "testCount": 5070,
+  "testFileCount": 673,
+  "loc": 322771,
   "subsystemCount": 12,
-  "updatedAt": "2026-05-20T12:10:22.730Z"
+  "updatedAt": "2026-09-28T08:23:57.526Z"
 }
