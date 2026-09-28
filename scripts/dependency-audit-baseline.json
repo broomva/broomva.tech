@@ -5,7 +5,7 @@
       "package": "better-auth",
       "owner": "security",
       "topologySha256": "07c5be51f1ad72f48add5d590bca05b8eaef50d2a7646cb37261bd3490e91565",
-      "rationale": "Neon Auth 0.4.2-beta pins Better Auth 1.4.18 for client, cookie, and type adapters. The affected OIDC-provider, MCP-provider, organization, magic-link, and email-OTP server plugins are not instantiated through this adapter; the app's own agent-auth server uses Better Auth 1.6.26. Neon Auth 0.5.0-beta (Better Auth 1.6.23) is now published; migrating to it is an auth-path change tracked in BRO-2627 and must land before this reviewBy.",
+      "rationale": "Neon Auth 0.4.2-beta pins Better Auth 1.4.18 for client, cookie, and type adapters. At runtime Neon Auth imports only better-auth/client, /client/plugins, /cookies, /react and /types from that copy and forwards /api/auth requests upstream to the hosted NEON_AUTH_BASE_URL, so no 1.4.18 server handler (OAuth callback, state check, account linking, plugins) runs in-process; the app's own agent-auth server uses Better Auth 1.6.26. Neon Auth 0.5.0-beta (Better Auth 1.6.23) was published 2026-08-11; migrating to it is an auth-path change tracked in BRO-2627 and must land before this reviewBy.",
       "advisories": [
         "critical|https://github.com/advisories/GHSA-pw9m-5jxm-xr6h",
         "high|https://github.com/advisories/GHSA-392p-2q2v-4372",
