@@ -29,12 +29,13 @@ interface VerifiedLifeJWT {
   privacyHash: string;
 }
 
-/** Access token lifetime — reduced from 7d to 24h (BRO-121) */
-export const JWT_ACCESS_EXPIRY = "24h";
-export const JWT_ACCESS_EXPIRY_MS = 24 * 60 * 60 * 1000;
+/** Access token lifetime — extended to 30d for developer/CLI sessions (BRO-2680 / STI-3419) */
+export const JWT_ACCESS_EXPIRY = "30d";
+export const JWT_ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Refresh token lifetime — 7 days */
-export const JWT_REFRESH_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+/** Refresh token lifetime — 90 days */
+export const JWT_REFRESH_EXPIRY = "90d";
+export const JWT_REFRESH_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
  * Sign a JWT for a user, compatible with lago-auth middleware used by

@@ -9,7 +9,7 @@ import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
  * Refresh endpoint for the ES256 Tier-1 lifegw JWT (BRO-1224).
  *
  * Auth: `Authorization: Bearer <hs256>` — the long-lived Better Auth
- * access token (24h TTL per `JWT_ACCESS_EXPIRY`). This is the same
+ * access token (30d TTL per `JWT_ACCESS_EXPIRY`). This is the same
  * token returned by `/api/auth/device/token` and persisted in
  * `~/.broomva/config.json` as the `token` field.
  *

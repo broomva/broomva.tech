@@ -2,6 +2,38 @@
   "reviewBy": "2026-10-27",
   "exceptions": [
     {
+      "package": "@fastify/static",
+      "owner": "security",
+      "topologySha256": "0ee7b910f1bb5f9e76491a6462a6cdb24be7e548bb391ddb84142a05093ce85c",
+      "rationale": "This is reachable only from the development-only Evalite CLI; the deployed Next.js service does not import or expose its static server.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-83w8-p2f5-377r",
+        "moderate|https://github.com/advisories/GHSA-8pvw-jcv7-9cmj",
+        "moderate|https://github.com/advisories/GHSA-pr96-94w5-mx2h",
+        "moderate|https://github.com/advisories/GHSA-x428-ghpx-8j92"
+      ]
+    },
+    {
+      "package": "axios",
+      "owner": "security",
+      "topologySha256": "f00c44112636583693eb4790f79279f80080225566fc4343f0639d153907443a",
+      "rationale": "Used by backend SDKs (@coinbase/cdp-sdk, @mendable/firecrawl-js, @tavily/core) with trusted internal base URLs; no user-supplied redirection or SSRF is exposed.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-3pq3-5fj3-cg6v",
+        "high|https://github.com/advisories/GHSA-542g-h47m-68v8",
+        "high|https://github.com/advisories/GHSA-c29m-xwm3-cm6r",
+        "high|https://github.com/advisories/GHSA-m8m8-qj5v-23w3",
+        "high|https://github.com/advisories/GHSA-mghh-pgcx-3jjj",
+        "high|https://github.com/advisories/GHSA-r4gj-5m52-g5wh",
+        "high|https://github.com/advisories/GHSA-x97p-jq2g-jp4f",
+        "moderate|https://github.com/advisories/GHSA-44g4-m2mj-wpvx",
+        "moderate|https://github.com/advisories/GHSA-4hqw-qxg8-jxx2",
+        "moderate|https://github.com/advisories/GHSA-9fr6-4gfg-395g",
+        "moderate|https://github.com/advisories/GHSA-j8rh-479h-cp32",
+        "moderate|https://github.com/advisories/GHSA-vh66-26gq-q6x8"
+      ]
+    },
+    {
       "package": "better-auth",
       "owner": "security",
       "topologySha256": "07c5be51f1ad72f48add5d590bca05b8eaef50d2a7646cb37261bd3490e91565",
@@ -19,21 +51,65 @@
       ]
     },
     {
-      "package": "undici",
+      "package": "brace-expansion",
       "owner": "security",
-      "topologySha256": "5321bbe17f938591f5e0ba7608d1a4f04ebf05562da69d61c40a9be3e2dbf405",
-      "rationale": "Patched Undici 7.29 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.28. The remaining vulnerable 5.29 runtime branch belongs to the ConnectRPC v1 client for an operator-configured Life gateway; no patched 5.x release exists. Migrating it requires tested ConnectRPC v2 and Protobuf regeneration. Caller-controlled proxy, cookie, WebSocket, and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until that migration.",
+      "topologySha256": "5151bd8036fd3f8776ebdabaafa23ad11f0e783e970d41cb5095ab86fd02026b",
+      "rationale": "Transitive build-time and development tooling dependency; no user-controlled input reaches brace expansion in the production application.",
       "advisories": [
-        "high|https://github.com/advisories/GHSA-v9p9-hfj2-hcw8",
-        "high|https://github.com/advisories/GHSA-vrm6-8vpv-qv8q",
-        "high|https://github.com/advisories/GHSA-vxpw-j846-p89q",
-        "moderate|https://github.com/advisories/GHSA-2mjp-6q6p-2qxm",
-        "moderate|https://github.com/advisories/GHSA-4992-7rv2-5pvq",
-        "moderate|https://github.com/advisories/GHSA-8xcm-r25x-g524",
-        "moderate|https://github.com/advisories/GHSA-g9mf-h72j-4rw9",
-        "moderate|https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
-        "moderate|https://github.com/advisories/GHSA-p88m-4jfj-68fv",
-        "moderate|https://github.com/advisories/GHSA-v3r7-h72x-cjcm"
+        "high|https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+        "high|https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+        "moderate|https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+      ]
+    },
+    {
+      "package": "esbuild",
+      "owner": "security",
+      "topologySha256": "9e75b6f2749c7db8c490e66edfd06fbde3302198fb67171ede863e14c023d985",
+      "rationale": "The vulnerable copy is a Drizzle development-tool dependency. No esbuild development server is exposed in production.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-67mh-4wv8-2f99"
+      ]
+    },
+    {
+      "package": "fast-uri",
+      "owner": "security",
+      "topologySha256": "5f6ccb775fb1ac07279b6b8b6ec681c4979962237348503dbe64ac2dcee6480d",
+      "rationale": "Internal transitive dependency for schema compilation in ajv and fast-json-stringify; URI parsing is restricted to internal schema definitions.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-58mr-gqgx-xq4g",
+        "high|https://github.com/advisories/GHSA-qw65-cvwx-89v3",
+        "moderate|https://github.com/advisories/GHSA-hrr3-gc8f-f4qj"
+      ]
+    },
+    {
+      "package": "fastify",
+      "owner": "security",
+      "topologySha256": "a5e75eb7db0d6b3fceec14e89a509988ae4a9f26872a7a33f71d2320d79ca7d6",
+      "rationale": "Reachable only via the development-only Evalite evaluation CLI; the deployed Next.js production service does not instantiate or expose Fastify.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-667r-xxjv-c9mm",
+        "high|https://github.com/advisories/GHSA-9q9j-q6p8-xq58",
+        "high|https://github.com/advisories/GHSA-hwr6-493r-vm6h",
+        "high|https://github.com/advisories/GHSA-p68q-wchp-6fh7",
+        "moderate|https://github.com/advisories/GHSA-4mh8-r7rc-xpvc"
+      ]
+    },
+    {
+      "package": "file-type",
+      "owner": "security",
+      "topologySha256": "87a41571da977dce119c9c5ee644c2d8f3a4af2d2338ecc586c80465510b011e",
+      "rationale": "The vulnerable parser is a development-only Evalite dependency and does not process production uploads; uploads are disabled pending private storage.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-5v7r-6r5c-r473"
+      ]
+    },
+    {
+      "package": "hono",
+      "owner": "security",
+      "topologySha256": "9552df6a9b30b821740a6a562b8fa0b90a2b51ffffd6d876cddcba674d178651",
+      "rationale": "Transitive dependency of AI SDK devtools and MCP SDK in internal development tooling; production edge and server routes run on Next.js App Router.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-hxh3-vqpv-xpqv"
       ]
     },
     {
@@ -47,33 +123,49 @@
       ]
     },
     {
-      "package": "@fastify/static",
+      "package": "ip-address",
       "owner": "security",
-      "topologySha256": "0ee7b910f1bb5f9e76491a6462a6cdb24be7e548bb391ddb84142a05093ce85c",
-      "rationale": "This is reachable only from the development-only Evalite CLI; the deployed Next.js service does not import or expose its static server.",
+      "topologySha256": "f11929b9bdeaae08cd6b1ba93b44b94ef0176c3898d6f5eeffa0080a8f4fa68e",
+      "rationale": "Transitive dependency in internal dev tooling; production client IP parsing and rate-limiting are enforced by edge infrastructure (Vercel/Cloudflare).",
       "advisories": [
-        "high|https://github.com/advisories/GHSA-83w8-p2f5-377r",
-        "moderate|https://github.com/advisories/GHSA-8pvw-jcv7-9cmj",
-        "moderate|https://github.com/advisories/GHSA-pr96-94w5-mx2h",
-        "moderate|https://github.com/advisories/GHSA-x428-ghpx-8j92"
+        "moderate|https://github.com/advisories/GHSA-2vr4-cq9g-pvrc",
+        "moderate|https://github.com/advisories/GHSA-h3mg-xc3c-68pw",
+        "moderate|https://github.com/advisories/GHSA-j6r3-76f7-8jcv",
+        "moderate|https://github.com/advisories/GHSA-rpw4-54j3-4h4q"
       ]
     },
     {
-      "package": "esbuild",
+      "package": "next",
       "owner": "security",
-      "topologySha256": "9e75b6f2749c7db8c490e66edfd06fbde3302198fb67171ede863e14c023d985",
-      "rationale": "The vulnerable copy is a Drizzle development-tool dependency. No esbuild development server is exposed in production.",
+      "topologySha256": "956c404a4e9141b38f441ba3e39d698b7c33be9ceb2fa9dca31feedc1e4db72b",
+      "rationale": "The next/og ImageResponse SVG parser is not exposed to untrusted external HTML or SVG inputs; OG images use static assets and fixed internal layout parameters.",
       "advisories": [
-        "moderate|https://github.com/advisories/GHSA-67mh-4wv8-2f99"
+        "critical|https://github.com/advisories/GHSA-vcvr-r3jv-pc5j"
       ]
     },
     {
-      "package": "file-type",
+      "package": "undici",
       "owner": "security",
-      "topologySha256": "87a41571da977dce119c9c5ee644c2d8f3a4af2d2338ecc586c80465510b011e",
-      "rationale": "The vulnerable parser is a development-only Evalite dependency and does not process production uploads; uploads are disabled pending private storage.",
+      "topologySha256": "5321bbe17f938591f5e0ba7608d1a4f04ebf05562da69d61c40a9be3e2dbf405",
+      "rationale": "Patched Undici 7.29 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.28. The remaining vulnerable 5.29 runtime branch belongs to the ConnectRPC v1 client for an operator-configured Life gateway; no patched 5.x release exists. Migrating it requires tested ConnectRPC v2 and Protobuf regeneration. Caller-controlled proxy, cookie, WebSocket, and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until that migration.",
       "advisories": [
-        "moderate|https://github.com/advisories/GHSA-5v7r-6r5c-r473"
+        "high|https://github.com/advisories/GHSA-rfgv-xxqx-mfg5",
+        "high|https://github.com/advisories/GHSA-v9p9-hfj2-hcw8",
+        "high|https://github.com/advisories/GHSA-vrm6-8vpv-qv8q",
+        "high|https://github.com/advisories/GHSA-vxpw-j846-p89q",
+        "high|https://github.com/advisories/GHSA-w293-vg96-wgc3",
+        "moderate|https://github.com/advisories/GHSA-2jfj-6hjv-fm6j",
+        "moderate|https://github.com/advisories/GHSA-2mjp-6q6p-2qxm",
+        "moderate|https://github.com/advisories/GHSA-3wwx-pv8p-q78v",
+        "moderate|https://github.com/advisories/GHSA-3xpg-4rpp-hhhm",
+        "moderate|https://github.com/advisories/GHSA-4992-7rv2-5pvq",
+        "moderate|https://github.com/advisories/GHSA-8xcm-r25x-g524",
+        "moderate|https://github.com/advisories/GHSA-g9mf-h72j-4rw9",
+        "moderate|https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
+        "moderate|https://github.com/advisories/GHSA-p88m-4jfj-68fv",
+        "moderate|https://github.com/advisories/GHSA-pmjh-fq2x-6v4x",
+        "moderate|https://github.com/advisories/GHSA-rx4f-c7p8-82vq",
+        "moderate|https://github.com/advisories/GHSA-v3r7-h72x-cjcm"
       ]
     }
   ]
