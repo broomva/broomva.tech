@@ -34,6 +34,7 @@ export const JWT_ACCESS_EXPIRY = "30d";
 export const JWT_ACCESS_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Refresh token lifetime — 90 days */
+export const JWT_REFRESH_EXPIRY = "90d";
 export const JWT_REFRESH_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**

@@ -1,3 +1,4 @@
+import { JWT_ACCESS_EXPIRY, JWT_REFRESH_EXPIRY } from "@/lib/ai/vault/jwt";
 import { NextResponse } from "next/server";
 
 /**
@@ -89,8 +90,8 @@ export async function GET() {
         refresh: {
           endpoint: `${baseUrl}/api/auth/refresh`,
           revoke_endpoint: `${baseUrl}/api/auth/revoke`,
-          access_token_ttl: "24h",
-          refresh_token_ttl: "7d",
+          access_token_ttl: JWT_ACCESS_EXPIRY,
+          refresh_token_ttl: JWT_REFRESH_EXPIRY,
         },
       },
 
