@@ -19,14 +19,20 @@ import { cn } from "@/lib/utils";
 export function LoginForm({
   className,
   plan,
+  redirectTo,
   ...props
-}: React.ComponentPropsWithoutRef<"div"> & { plan?: string }) {
+}: React.ComponentPropsWithoutRef<"div"> & { plan?: string; redirectTo?: string }) {
   const [state, formAction, isPending] = useActionState(signInWithEmail, null);
   const [socialTerms, setSocialTerms] = useState(false);
   const [socialProcessing, setSocialProcessing] = useState(false);
   const [socialAge, setSocialAge] = useState(false);
 
-  const registerHref = plan ? `/register?plan=${plan}` : "/register";
+  const registerParams = new URLSearchParams();
+  if (plan) registerParams.set("plan", plan);
+  if (redirectTo) registerParams.set("redirectTo", redirectTo);
+  const registerHref = registerParams.toString()
+    ? `/register?${registerParams.toString()}`
+    : "/register";
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -40,6 +46,7 @@ export function LoginForm({
         <CardContent>
           <form action={formAction} className="grid gap-6">
             {plan && <input type="hidden" name="plan" value={plan} />}
+            {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
             <div className="grid gap-3">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -112,6 +119,7 @@ export function LoginForm({
             </div>
             <SocialAuthProviders
               disabled={!socialTerms || !socialProcessing || !socialAge}
+              redirectTo={redirectTo}
             />
             <div className="text-center text-sm">
               Don&apos;t have an account?{" "}

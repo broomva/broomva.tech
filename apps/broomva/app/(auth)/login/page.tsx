@@ -13,9 +13,10 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string }>;
+  searchParams: Promise<{ plan?: string; redirectTo?: string; next?: string }>;
 }) {
-  const { plan } = await searchParams;
+  const { plan, redirectTo, next } = await searchParams;
+  const target = redirectTo || next;
 
   return (
     <div className="container mx-auto flex h-dvh w-screen flex-col items-center justify-center">
@@ -30,7 +31,7 @@ export default async function LoginPage({
         Back
       </Link>
       <div className="mx-auto flex w-full flex-col items-center justify-center sm:w-[420px]">
-        <LoginForm className="w-full" plan={plan} />
+        <LoginForm className="w-full" plan={plan} redirectTo={target} />
       </div>
     </div>
   );

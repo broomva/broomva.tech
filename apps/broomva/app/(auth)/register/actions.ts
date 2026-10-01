@@ -95,5 +95,18 @@ export async function signUpWithEmail(
 
   const planParam =
     typeof plan === "string" && plan ? `?plan=${encodeURIComponent(plan)}` : "";
-  redirect(`/onboarding${planParam}` as Route);
+  if (planParam) {
+    redirect(`/onboarding${planParam}` as Route);
+  }
+
+  const redirectTo = formData.get("redirectTo");
+  if (
+    typeof redirectTo === "string" &&
+    redirectTo.startsWith("/") &&
+    !redirectTo.startsWith("//")
+  ) {
+    redirect(redirectTo as Route);
+  }
+
+  redirect("/onboarding" as Route);
 }

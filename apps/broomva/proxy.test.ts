@@ -1,11 +1,18 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
-import { getSafeSession } from "@/lib/auth";
+import { auth, getSafeSession, hasNeonAuth } from "@/lib/auth";
 import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 import { proxy } from "./proxy";
 
-vi.mock("@/lib/auth", () => ({ getSafeSession: vi.fn() }));
+const mockAuthMiddleware = vi.fn();
+vi.mock("@/lib/auth", () => ({
+  auth: {
+    middleware: vi.fn(() => mockAuthMiddleware),
+  },
+  getSafeSession: vi.fn(),
+  hasNeonAuth: true,
+}));
 vi.mock("@/lib/ai/vault/jwt", () => ({ verifyLifeJWT: vi.fn() }));
 vi.mock("@/lib/db/legal-acceptance", () => ({
   hasCurrentLegalAcceptance: vi.fn(),
@@ -26,9 +33,11 @@ beforeEach(() => {
   mockGetSafeSession.mockReset();
   mockAcceptance.mockReset();
   mockVerifyLifeJWT.mockReset();
+  mockAuthMiddleware.mockReset();
   mockGetSafeSession.mockResolvedValue({ data: { session: null, user: null } });
   mockAcceptance.mockResolvedValue(true);
   mockVerifyLifeJWT.mockResolvedValue(null);
+  mockAuthMiddleware.mockResolvedValue(null);
 });
 
 describe("proxy public artifact routes", () => {
@@ -117,14 +126,27 @@ describe("proxy public artifact routes", () => {
     const response = await proxy(req("/swapit-admin"));
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://broomva.tech/login");
+    expect(response.headers.get("location")).toBe(
+      "https://broomva.tech/login?redirectTo=%2Fswapit-admin",
+    );
   });
 
   test("still redirects private app pages for anonymous visitors", async () => {
     const response = await proxy(req("/maestro"));
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://broomva.tech/login");
+    expect(response.headers.get("location")).toBe(
+      "https://broomva.tech/login?redirectTo=%2Fmaestro",
+    );
+  });
+
+  test("preserves query params on login redirect for device auth", async () => {
+    const response = await proxy(req("/device?code=PPUC-8799"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://broomva.tech/login?redirectTo=%2Fdevice%3Fcode%3DPPUC-8799",
+    );
   });
 
   test.each(["/security", "/subprocessors"])(
@@ -136,6 +158,51 @@ describe("proxy public artifact routes", () => {
       expect(response.headers.get("location")).toBeNull();
     },
   );
+});
+
+describe("proxy OAuth verifier and deep-linking", () => {
+  test("delegates to auth.middleware when neon_auth_session_verifier is present", async () => {
+    const redirectResponse = new Response(null, {
+      status: 307,
+      headers: {
+        Location: "https://broomva.tech/legal-acceptance?next=%2Fdevice",
+        "Set-Cookie": "__Secure-neon-auth.session_token=valid-token; Path=/",
+      },
+    });
+    mockAuthMiddleware.mockResolvedValue(redirectResponse);
+
+    const response = await proxy(
+      req(
+        "/legal-acceptance?next=%2Fdevice&neon_auth_session_verifier=verifier123",
+      ),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://broomva.tech/legal-acceptance?next=%2Fdevice",
+    );
+    expect(response.headers.get("set-cookie")).toContain(
+      "__Secure-neon-auth.session_token=valid-token",
+    );
+  });
+
+  test("redirects logged-in user on /login to redirectTo if present", async () => {
+    mockGetSafeSession.mockResolvedValue({
+      data: {
+        session: { id: "session-1" },
+        user: { id: "user-1", email: "u@example.com" },
+      },
+    } as never);
+
+    const response = await proxy(
+      req("/login?redirectTo=%2Fdevice%3Fcode%3DPPUC-8799"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://broomva.tech/device?code=PPUC-8799",
+    );
+  });
 });
 
 describe("proxy legal-acceptance boundary", () => {
@@ -155,7 +222,7 @@ describe("proxy legal-acceptance boundary", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://broomva.tech/legal-acceptance",
+      "https://broomva.tech/legal-acceptance?next=%2Fmaestro",
     );
   });
 

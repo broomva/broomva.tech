@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSafeSession } from "@/lib/auth";
@@ -8,12 +9,22 @@ import { upsertUserFromSession } from "@/lib/db/queries";
 import { getTrustedClientIPFromHeaders } from "@/lib/utils/rate-limit";
 
 export async function acceptCurrentLegalTerms(formData: FormData) {
+  const next = formData.get("next");
+  const target =
+    typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
+      ? next
+      : "/onboarding";
+
   if (
     formData.get("acceptedTerms") !== "on" ||
     formData.get("authorizedProcessing") !== "on" ||
     formData.get("ageConfirmed") !== "on"
   ) {
-    redirect("/legal-acceptance?error=required");
+    const errParam = new URLSearchParams({ error: "required" });
+    if (target !== "/onboarding" && target !== "/chat") {
+      errParam.set("next", target);
+    }
+    redirect(`/legal-acceptance?${errParam.toString()}` as Route);
   }
 
   const requestHeaders = await headers();
@@ -34,5 +45,5 @@ export async function acceptCurrentLegalTerms(formData: FormData) {
     userAgent: requestHeaders.get("user-agent"),
   });
 
-  redirect("/onboarding");
+  redirect(target as Route);
 }
