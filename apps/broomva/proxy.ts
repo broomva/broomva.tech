@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
-import { getSafeSession } from "@/lib/auth";
+import { auth, getSafeSession, hasNeonAuth } from "@/lib/auth";
 import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 // ── Public route allowlists (single source of truth) ────────────────────────
@@ -385,6 +385,23 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
+  // ── Neon Auth OAuth Verifier Callback ───────────────────────────────────
+  // When returning from social OAuth providers (Google, GitHub, Vercel),
+  // Neon Auth redirects to the app callback URL with ?neon_auth_session_verifier=<token>.
+  // auth.middleware() MUST process this request to exchange the challenge cookie
+  // and verifier param for the session token cookie before any route protection.
+  if (hasNeonAuth && url.searchParams.has("neon_auth_session_verifier")) {
+    try {
+      const authMiddleware = auth.middleware();
+      const res = await authMiddleware(req);
+      if (res && res.status >= 300 && res.status < 400) {
+        return withSecurityHeaders(req, res);
+      }
+    } catch (err) {
+      console.error("Neon Auth OAuth verifier exchange failed:", err);
+    }
+  }
+
   // Always allow metadata and public pages.
   if (isMetadataRoute(pathname) || isPublicPage(pathname)) {
     return withSecurityHeaders(req, nextWithTenant());
@@ -449,6 +466,10 @@ export async function proxy(req: NextRequest) {
           NextResponse.redirect(new URL(`/console/billing?plan=${plan}`, url)),
         );
       }
+      const redirectTo = url.searchParams.get("redirectTo") || url.searchParams.get("next");
+      if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
+        return withSecurityHeaders(req, NextResponse.redirect(new URL(redirectTo, url)));
+      }
       return withSecurityHeaders(req, NextResponse.redirect(new URL("/", url)));
     }
     return withSecurityHeaders(req, nextWithTenant());
@@ -456,10 +477,14 @@ export async function proxy(req: NextRequest) {
 
   // Block all other routes for unauthenticated users.
   // Preserve ?plan= so the pricing → login → onboarding → billing flow works.
+  // Preserve target route in ?redirectTo= so post-login deep-linking works.
   if (!isLoggedIn) {
     const plan = url.searchParams.get("plan");
     const loginUrl = new URL("/login", url);
     if (plan) loginUrl.searchParams.set("plan", plan);
+    if (pathname !== "/login" && pathname !== "/register") {
+      loginUrl.searchParams.set("redirectTo", `${pathname}${url.search}`);
+    }
     return withSecurityHeaders(req, NextResponse.redirect(loginUrl));
   }
 
@@ -477,9 +502,13 @@ export async function proxy(req: NextRequest) {
         ),
       );
     }
+    const legalUrl = new URL("/legal-acceptance", url);
+    if (pathname !== "/legal-acceptance") {
+      legalUrl.searchParams.set("next", `${pathname}${url.search}`);
+    }
     return withSecurityHeaders(
       req,
-      NextResponse.redirect(new URL("/legal-acceptance", url)),
+      NextResponse.redirect(legalUrl),
     );
   }
 

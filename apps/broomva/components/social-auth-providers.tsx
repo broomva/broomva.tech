@@ -38,7 +38,18 @@ function VercelIcon({ className }: { className?: string }) {
   );
 }
 
-export function SocialAuthProviders({ disabled = false }: { disabled?: boolean }) {
+export function SocialAuthProviders({
+  disabled = false,
+  redirectTo,
+}: {
+  disabled?: boolean;
+  redirectTo?: string;
+}) {
+  const callbackURL =
+    redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
+      ? `/legal-acceptance?next=${encodeURIComponent(redirectTo)}`
+      : "/legal-acceptance";
+
   return (
     <div className="space-y-2">
       {config.authentication.google ? (
@@ -48,7 +59,7 @@ export function SocialAuthProviders({ disabled = false }: { disabled?: boolean }
           onClick={() =>
             authClient.signIn.social({
               provider: "google",
-              callbackURL: "/legal-acceptance",
+              callbackURL,
             })
           }
           type="button"
@@ -65,7 +76,7 @@ export function SocialAuthProviders({ disabled = false }: { disabled?: boolean }
           onClick={() =>
             authClient.signIn.social({
               provider: "github",
-              callbackURL: "/legal-acceptance",
+              callbackURL,
             })
           }
           type="button"
@@ -82,7 +93,7 @@ export function SocialAuthProviders({ disabled = false }: { disabled?: boolean }
           onClick={() =>
             authClient.signIn.social({
               provider: "vercel",
-              callbackURL: "/legal-acceptance",
+              callbackURL,
             })
           }
           type="button"

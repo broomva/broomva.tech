@@ -18,14 +18,23 @@ import { Label } from "@/components/ui/label";
 export function SignupForm({
   className,
   plan,
+  redirectTo,
   ...props
-}: React.ComponentProps<typeof Card> & { plan?: string }) {
+}: React.ComponentProps<typeof Card> & {
+  plan?: string;
+  redirectTo?: string;
+}) {
   const [state, formAction, isPending] = useActionState(signUpWithEmail, null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [authorizedProcessing, setAuthorizedProcessing] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
 
-  const loginHref = plan ? `/login?plan=${plan}` : "/login";
+  const loginParams = new URLSearchParams();
+  if (plan) loginParams.set("plan", plan);
+  if (redirectTo) loginParams.set("redirectTo", redirectTo);
+  const loginHref = loginParams.toString()
+    ? `/login?${loginParams.toString()}`
+    : "/login";
 
   return (
     <div className="flex flex-col gap-6" {...props}>
@@ -37,6 +46,9 @@ export function SignupForm({
         <CardContent>
           <form action={formAction} className="grid gap-6">
             {plan && <input type="hidden" name="plan" value={plan} />}
+            {redirectTo && (
+              <input type="hidden" name="redirectTo" value={redirectTo} />
+            )}
             <div className="grid gap-3">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -136,6 +148,7 @@ export function SignupForm({
               disabled={
                 !acceptedTerms || !authorizedProcessing || !ageConfirmed
               }
+              redirectTo={redirectTo}
             />
             <div className="text-center text-sm">
               Already have an account?{" "}

@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -16,16 +17,34 @@ import { acceptCurrentLegalTerms } from "./actions";
 export default async function LegalAcceptancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    next?: string;
+    redirectTo?: string;
+  }>;
 }) {
   const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },
   });
 
-  if (!session?.user?.id) redirect("/register");
-  if (await hasCurrentLegalAcceptance(session.user.id)) redirect("/chat");
+  const { error, next, redirectTo } = await searchParams;
+  const rawTarget = next || redirectTo || "/chat";
+  const target =
+    rawTarget.startsWith("/") && !rawTarget.startsWith("//")
+      ? rawTarget
+      : "/chat";
 
-  const { error } = await searchParams;
+  if (!session?.user?.id) {
+    const regUrl =
+      target !== "/chat"
+        ? `/register?redirectTo=${encodeURIComponent(target)}`
+        : "/register";
+    redirect(regUrl as Route);
+  }
+
+  if (await hasCurrentLegalAcceptance(session.user.id)) {
+    redirect(target as Route);
+  }
 
   return (
     <main className="container mx-auto flex min-h-screen max-w-xl items-center px-4 py-12">
@@ -39,6 +58,7 @@ export default async function LegalAcceptancePage({
         </CardHeader>
         <CardContent>
           <form action={acceptCurrentLegalTerms} className="grid gap-5">
+            <input type="hidden" name="next" value={target} />
             <label className="flex items-start gap-3 text-sm">
               <input
                 className="mt-1 h-4 w-4"

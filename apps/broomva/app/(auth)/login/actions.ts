@@ -13,6 +13,7 @@ export async function signInWithEmail(
   const email = formData.get("email");
   const password = formData.get("password");
   const plan = formData.get("plan");
+  const redirectTo = formData.get("redirectTo");
 
   if (typeof email !== "string" || typeof password !== "string") {
     return { error: "Email and password are required." };
@@ -33,6 +34,14 @@ export async function signInWithEmail(
 
   if (typeof plan === "string" && plan) {
     redirect(`/onboarding?plan=${encodeURIComponent(plan)}` as Route);
+  }
+
+  if (
+    typeof redirectTo === "string" &&
+    redirectTo.startsWith("/") &&
+    !redirectTo.startsWith("//")
+  ) {
+    redirect(redirectTo as Route);
   }
 
   redirect("/chat");
