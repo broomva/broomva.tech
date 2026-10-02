@@ -18,6 +18,7 @@ export const auth = createNeonAuth({
     secret: neonAuthBaseUrl
       ? cookieSecret
       : cookieSecret || "insecure-dev-only-secret-do-not-use-in-prod",
+    sameSite: "lax",
   },
 });
 
