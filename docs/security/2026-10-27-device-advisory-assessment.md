@@ -1,0 +1,11 @@
+# Better Auth device advisory assessment
+
+Observed 2026-10-27 during the narrated keynote release. The exact dependency gate discovered newly published [GHSA-q84f-53jg-9ppm](https://github.com/advisories/GHSA-q84f-53jg-9ppm). The publisher states that applications which do not enable the opt-in `deviceAuthorization()` plugin are not affected. This assessment addresses that advisory only.
+
+The installed package versions remain affected ranges: app server Better Auth 1.6.26, and Neon client/UI Better Auth 1.4.18. No version, lockfile, topology hash, gate code or review deadline is changed here. A package upgrade would leave the Neon copy in place and expand this release into an auth migration.
+
+`apps/broomva/lib/agent-auth.ts` is the only local `betterAuth()` construction. It registers `@better-auth/agent-auth` 0.6.2, plugin id `agent-auth`; it does not register the affected built-in plugin. The installed plugin implementation contains no `deviceAuthorization` identifier. Its `device_authorization` option is part of the separate agent-auth implementation; matching terminology does not establish use of the affected plugin. `apps/broomva/lib/auth.ts` uses `createNeonAuth` to proxy to the hosted provider. This is not evidence about the provider's internal patch state.
+
+The existing Better Auth baseline record includes one new, explicitly reviewed non-applicability key. It does not assert a patch or relax the exact-policy test. `scripts/auth-device-advisory.test.ts` evaluates the actual local server configuration with the real installed agent-auth plugin factory, stubbing database and Better Auth construction to avoid external effects. It checks the selected plugin ids, inspects the installed plugin for use of the affected plugin, and guards the separate hosted-proxy entry. The tests run in the existing audit-policy CI step. This is bounded evidence for current configuration, not a complete authentication security review.
+
+The exception is valid only while these configuration and topology conditions hold. Enabling the affected built-in plugin requires removing/revisiting this assessment and upgrading to a fixed version (1.7.0-rc.3 / stable 1.7.0 or later) with the publisher's approval-page changes. The baseline deadline remains 2026-10-27T23:59:59Z. Independent review must verify this assessment before merge.

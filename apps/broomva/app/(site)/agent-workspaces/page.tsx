@@ -4,7 +4,7 @@ import { agentWorkspaces as release } from "@/lib/agent-workspaces";
 import styles from "./page.module.css";
 
 const description =
-  "A living guide to agent workspaces, context, knowledge graphs, skills, repository structure, and operating a fleet. Watch the keynote, read the guide, or download both PDFs.";
+  "A living guide to agent workspaces, context, knowledge graphs, skills, repository structure, and operating a fleet. Play the narrated keynote, read the guide, or download both PDFs.";
 
 export const metadata: Metadata = {
   title: "Agent workspaces",
@@ -94,8 +94,8 @@ export default function AgentWorkspacesPage() {
           work.
         </p>
         <div className={styles.actions}>
-          <a className={styles.primary} href={release.deck}>
-            <Play size={17} aria-hidden="true" /> Open presentation
+          <a className={styles.primary} href={`${release.deck}?play`}>
+            <Play size={17} aria-hidden="true" /> Play narrated keynote
           </a>
           <a
             className={styles.secondary}
@@ -105,7 +105,7 @@ export default function AgentWorkspacesPage() {
           </a>
         </div>
         <p className={styles.meta}>
-          37 scenes · 7 chapters · About 47 minutes · Free and open source
+          37 scenes · River narration: 23 minutes · Live talk: about 47 minutes
         </p>
       </section>
 

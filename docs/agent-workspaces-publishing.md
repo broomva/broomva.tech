@@ -28,3 +28,11 @@ query parameters and the browser's scene fragment survive the redirect.
 
 The landing page is indexed in the sitemap and linked from `/links`. Its manifest
 is public so a reader can verify the PDFs and deck against the source release.
+
+## Narrated edition (v1.1.0)
+
+The landing page's primary action opens `/agent-workspaces/deck/?play`. It presents a Play control; browsers require a user gesture before audio starts. The self-contained deck bundles River / Eleven v4 audio, generated captions and cue points for its 37 scenes and 103 reveals. Audio time controls navigation and reveal timing, including after pause, seek, rate changes and background-tab return.
+
+The narration is a 22:59 adaptation, while the live talk includes demonstrations and discussion. Audio and its credit notice live under `deck/narration/` in the immutable release; the existing same-origin media policy applies. Verify an anonymous HTTP 206 byte-range response for `deck/narration/river.mp3` after deploy, then test a cold mid-deck link such as `?play#scene=16&beat=1`. A host that cannot seek must pause with a recovery message rather than play mismatched audio.
+
+The importer requires the audio, its credits and the root attribution/license notices, validates their hashes before writes and keeps v1.0.0 untouched. Source browser tests cover the player; the website checks the generated payload, stable redirect, framing and public access.
