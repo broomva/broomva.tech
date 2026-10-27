@@ -10,7 +10,10 @@ and scene hashes preserved. It does not inherit the site's React layout.
 
 1. Review and tag the source repository, then run its documented build to export
    the live deck and both PDFs from that same source commit.
-2. Update `apps/broomva/lib/agent-workspaces.ts` to the new version and base path.
+2. Update `version` in `apps/broomva/lib/agent-workspaces.ts`; the importer's release
+   directory and the site's base path both derive from it. Add the literal
+   `!public/agent-workspaces/v<version>` exclusion to `files.includes` in
+   `apps/broomva/biome.jsonc` so lint skips the immutable bundle.
 3. Import the reviewed build with
    `bun scripts/sync-agent-workspaces.ts --from /path/to/agent-workspaces/dist`.
    The importer validates every checksum and records the source commit and manifest

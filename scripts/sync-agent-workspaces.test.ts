@@ -33,6 +33,10 @@ async function fixture() {
 		"LICENSE",
 		"LICENSE-CONTENT",
 		"ATTRIBUTION.md",
+		"deck/fonts/NOTICE.md",
+		"deck/fonts/Inter-OFL.txt",
+		"deck/fonts/Raleway-OFL.txt",
+		"deck/fonts/JetBrainsMono-OFL.txt",
 		"deck/preview.webp",
 		"downloads/agent-workspaces-slides.pdf",
 		"downloads/agent-workspaces-guide.pdf",
@@ -116,7 +120,7 @@ test("refuses different bytes for an existing version and retains the original",
 });
 
 
-test("refuses each missing narration or legal artifact before any write", async () => {
+test("refuses each missing narration, legal or font-license artifact before any write", async () => {
 	for (const name of [
 		"deck/narration/river.mp3",
 		"deck/narration/CREDITS.md",
@@ -124,6 +128,10 @@ test("refuses each missing narration or legal artifact before any write", async 
 		"LICENSE",
 		"LICENSE-CONTENT",
 		"ATTRIBUTION.md",
+		"deck/fonts/NOTICE.md",
+		"deck/fonts/Inter-OFL.txt",
+		"deck/fonts/Raleway-OFL.txt",
+		"deck/fonts/JetBrainsMono-OFL.txt",
 	]) {
 		const f = await fixture();
 		delete f.manifest.files[name];
