@@ -74,6 +74,13 @@ export const agentAuthInstance = betterAuth({
   secret: process.env.AUTH_SECRET,
   baseURL: process.env.APP_URL || "https://broomva.tech",
   basePath: "/api/auth/agent-protocol",
+  // Better Auth 1.7 validates the Drizzle schema before every request. The
+  // shared `db` client carries no schema and the agent-auth tables are not
+  // migrated yet, so that check fails the whole handler. Disabling it keeps the
+  // 1.6 behaviour: schema-free endpoints (discovery, capability list, session
+  // lookup) work, and DB-backed ones fail when they touch a missing model.
+  // Wiring the schema and migrating the tables is tracked in BRO-3539.
+  advanced: { database: { validateSchema: false } },
 
   plugins: [
     // @ts-ignore — version mismatch between better-auth and @better-auth/agent-auth AuthContext types
