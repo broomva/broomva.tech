@@ -1,5 +1,5 @@
 {
-  "reviewBy": "2026-10-27",
+  "reviewBy": "2026-11-10",
   "exceptions": [
     {
       "package": "@fastify/static",
@@ -36,9 +36,10 @@
     {
       "package": "better-auth",
       "owner": "security",
-      "topologySha256": "e08861ea8e9008751ef4916139e1f6c16b8b631b049954110f56f85fbd5eab0a",
-      "rationale": "Neon Auth 0.4.2-beta pins Better Auth 1.4.18 for client, cookie, and type adapters. At runtime Neon Auth imports only better-auth/client, /client/plugins, /cookies, /react and /types from that copy and forwards /api/auth requests upstream to the hosted NEON_AUTH_BASE_URL, so no 1.4.18 server handler (OAuth callback, state check, account linking, plugins) runs in-process; the app's own agent-auth server uses Better Auth 1.6.26. Neon Auth 0.5.0-beta (Better Auth 1.6.23) was published 2026-08-11; migrating to it is an auth-path change tracked in BRO-2627 and must land before this reviewBy. GHSA-q84f-53jg-9ppm (newly observed 2026-10-27) applies only when the opt-in deviceAuthorization() plugin is enabled. The sole local Better Auth instance configures only @better-auth/agent-auth (id agent-auth), whose compiled implementation does not include deviceAuthorization; its device_authorization approval method is a separate implementation. The main entry remains a hosted Neon proxy, not a local 1.4.18 server. scripts/auth-device-advisory.test.ts evaluates the actual local configuration and guards both conditions. This is a conditional non-applicability assessment, not a claim that installed packages or the hosted provider are patched; re-review if the plugin or topology changes.",
+      "topologySha256": "36beacea36564040b9e964a151beeb6ae754217bd17262646b3f4bcf65c3d825",
+      "rationale": "Reassessed 2026-10-27 for GHSA-965c-763c-88jm and GHSA-r4xp-prcw-77qf. The only in-process Better Auth server (apps/broomva/lib/agent-auth.ts with @better-auth/agent-auth 0.6.2, scoped by the root override) now runs better-auth and @better-auth/core 1.7.12, outside every listed range; GHSA-r4xp-prcw-77qf no longer matches the tree and is not excepted. Every remaining key comes from the Better Auth 1.4.18 copy that Neon Auth 0.4.2-beta pins exactly (with its auth-ui, passkey and daveyplate peers). The app imports only @neondatabase/auth/next and /next/server; their runtime module graph loads only better-auth/client, /client/plugins, /cookies, /react and /types (server plugin paths such as plugins/magic-link appear only in .d.ts types), and /api/auth is forwarded to the hosted NEON_AUTH_BASE_URL, so no 1.4.18 server handler (OAuth callback, state check, magic-link verification, account linking, plugins) runs in-process. Every published Neon Auth release still pins a vulnerable Better Auth (0.5.0-beta 1.6.23; 0.6.0-beta and 0.7.0-beta 1.7.6, below the 1.7.7 fix), so the BRO-2627 migration cannot clear these keys yet. GHSA-q84f-53jg-9ppm requires the opt-in deviceAuthorization() plugin, which the local server does not configure. scripts/auth-device-advisory.test.ts and scripts/auth-oauth-state-advisory.test.ts evaluate the actual local configuration, the installed server version, every Better Auth import site in the app, and Neon's runtime import graph. This is a conditional in-process non-applicability assessment, not a claim that the hosted Neon Auth server is patched against GHSA-965c-763c-88jm; re-review when Neon publishes a release pinning Better Auth >=1.7.7 or this topology changes.",
       "advisories": [
+        "critical|https://github.com/advisories/GHSA-965c-763c-88jm",
         "critical|https://github.com/advisories/GHSA-pw9m-5jxm-xr6h",
         "high|https://github.com/advisories/GHSA-392p-2q2v-4372",
         "high|https://github.com/advisories/GHSA-7w99-5wm4-3g79",
@@ -65,8 +66,8 @@
     {
       "package": "esbuild",
       "owner": "security",
-      "topologySha256": "5d5dc896738fbacdb9587aa4fc876eddba545229ad16d02642b7bbeebee49096",
-      "rationale": "The vulnerable copy is a Drizzle development-tool dependency. No esbuild development server is exposed in production.",
+      "topologySha256": "bde2674a1227fba29e0c400b21a6606c63450a3808879c73739237bb89b64780",
+      "rationale": "The vulnerable copy is a Drizzle development-tool dependency. No esbuild development server is exposed in production. Topology hash re-recorded 2026-10-27: the Better Auth 1.7.12 upgrade changed only the Drizzle/Vitest optional-peer lines that print the Better Auth version.",
       "advisories": [
         "moderate|https://github.com/advisories/GHSA-67mh-4wv8-2f99"
       ]
@@ -106,8 +107,8 @@
     {
       "package": "undici",
       "owner": "security",
-      "topologySha256": "33a352e54e504164f6d68c405c65d6d9c34507d3c1c5bd3805af15278f59a408",
-      "rationale": "Patched Undici 7.30.1 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.29.1. The remaining vulnerable 5.29.0 runtime branch belongs only to ConnectRPC v1 for an operator-configured Life gateway; no patched 5.x release exists. Its Busboy dependency is independently upgraded to 3.2.2 with fragmented multipart and HTTP/2 RPC integration tests. The retained advisory keys still affect Undici 5: caller-controlled proxy, cookie, WebSocket and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until a ConnectRPC v2 migration. Reassessed 2026-10-27; existing deadline unchanged.",
+      "topologySha256": "259e7e21777bb808d05cd07921978f3ef32ead63ceac909f1559a1df9b206632",
+      "rationale": "Patched Undici 7.30.1 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.29.1. The remaining vulnerable 5.29.0 runtime branch belongs only to ConnectRPC v1 for an operator-configured Life gateway; no patched 5.x release exists. Its Busboy dependency is independently upgraded to 3.2.2 with fragmented multipart and HTTP/2 RPC integration tests. The retained advisory keys still affect Undici 5: caller-controlled proxy, cookie, WebSocket and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until a ConnectRPC v2 migration. Reassessed 2026-10-27. Topology hash re-recorded the same day: the Better Auth 1.7.12 upgrade changed only the Vitest optional-peer lines that print the Better Auth version.",
       "advisories": [
         "high|https://github.com/advisories/GHSA-v9p9-hfj2-hcw8",
         "high|https://github.com/advisories/GHSA-vrm6-8vpv-qv8q",

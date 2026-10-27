@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "audit:dependencies": "bun scripts/audit-dependencies.ts",
-    "test:audit-policy": "bun test scripts/audit-dependencies.test.ts scripts/auth-device-advisory.test.ts",
+    "test:audit-policy": "bun test scripts/audit-dependencies.test.ts scripts/auth-device-advisory.test.ts scripts/auth-oauth-state-advisory.test.ts",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "vercel-build": "turbo run vercel-build",
@@ -67,6 +67,7 @@
     "undici@>=7 <8": "7.30.1",
     "postcss-selector-parser@>=6 <7": "6.1.5",
     "postcss-selector-parser@>=7 <8": "7.1.6",
+    "set-cookie-parser@>=3 <4": "3.1.4",
     "@coinbase/cdp-sdk@1.51.0": {
       "zod": "4.6.6"
     },
@@ -83,8 +84,8 @@
       "@fastify/busboy": "3.2.2"
     },
     "@better-auth/agent-auth@0.6.2": {
-      "@better-auth/core": "1.6.26",
-      "better-auth": "1.6.26"
+      "@better-auth/core": "1.7.12",
+      "better-auth": "1.7.12"
     }
   },
   "patchedDependencies": {
