@@ -13,6 +13,9 @@
       "!lib/utils.ts",
       "!hooks/use-mobile.ts",
       "!content",
+      // Immutable upstream release bundle. check:agent-workspaces verifies its
+      // pinned checksums; source changes and lint belong in its source repo.
+      "!public/agent-workspaces/v1.0.0",
       "!**/*.d.ts.map",
       "!**/dist/**/*",
       "!**/build/**/*",

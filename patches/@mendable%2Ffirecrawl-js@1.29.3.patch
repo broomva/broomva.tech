@@ -1,0 +1,60 @@
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -4 +4 @@
+-import { zodToJsonSchema } from "zod-to-json-schema";
++import { toJSONSchema as zodToJsonSchema } from "zod";
+@@ -70 +70 @@
+-        schema = zodToJsonSchema(schema);
++        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
+@@ -84 +84 @@
+-        schema = zodToJsonSchema(schema);
++        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
+@@ -147 +147 @@
+-        schema = zodToJsonSchema(schema);
++        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
+@@ -416 +416 @@
+-        schema = zodToJsonSchema(schema);
++        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
+@@ -430 +430 @@
+-        schema = zodToJsonSchema(schema);
++        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
+@@ -609 +609 @@
+-          jsonSchema = zodToJsonSchema(params.schema);
++          jsonSchema = zodToJsonSchema(params.schema, { target: "draft-7", io: "input" });
+@@ -673 +673 @@
+-          jsonSchema = zodToJsonSchema(params.schema);
++          jsonSchema = zodToJsonSchema(params.schema, { target: "draft-7", io: "input" });
+@@ -964 +964 @@
+-        schema = zodToJsonSchema(schema);
++        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
+diff --git a/dist/index.cjs b/dist/index.cjs
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -120 +120 @@
+-var import_zod_to_json_schema = require("zod-to-json-schema");
++var import_zod_to_json_schema = require("zod");
+@@ -186 +186 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -200 +200 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -263 +263 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -532 +532 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -546 +546 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -725 +725 @@
+-          jsonSchema = (0, import_zod_to_json_schema.zodToJsonSchema)(params.schema);
++          jsonSchema = (0, import_zod_to_json_schema.toJSONSchema)(params.schema, { target: "draft-7", io: "input" });
+@@ -789 +789 @@
+-          jsonSchema = (0, import_zod_to_json_schema.zodToJsonSchema)(params.schema);
++          jsonSchema = (0, import_zod_to_json_schema.toJSONSchema)(params.schema, { target: "draft-7", io: "input" });
+@@ -1080 +1080 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });

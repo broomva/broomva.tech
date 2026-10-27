@@ -44,7 +44,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.4
 
       - name: Cache Bun dependencies
         uses: actions/cache@v6
@@ -55,6 +55,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Verify pinned Agent workspaces release
+        run: bun run check:agent-workspaces
 
       - name: Enforce dependency advisory policy
         run: bun run test:audit-policy && bun run audit:dependencies
@@ -71,6 +74,9 @@ jobs:
 
       - name: Typecheck
         run: bun run test:types
+
+      - name: Test Life RPC transport compatibility
+        run: bun run --cwd packages/lifegw-client test
 
       # Runs the full vitest suite (previously not gated in CI) plus the Redis
       # wiring integration test against the redis:8 service on db15 (isolated
@@ -116,7 +122,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.4
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -165,7 +171,7 @@ jobs:
         if: steps.changes.outputs.assets_changed == 'true'
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.4
 
       - name: Cache Bun dependencies
         if: steps.changes.outputs.assets_changed == 'true'
@@ -198,7 +204,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.4
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
