@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/broomva/agent-workspaces",
   "tag": "v1.1.0",
-  "sourceCommit": "ade93cde5ca4203f00ae97ad104a41c814478908",
-  "manifestSha256": "80d60f03778ad780f966d3346a84cd65bb1ffc0332c69978b0b991acb2b55572"
+  "sourceCommit": "5c39cb5ce7c8fcfb32227c5b329a9eb25b85738b",
+  "manifestSha256": "7ef1ed4a337a4103bc1fabc783c17fe1f04c4d1fde5fde19caaec87c96bb0c3a"
 }

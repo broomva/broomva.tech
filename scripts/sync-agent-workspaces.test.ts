@@ -114,3 +114,23 @@ test("refuses different bytes for an existing version and retains the original",
 		),
 	).toBe("resources.md");
 });
+
+
+test("refuses each missing narration or legal artifact before any write", async () => {
+	for (const name of [
+		"deck/narration/river.mp3",
+		"deck/narration/CREDITS.md",
+		"NOTICE",
+		"LICENSE",
+		"LICENSE-CONTENT",
+		"ATTRIBUTION.md",
+	]) {
+		const f = await fixture();
+		delete f.manifest.files[name];
+		await f.writeManifest();
+		const result = f.run("--from", f.dist);
+		expect(result.status).not.toBe(0);
+		expect(result.output).toContain(`Missing release artifact: ${name}`);
+		expect(await Bun.file(path.join(f.root, "apps/broomva/lib/agent-workspaces-release.json")).exists()).toBe(false);
+	}
+});
