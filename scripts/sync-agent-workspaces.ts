@@ -38,10 +38,16 @@ if (
 	throw new Error("Release must enumerate its files and SHA-256 hashes");
 }
 const allowed =
-	/^(?:deck\/(?:index\.html|preview\.webp|fonts\/[A-Za-z0-9_.-]+)|downloads\/agent-workspaces-(?:slides|guide)\.pdf|script\.md|resources\.md)$/;
+	/^(?:deck\/(?:index\.html|preview\.webp|fonts\/[A-Za-z0-9_.-]+|narration\/(?:river\.mp3|CREDITS\.md))|downloads\/agent-workspaces-(?:slides|guide)\.pdf|script\.md|resources\.md|NOTICE|LICENSE|LICENSE-CONTENT|ATTRIBUTION\.md)$/;
 const names = Object.keys(manifest.files);
 const required = [
 	"deck/index.html",
+	"deck/narration/river.mp3",
+	"deck/narration/CREDITS.md",
+	"NOTICE",
+	"LICENSE",
+	"LICENSE-CONTENT",
+	"ATTRIBUTION.md",
 	"deck/preview.webp",
 	"downloads/agent-workspaces-slides.pdf",
 	"downloads/agent-workspaces-guide.pdf",

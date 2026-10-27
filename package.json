@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "audit:dependencies": "bun scripts/audit-dependencies.ts",
-    "test:audit-policy": "bun test scripts/audit-dependencies.test.ts",
+    "test:audit-policy": "bun test scripts/audit-dependencies.test.ts scripts/auth-device-advisory.test.ts",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "vercel-build": "turbo run vercel-build",

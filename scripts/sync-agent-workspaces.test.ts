@@ -27,6 +27,12 @@ async function fixture() {
 	const dist = path.join(root, "dist");
 	const entries = [
 		"deck/index.html",
+		"deck/narration/river.mp3",
+		"deck/narration/CREDITS.md",
+		"NOTICE",
+		"LICENSE",
+		"LICENSE-CONTENT",
+		"ATTRIBUTION.md",
 		"deck/preview.webp",
 		"downloads/agent-workspaces-slides.pdf",
 		"downloads/agent-workspaces-guide.pdf",
@@ -40,7 +46,7 @@ async function fixture() {
 		await writeFile(destination, name);
 		files[name] = createHash("sha256").update(name).digest("hex");
 	}
-	const manifest = { version: "1.0.0", sourceCommit: "a".repeat(40), files };
+	const manifest = { version: "1.1.0", sourceCommit: "a".repeat(40), files };
 	const writeManifest = () =>
 		writeFile(path.join(dist, "release.json"), JSON.stringify(manifest));
 	await writeManifest();
@@ -63,7 +69,7 @@ test("imports a verified bundle and detects subsequent artifact tampering", asyn
 	expect(f.run("--check").status).toBe(0);
 	const target = path.join(
 		f.root,
-		"apps/broomva/public/agent-workspaces/v1.0.0/deck/index.html",
+		"apps/broomva/public/agent-workspaces/v1.1.0/deck/index.html",
 	);
 	await writeFile(target, "modified after review");
 	const result = f.run("--check");
@@ -102,9 +108,29 @@ test("refuses different bytes for an existing version and retains the original",
 		await readFile(
 			path.join(
 				f.root,
-				"apps/broomva/public/agent-workspaces/v1.0.0/resources.md",
+				"apps/broomva/public/agent-workspaces/v1.1.0/resources.md",
 			),
 			"utf8",
 		),
 	).toBe("resources.md");
+});
+
+
+test("refuses each missing narration or legal artifact before any write", async () => {
+	for (const name of [
+		"deck/narration/river.mp3",
+		"deck/narration/CREDITS.md",
+		"NOTICE",
+		"LICENSE",
+		"LICENSE-CONTENT",
+		"ATTRIBUTION.md",
+	]) {
+		const f = await fixture();
+		delete f.manifest.files[name];
+		await f.writeManifest();
+		const result = f.run("--from", f.dist);
+		expect(result.status).not.toBe(0);
+		expect(result.output).toContain(`Missing release artifact: ${name}`);
+		expect(await Bun.file(path.join(f.root, "apps/broomva/lib/agent-workspaces-release.json")).exists()).toBe(false);
+	}
 });
