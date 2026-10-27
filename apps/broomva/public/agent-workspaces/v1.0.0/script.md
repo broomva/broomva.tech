@@ -72,7 +72,7 @@ The following are dated author-workspace observations and illustrative source pa
 |---|---|---|
 | 0.9% of 565 sessions loaded the graph | Session-start self-improvement telemetry (`kg_load_rate` 0.0088 over 7 days) | 2026-10-26 |
 | 1,430 entities · 6,076 edges | `docs/knowledge-index.md` header | 2026-10-25 |
-| Entity graph (scene 17) | Two-hop `[[link]]` neighbourhood of `agent-harness-three-layer-split` (concept, pattern and tool types only; slugs only) | 2026-10-26 |
+| Entity graph (scene 17) | Related-neighbour traversal `[[link]]` neighbourhood of `agent-harness-three-layer-split` (concept, pattern and tool types only; slugs only) | 2026-10-26 |
 | Front-matter fields and `/kg load` flags (scenes 16, 13) | `skills/knowledge/kg/SKILL.md`; entity front matter in `research/entities/` | 2026-10-26 |
 | Hook stations and their jobs (scene 12) | `.claude/settings.json` registrations (SessionStart ×5, UserPromptSubmit, PreToolUse on Bash/Write/Edit, Stop); plugin and user-level hooks add more (the bstack plugin's SessionStart hook injects the board facts and the self-improvement metric) | 2026-10-26 |
 | 115 authored skills · 23 categories · 31 harness folders | `skills/skills/**/SKILL.md`; dot-directories containing `skills/` | 2026-10-26 |

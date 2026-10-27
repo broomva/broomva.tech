@@ -1,8 +1,8 @@
 {
   "version": "1.0.0",
-  "sourceCommit": "fee3c2dfb2e34dbe012eadf1731ce4cb187c3f2b",
+  "sourceCommit": "4dfe0dc4efd51ff0d5709f00b117bc54b620dcf6",
   "upstreamCommit": "ce6f879f1045fae540e5b31ad4f5252737a83801",
-  "generatedAt": "2026-10-27T08:32:24.637Z",
+  "generatedAt": "2026-10-27T08:43:52.563Z",
   "files": {
     "deck/fonts/Inter-400.woff2": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4",
     "deck/fonts/Inter-OFL.txt": "5dd548d31a85f756e01d63e00d7faf1e324103ed3e9102fcbbabf2cc2db6dd39",
@@ -13,9 +13,9 @@
     "deck/fonts/Raleway-OFL.txt": "c62d0f4b78825cbf2d99ac7ea3dd163f645210efa032243731184c9f86a6eab6",
     "deck/index.html": "38217dc0d18709358c3f63b1d702be6ecc15508a329160cb8f1e0fddb02b2b93",
     "deck/preview.webp": "0ffee117930dccf081953612dfd3c9f2b7efd22d022161ae58fdb4f64ef43c91",
-    "downloads/agent-workspaces-guide.pdf": "1d9133dc1ec37770cbc871a6f5ec16f0b67b6725c51a8128f7c70d6f3f24fc0c",
-    "downloads/agent-workspaces-slides.pdf": "7824d6d3bcac061dd135eb8b349282c49a2e2dda43de7c12de78ad6b884b38ae",
+    "downloads/agent-workspaces-guide.pdf": "d03d731d851fdd0cf74e51b78841f3cd7202aa7739b37301185a824570344191",
+    "downloads/agent-workspaces-slides.pdf": "2fe8ec92c61a6963f390f202aafd34c859289c4369c018d2a9b8d50927ef46b0",
     "resources.md": "6555e3d6ce0cfb4645e48cb122da4b5e8b3bfc82413d839c2b97763dd983d359",
-    "script.md": "acb16ea2b27a8977f3bfed55b6f028c9f969bae6608aaebbf8d54443dd68a98e"
+    "script.md": "b75481d206ce6414fcf546434756827c526b0693554b4543526f0b249831f25e"
   }
 }
