@@ -41,6 +41,18 @@ beforeEach(() => {
 });
 
 describe("proxy public artifact routes", () => {
+  test.each([
+    "/agent-workspaces",
+    "/agent-workspaces/deck/",
+    "/agent-workspaces/v1.0.0/deck/index.html",
+    "/agent-workspaces/v1.0.0/downloads/agent-workspaces-guide.pdf",
+  ])("allows anonymous keynote readers through: %s", async (pathname) => {
+    const response = await proxy(req(pathname));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(mockGetSafeSession).not.toHaveBeenCalled();
+  });
+
   test("allows anonymous public spec pages through to the route handler", async () => {
     const response = await proxy(req("/d/hackathon-fork-inventory"));
 

@@ -38,6 +38,13 @@ const featuredPost = {
 
 const quickActions = [
   {
+    label: "Agent workspaces",
+    href: "/agent-workspaces",
+    icon: Play,
+    description: "The living keynote, guide, and PDFs",
+    internal: true,
+  },
+  {
     label: "Start here",
     href: "/start-here",
     icon: BookOpen,

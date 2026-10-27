@@ -8,6 +8,7 @@ import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 
 /** Pages accessible without authentication. */
 const PUBLIC_PAGE_PREFIXES = [
+  "/agent-workspaces",
   "/projects",
   "/writing",
   "/notes",

@@ -56,6 +56,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Verify pinned Agent workspaces release
+        run: bun run check:agent-workspaces
+
       - name: Enforce dependency advisory policy
         run: bun run test:audit-policy && bun run audit:dependencies
 
