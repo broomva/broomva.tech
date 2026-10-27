@@ -128,3 +128,8 @@ configuration and its postinstall failed; adding the real source.config,
 tsconfig and docs content fixed that fixture. Frozen install and the actual
 Fumadocs postinstall then passed. Installed ESM patch contents were asserted,
 and the frozen lock bytes match the implementation checkout exactly.
+
+The generated Firecrawl patch was normalized to zero-context hunks to avoid
+whitespace warnings on blank unified-diff context lines. Reinstallation and
+all five SDK/MCP tests pass; fresh-install ESM/CJS bytes match the tested
+implementation. This changes patch representation only.

@@ -1,170 +1,60 @@
-diff --git a/dist/index.cjs b/dist/index.cjs
-index 975dcf5e7d74d776bb29e8bfeca6aea47b5776e2..4f439c8df5568f7caaa5490712f5ea869eda4d4e 100644
---- a/dist/index.cjs
-+++ b/dist/index.cjs
-@@ -117,7 +117,7 @@ __export(index_exports, {
- module.exports = __toCommonJS(index_exports);
- var import_axios = __toESM(require("axios"), 1);
- var zt = require("zod");
--var import_zod_to_json_schema = require("zod-to-json-schema");
-+var import_zod_to_json_schema = require("zod");
- 
- // node_modules/typescript-event-target/dist/index.mjs
- var e = class extends EventTarget {
-@@ -183,7 +183,7 @@ var FirecrawlApp = class {
-     if (jsonData?.extract?.schema) {
-       let schema = jsonData.extract.schema;
-       try {
--        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
-+        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -197,7 +197,7 @@ var FirecrawlApp = class {
-     if (jsonData?.jsonOptions?.schema) {
-       let schema = jsonData.jsonOptions.schema;
-       try {
--        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
-+        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -260,7 +260,7 @@ var FirecrawlApp = class {
-     if (jsonData?.scrapeOptions?.extract?.schema) {
-       let schema = jsonData.scrapeOptions.extract.schema;
-       try {
--        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
-+        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -529,7 +529,7 @@ var FirecrawlApp = class {
-     if (jsonData?.extract?.schema) {
-       let schema = jsonData.extract.schema;
-       try {
--        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
-+        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -543,7 +543,7 @@ var FirecrawlApp = class {
-     if (jsonData?.jsonOptions?.schema) {
-       let schema = jsonData.jsonOptions.schema;
-       try {
--        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
-+        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -722,7 +722,7 @@ var FirecrawlApp = class {
-         jsonSchema = void 0;
-       } else {
-         try {
--          jsonSchema = (0, import_zod_to_json_schema.zodToJsonSchema)(params.schema);
-+          jsonSchema = (0, import_zod_to_json_schema.toJSONSchema)(params.schema, { target: "draft-7", io: "input" });
-         } catch (_) {
-           jsonSchema = params.schema;
-         }
-@@ -786,7 +786,7 @@ var FirecrawlApp = class {
-         jsonSchema = void 0;
-       } else {
-         try {
--          jsonSchema = (0, import_zod_to_json_schema.zodToJsonSchema)(params.schema);
-+          jsonSchema = (0, import_zod_to_json_schema.toJSONSchema)(params.schema, { target: "draft-7", io: "input" });
-         } catch (_) {
-           jsonSchema = params.schema;
-         }
-@@ -1077,7 +1077,7 @@ var FirecrawlApp = class {
-     if (jsonData?.jsonOptions?.schema) {
-       let schema = jsonData.jsonOptions.schema;
-       try {
--        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
-+        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
 diff --git a/dist/index.js b/dist/index.js
-index 41365d72ea49a6d05b9e6c8c274da77e47f7c7f6..709b46e67c1083f18d07d9966575f0927a6e551a 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -1,7 +1,7 @@
- // src/index.ts
- import axios, { AxiosError } from "axios";
- import "zod";
+@@ -4 +4 @@
 -import { zodToJsonSchema } from "zod-to-json-schema";
 +import { toJSONSchema as zodToJsonSchema } from "zod";
- 
- // node_modules/typescript-event-target/dist/index.mjs
- var e = class extends EventTarget {
-@@ -67,7 +67,7 @@ var FirecrawlApp = class {
-     if (jsonData?.extract?.schema) {
-       let schema = jsonData.extract.schema;
-       try {
+@@ -70 +70 @@
 -        schema = zodToJsonSchema(schema);
 +        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -81,7 +81,7 @@ var FirecrawlApp = class {
-     if (jsonData?.jsonOptions?.schema) {
-       let schema = jsonData.jsonOptions.schema;
-       try {
+@@ -84 +84 @@
 -        schema = zodToJsonSchema(schema);
 +        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -144,7 +144,7 @@ var FirecrawlApp = class {
-     if (jsonData?.scrapeOptions?.extract?.schema) {
-       let schema = jsonData.scrapeOptions.extract.schema;
-       try {
+@@ -147 +147 @@
 -        schema = zodToJsonSchema(schema);
 +        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -413,7 +413,7 @@ var FirecrawlApp = class {
-     if (jsonData?.extract?.schema) {
-       let schema = jsonData.extract.schema;
-       try {
+@@ -416 +416 @@
 -        schema = zodToJsonSchema(schema);
 +        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -427,7 +427,7 @@ var FirecrawlApp = class {
-     if (jsonData?.jsonOptions?.schema) {
-       let schema = jsonData.jsonOptions.schema;
-       try {
+@@ -430 +430 @@
 -        schema = zodToJsonSchema(schema);
 +        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
-@@ -606,7 +606,7 @@ var FirecrawlApp = class {
-         jsonSchema = void 0;
-       } else {
-         try {
+@@ -609 +609 @@
 -          jsonSchema = zodToJsonSchema(params.schema);
 +          jsonSchema = zodToJsonSchema(params.schema, { target: "draft-7", io: "input" });
-         } catch (_) {
-           jsonSchema = params.schema;
-         }
-@@ -670,7 +670,7 @@ var FirecrawlApp = class {
-         jsonSchema = void 0;
-       } else {
-         try {
+@@ -673 +673 @@
 -          jsonSchema = zodToJsonSchema(params.schema);
 +          jsonSchema = zodToJsonSchema(params.schema, { target: "draft-7", io: "input" });
-         } catch (_) {
-           jsonSchema = params.schema;
-         }
-@@ -961,7 +961,7 @@ var FirecrawlApp = class {
-     if (jsonData?.jsonOptions?.schema) {
-       let schema = jsonData.jsonOptions.schema;
-       try {
+@@ -964 +964 @@
 -        schema = zodToJsonSchema(schema);
 +        schema = zodToJsonSchema(schema, { target: "draft-7", io: "input" });
-       } catch (error) {
-       }
-       jsonData = {
+diff --git a/dist/index.cjs b/dist/index.cjs
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -120 +120 @@
+-var import_zod_to_json_schema = require("zod-to-json-schema");
++var import_zod_to_json_schema = require("zod");
+@@ -186 +186 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -200 +200 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -263 +263 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -532 +532 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -546 +546 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
+@@ -725 +725 @@
+-          jsonSchema = (0, import_zod_to_json_schema.zodToJsonSchema)(params.schema);
++          jsonSchema = (0, import_zod_to_json_schema.toJSONSchema)(params.schema, { target: "draft-7", io: "input" });
+@@ -789 +789 @@
+-          jsonSchema = (0, import_zod_to_json_schema.zodToJsonSchema)(params.schema);
++          jsonSchema = (0, import_zod_to_json_schema.toJSONSchema)(params.schema, { target: "draft-7", io: "input" });
+@@ -1080 +1080 @@
+-        schema = (0, import_zod_to_json_schema.zodToJsonSchema)(schema);
++        schema = (0, import_zod_to_json_schema.toJSONSchema)(schema, { target: "draft-7", io: "input" });
