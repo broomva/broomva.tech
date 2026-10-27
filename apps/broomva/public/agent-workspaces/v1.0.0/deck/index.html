@@ -381,6 +381,9 @@ body.narrate .dock{left:29vw}
 body.capture .hud,body.capture .side,body.capture .progress{display:none}
 /* Chromium's backdrop-filter and blurred box-shadow output depend on compositor history (measured: 247 px, ≤3/255 between paint orders), so captures use the reduced-transparency glass to stay byte-pure; the live deck keeps the blur */
 body.capture .glass,body.capture .side{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--glass-heavy)}
+/* Paint the specular in the card background: Linux capture can omit a negative-z pseudo-layer after a filtered replay reset. */
+body.capture .glass{background:radial-gradient(480px circle at var(--mx,22%) var(--my,-10%),var(--spec),transparent 62%),var(--glass-heavy)}
+body.capture .glass::before{display:none}
 body.capture *{box-shadow:none!important}
 /* large blurred box-shadows are history-dependent too (verified by isolation); captures keep the rim and drop the blur */
 </style>
