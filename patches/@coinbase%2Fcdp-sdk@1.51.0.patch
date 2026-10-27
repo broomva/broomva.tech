@@ -1,0 +1,26 @@
+diff --git a/_cjs/policies/evmSchema.js b/_cjs/policies/evmSchema.js
+index fee0384019f98f80b8deba488876e85c1f631ca9..6947fa9960a832a3eb1ee5bcb488b52ad25ac3c5 100644
+--- a/_cjs/policies/evmSchema.js
++++ b/_cjs/policies/evmSchema.js
+@@ -211,7 +211,7 @@ exports.SignEvmTypedDataFieldCriterionSchema = zod_2.z.object({
+         /**
+          * EIP-712 compliant map of model names to model definitions.
+          */
+-        types: zod_2.z.record(zod_2.z.array(zod_2.z.object({
++        types: zod_2.z.record(zod_2.z.string(), zod_2.z.array(zod_2.z.object({
+             name: zod_2.z.string(),
+             type: zod_2.z.string(),
+         }))),
+diff --git a/_esm/policies/evmSchema.js b/_esm/policies/evmSchema.js
+index 877a9ba75d698416b86cbe902755267a1f5b9bca..81930875b7b7573557fe0fe12c9eafc805d32862 100644
+--- a/_esm/policies/evmSchema.js
++++ b/_esm/policies/evmSchema.js
+@@ -207,7 +207,7 @@ export const SignEvmTypedDataFieldCriterionSchema = z.object({
+         /**
+          * EIP-712 compliant map of model names to model definitions.
+          */
+-        types: z.record(z.array(z.object({
++        types: z.record(z.string(), z.array(z.object({
+             name: z.string(),
+             type: z.string(),
+         }))),
