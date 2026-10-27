@@ -1,0 +1,27 @@
+{
+  "version": "1.1.0",
+  "sourceCommit": "ade93cde5ca4203f00ae97ad104a41c814478908",
+  "upstreamCommit": "ce6f879f1045fae540e5b31ad4f5252737a83801",
+  "generatedAt": "2026-10-27T16:43:31.489Z",
+  "files": {
+    "ATTRIBUTION.md": "1bed256245ad41ef84ca64613128cfa308af0b4ab63333a034627b1285ce0583",
+    "deck/fonts/Inter-400.woff2": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4",
+    "deck/fonts/Inter-OFL.txt": "5dd548d31a85f756e01d63e00d7faf1e324103ed3e9102fcbbabf2cc2db6dd39",
+    "deck/fonts/JetBrainsMono-400.woff2": "2c32b9b3ee358c119e210f6f5195f9bd34894d78a785ff2e95d60e718e400af4",
+    "deck/fonts/JetBrainsMono-OFL.txt": "b2fe5e8987594e9ffd1d2ca52a2f5d73eb8335243893c5d6254b5ad69269591d",
+    "deck/fonts/NOTICE.md": "07e5a0a7a0a02d1f64ae326b61088e0467c58028bcf7cbf4bada08a929cbf9a3",
+    "deck/fonts/Raleway-300.woff2": "10f1a0ef3f3497901c1c3e9987d0cb97d092a6ce1ff45669a1aed503cf67e6ef",
+    "deck/fonts/Raleway-OFL.txt": "c62d0f4b78825cbf2d99ac7ea3dd163f645210efa032243731184c9f86a6eab6",
+    "deck/index.html": "c0c7c60a1d517945076cc2e2bd2bc28fa80569f2faf3f41167fac41cde18319f",
+    "deck/narration/CREDITS.md": "19766a50fac797400a173d0f0fc4c397be2e00354f37a38db6d8d15372588612",
+    "deck/narration/river.mp3": "326c0b832c8f07d458f922eca10eec7c5fe3f05324ecdffa8c9bc7b0f5a208bd",
+    "deck/preview.webp": "0ffee117930dccf081953612dfd3c9f2b7efd22d022161ae58fdb4f64ef43c91",
+    "downloads/agent-workspaces-guide.pdf": "d5a3a1f00bf2e835c6a1aad82d6fd8dd5ae0947b3c93e1d3a541d54ced650bae",
+    "downloads/agent-workspaces-slides.pdf": "a0b124bcdbaf06f56ec2969f1f01b609831ed91e42a23089aac0a10dd34dca68",
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "LICENSE-CONTENT": "9e5f1b3c610b9c2da5c313bf81d577a7d1acec686bdb0384edefa6df0f90cd94",
+    "NOTICE": "ffc73c420b4282944efb4e90ce24de47f47279a402d17ad9ab4d2d08f6bfdecb",
+    "resources.md": "9a319e0541c7c75528c7e0e54dc7a82ee9942861c2d083eaa89189623d95e85c",
+    "script.md": "b75481d206ce6414fcf546434756827c526b0693554b4543526f0b249831f25e"
+  }
+}
