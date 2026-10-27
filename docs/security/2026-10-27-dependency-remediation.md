@@ -133,3 +133,22 @@ The generated Firecrawl patch was normalized to zero-context hunks to avoid
 whitespace warnings on blank unified-diff context lines. Reinstallation and
 all five SDK/MCP tests pass; fresh-install ESM/CJS bytes match the tested
 implementation. This changes patch representation only.
+
+## Owner-authorized delivery resumption
+
+The owner explicitly resumed merge/deploy after the conservation checkpoint.
+Both tracked Vercel app configurations now install with
+`bunx bun@1.4.4 install --frozen-lockfile`, following Vercel's documented
+install-version pin (https://vercel.com/kb/guide/how-to-pin-a-specific-bun-version-for-vercel-builds).
+This prevents an older build-image Bun from re-resolving the v3 lockfile or
+ignoring its nested overrides. Preview build logs remain the remote proof.
+The Biome exemption is narrowed to the verified `v1.0.0` release directory.
+
+The Coinbase explicit record key is defensive, not a demonstrated runtime fix:
+the old and new forms behave alike on the tested Zod 4.6.6 cases. Firecrawl's
+native input conversion preserves Draft 7 and required fields, but omits the
+old converter's `additionalProperties:false` on ordinary stripping objects.
+That field difference is accepted for the website's representable extraction
+schema; remote provider behavior is not certified. Unrepresentable schemas can
+still fall through the SDK's inherited conversion catch. No baseline deadline
+or policy gate is changed by this resumption.
