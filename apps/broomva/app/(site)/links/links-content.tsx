@@ -185,7 +185,7 @@ function LinksInner({
       </section>
 
       {/* ─── Quick actions ─── */}
-      <section className="mt-8 grid grid-cols-3 gap-3">
+      <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
         {quickActions.map((action) => (
           <TrackedLink
             key={action.href}

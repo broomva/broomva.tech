@@ -190,12 +190,10 @@ export default function AgentWorkspacesPage() {
           </a>
         </div>
         <div className={styles.resources}>
-          <a
-            href={`${release.repository}/blob/v${release.version}/resources.md`}
-          >
+          <a href={`${release.base}/resources.md`}>
             Resources and tools <ArrowUpRight size={16} aria-hidden="true" />
           </a>
-          <a href={`${release.repository}/blob/v${release.version}/script.md`}>
+          <a href={`${release.base}/script.md`}>
             Speaker script <ArrowUpRight size={16} aria-hidden="true" />
           </a>
           <a href={release.repository}>
