@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 import { buildContentSecurityPolicy } from "./lib/security/content-security-policy";
+import {
+  AGENT_WORKSPACES_DECK_SOURCE,
+  agentWorkspacesFrameHeaders,
+} from "./lib/security/agent-workspaces-framing";
 
 const contentSecurityPolicy = buildContentSecurityPolicy();
 
@@ -103,6 +107,10 @@ const nextConfig: NextConfig = {
             value: contentSecurityPolicy,
           },
         ],
+      },
+      {
+        source: AGENT_WORKSPACES_DECK_SOURCE,
+        headers: agentWorkspacesFrameHeaders,
       },
       {
         // Path-level cache: short and revalidatable, because /images/:path*

@@ -41,6 +41,30 @@ beforeEach(() => {
 });
 
 describe("proxy public artifact routes", () => {
+  test("allows the presenter mirror only on the versioned deck document", async () => {
+    const response = await proxy(
+      req("/agent-workspaces/v1.0.0/deck/index.html?mirror"),
+    );
+    expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+    expect(response.headers.get("Content-Security-Policy")).toContain(
+      "frame-ancestors 'self'",
+    );
+    expect(response.headers.get("Content-Security-Policy")).not.toContain(
+      "frame-ancestors 'none'",
+    );
+  });
+
+  test.each([
+    "/agent-workspaces",
+    "/agent-workspaces/v1.0.0/downloads/agent-workspaces-guide.pdf",
+    "/agent-workspaces/v1.0.0/deck/other.html",
+    "/agent-workspaces/v1.0.0/deck/index.html/extra",
+    "/projects",
+  ])("retains frame blocking outside the deck: %s", async (pathname) => {
+    const response = await proxy(req(pathname));
+    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
   test.each([
     "/agent-workspaces",
     "/agent-workspaces/deck/",

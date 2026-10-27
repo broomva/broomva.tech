@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { verifyLifeJWT } from "@/lib/ai/vault/jwt";
 import { auth, getSafeSession, hasNeonAuth } from "@/lib/auth";
 import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
+import {
+  agentWorkspacesFrameHeaders,
+  isAgentWorkspacesDeckDocument,
+} from "@/lib/security/agent-workspaces-framing";
 
 // ── Public route allowlists (single source of truth) ────────────────────────
 
@@ -281,6 +285,11 @@ function withSecurityHeaders(
 
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("X-Frame-Options", "DENY");
+  if (isAgentWorkspacesDeckDocument(req.nextUrl.pathname)) {
+    for (const { key, value } of agentWorkspacesFrameHeaders) {
+      res.headers.set(key, value);
+    }
+  }
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("X-DNS-Prefetch-Control", "off");
   res.headers.set(

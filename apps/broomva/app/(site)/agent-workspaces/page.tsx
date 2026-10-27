@@ -77,7 +77,7 @@ const chapters = [
 
 export default function AgentWorkspacesPage() {
   return (
-    <main className={styles.page}>
+    <div className={styles.page}>
       <section className={styles.intro} aria-labelledby="keynote-title">
         <p className={styles.byline}>
           A keynote and field guide by Carlos Escobar
@@ -218,6 +218,6 @@ export default function AgentWorkspacesPage() {
           Release manifest <ArrowUpRight size={14} aria-hidden="true" />
         </a>
       </footer>
-    </main>
+    </div>
   );
 }
