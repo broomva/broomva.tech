@@ -33,8 +33,6 @@ const stack = [
     description:
       "Arcan runtime, Lago persistence, Vigil observability, Praxis tool execution, Haima finance, and Spaces networking — unified in one Cargo workspace.",
     href: "/projects/life",
-    demoHref: "/life",
-    demoLabel: "Try the live demo →",
   },
   {
     name: "Autoany",
@@ -64,8 +62,9 @@ export function StackSection() {
             The stack
           </h2>
           <p className="text-pretty mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-            Rust services, a layered agent-skill catalog, and tested control infrastructure. A control-theory-native
-            ecosystem for autonomous software development.
+            Rust services, a layered agent-skill catalog, and tested control
+            infrastructure. A control-theory-native ecosystem for autonomous
+            software development.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -89,14 +88,6 @@ export function StackSection() {
                       {item.description}
                     </p>
                   </Link>
-                  {item.demoHref && (
-                    <Link
-                      href={item.demoHref as Route}
-                      className="inline-flex min-h-10 items-center gap-1.5 self-start rounded-full border border-ai-blue/25 bg-ai-blue/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ai-blue/80 transition-[background-color,border-color,color,transform] hover:border-ai-blue/60 hover:bg-ai-blue/10 hover:text-ai-blue active:scale-[0.96]"
-                    >
-                      {item.demoLabel ?? "Live demo →"}
-                    </Link>
-                  )}
                 </div>
               </ScrollReveal>
             ))}

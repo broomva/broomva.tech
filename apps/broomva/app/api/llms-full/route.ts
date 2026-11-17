@@ -86,9 +86,6 @@ ${promptEntries.filter(Boolean).join("\n")}
 - \`GET ${config.appUrl}/api/prompts\` — List all prompts. Query params: \`category\`, \`tag\`, \`search\`.
 - \`GET ${config.appUrl}/api/prompts/[slug]\` — Get a single prompt by slug. Returns title, content, category, tags.
 
-### Chat API
-- \`POST ${config.appUrl}/api/chat\` — AI chat endpoint. Requires authentication. Supports streaming responses via Server-Sent Events.
-
 ### Content API
 - \`GET ${config.appUrl}/sitemap.xml\` — Full sitemap with all pages and content
 - \`GET ${config.appUrl}/llms.txt\` — Concise site overview for LLMs
@@ -97,9 +94,6 @@ ${promptEntries.filter(Boolean).join("\n")}
 
 ## Features
 
-- **AI Chat**: authenticated streaming chat using the deployed model catalog; tools and provider routes depend on active configuration and credentials
-- **Knowledge Graph**: Obsidian vault integration for connected note-taking
-- **Memory**: persistence is deployment-dependent and not represented as universally available
 - **Content Platform**: MDX-based writing, projects, notes with full-text search
 - **Prompt Library**: Versioned, categorized prompts with API access
 

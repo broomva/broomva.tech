@@ -77,45 +77,20 @@ describe("proxy public artifact routes", () => {
     expect(mockGetSafeSession).not.toHaveBeenCalled();
   });
 
-  test("allows anonymous public spec pages through to the route handler", async () => {
-    const response = await proxy(req("/d/hackathon-fork-inventory"));
+  test.each(["/d/hackathon-fork-inventory", "/h/demo-handoff", "/swapit"])(
+    "no longer treats retired surface %s as public (BRO-3833)",
+    async (pathname) => {
+      const response = await proxy(req(pathname));
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("location")).toBeNull();
-    expect(mockGetSafeSession).not.toHaveBeenCalled();
-  });
-
-  test("allows anonymous public handoff pages through to the route handler", async () => {
-    const response = await proxy(req("/h/demo-handoff"));
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("location")).toBeNull();
-    expect(mockGetSafeSession).not.toHaveBeenCalled();
-  });
-
-  test("allows the anonymous swapit commons page through to the handler", async () => {
-    const response = await proxy(req("/swapit"));
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("location")).toBeNull();
-    expect(mockGetSafeSession).not.toHaveBeenCalled();
-  });
-
-  test("allows the public swapit commons API (GET browse/pull) through", async () => {
-    const response = await proxy(
-      req("/api/swapit/facts?kind=procurement_option&region=US"),
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("location")).toBeNull();
-    expect(mockGetSafeSession).toHaveBeenCalledOnce();
-  });
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe(
+        `https://broomva.tech/login?redirectTo=${encodeURIComponent(pathname)}`,
+      );
+    },
+  );
 
   test.each([
-    "/api/invocations",
-    "/api/feedback",
     "/api/prompts/example/copy",
-    "/api/swapit/facts",
   ])("blocks anonymous data-writing surface %s", async (pathname) => {
     const response = await proxy(req(pathname, { method: "POST" }));
 
@@ -129,7 +104,7 @@ describe("proxy public artifact routes", () => {
     mockVerifyLifeJWT.mockResolvedValue({ sub: "user-1" } as never);
 
     const response = await proxy(
-      req("/api/invocations", {
+      req("/api/prompts/example/copy", {
         method: "POST",
         headers: { Authorization: "Bearer accepted-token" },
       }),
@@ -140,30 +115,12 @@ describe("proxy public artifact routes", () => {
     expect(mockAcceptance).toHaveBeenCalledWith("user-1");
   });
 
-  test.each(["/api/prompts/example/copy", "/api/swapit/facts"])(
-    "allows accepted bearer write %s to reach its auth-rechecking handler",
-    async (pathname) => {
-      mockVerifyLifeJWT.mockResolvedValue({ sub: "user-1" } as never);
-
-      const response = await proxy(
-        req(pathname, {
-          method: "POST",
-          headers: { Authorization: "Bearer accepted-token" },
-        }),
-      );
-
-      expect(response.status).toBe(200);
-      expect(mockVerifyLifeJWT).toHaveBeenCalledWith("accepted-token");
-      expect(mockAcceptance).toHaveBeenCalledWith("user-1");
-    },
-  );
-
-  test("does NOT treat a sibling like /swapit-admin as public (boundary match)", async () => {
-    const response = await proxy(req("/swapit-admin"));
+  test("does NOT treat a sibling like /prompts-admin as public (boundary match)", async () => {
+    const response = await proxy(req("/prompts-admin"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://broomva.tech/login?redirectTo=%2Fswapit-admin",
+      "https://broomva.tech/login?redirectTo=%2Fprompts-admin",
     );
   });
 
@@ -239,6 +196,41 @@ describe("proxy OAuth verifier and deep-linking", () => {
       "https://broomva.tech/device?code=PPUC-8799",
     );
   });
+
+  test.each([
+    "%2F%5Cevil.example",
+    "%2F%2Fevil.example",
+    "%2F%09%2Fevil.example",
+    "%2F.%2F%2Fevil.example",
+    "%2Fa%2F..%2F%2Fevil.example",
+    "https%3A%2F%2Fevil.example",
+  ])("never redirects a logged-in user off-site via redirectTo=%s", async (target) => {
+    mockGetSafeSession.mockResolvedValue({
+      data: {
+        session: { id: "session-1" },
+        user: { id: "user-1", email: "u@example.com" },
+      },
+    } as never);
+
+    const response = await proxy(req(`/login?redirectTo=${target}`));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://broomva.tech/");
+  });
+
+  test("ignores a retired ?plan= and sends a logged-in user home (BRO-3833)", async () => {
+    mockGetSafeSession.mockResolvedValue({
+      data: {
+        session: { id: "session-1" },
+        user: { id: "user-1", email: "u@example.com" },
+      },
+    } as never);
+
+    const response = await proxy(req("/register?plan=pro"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://broomva.tech/");
+  });
 });
 
 describe("proxy legal-acceptance boundary", () => {
@@ -280,7 +272,7 @@ describe("proxy legal-acceptance boundary", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  test.each(["/legal-acceptance", "/api/stripe/portal"])(
+  test.each(["/legal-acceptance"])(
     "keeps the required exception reachable: %s",
     async (pathname) => {
       mockAcceptance.mockResolvedValue(false);

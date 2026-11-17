@@ -7,13 +7,11 @@ import { getSafeSession } from "@/lib/auth";
 import { recordCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
 import { upsertUserFromSession } from "@/lib/db/queries";
 import { getTrustedClientIPFromHeaders } from "@/lib/utils/rate-limit";
+import { safeInternalPath } from "@/lib/utils/safe-redirect";
 
 export async function acceptCurrentLegalTerms(formData: FormData) {
   const next = formData.get("next");
-  const target =
-    typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
-      ? next
-      : "/onboarding";
+  const target = safeInternalPath(next) ?? "/";
 
   if (
     formData.get("acceptedTerms") !== "on" ||
@@ -21,7 +19,7 @@ export async function acceptCurrentLegalTerms(formData: FormData) {
     formData.get("ageConfirmed") !== "on"
   ) {
     const errParam = new URLSearchParams({ error: "required" });
-    if (target !== "/onboarding" && target !== "/chat") {
+    if (target !== "/") {
       errParam.set("next", target);
     }
     redirect(`/legal-acceptance?${errParam.toString()}` as Route);

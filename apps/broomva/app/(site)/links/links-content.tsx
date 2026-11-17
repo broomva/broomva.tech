@@ -1,19 +1,18 @@
 "use client";
 
-import { usePostHog } from "posthog-js/react";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
-import { TrackedLink } from "@/components/site/tracked-link";
 import {
   ArrowUpRight,
   BookOpen,
   Code,
   Github,
   Linkedin,
-  MessageCircle,
   Play,
   Twitter,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { usePostHog } from "posthog-js/react";
+import { Suspense, useEffect } from "react";
+import { TrackedLink } from "@/components/site/tracked-link";
 
 interface ContentItem {
   slug: string;
@@ -57,13 +56,6 @@ const quickActions = [
     icon: Github,
     description: "Open source repos",
     internal: false,
-  },
-  {
-    label: "Chat",
-    href: "/chat",
-    icon: MessageCircle,
-    description: "Talk to the AI assistant",
-    internal: true,
   },
 ];
 

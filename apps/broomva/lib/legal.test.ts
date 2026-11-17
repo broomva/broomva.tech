@@ -47,38 +47,7 @@ describe("legal policy evidence", () => {
       '("userId","termsVersion","privacyVersion","termsHash","privacyHash","source")',
     );
   });
-
-  it("keeps public Life routes from reviving anonymous prompt/state access", () => {
-    const runRoute = readFileSync(
-      resolve(
-        process.cwd(),
-        "app/api/life/run/[project]/prosopon/route.ts",
-      ),
-      "utf8",
-    );
-    const stateRoute = readFileSync(
-      resolve(
-        process.cwd(),
-        "app/api/life/run/[project]/session/[sessionId]/state/route.ts",
-      ),
-      "utf8",
-    );
-    const legalAccess = readFileSync(
-      resolve(process.cwd(), "lib/life-runtime/legal-access.ts"),
-      "utf8",
-    );
-    const chatRouter = readFileSync(
-      resolve(process.cwd(), "trpc/routers/chat.router.ts"),
-      "utf8",
-    );
-    const onboardingActions = readFileSync(
-      resolve(process.cwd(), "app/(auth)/onboarding/actions.ts"),
-      "utf8",
-    );
-    const mcpQueries = readFileSync(
-      resolve(process.cwd(), "lib/db/mcp-queries.ts"),
-      "utf8",
-    );
+  it("records legal acceptance with the trusted client IP", () => {
     const registrationActions = readFileSync(
       resolve(process.cwd(), "app/(auth)/register/actions.ts"),
       "utf8",
@@ -88,15 +57,6 @@ describe("legal policy evidence", () => {
       "utf8",
     );
 
-    expect(runRoute).not.toContain('kind: "agent", id: "anonymous"');
-    expect(runRoute).toContain("resolveAcceptedLifeConsumer");
-    expect(stateRoute).toContain("callerOwnsLifeSession");
-    expect(legalAccess).toContain("hasCurrentLegalAcceptance");
-    expect(legalAccess).toMatch(/every non-user legacy session fails closed\.\s*return false;/);
-    expect(chatRouter).toMatch(/generateTitle:\s*protectedProcedure/);
-    expect(onboardingActions.match(/requireCurrentLegalAcceptance/g)).toHaveLength(3);
-    expect(mcpQueries.startsWith('import "server-only";')).toBe(true);
-    expect(mcpQueries).not.toContain('"use server"');
     expect(registrationActions).toContain("getTrustedClientIPFromHeaders");
     expect(acceptanceActions).toContain("getTrustedClientIPFromHeaders");
   });

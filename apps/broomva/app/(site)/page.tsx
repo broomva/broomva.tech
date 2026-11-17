@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { HeroSection, InstallSection } from "@/components/site/landing-sections";
+import { HeroSection } from "@/components/site/landing-sections";
 import {
   ContentSection,
   StackSection,
@@ -44,7 +44,6 @@ export default async function Home() {
       <main className="relative">
         <HeroSection userName={userName} />
         <div className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6">
-          <InstallSection />
           <StackSection />
           <ContentSection writing={writing} notes={notes} />
         </div>

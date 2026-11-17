@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { getSafeSession } from "@/lib/auth";
 import { hasCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
+import { safeInternalPath } from "@/lib/utils/safe-redirect";
 import { acceptCurrentLegalTerms } from "./actions";
 
 export default async function LegalAcceptancePage({
@@ -28,15 +29,11 @@ export default async function LegalAcceptancePage({
   });
 
   const { error, next, redirectTo } = await searchParams;
-  const rawTarget = next || redirectTo || "/chat";
-  const target =
-    rawTarget.startsWith("/") && !rawTarget.startsWith("//")
-      ? rawTarget
-      : "/chat";
+  const target = safeInternalPath(next || redirectTo) ?? "/";
 
   if (!session?.user?.id) {
     const regUrl =
-      target !== "/chat"
+      target !== "/"
         ? `/register?redirectTo=${encodeURIComponent(target)}`
         : "/register";
     redirect(regUrl as Route);
