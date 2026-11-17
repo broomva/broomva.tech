@@ -1,5 +1,5 @@
 {
-  "reviewBy": "2026-11-10",
+  "reviewBy": "2026-12-01",
   "exceptions": [
     {
       "package": "@fastify/static",
@@ -108,18 +108,57 @@
       "package": "undici",
       "owner": "security",
       "topologySha256": "259e7e21777bb808d05cd07921978f3ef32ead63ceac909f1559a1df9b206632",
-      "rationale": "Patched Undici 7.30.1 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.29.1. The remaining vulnerable 5.29.0 runtime branch belongs only to ConnectRPC v1 for an operator-configured Life gateway; no patched 5.x release exists. Its Busboy dependency is independently upgraded to 3.2.2 with fragmented multipart and HTTP/2 RPC integration tests. The retained advisory keys still affect Undici 5: caller-controlled proxy, cookie, WebSocket and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until a ConnectRPC v2 migration. Reassessed 2026-10-27. Topology hash re-recorded the same day: the Better Auth 1.7.12 upgrade changed only the Vitest optional-peer lines that print the Better Auth version.",
+      "rationale": "Patched Undici 7.30.1 is pinned for sandbox and jsdom, and Vercel Blob resolves patched 6.29.1. The remaining vulnerable 5.29.0 runtime branch belongs only to ConnectRPC v1 for an operator-configured Life gateway; no patched 5.x release exists. Its Busboy dependency is independently upgraded to 3.2.2 with fragmented multipart and HTTP/2 RPC integration tests. The retained advisory keys still affect Undici 5: caller-controlled proxy, cookie, WebSocket and destination configuration are not exposed, but HTTP parsing and denial-of-service residual risk remains until a ConnectRPC v2 migration. Reassessed 2026-10-27. Topology hash re-recorded the same day: the Better Auth 1.7.12 upgrade changed only the Vitest optional-peer lines that print the Better Auth version. Reassessed 2026-11-17 (BRO-3835) for GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm and GHSA-9fm3-97px-rjf6, all fixed only in 6.29.1: @connectrpc/connect-node 1.7.0 imports Undici solely in dist/*/node-headers-polyfill.js for the Headers class on Node <18, and its transport uses node:http2/node:https, so Undici's TLS and WebSocket clients are never invoked on the deployed Node 24 runtime. Forcing 6.29.1 was tried and rejected: it breaks the Busboy 3.2.2 multipart compatibility tests in packages/lifegw-client.",
       "advisories": [
+        "high|https://github.com/advisories/GHSA-2m5v-pch6-74hx",
+        "high|https://github.com/advisories/GHSA-qrxm-fqhp-jwvm",
         "high|https://github.com/advisories/GHSA-v9p9-hfj2-hcw8",
         "high|https://github.com/advisories/GHSA-vrm6-8vpv-qv8q",
         "high|https://github.com/advisories/GHSA-vxpw-j846-p89q",
         "moderate|https://github.com/advisories/GHSA-2mjp-6q6p-2qxm",
         "moderate|https://github.com/advisories/GHSA-4992-7rv2-5pvq",
         "moderate|https://github.com/advisories/GHSA-8xcm-r25x-g524",
+        "moderate|https://github.com/advisories/GHSA-9fm3-97px-rjf6",
         "moderate|https://github.com/advisories/GHSA-g9mf-h72j-4rw9",
         "moderate|https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
         "moderate|https://github.com/advisories/GHSA-p88m-4jfj-68fv",
         "moderate|https://github.com/advisories/GHSA-v3r7-h72x-cjcm"
+      ]
+    },
+    {
+      "package": "@hono/node-server",
+      "owner": "security",
+      "topologySha256": "92c592545e5034a5766382011e9319047c597a6ab308db1272128fbdb54e141d",
+      "rationale": "Reviewed 2026-11-17 (BRO-3835). The MCP SDK copy is forced to patched 2.1.9. The remaining 1.19.19 copy belongs to @ai-sdk/devtools, where only dist/viewer/server.js (the local `devtools` CLI viewer) imports it; the library entry used by lib/ai/providers.ts does not, and its middleware runs only when NODE_ENV is development. No 1.x release fixes GHSA-rmxm, and devtools pins ^1.13.7.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-rmxm-3fg6-px4f"
+      ]
+    },
+    {
+      "package": "glob",
+      "owner": "security",
+      "topologySha256": "3c586d567f97dd8cd8d7ecaa923e929ff6abf91ed4be0c7acb506275f5624334",
+      "rationale": "Reviewed 2026-11-17 (BRO-3835). Copies come from @sentry/bundler-plugin-core and @sentry/bundler-plugins (build-time source-map upload), ultracite (dev lint) and @fastify/static (dev-only Evalite). Patterns and AbortSignals are repository-controlled at build time; no glob is reachable from a request. Absent from the production server bundle and function traces.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-3g3m-2fjr-6pw4"
+      ]
+    },
+    {
+      "package": "minimatch",
+      "owner": "security",
+      "topologySha256": "881a76147e491aec1323005ddfec6507c058c296f8d08147fef4ac0f62f85cd1",
+      "rationale": "Reviewed 2026-11-17 (BRO-3835). Only the glob 11/13 copies above depend on minimatch 10.2.4 (^10 ranges, so 11.0.1 cannot be forced). Patterns are repository-controlled build and dev globs; no user input reaches pattern expansion. Absent from the production server bundle and function traces.",
+      "advisories": [
+        "moderate|https://github.com/advisories/GHSA-g3hv-75wg-m249"
+      ]
+    },
+    {
+      "package": "picomatch",
+      "owner": "security",
+      "topologySha256": "fcca67280f68b1f5fb2c379d186aadb8ae229212a50948718cab0bf8ea7bad5e",
+      "rationale": "Reviewed 2026-11-17 (BRO-3835). No patched release exists (latest 4.0.7 is within <=4.0.7). Consumers are build and test tooling: @rollup/plugin-commonjs, @rollup/pluginutils, fumadocs-mdx (docs build), tinyglobby, vite and vitest. Extglob patterns come from repository config, never from requests; absent from the production server bundle and function traces. Re-check when a fixed version ships.",
+      "advisories": [
+        "high|https://github.com/advisories/GHSA-fc5q-39xc-vjpf"
       ]
     }
   ]
