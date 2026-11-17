@@ -9,11 +9,7 @@
  */
 const SENTINEL_ORIGIN = "https://internal.invalid";
 
-/**
- * Returns the normalized same-site path (pathname + search + hash) when
- * `candidate` is a site-relative path, otherwise `null`.
- */
-export function safeInternalPath(candidate: unknown): string | null {
+function normalizeOnSentinel(candidate: unknown): string | null {
   if (typeof candidate !== "string" || !candidate.startsWith("/")) {
     return null;
   }
@@ -33,4 +29,25 @@ export function safeInternalPath(candidate: unknown): string | null {
     return null;
   }
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+/**
+ * Returns the normalized same-site path (pathname + search + hash) when
+ * `candidate` is a site-relative path, otherwise `null`.
+ *
+ * Callers parse the returned value again (`redirect()`, `new URL(x, base)`),
+ * so the output itself is checked, not just the input: dot segments can
+ * normalize "/.//evil.example" or "/a/..//evil.example" into the
+ * protocol-relative "//evil.example" (BRO-3833 review, round 2). The result
+ * must not start with "//" and must be a fixed point of normalization.
+ */
+export function safeInternalPath(candidate: unknown): string | null {
+  const normalized = normalizeOnSentinel(candidate);
+  if (normalized === null || normalized.startsWith("//")) {
+    return null;
+  }
+  if (normalizeOnSentinel(normalized) !== normalized) {
+    return null;
+  }
+  return normalized;
 }

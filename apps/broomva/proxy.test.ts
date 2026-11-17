@@ -201,6 +201,8 @@ describe("proxy OAuth verifier and deep-linking", () => {
     "%2F%5Cevil.example",
     "%2F%2Fevil.example",
     "%2F%09%2Fevil.example",
+    "%2F.%2F%2Fevil.example",
+    "%2Fa%2F..%2F%2Fevil.example",
     "https%3A%2F%2Fevil.example",
   ])("never redirects a logged-in user off-site via redirectTo=%s", async (target) => {
     mockGetSafeSession.mockResolvedValue({

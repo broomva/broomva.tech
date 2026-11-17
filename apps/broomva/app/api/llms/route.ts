@@ -7,7 +7,7 @@ export function GET() {
 
 ## Overview
 
-broomva.tech is the personal platform of Carlos D. Escobar-Valbuena. It serves as a hub for projects, long-form writing, technical notes, reusable prompts, and an AI-powered chat interface. The platform is built on a Rust Agent OS stack with orchestration, governance, and kernel layers.
+broomva.tech is the personal platform of Carlos D. Escobar-Valbuena. It serves as a hub for projects, long-form writing, technical notes, reusable prompts and agent skills. The platform is built on a Rust Agent OS stack with orchestration, governance, and kernel layers.
 
 ## Sections
 

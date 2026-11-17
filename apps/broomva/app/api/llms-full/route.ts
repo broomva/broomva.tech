@@ -94,9 +94,6 @@ ${promptEntries.filter(Boolean).join("\n")}
 
 ## Features
 
-- **AI Chat**: authenticated streaming chat using the deployed model catalog; tools and provider routes depend on active configuration and credentials
-- **Knowledge Graph**: Obsidian vault integration for connected note-taking
-- **Memory**: persistence is deployment-dependent and not represented as universally available
 - **Content Platform**: MDX-based writing, projects, notes with full-text search
 - **Prompt Library**: Versioned, categorized prompts with API access
 

@@ -18,6 +18,12 @@ describe("safeInternalPath", () => {
     "\\\\evil.example",
     "/\t/evil.example",
     "/\n/evil.example",
+    // Dot segments that normalize into a protocol-relative path (round 2).
+    "/.//evil.example",
+    "/%2e//evil.example",
+    "/%2E%2E//evil.example",
+    "/a/..//evil.example",
+    "/./%2e//evil.example",
     "https://evil.example",
     "javascript:alert(1)",
     "evil.example",
