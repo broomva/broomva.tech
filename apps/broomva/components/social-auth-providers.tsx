@@ -4,6 +4,7 @@ import { Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import authClient from "@/lib/auth-client";
 import { config } from "@/lib/config";
+import { safeInternalPath } from "@/lib/utils/safe-redirect";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -45,10 +46,10 @@ export function SocialAuthProviders({
   disabled?: boolean;
   redirectTo?: string;
 }) {
-  const callbackURL =
-    redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? `/legal-acceptance?next=${encodeURIComponent(redirectTo)}`
-      : "/legal-acceptance";
+  const safeTarget = safeInternalPath(redirectTo);
+  const callbackURL = safeTarget
+    ? `/legal-acceptance?next=${encodeURIComponent(safeTarget)}`
+    : "/legal-acceptance";
 
   return (
     <div className="space-y-2">

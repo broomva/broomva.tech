@@ -196,6 +196,39 @@ describe("proxy OAuth verifier and deep-linking", () => {
       "https://broomva.tech/device?code=PPUC-8799",
     );
   });
+
+  test.each([
+    "%2F%5Cevil.example",
+    "%2F%2Fevil.example",
+    "%2F%09%2Fevil.example",
+    "https%3A%2F%2Fevil.example",
+  ])("never redirects a logged-in user off-site via redirectTo=%s", async (target) => {
+    mockGetSafeSession.mockResolvedValue({
+      data: {
+        session: { id: "session-1" },
+        user: { id: "user-1", email: "u@example.com" },
+      },
+    } as never);
+
+    const response = await proxy(req(`/login?redirectTo=${target}`));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://broomva.tech/");
+  });
+
+  test("ignores a retired ?plan= and sends a logged-in user home (BRO-3833)", async () => {
+    mockGetSafeSession.mockResolvedValue({
+      data: {
+        session: { id: "session-1" },
+        user: { id: "user-1", email: "u@example.com" },
+      },
+    } as never);
+
+    const response = await proxy(req("/register?plan=pro"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://broomva.tech/");
+  });
 });
 
 describe("proxy legal-acceptance boundary", () => {

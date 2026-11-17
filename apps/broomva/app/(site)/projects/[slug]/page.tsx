@@ -3,8 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContentArticle } from "@/components/site/content-article";
 import { PageHero } from "@/components/site/page-hero";
+import {
+  estimateReadingTime,
+  getAllSlugs,
+  getContentBySlug,
+} from "@/lib/content";
 import { formatDate } from "@/lib/date";
-import { getAllSlugs, getContentBySlug, estimateReadingTime } from "@/lib/content";
+import { safeInternalPath } from "@/lib/utils/safe-redirect";
 
 /**
  * A frontmatter link is "internal" when its url is a site-relative path.
@@ -12,7 +17,7 @@ import { getAllSlugs, getContentBySlug, estimateReadingTime } from "@/lib/conten
  * links stay `<a target="_blank" rel="noopener noreferrer">`.
  */
 function isInternalUrl(url: string): boolean {
-  return url.startsWith("/") && !url.startsWith("//");
+  return safeInternalPath(url) !== null;
 }
 
 export async function generateStaticParams() {

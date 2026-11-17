@@ -7,6 +7,7 @@ import {
   agentWorkspacesFrameHeaders,
   isAgentWorkspacesDeckDocument,
 } from "@/lib/security/agent-workspaces-framing";
+import { safeInternalPath } from "@/lib/utils/safe-redirect";
 
 // ── Public route allowlists (single source of truth) ────────────────────────
 
@@ -62,13 +63,9 @@ const METADATA_ROUTES = [
   "/llms-full.txt",
 ] as const;
 
-const ACCEPTANCE_REQUIRED_ANONYMOUS_WRITE_PREFIXES = [
-  "/api/prompts",
-] as const;
+const ACCEPTANCE_REQUIRED_ANONYMOUS_WRITE_PREFIXES = ["/api/prompts"] as const;
 
-const ACCEPTED_BEARER_WRITE_PREFIXES = [
-  "/api/prompts",
-] as const;
+const ACCEPTED_BEARER_WRITE_PREFIXES = ["/api/prompts"] as const;
 
 // ── CORS allowlist for /api/* (absorbed from former middleware.ts) ──────────
 //
@@ -201,10 +198,7 @@ function isAuthPage(pathname: string): boolean {
 }
 
 function mayProceedWithoutCurrentAcceptance(pathname: string): boolean {
-  return (
-    pathname === "/legal-acceptance" ||
-    pathname.startsWith("/api/auth/")
-  );
+  return pathname === "/legal-acceptance" || pathname.startsWith("/api/auth/");
 }
 
 // ── Security headers ────────────────────────────────────────────────────────
@@ -399,18 +393,14 @@ export async function proxy(req: NextRequest) {
 
   if (isAuthPage(pathname)) {
     if (isLoggedIn) {
-      // If logged-in user arrives with ?plan= (e.g., from /pricing CTA),
-      // redirect to billing page to trigger checkout instead of home.
-      const plan = url.searchParams.get("plan");
-      if (plan && (pathname === "/login" || pathname === "/register")) {
+      const redirectTo = safeInternalPath(
+        url.searchParams.get("redirectTo") || url.searchParams.get("next"),
+      );
+      if (redirectTo) {
         return withSecurityHeaders(
           req,
-          NextResponse.redirect(new URL(`/console/billing?plan=${plan}`, url)),
+          NextResponse.redirect(new URL(redirectTo, url)),
         );
-      }
-      const redirectTo = url.searchParams.get("redirectTo") || url.searchParams.get("next");
-      if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
-        return withSecurityHeaders(req, NextResponse.redirect(new URL(redirectTo, url)));
       }
       return withSecurityHeaders(req, NextResponse.redirect(new URL("/", url)));
     }
@@ -418,12 +408,9 @@ export async function proxy(req: NextRequest) {
   }
 
   // Block all other routes for unauthenticated users.
-  // Preserve ?plan= so the pricing → login → onboarding → billing flow works.
   // Preserve target route in ?redirectTo= so post-login deep-linking works.
   if (!isLoggedIn) {
-    const plan = url.searchParams.get("plan");
     const loginUrl = new URL("/login", url);
-    if (plan) loginUrl.searchParams.set("plan", plan);
     if (pathname !== "/login" && pathname !== "/register") {
       loginUrl.searchParams.set("redirectTo", `${pathname}${url.search}`);
     }
@@ -448,10 +435,7 @@ export async function proxy(req: NextRequest) {
     if (pathname !== "/legal-acceptance") {
       legalUrl.searchParams.set("next", `${pathname}${url.search}`);
     }
-    return withSecurityHeaders(
-      req,
-      NextResponse.redirect(legalUrl),
-    );
+    return withSecurityHeaders(req, NextResponse.redirect(legalUrl));
   }
 
   return withSecurityHeaders(req, nextWithTenant());

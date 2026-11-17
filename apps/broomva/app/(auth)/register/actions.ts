@@ -3,16 +3,17 @@
 import type { Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { upsertUserFromSession } from "@/lib/db/queries";
+import { EVENT_USER_SIGNED_UP } from "@/lib/analytics/events";
 import {
   captureServerEvent,
   identifyServerUser,
 } from "@/lib/analytics/posthog";
-import { EVENT_USER_SIGNED_UP } from "@/lib/analytics/events";
-import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
+import { auth } from "@/lib/auth";
 import { recordCurrentLegalAcceptance } from "@/lib/db/legal-acceptance";
+import { upsertUserFromSession } from "@/lib/db/queries";
+import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
 import { getTrustedClientIPFromHeaders } from "@/lib/utils/rate-limit";
+import { safeInternalPath } from "@/lib/utils/safe-redirect";
 
 export async function signUpWithEmail(
   _prevState: { error: string } | null,
@@ -93,19 +94,9 @@ export async function signUpWithEmail(
     });
   }
 
-  const planParam =
-    typeof plan === "string" && plan ? `?plan=${encodeURIComponent(plan)}` : "";
-  if (planParam) {
-    redirect(`/onboarding${planParam}` as Route);
-  }
-
-  const redirectTo = formData.get("redirectTo");
-  if (
-    typeof redirectTo === "string" &&
-    redirectTo.startsWith("/") &&
-    !redirectTo.startsWith("//")
-  ) {
-    redirect(redirectTo as Route);
+  const target = safeInternalPath(formData.get("redirectTo"));
+  if (target) {
+    redirect(target as Route);
   }
 
   redirect("/" as Route);

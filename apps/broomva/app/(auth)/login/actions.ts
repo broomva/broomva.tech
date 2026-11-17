@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { EVENT_USER_LOGGED_IN } from "@/lib/analytics/events";
 import { captureServerEvent } from "@/lib/analytics/posthog";
 import { auth } from "@/lib/auth";
+import { safeInternalPath } from "@/lib/utils/safe-redirect";
 
 export async function signInWithEmail(
   _prevState: { error: string } | null,
@@ -31,12 +32,9 @@ export async function signInWithEmail(
     captureServerEvent(data.user.id, EVENT_USER_LOGGED_IN);
   }
 
-  if (
-    typeof redirectTo === "string" &&
-    redirectTo.startsWith("/") &&
-    !redirectTo.startsWith("//")
-  ) {
-    redirect(redirectTo as Route);
+  const target = safeInternalPath(redirectTo);
+  if (target) {
+    redirect(target as Route);
   }
 
   redirect("/");
