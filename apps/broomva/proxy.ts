@@ -21,80 +21,27 @@ const PUBLIC_PAGE_PREFIXES = [
   "/contact",
   "/prompts",
   "/profile",
-  "/share/",
   "/privacy",
   "/terms",
   "/security",
   "/subprocessors",
-  "/pricing",
   "/skills",
-  // Swapit commons (BRO-1547): the public household-toxics where-to-buy dataset.
-  // The page is read-only and renders only approved, corroborated facts — never
-  // any private inventory — so anonymous viewers must reach it.
-  "/swapit",
-  "/agents",
-  "/graph",
   "/links",
   "/ingest",
-  "/life",
-  // Public artifact sharing: route handlers still enforce row-level
-  // visibility. The proxy must let anonymous viewers reach them.
-  "/d/",
-  "/h/",
   "/.well-known",
 ] as const;
 
-const PUBLIC_PAGE_EXACT = ["/", "/chat"] as const;
+const PUBLIC_PAGE_EXACT = ["/"] as const;
 
 /** API routes that bypass auth (auth endpoints, public data). */
 const PUBLIC_API_PREFIXES = [
   "/api/auth",
-  "/api/trpc",
-  "/api/chat",
   "/api/skills",
   "/api/search",
-  "/api/context",
   "/api/llms",
   "/api/prompts",
-  // Docs publishing (BRO-1293): the broomva CLI publishes HTML specs with a
-  // Bearer token and no session cookie. The proxy must let /api/docs and
-  // /api/docs/[id] through so the handler can self-authenticate via
-  // resolveAuth (Bearer Life JWT OR session cookie). It returns 401 when
-  // neither is present, so it is not actually public.
-  "/api/docs",
-  // Handoff queue (BRO-1415/BRO-1418): like /api/docs, the broomva CLI pushes
-  // handoffs and drives their lifecycle with a Bearer token and no session
-  // cookie. The proxy must let /api/handoffs, /api/handoffs/[id], and the SSE
-  // /api/handoffs/events through so the handler can self-authenticate via
-  // resolveAuth (Bearer Life JWT OR session cookie); it returns 401 when
-  // neither is present, so it is not actually public. (Missing this entry made
-  // every CLI push 307→/login — the redirect external SDK callers can't follow.)
-  "/api/handoffs",
-  "/api/discovery",
-  "/api/trust",
-  "/api/marketplace",
   "/api/assets",
-  "/api/graph/public",
-  "/api/relay",
-  "/api/install",
   "/api/debug",
-  // Life Runtime handlers enforce current legal acceptance before processing
-  // prompts. Public read-only Life pages remain reachable through the proxy.
-  "/api/life",
-  // Prompt-evaluation reads remain public. Writes require either a current
-  // browser session or a current Life bearer token (enforced below).
-  "/api/invocations",
-  "/api/feedback",
-  "/api/metrics",
-  // Swapit commons (BRO-1547): the anonymized household-toxics knowledge commons.
-  // GET serves only approved facts (browse/pull from the skill's `swapit sync`);
-  // POST contributes a generic, content-addressed fact and requires a current
-  // browser session or Life bearer. The handler rechecks and attributes auth.
-  // its own trust enforcement (per-kind Zod, the scanForbidden privacy backstop,
-  // payload-size caps, server-derived contributor identity = session user OR client
-  // IP) and per-IP/per-user rate limits, so it MUST NOT 307→/login (the CLI can't
-  // follow an HTML auth redirect). Private inventory never reaches here.
-  "/api/swapit",
   // Infra health probes (e.g. /api/health/redis): status-only JSON (no
   // secrets), polled by dogfood / uptime checks from terminals with no
   // session cookie. Must not 307→/login or external probes can't read it.
@@ -104,14 +51,6 @@ const PUBLIC_API_PREFIXES = [
   // to no-op for anonymous readers (`NextResponse.json(null)` on GET, 401 on
   // POST). The proxy must let the request through so the handler can pick.
   "/api/audio-playback",
-  // Edge endpoints (BRO-1208): Anthropic Messages + OpenAI Chat Completions
-  // canonical surfaces. Both routes do their own Tier-1 JWT verification
-  // inside the handler — header bearer (BROOMVA_TOKEN / Tier-1 cap) OR
-  // Neon Auth session → minted Tier-1 — and return Anthropic/OpenAI-shape
-  // 401 JSON envelopes when auth is missing. They MUST NOT be redirected
-  // to /login because external SDK callers (curl, @anthropic-ai/sdk,
-  // openai) cannot follow HTML auth redirects.
-  "/api/v1",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
@@ -124,17 +63,11 @@ const METADATA_ROUTES = [
 ] as const;
 
 const ACCEPTANCE_REQUIRED_ANONYMOUS_WRITE_PREFIXES = [
-  "/api/invocations",
-  "/api/feedback",
   "/api/prompts",
-  "/api/swapit",
 ] as const;
 
 const ACCEPTED_BEARER_WRITE_PREFIXES = [
-  "/api/invocations",
-  "/api/feedback",
   "/api/prompts",
-  "/api/swapit",
 ] as const;
 
 // ── CORS allowlist for /api/* (absorbed from former middleware.ts) ──────────
@@ -270,8 +203,7 @@ function isAuthPage(pathname: string): boolean {
 function mayProceedWithoutCurrentAcceptance(pathname: string): boolean {
   return (
     pathname === "/legal-acceptance" ||
-    pathname.startsWith("/api/auth/") ||
-    pathname === "/api/stripe/portal"
+    pathname.startsWith("/api/auth/")
   );
 }
 

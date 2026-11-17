@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  BookOpen,
-  Home,
-  Layers,
-  MessageCircle,
-  Network,
-  Sparkles,
-  Terminal,
-  User,
-  Workflow,
-} from "lucide-react";
+import { BookOpen, Home, Layers, Sparkles, User } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
@@ -46,34 +36,6 @@ const allLinks = [
     authOnly: false,
   },
   {
-    href: "/graph",
-    label: "Graph",
-    icon: Network,
-    productOnly: false,
-    authOnly: false,
-  },
-  {
-    href: "/chat",
-    label: "Chat",
-    icon: MessageCircle,
-    productOnly: false,
-    authOnly: false,
-  },
-  {
-    href: "/console",
-    label: "Console",
-    icon: Terminal,
-    productOnly: false,
-    authOnly: true,
-  },
-  {
-    href: "/maestro",
-    label: "Maestro",
-    icon: Workflow,
-    productOnly: false,
-    authOnly: true,
-  },
-  {
     href: "https://docs.broomva.tech/docs",
     label: "Docs",
     icon: BookOpen,
@@ -82,7 +44,9 @@ const allLinks = [
   },
 ];
 
-const productRoutes = ["/chat", "/project", "/settings", "/console"];
+// The product surfaces (chat, console) were retired in BRO-3833, so no route
+// uses the product layout any more.
+const productRoutes: string[] = [];
 
 function isInProductLayout(pathname: string): boolean {
   return productRoutes.some(

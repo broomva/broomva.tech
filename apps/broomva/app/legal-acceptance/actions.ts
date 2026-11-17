@@ -13,7 +13,7 @@ export async function acceptCurrentLegalTerms(formData: FormData) {
   const target =
     typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
       ? next
-      : "/onboarding";
+      : "/";
 
   if (
     formData.get("acceptedTerms") !== "on" ||
@@ -21,7 +21,7 @@ export async function acceptCurrentLegalTerms(formData: FormData) {
     formData.get("ageConfirmed") !== "on"
   ) {
     const errParam = new URLSearchParams({ error: "required" });
-    if (target !== "/onboarding" && target !== "/chat") {
+    if (target !== "/") {
       errParam.set("next", target);
     }
     redirect(`/legal-acceptance?${errParam.toString()}` as Route);

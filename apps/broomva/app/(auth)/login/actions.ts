@@ -2,9 +2,9 @@
 
 import type { Route } from "next";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { captureServerEvent } from "@/lib/analytics/posthog";
 import { EVENT_USER_LOGGED_IN } from "@/lib/analytics/events";
+import { captureServerEvent } from "@/lib/analytics/posthog";
+import { auth } from "@/lib/auth";
 
 export async function signInWithEmail(
   _prevState: { error: string } | null,
@@ -12,7 +12,6 @@ export async function signInWithEmail(
 ) {
   const email = formData.get("email");
   const password = formData.get("password");
-  const plan = formData.get("plan");
   const redirectTo = formData.get("redirectTo");
 
   if (typeof email !== "string" || typeof password !== "string") {
@@ -32,10 +31,6 @@ export async function signInWithEmail(
     captureServerEvent(data.user.id, EVENT_USER_LOGGED_IN);
   }
 
-  if (typeof plan === "string" && plan) {
-    redirect(`/onboarding?plan=${encodeURIComponent(plan)}` as Route);
-  }
-
   if (
     typeof redirectTo === "string" &&
     redirectTo.startsWith("/") &&
@@ -44,5 +39,5 @@ export async function signInWithEmail(
     redirect(redirectTo as Route);
   }
 
-  redirect("/chat");
+  redirect("/");
 }

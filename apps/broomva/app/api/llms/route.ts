@@ -16,7 +16,6 @@ broomva.tech is the personal platform of Carlos D. Escobar-Valbuena. It serves a
 - [Notes](${config.appUrl}/notes): Short operational notes from day-to-day agent engineering work.
 - [Prompts](${config.appUrl}/prompts): Reusable, versioned prompts for agent workflows. Available via API at /api/prompts.
 - [Skills](${config.appUrl}/skills): The Broomva Stack — agent skills across multiple domains.
-- [Chat](${config.appUrl}/chat): AI chat interface powered by multiple model providers.
 - [Start Here](${config.appUrl}/start-here): Guided entry point to the platform and its core concepts.
 - [Now](${config.appUrl}/now): Monthly snapshot of current build focus and open questions.
 - [Contact](${config.appUrl}/contact): Ways to collaborate.
@@ -25,7 +24,6 @@ broomva.tech is the personal platform of Carlos D. Escobar-Valbuena. It serves a
 
 - \`GET /api/prompts\` — List all prompts (filterable by category, tag)
 - \`GET /api/prompts/[slug]\` — Get a single prompt by slug
-- \`POST /api/chat\` — streaming AI chat endpoint (authenticated, current policy acceptance required)
 - \`GET /sitemap.xml\` — Full sitemap
 - \`GET /llms-full.txt\` — Extended site index for LLMs
 - \`GET /<kind>/<slug>.md\` — Raw markdown for any content page (kind: writing, projects, notes, prompts)

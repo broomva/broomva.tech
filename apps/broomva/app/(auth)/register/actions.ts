@@ -108,5 +108,5 @@ export async function signUpWithEmail(
     redirect(redirectTo as Route);
   }
 
-  redirect("/onboarding" as Route);
+  redirect("/" as Route);
 }

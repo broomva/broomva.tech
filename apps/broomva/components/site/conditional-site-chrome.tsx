@@ -2,18 +2,17 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
-import { SiteHeader } from "@/components/site/site-header";
-import { TopNav } from "@/components/site/top-nav";
 import { ConditionalFooter } from "@/components/site/conditional-footer";
+import { SiteHeader } from "@/components/site/site-header";
+import { ToolbarDockProvider } from "@/components/site/toolbar-dock-context";
+import { TopNav } from "@/components/site/top-nav";
 
 /**
  * Paths that opt OUT of the standard site chrome (header / top-nav / footer /
- * padding) and run in their own full-viewport shell. These are full-surface
- * experiences — e.g. /life/[project]'s three-column agent workspace — that
- * need every pixel and can't coexist with the site's header/footer overlays.
+ * padding) and run in their own full-viewport shell. None today: the /life
+ * workspace that used this was retired (BRO-3833).
  */
-const BARE_PATHS = ["/life"];
+const BARE_PATHS: string[] = [];
 
 function isBarePath(pathname: string): boolean {
   return BARE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

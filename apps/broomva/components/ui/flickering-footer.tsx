@@ -288,7 +288,6 @@ const footerLinks = [
   {
     title: "Tools",
     links: [
-      { id: 5, title: "Chat", url: "/chat" },
       { id: 6, title: "Prompts", url: "/prompts" },
       { id: 7, title: "Link Hub", url: "/links" },
     ],
@@ -306,7 +305,6 @@ const footerLinks = [
     links: [
       { id: 11, title: "Terms", url: "/terms" },
       { id: 12, title: "Privacy", url: "/privacy" },
-      { id: 13, title: "Pricing", url: "/pricing" },
       { id: 14, title: "Subprocessors", url: "/subprocessors" },
       { id: 15, title: "Security", url: "/security" },
       { id: 16, title: "SIC Colombia", url: "https://www.sic.gov.co/" },

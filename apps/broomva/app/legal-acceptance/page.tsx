@@ -28,15 +28,15 @@ export default async function LegalAcceptancePage({
   });
 
   const { error, next, redirectTo } = await searchParams;
-  const rawTarget = next || redirectTo || "/chat";
+  const rawTarget = next || redirectTo || "/";
   const target =
     rawTarget.startsWith("/") && !rawTarget.startsWith("//")
       ? rawTarget
-      : "/chat";
+      : "/";
 
   if (!session?.user?.id) {
     const regUrl =
-      target !== "/chat"
+      target !== "/"
         ? `/register?redirectTo=${encodeURIComponent(target)}`
         : "/register";
     redirect(regUrl as Route);

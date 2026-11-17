@@ -1,24 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "motion/react";
 import {
-  Search,
-  X,
+  ArrowRight,
   FileText,
   FolderOpen,
-  Sparkles,
-  NotebookPen,
-  Layers,
-  MessageCircle,
-  Home,
-  ArrowRight,
   Globe,
+  Home,
+  Layers,
+  NotebookPen,
+  Search,
+  Sparkles,
+  X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
-import { useSearchIndex, type SearchEntry } from "@/hooks/use-search-index";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { type SearchEntry, useSearchIndex } from "@/hooks/use-search-index";
 
 const KIND_META: Record<
   string,
@@ -39,7 +38,6 @@ const QUICK_LINKS = [
   { href: "/projects", label: "Projects", icon: FolderOpen },
   { href: "/skills", label: "Skills", icon: Layers },
   { href: "/prompts", label: "Prompts", icon: Sparkles },
-  { href: "/chat", label: "Chat", icon: MessageCircle },
 ];
 
 export function DockSearch() {
@@ -52,7 +50,8 @@ export function DockSearch() {
   const router = useRouter();
   const { search, isReady } = useSearchIndex();
 
-  const results: SearchEntry[] = isExpanded && query.length > 0 ? search(query) : [];
+  const results: SearchEntry[] =
+    isExpanded && query.length > 0 ? search(query) : [];
 
   const handleExpand = useCallback(() => {
     setIsExpanded(true);
@@ -242,8 +241,7 @@ export function DockSearch() {
                     {results.length} result{results.length !== 1 && "s"}
                   </div>
                   {results.map((result, i) => {
-                    const meta =
-                      KIND_META[result.kind] ?? KIND_META.page;
+                    const meta = KIND_META[result.kind] ?? KIND_META.page;
                     const Icon = meta.icon;
                     return (
                       <motion.button
