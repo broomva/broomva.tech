@@ -2,6 +2,9 @@
  * Live eval of the "Ask Carlos" double against a deployment (BRO-3994).
  *
  *   bun run eval:ask https://broomva.tech
+ *
+ * `eval:ask` regenerates public/agent-knowledge.json first (it is gitignored),
+ * so the link allowlist comes from this checkout's content.
  *   VERCEL_AUTOMATION_BYPASS_SECRET=… bun run eval:ask https://<preview>.vercel.app
  *
  * Asks the questions that broke the double on 2026-11-20, plus the core
