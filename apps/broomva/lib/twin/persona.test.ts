@@ -45,6 +45,8 @@ describe("persona brief", () => {
       today: "2026-11-20",
     });
     expect(prompt).toContain("(dropout");
+    expect(prompt).toContain("give no reason for leaving");
+    expect(prompt).toContain("never guess a company's domain");
     const sources = [
       prompt,
       readFileSync(
