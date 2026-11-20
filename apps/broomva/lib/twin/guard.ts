@@ -13,8 +13,12 @@
 import { z } from "zod";
 
 export const LIMITS = {
-  /** Request body, checked before JSON parsing. */
-  maxBodyBytes: 64 * 1024,
+  /**
+   * Request body, enforced while reading. The client sends its last 10
+   * text turns (5 questions up to 2,000 chars, 5 answers up to ~4,000),
+   * at most ~30k characters; 128 KB leaves room for 4-byte UTF-8 and JSON.
+   */
+  maxBodyBytes: 128 * 1024,
   /** Messages accepted in one request (the client sends the whole thread). */
   maxMessages: 24,
   /** Most recent messages forwarded to the model. */

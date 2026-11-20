@@ -23,7 +23,25 @@ const MAX_CHARS = 2_000;
 const MAX_MESSAGES = 24;
 const CONTACT = "carlos@broomva.tech";
 
-const transport = new DefaultChatTransport({ api: "/api/ask" });
+/**
+ * Messages sent per request. The route forwards at most its last 10 turns
+ * to the model, so sending more only grows the request toward its 128 KB
+ * cap (cross-review round 3). Text parts only: that is all the route reads.
+ */
+export const SEND_WINDOW = 10;
+
+const transport = new DefaultChatTransport({
+  api: "/api/ask",
+  prepareSendMessagesRequest: ({ messages }) => ({
+    body: {
+      messages: messages.slice(-SEND_WINDOW).map((m) => ({
+        id: m.id,
+        role: m.role,
+        parts: m.parts.filter((p) => p.type === "text"),
+      })),
+    },
+  }),
+});
 
 /**
  * Show the route's own wording: HTTP errors (400, 403, 429) arrive as

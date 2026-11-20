@@ -154,7 +154,7 @@ describe("POST /api/ask", () => {
   });
 
   it("rejects an oversized body before parsing it (413)", async () => {
-    const padding = "p".repeat(70 * 1024);
+    const padding = "p".repeat(130 * 1024);
     const res = await POST(
       ask({
         messages: [
@@ -169,6 +169,9 @@ describe("POST /api/ask", () => {
       }),
     );
     expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({
+      error: "This conversation is too long. Start a new one.",
+    });
     expect(model.doStreamCalls).toHaveLength(0);
   });
 

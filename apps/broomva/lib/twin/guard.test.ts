@@ -232,7 +232,7 @@ describe("readBodyCapped", () => {
 
   it("stops reading a lengthless stream at the budget and cancels it", async () => {
     const s = streamed(new Uint8Array(1024), 10_000); // would be ~10 MB
-    const r = await readBodyCapped(s.req, 64 * 1024);
+    const r = await readBodyCapped(s.req, 64 * 1024); // budget under test, not LIMITS
     expect(r).toEqual({ ok: false, reason: "too-large" });
     expect(s.pulled()).toBeLessThanOrEqual(66);
     expect(s.cancelled()).toBe(true);

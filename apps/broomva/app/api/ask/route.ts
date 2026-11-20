@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   const body = await readBodyCapped(req, LIMITS.maxBodyBytes);
   if (!body.ok) {
     return body.reason === "too-large"
-      ? json(413, "That request is too large.")
+      ? json(413, "This conversation is too long. Start a new one.")
       : json(400, "Invalid request body.");
   }
 

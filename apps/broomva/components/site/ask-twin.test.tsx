@@ -7,7 +7,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AskTwin } from "./ask-twin";
+import { LIMITS } from "@/lib/twin/guard";
+import { AskTwin, SEND_WINDOW } from "./ask-twin";
 
 // The visitor flows of the "Ask Carlos" double (BRO-3994), driven through
 // the real useChat + DefaultChatTransport stack against a stubbed /api/ask.
@@ -139,5 +140,29 @@ describe("AskTwin", () => {
     fireEvent.keyDown(box, { key: "Enter" });
     await screen.findByText("Answer.");
     expect(String(fetchMock.mock.calls[0][1]?.body)).toContain("What is Lago?");
+  });
+
+  // Cross-review round 3: the whole echoed thread could outgrow the body
+  // cap in a long, valid conversation. Only the model window is sent.
+  it("sends only the last turns, so a long conversation stays under the body cap", async () => {
+    const longAnswer = "é".repeat(3_500); // 2-byte UTF-8, ~700 tokens
+    for (let i = 0; i < 8; i++) {
+      fetchMock.mockImplementationOnce(async () => answer(`${longAnswer}${i}`));
+    }
+    render(<AskTwin />);
+    const box = screen.getByLabelText("Ask Carlos's AI double a question");
+    for (let i = 0; i < 8; i++) {
+      fireEvent.change(box, { target: { value: `${"q".repeat(1_990)}${i}` } });
+      fireEvent.keyDown(box, { key: "Enter" });
+      await screen.findByText(`${longAnswer}${i}`);
+    }
+
+    const last = fetchMock.mock.calls.at(-1)?.[1]?.body;
+    const sent = JSON.parse(String(last)) as { messages: { role: string }[] };
+    expect(sent.messages).toHaveLength(SEND_WINDOW); // 15 turns → the last 10
+    expect(sent.messages.at(-1)?.role).toBe("user");
+    expect(new TextEncoder().encode(String(last)).byteLength).toBeLessThan(
+      LIMITS.maxBodyBytes,
+    );
   });
 });
