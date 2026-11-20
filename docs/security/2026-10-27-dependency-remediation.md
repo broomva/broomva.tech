@@ -152,3 +152,23 @@ That field difference is accepted for the website's representable extraction
 schema; remote provider behavior is not certified. Unrepresentable schemas can
 still fall through the SDK's inherited conversion catch. No baseline deadline
 or policy gate is changed by this resumption.
+
+## 2026-11-20: bootstrap the pinned Bun with npx, not bunx (BRO-3833)
+
+Every Vercel build of either project failed in the install step from the
+2026-10-27 18:39 production build (e62a4ae, a docs-only change) onward; the
+build at 18:35 (b663c73) had passed with the same command. The log shows
+`bunx` fetching the `bun@1.4.4` npm package ("Resolved, downloaded and
+extracted [29]", "Saved lockfile") and the command exiting 1 about 12 ms
+later, before any `bun install v1.4.4` line. That package ships
+`bin/bun.exe` as a 450-byte shell placeholder that exits 1 unless its
+`postinstall` (`node install.js`) has swapped in the platform binary, so the
+command only works when the build image's Bun runs that lifecycle script.
+The image's Bun stopped doing so; the project's own install never started.
+
+`npx -y bun@1.4.4 install --frozen-lockfile` keeps the same reviewed version
+and the frozen lockfile. npm runs `postinstall` by default, so the real 1.4.4
+binary is in place before the install. A clean clone with the tracked
+out-of-repo symlinks left dangling, installed from `apps/broomva` as Vercel
+does, completes with the lockfile unchanged. The Vercel preview build log
+(it must print `bun install v1.4.4`) is the remote proof.

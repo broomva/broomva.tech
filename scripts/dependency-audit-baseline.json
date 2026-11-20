@@ -151,15 +151,6 @@
       "advisories": [
         "moderate|https://github.com/advisories/GHSA-g3hv-75wg-m249"
       ]
-    },
-    {
-      "package": "picomatch",
-      "owner": "security",
-      "topologySha256": "fcca67280f68b1f5fb2c379d186aadb8ae229212a50948718cab0bf8ea7bad5e",
-      "rationale": "Reviewed 2026-11-17 (BRO-3835). No patched release exists (latest 4.0.7 is within <=4.0.7). Consumers are build and test tooling: @rollup/plugin-commonjs, @rollup/pluginutils, fumadocs-mdx (docs build), tinyglobby, vite and vitest. Extglob patterns come from repository config, never from requests; absent from the production server bundle and function traces. Re-check when a fixed version ships.",
-      "advisories": [
-        "high|https://github.com/advisories/GHSA-fc5q-39xc-vjpf"
-      ]
     }
   ]
 }
