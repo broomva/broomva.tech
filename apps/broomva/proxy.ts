@@ -52,6 +52,10 @@ const PUBLIC_API_PREFIXES = [
   // to no-op for anonymous readers (`NextResponse.json(null)` on GET, 401 on
   // POST). The proxy must let the request through so the handler can pick.
   "/api/audio-playback",
+  // "Ask Carlos" double (BRO-3994): anonymous by design. The handler
+  // enforces same-origin, size and rate limits; it stores nothing. The
+  // proxy returns early for it, before the session lookup.
+  "/api/ask",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
@@ -340,6 +344,14 @@ export async function proxy(req: NextRequest) {
 
   // Always allow metadata and public pages.
   if (isMetadataRoute(pathname) || isPublicPage(pathname)) {
+    return withSecurityHeaders(req, nextWithTenant());
+  }
+
+  // The "Ask Carlos" double (BRO-3994) is anonymous by design and never reads
+  // the session, so skip the session lookup (and its CPU) on every question.
+  // The legal-acceptance check below would add nothing: anyone can ask
+  // without signing in.
+  if (pathname === "/api/ask") {
     return withSecurityHeaders(req, nextWithTenant());
   }
 
