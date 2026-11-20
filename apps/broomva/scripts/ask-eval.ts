@@ -11,7 +11,7 @@
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { checkAnswer, hostsIn } from "../lib/twin/answer-checks";
+import { checkAnswer, urlsIn } from "../lib/twin/answer-checks";
 import { buildPublicBrief } from "../lib/twin/persona";
 
 const QUESTIONS = [
@@ -39,7 +39,11 @@ const knowledge = readFileSync(
   path.join(import.meta.dirname, "../public/agent-knowledge.json"),
   "utf8",
 );
-const allowedHosts = hostsIn(`${buildPublicBrief()}\n${knowledge}`);
+// The deployment's per-question retrieved context is not observable from
+// outside, so this allows any URL in the whole public context: a superset.
+// A link outside it is certainly invented; one inside may not have been in
+// that question's excerpts.
+const allowedUrls = urlsIn(`${buildPublicBrief()}\n${knowledge}`);
 
 /** Concatenate the text deltas of an AI SDK UI message stream. */
 function streamText(raw: string): string {
@@ -75,7 +79,7 @@ for (const [i, question] of QUESTIONS.entries()) {
   const raw = await res.text();
   const answer = res.ok ? streamText(raw) : raw;
   const problems = res.ok
-    ? checkAnswer({ question, answer, allowedHosts })
+    ? checkAnswer({ question, answer, allowedUrls })
     : [`HTTP ${res.status}: ${raw.slice(0, 200)}`];
   if (problems.length > 0) failing += 1;
   console.log(`\n${problems.length ? "FAIL" : "pass"}  ${question}`);
