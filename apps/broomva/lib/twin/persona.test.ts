@@ -26,6 +26,13 @@ describe("persona brief", () => {
     });
     expect(prompt).toContain("You are an AI double, not Carlos");
     expect(prompt).toContain("Never invent");
+    // Live dogfood 2026-11-20: a Spanish hiring question got "Soy Carlos…"
+    // with no disclosure. The identity guard and the localized opening
+    // disclosure must both reach the model.
+    expect(prompt).toContain("Never claim to be Carlos, in any language");
+    expect(prompt).toContain("Soy el doble de IA de Carlos");
+    expect(prompt).toMatch(/how to hire or work with Carlos, open with that/);
+    expect(prompt).not.toContain("First person, as Carlos");
     expect(prompt).toContain("today is 2026-11-20");
     expect(prompt).toContain("none matched");
   });
