@@ -21,6 +21,7 @@ import {
   LIMITS,
   type LimitWindow,
   parseAskBody,
+  readBodyCapped,
 } from "@/lib/twin/guard";
 import { loadTwinKnowledge } from "@/lib/twin/knowledge";
 import { buildTwinSystemPrompt } from "@/lib/twin/persona";
@@ -76,18 +77,19 @@ export async function POST(req: Request) {
     });
   }
 
-  // Bound the bytes before parsing: the schema drops unknown fields, but
-  // only after JSON.parse has paid for them.
-  const tooLarge = () => json(413, "That request is too large.");
-  if (Number(req.headers.get("content-length") ?? 0) > LIMITS.maxBodyBytes) {
-    return tooLarge();
+  // Bound the bytes before parsing, while reading: the schema drops unknown
+  // fields, but only after JSON.parse has paid for them, and a chunked body
+  // carries no Content-Length to check up front.
+  const body = await readBodyCapped(req, LIMITS.maxBodyBytes);
+  if (!body.ok) {
+    return body.reason === "too-large"
+      ? json(413, "That request is too large.")
+      : json(400, "Invalid request body.");
   }
-  const text = await req.text();
-  if (text.length > LIMITS.maxBodyBytes) return tooLarge();
 
   let raw: unknown;
   try {
-    raw = JSON.parse(text);
+    raw = JSON.parse(body.text);
   } catch {
     return json(400, "Invalid JSON.");
   }

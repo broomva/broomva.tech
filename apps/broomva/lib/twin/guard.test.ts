@@ -5,6 +5,7 @@ import {
   isSameOrigin,
   LIMITS,
   parseAskBody,
+  readBodyCapped,
 } from "./guard";
 
 const user = (text: string, id = "u") => ({
@@ -202,5 +203,66 @@ describe("request helpers", () => {
     expect(
       isSameOrigin(new Headers({ origin: "null", host: "broomva.tech" })),
     ).toBe(false);
+  });
+});
+
+describe("readBodyCapped", () => {
+  /** A chunked body with no Content-Length; counts how much was pulled. */
+  function streamed(chunk: Uint8Array, count: number) {
+    let pulled = 0;
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (pulled >= count) return c.close();
+        pulled++;
+        c.enqueue(chunk);
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const req = new Request("https://broomva.tech/api/ask", {
+      method: "POST",
+      body,
+      // @ts-expect-error — undici requires duplex for a streamed body.
+      duplex: "half",
+    });
+    return { req, pulled: () => pulled, cancelled: () => cancelled };
+  }
+
+  it("stops reading a lengthless stream at the budget and cancels it", async () => {
+    const s = streamed(new Uint8Array(1024), 10_000); // would be ~10 MB
+    const r = await readBodyCapped(s.req, 64 * 1024);
+    expect(r).toEqual({ ok: false, reason: "too-large" });
+    expect(s.pulled()).toBeLessThanOrEqual(66);
+    expect(s.cancelled()).toBe(true);
+  });
+
+  it("refuses a declared Content-Length over the budget without reading", async () => {
+    const req = new Request("https://broomva.tech/api/ask", {
+      method: "POST",
+      body: "{}",
+      headers: { "content-length": String(1024 * 1024) },
+    });
+    expect(await readBodyCapped(req, 64 * 1024)).toEqual({
+      ok: false,
+      reason: "too-large",
+    });
+  });
+
+  it("counts bytes, not characters, and decodes UTF-8", async () => {
+    const text = "¿Qué haces? 🚀".repeat(10); // multibyte
+    const bytes = new TextEncoder().encode(text).byteLength;
+    expect(bytes).toBeGreaterThan(text.length);
+    const req = () =>
+      new Request("https://broomva.tech/api/ask", {
+        method: "POST",
+        body: text,
+      });
+    expect(await readBodyCapped(req(), bytes)).toEqual({ ok: true, text });
+    expect(await readBodyCapped(req(), text.length)).toEqual({
+      ok: false,
+      reason: "too-large",
+    });
   });
 });

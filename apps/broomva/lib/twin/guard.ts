@@ -193,3 +193,49 @@ export function isSameOrigin(headers: Headers): boolean {
     return false;
   }
 }
+
+export type BodyResult =
+  | { ok: true; text: string }
+  | { ok: false; reason: "too-large" | "unreadable" };
+
+/**
+ * Read a request body as UTF-8, counting bytes as they arrive and
+ * cancelling the stream once `maxBytes` is passed. A declared
+ * Content-Length over the budget is refused before reading; a missing or
+ * understated one cannot make this buffer more than the budget plus one
+ * chunk.
+ */
+export async function readBodyCapped(
+  req: Request,
+  maxBytes: number,
+): Promise<BodyResult> {
+  if (Number(req.headers.get("content-length") ?? 0) > maxBytes) {
+    return { ok: false, reason: "too-large" };
+  }
+  if (!req.body) return { ok: true, text: "" };
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return { ok: false, reason: "too-large" };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, reason: "unreadable" };
+  }
+  const all = new Uint8Array(bytes);
+  let offset = 0;
+  for (const c of chunks) {
+    all.set(c, offset);
+    offset += c.byteLength;
+  }
+  return { ok: true, text: new TextDecoder().decode(all) };
+}
