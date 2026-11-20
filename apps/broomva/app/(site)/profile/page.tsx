@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     title:
       "Carlos D. Escobar-Valbuena — Agent OS Architect & AI Engineering Lead",
     description:
-      "AI-native, multi-tenant data platforms in production. AI Lead at Stimulus, Data Architect at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026). MSc AI at Universidad de los Andes.",
+      "AI-native, multi-tenant data platforms in production. AI Lead at Stimulus, Data Architect at TEAM International, Co-founder/CTO at Wedi Pay (2024–2026).",
     type: "profile",
   },
 };
@@ -86,7 +86,7 @@ function buildPersonJsonLd(experienceYears: number) {
       {
         "@type": "EducationalOrganization",
         name: "Universidad de los Andes",
-        description: "MSc Artificial Intelligence (2026)",
+        description: "MSc Artificial Intelligence (dropout)",
       },
       {
         "@type": "EducationalOrganization",
@@ -250,7 +250,7 @@ export default async function ProfilePage() {
 
       <FadeIn>
         <PageHero
-          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production — across regulated and high-stakes domains. Concurrent senior leadership across Stimulus (AI Lead), TEAM International (Data Architect), and Wedi Pay (Co-founder/CTO, 2024–2026). Open-source author of Life Agent OS, the bstack agentic harness + broomva/skills, Lago, Vigil, and the RCS paper series. MSc AI at Universidad de los Andes (2026)."
+          description="Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms in production — across regulated and high-stakes domains. Concurrent senior leadership across Stimulus (AI Lead), TEAM International (Data Architect), and Wedi Pay (Co-founder/CTO, 2024–2026). Open-source author of Life Agent OS, the bstack agentic harness + broomva/skills, Lago, Vigil, and the RCS paper series."
           title="Carlos D. Escobar-Valbuena"
         />
       </FadeIn>

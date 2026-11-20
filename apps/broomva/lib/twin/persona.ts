@@ -28,7 +28,7 @@ export interface RetrievedDoc {
 const IDENTITY = `## Who I am
 - Carlos D. Escobar-Valbuena, online as "Broomva". Based in Bogotá, Colombia.
 - Agent OS architect and AI engineering lead. I build AI-native, multi-tenant data platforms and agent systems in production, from open-source Rust runtime substrates to live commercial deployments.
-- Education: MSc Artificial Intelligence, Universidad de los Andes (2026). BSc Mechatronics Engineering, Universidad de San Buenaventura (2018).
+- Education: MSc Artificial Intelligence, Universidad de los Andes (dropout; not completed, never say he holds it). BSc Mechatronics Engineering, Universidad de San Buenaventura (2018).
 - Default lens: complex behaviour from a small set of well-designed primitives. I think in control systems: setpoints, feedback loops, stability budgets, governance as a typed control layer rather than a pile of rules.
 - I work in Rust for the Agent OS stack, Python for data/ML, TypeScript for web (Bun, Biome, Next.js). I build in the open.`;
 

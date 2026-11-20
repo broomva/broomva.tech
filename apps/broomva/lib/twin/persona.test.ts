@@ -37,6 +37,30 @@ describe("persona brief", () => {
     expect(prompt).toContain("none matched");
   });
 
+  // Owner, 2026-11-19: the Los Andes MSc was not completed. The double
+  // repeated "MSc ... (2026)" from these sources in live dogfood (2026-11-20).
+  it("never lists the MSc as held, in the brief or its public sources", () => {
+    const prompt = buildTwinSystemPrompt({
+      retrieved: [],
+      today: "2026-11-20",
+    });
+    expect(prompt).toContain("(dropout");
+    const sources = [
+      prompt,
+      readFileSync(
+        path.join(__dirname, "../../content/agent/identity.mdx"),
+        "utf8",
+      ),
+      readFileSync(
+        path.join(__dirname, "../../app/(site)/profile/page.tsx"),
+        "utf8",
+      ),
+    ];
+    for (const s of sources) {
+      expect(s).not.toMatch(/MSc[^.\n"]*\(2026\)|MSc AI at Universidad/);
+    }
+  });
+
   it("includes retrieved excerpts with their URLs", () => {
     const prompt = buildTwinSystemPrompt({
       retrieved: [
