@@ -34,6 +34,7 @@
     "db:branch:start": "bash -c 'N=${1:-dev-local}; bun db:branch:create $N && bun db:branch:use $N' --",
     "db:branch:stop": "bash -c 'N=${1:-dev-local}; bun db:branch:use main && bun db:branch:delete $N' --",
     "db:branch:list": "bunx neonctl branches list",
+    "eval:ask": "bun scripts/ask-eval.ts",
     "eval:dev": "evalite watch",
     "eval:serve": "evalite serve",
     "skiller:apply": "bunx skiller@latest apply",
