@@ -5,19 +5,31 @@
  * bounded before any model call: turn count, message size, total size, and
  * per-IP / per-instance rate windows. Counters are in memory on purpose:
  * the site runs on Fluid compute (instances are reused), Redis is optional
- * and has been unhealthy, and Vercel Bot Protection sits in front. A team
- * AI Gateway budget is the hard spend ceiling; these limits keep one client
- * from using it up.
+ * and has been unhealthy, and Vercel Bot Protection sits in front. They are
+ * per instance, so they slow one client down but do not cap total spend:
+ * that needs a shared limit outside the function (a Vercel WAF rate-limit
+ * rule on /api/ask and an AI Gateway budget, both dashboard settings).
  */
 import { z } from "zod";
 
 export const LIMITS = {
+  /** Request body, checked before JSON parsing. */
+  maxBodyBytes: 64 * 1024,
   /** Messages accepted in one request (the client sends the whole thread). */
   maxMessages: 24,
   /** Most recent messages forwarded to the model. */
   modelWindow: 10,
-  maxCharsPerMessage: 2_000,
-  maxTotalChars: 16_000,
+  /** What a visitor may type. Rejected above this. */
+  maxUserChars: 2_000,
+  /**
+   * The double's own earlier replies, as echoed back by the client. A
+   * 700-token answer can exceed maxUserChars, so these are truncated, never
+   * rejected: rejecting them would break the conversation after one long
+   * answer.
+   */
+  maxAssistantChars: 4_000,
+  /** Across the window forwarded to the model. */
+  maxWindowChars: 16_000,
   perIpPerMinute: 8,
   perIpPerDay: 60,
   perInstancePerDay: 3_000,
@@ -55,46 +67,47 @@ export function parseAskBody(input: unknown): ParseResult {
   const parsed = body.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid request body." };
 
-  let total = 0;
-  const messages: TextMessage[] = [];
+  const all: TextMessage[] = [];
   for (const [i, m] of parsed.data.messages.entries()) {
-    const text = m.parts
+    let text = m.parts
       .map((p) => textPart.safeParse(p))
       .filter((r) => r.success)
       .map((r) => r.data.text)
       .join("")
       .trim();
-    if (text.length > LIMITS.maxCharsPerMessage) {
+    if (m.role === "user" && text.length > LIMITS.maxUserChars) {
       return {
         ok: false,
-        error: `Messages are limited to ${LIMITS.maxCharsPerMessage} characters.`,
+        error: `Questions are limited to ${LIMITS.maxUserChars} characters.`,
       };
     }
-    total += text.length;
+    if (m.role === "assistant" && text.length > LIMITS.maxAssistantChars) {
+      text = `${text.slice(0, LIMITS.maxAssistantChars)} …`;
+    }
     if (!text) continue;
-    messages.push({
+    all.push({
       id: m.id ?? `m${i}`,
       role: m.role,
       parts: [{ type: "text", text }],
     });
   }
 
-  if (total > LIMITS.maxTotalChars) {
-    return {
-      ok: false,
-      error: "This conversation is too long. Start a new one.",
-    };
-  }
-  const last = messages.at(-1);
+  const last = all.at(-1);
   if (last?.role !== "user") {
     return { ok: false, error: "The last message must be a question." };
   }
 
-  return {
-    ok: true,
-    messages: messages.slice(-LIMITS.modelWindow),
-    question: last.parts[0].text,
-  };
+  // Most recent turns that fit the character budget, starting on a user
+  // turn: some providers behind the Gateway (Bedrock Converse) reject a
+  // conversation that opens with an assistant message. Older turns are
+  // dropped, never rejected, so a long conversation keeps working; the
+  // last question alone always fits (maxUserChars < maxWindowChars).
+  const window = all.slice(-LIMITS.modelWindow);
+  const size = () => window.reduce((n, m) => n + m.parts[0].text.length, 0);
+  while (window.length > 1 && size() > LIMITS.maxWindowChars) window.shift();
+  while (window[0]?.role === "assistant") window.shift();
+
+  return { ok: true, messages: window, question: last.parts[0].text };
 }
 
 interface Window {
@@ -102,8 +115,12 @@ interface Window {
   resetAt: number;
 }
 
+export type LimitWindow = "ip-minute" | "ip-day" | "instance-day";
+
 export interface Limiter {
-  check(ip: string): { ok: true } | { ok: false; retryAfterSec: number };
+  check(
+    ip: string,
+  ): { ok: true } | { ok: false; window: LimitWindow; retryAfterSec: number };
 }
 
 /** Fixed-window counters per key; `now` is injectable for tests. */
@@ -136,15 +153,16 @@ export function createLimiter(now: () => number = Date.now): Limiter {
       const day = 86_400_000;
       // Order matters: a request refused by an earlier window does not
       // consume the later ones.
-      for (const [key, limit, size] of [
-        [`ip:m:${ip}`, LIMITS.perIpPerMinute, minute],
-        [`ip:d:${ip}`, LIMITS.perIpPerDay, day],
-        ["instance:d", LIMITS.perInstancePerDay, day],
+      for (const [window, key, limit, size] of [
+        ["ip-minute", `ip:m:${ip}`, LIMITS.perIpPerMinute, minute],
+        ["ip-day", `ip:d:${ip}`, LIMITS.perIpPerDay, day],
+        ["instance-day", "instance:d", LIMITS.perInstancePerDay, day],
       ] as const) {
         const r = hit(key, limit, size);
         if (!r.ok) {
           return {
             ok: false,
+            window,
             retryAfterSec: Math.max(1, Math.ceil((r.resetAt - now()) / 1000)),
           };
         }

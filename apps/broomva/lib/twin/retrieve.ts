@@ -3,7 +3,7 @@ import { searchKnowledge } from "@/lib/ai/knowledge/search";
 import { loadTwinKnowledge } from "./knowledge";
 import type { RetrievedDoc } from "./persona";
 
-// English + Spanish function words. searchSiteContent adds a point for every
+// English + Spanish function words. searchKnowledge adds a point for every
 // body hit, so without this "what are you working on" matches every document.
 const STOPWORDS = new Set(
   `a about an and any are as at be been but by can could did do does for from
@@ -19,17 +19,21 @@ const STOPWORDS = new Set(
 );
 
 export function keywords(question: string): string[] {
-  return (
-    question
-      .toLowerCase()
-      .split(/\s+/)
-      .map((t) => t.replace(/[^\p{L}\p{N}-]/gu, ""))
-      // The shared scorer matches substrings, so a two-letter term ("os",
-      // "ai") hits nearly every document.
-      .filter((t) => t.length >= 3 && !STOPWORDS.has(t))
-  );
+  const terms = question
+    .toLowerCase()
+    // Split on hyphens too: searchKnowledge strips them, so "multi-tenant"
+    // would otherwise become "multitenant" and match nothing.
+    .split(/[\s-]+/)
+    .map((t) => t.replace(/[^\p{L}\p{N}]/gu, ""))
+    // The shared scorer matches substrings, so a two-letter term ("os",
+    // "ai") hits nearly every document.
+    .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+  // Each term is a scan over every document body: dedupe and cap so a
+  // 2,000-character question costs about what a normal one does.
+  return [...new Set(terms)].slice(0, MAX_TERMS);
 }
 
+const MAX_TERMS = 12;
 const MAX_DOCS = 4;
 const EXCERPT_CHARS = 600;
 /** Keyword-only matches below this are noise ("working", "right", "now"). */

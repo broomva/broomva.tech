@@ -51,8 +51,14 @@ describe("persona brief", () => {
   // it must be a deliberate change to this list, reviewed as such.
   it("imports only public site-data modules", () => {
     const src = readFileSync(path.join(__dirname, "persona.ts"), "utf8");
-    const imports = [...src.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]);
-    expect(imports.sort()).toEqual([
+    // Every import form: `from "x"`, side-effect `import "x"`, `import("x")`
+    // and `require("x")`.
+    const specifiers = [
+      ...src.matchAll(
+        /(?:from\s+|import\s*\(?\s*|require\s*\(\s*)["']([^"']+)["']/g,
+      ),
+    ].map((m) => m[1]);
+    expect([...new Set(specifiers)].sort()).toEqual([
       "@/lib/site-data/now",
       "@/lib/site-data/profile",
     ]);

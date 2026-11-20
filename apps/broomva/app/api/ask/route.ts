@@ -12,13 +12,17 @@
  */
 import { gateway } from "@ai-sdk/gateway";
 import { convertToModelMessages, streamText } from "ai";
+import { connection } from "next/server";
 import { createModuleLogger } from "@/lib/logger";
 import {
   clientIp,
   createLimiter,
   isSameOrigin,
+  LIMITS,
+  type LimitWindow,
   parseAskBody,
 } from "@/lib/twin/guard";
+import { loadTwinKnowledge } from "@/lib/twin/knowledge";
 import { buildTwinSystemPrompt } from "@/lib/twin/persona";
 import { retrieveForQuestion } from "@/lib/twin/retrieve";
 
@@ -35,21 +39,55 @@ function json(status: number, error: string, headers?: HeadersInit) {
   return Response.json({ error }, { status, headers });
 }
 
+const LIMIT_MESSAGES: Record<LimitWindow, string> = {
+  "ip-minute": "You're asking faster than I can answer. Try again in a minute.",
+  "ip-day":
+    "You've reached today's question limit. Come back tomorrow, or write to carlos@broomva.tech.",
+  "instance-day":
+    "I've answered a lot of questions today and I'm resting. Try again later, or write to carlos@broomva.tech.",
+};
+
+/**
+ * Grounding health for post-deploy checks: how many public pages the
+ * double can retrieve from. 0 means public/agent-knowledge.json did not
+ * reach the function, and answers come from the brief alone.
+ */
+export async function GET() {
+  // Evaluate at request time, in the function: with cacheComponents a GET
+  // that reads no request data is prerendered at build, where the file
+  // always exists, which would hide exactly the failure this reports.
+  await connection();
+  const knowledge = await loadTwinKnowledge();
+  return Response.json({
+    ok: true,
+    model: MODEL,
+    knowledgeDocs: knowledge.documents.length,
+    knowledgeGeneratedAt: knowledge.generatedAt,
+  });
+}
+
 export async function POST(req: Request) {
   if (!isSameOrigin(req.headers)) return json(403, "Forbidden.");
 
   const limit = limiter.check(clientIp(req.headers));
   if (!limit.ok) {
-    return json(
-      429,
-      "You're asking faster than I can answer. Try again in a moment.",
-      { "Retry-After": String(limit.retryAfterSec) },
-    );
+    return json(429, LIMIT_MESSAGES[limit.window], {
+      "Retry-After": String(limit.retryAfterSec),
+    });
   }
+
+  // Bound the bytes before parsing: the schema drops unknown fields, but
+  // only after JSON.parse has paid for them.
+  const tooLarge = () => json(413, "That request is too large.");
+  if (Number(req.headers.get("content-length") ?? 0) > LIMITS.maxBodyBytes) {
+    return tooLarge();
+  }
+  const text = await req.text();
+  if (text.length > LIMITS.maxBodyBytes) return tooLarge();
 
   let raw: unknown;
   try {
-    raw = await req.json();
+    raw = JSON.parse(text);
   } catch {
     return json(400, "Invalid JSON.");
   }

@@ -60,6 +60,17 @@ describe("keywords", () => {
     // Two-letter terms ("os") substring-match nearly every document.
     expect(keywords("¿Qué es el Life Agent OS?")).toEqual(["life", "agent"]);
     expect(keywords("who are you")).toEqual([]);
+    // Hyphens split (the scorer strips them), duplicates collapse.
+    expect(keywords("multi-tenant multi-tenant platforms")).toEqual([
+      "multi",
+      "tenant",
+      "platforms",
+    ]);
+  });
+
+  it("caps the term count so a long question stays cheap", () => {
+    const many = Array.from({ length: 200 }, (_, i) => `word${i}`).join(" ");
+    expect(keywords(many)).toHaveLength(12);
   });
 });
 

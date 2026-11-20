@@ -74,30 +74,73 @@ describe("parseAskBody", () => {
     });
   });
 
-  it("enforces per-message, total and count limits", () => {
-    const long = "x".repeat(LIMITS.maxCharsPerMessage + 1);
-    expect(parseAskBody({ messages: [user(long)] }).ok).toBe(false);
-
-    const chunk = "y".repeat(LIMITS.maxCharsPerMessage);
-    const many = Array.from({ length: 9 }, (_, i) =>
-      i % 2 === 0 ? user(chunk, `${i}`) : assistant(chunk, `${i}`),
-    );
-    expect(parseAskBody({ messages: many }).ok).toBe(false); // 18k > 16k total
-
+  it("rejects an over-long question and too many messages", () => {
+    const long = "x".repeat(LIMITS.maxUserChars + 1);
+    expect(parseAskBody({ messages: [user(long)] })).toEqual({
+      ok: false,
+      error: `Questions are limited to ${LIMITS.maxUserChars} characters.`,
+    });
     const tooMany = Array.from({ length: LIMITS.maxMessages + 1 }, (_, i) =>
       user("q", `${i}`),
     );
     expect(parseAskBody({ messages: tooMany }).ok).toBe(false);
   });
 
-  it("forwards only the most recent window to the model", () => {
+  // Regression (cross-review round 1): a 700-token answer runs ~2,800
+  // characters. Rejecting it when the client echoes it back broke every
+  // later question in the conversation.
+  it("keeps the conversation going after a long answer", () => {
+    const longAnswer = "z".repeat(2_800);
+    const r = parseAskBody({
+      messages: [
+        user("tell me everything", "1"),
+        assistant(longAnswer, "2"),
+        user("and then?", "3"),
+      ],
+    });
+    expect(r).toMatchObject({ ok: true, question: "and then?" });
+    if (r.ok) expect(r.messages[1].parts[0].text).toBe(longAnswer);
+  });
+
+  it("truncates, never rejects, an oversized assistant turn", () => {
+    const huge = "z".repeat(LIMITS.maxAssistantChars + 500);
+    const r = parseAskBody({
+      messages: [user("q", "1"), assistant(huge, "2"), user("next", "3")],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.messages[1].parts[0].text.length).toBeLessThanOrEqual(
+        LIMITS.maxAssistantChars + 2,
+      );
+    }
+  });
+
+  it("drops the oldest turns to fit the character budget instead of failing", () => {
+    const answer = "y".repeat(LIMITS.maxAssistantChars);
+    const thread = Array.from({ length: 9 }, (_, i) =>
+      i % 2 === 0 ? user(`q${i}`, `${i}`) : assistant(answer, `${i}`),
+    );
+    const r = parseAskBody({ messages: thread });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const chars = r.messages.reduce((n, m) => n + m.parts[0].text.length, 0);
+      expect(chars).toBeLessThanOrEqual(LIMITS.maxWindowChars);
+      expect(r.messages[0].role).toBe("user");
+      expect(r.messages.at(-1)?.parts[0].text).toBe("q8");
+    }
+  });
+
+  it("forwards the most recent window, opening on a user turn", () => {
     const thread = Array.from({ length: 15 }, (_, i) =>
       i % 2 === 0 ? user(`q${i}`, `${i}`) : assistant(`a${i}`, `${i}`),
     );
     const r = parseAskBody({ messages: thread });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.messages).toHaveLength(LIMITS.modelWindow);
+      // slice(-10) of an odd-length alternating thread opens on an
+      // assistant turn; it is dropped (Bedrock rejects that shape).
+      expect(r.messages).toHaveLength(LIMITS.modelWindow - 1);
+      expect(r.messages[0]).toMatchObject({ role: "user" });
       expect(r.messages.at(-1)?.parts[0].text).toBe("q14");
     }
   });
@@ -111,7 +154,7 @@ describe("createLimiter", () => {
       expect(limiter.check("1.1.1.1").ok).toBe(true);
     }
     const refused = limiter.check("1.1.1.1");
-    expect(refused.ok).toBe(false);
+    expect(refused).toMatchObject({ ok: false, window: "ip-minute" });
     if (!refused.ok) expect(refused.retryAfterSec).toBeGreaterThan(0);
 
     // Another client is unaffected.

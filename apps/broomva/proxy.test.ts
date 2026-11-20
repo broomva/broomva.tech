@@ -97,11 +97,13 @@ describe("proxy public artifact routes", () => {
       }),
     );
 
-    // Reaches the handler: no /login redirect and, unlike /api/prompts
-    // writes, no legal-acceptance gate for anonymous callers.
+    // Reaches the handler with no /login redirect, no legal-acceptance gate,
+    // and no session lookup: the handler never reads the session, so the
+    // proxy skips that cost on every question.
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();
     expect(mockAcceptance).not.toHaveBeenCalled();
+    expect(mockGetSafeSession).not.toHaveBeenCalled();
   });
 
   test.each([

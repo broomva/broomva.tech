@@ -15,6 +15,29 @@ vi.mock("@/lib/twin/retrieve", () => ({
   retrieveForQuestion: vi.fn(async () => retrieved),
 }));
 
+vi.mock("@/lib/twin/knowledge", () => ({
+  loadTwinKnowledge: vi.fn(async () => ({
+    generatedAt: "2026-11-20T00:00:00.000Z",
+    documents: [{}, {}, {}],
+  })),
+}));
+
+// connection() needs a live request scope; outside Next it throws.
+vi.mock("next/server", async (orig) => ({
+  ...(await orig<typeof import("next/server")>()),
+  connection: vi.fn(async () => undefined),
+}));
+
+// Capture every log call so a test can prove message text never reaches it.
+const logged: unknown[] = [];
+vi.mock("@/lib/logger", () => {
+  const sink = (...args: unknown[]) => {
+    logged.push(args);
+  };
+  const logger = { info: sink, warn: sink, error: sink, debug: sink };
+  return { createModuleLogger: () => logger };
+});
+
 let model: MockLanguageModelV3;
 vi.mock("@ai-sdk/gateway", () => ({ gateway: () => model }));
 
@@ -24,13 +47,22 @@ function streamingModel(chunks: string[]) {
       stream: simulateReadableStream({
         chunks: [
           { type: "text-start", id: "t" },
-          ...chunks.map((delta) => ({ type: "text-delta" as const, id: "t", delta })),
+          ...chunks.map((delta) => ({
+            type: "text-delta" as const,
+            id: "t",
+            delta,
+          })),
           { type: "text-end", id: "t" },
           {
             type: "finish",
             finishReason: { unified: "stop", raw: "stop" },
             usage: {
-              inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+              inputTokens: {
+                total: 10,
+                noCache: 10,
+                cacheRead: 0,
+                cacheWrite: 0,
+              },
               outputTokens: { total: 5, text: 5, reasoning: 0 },
             },
           },
@@ -97,7 +129,7 @@ describe("POST /api/ask", () => {
     const long = await POST(ask(question("x".repeat(2_001))));
     expect(long.status).toBe(400);
     expect(await long.json()).toEqual({
-      error: "Messages are limited to 2000 characters.",
+      error: "Questions are limited to 2000 characters.",
     });
     expect(model.doStreamCalls).toHaveLength(0);
   });
@@ -112,9 +144,53 @@ describe("POST /api/ask", () => {
     }
     const limited = await POST(ask(question("one more"), ip));
     expect(limited.status).toBe(429);
+    expect((await limited.json()).error).toContain("Try again in a minute");
     expect(Number(limited.headers.get("Retry-After"))).toBeGreaterThan(0);
 
-    const other = await POST(ask(question("hello"), { "x-forwarded-for": "198.51.100.10" }));
+    const other = await POST(
+      ask(question("hello"), { "x-forwarded-for": "198.51.100.10" }),
+    );
     expect(other.status).toBe(200);
+  });
+
+  it("rejects an oversized body before parsing it (413)", async () => {
+    const padding = "p".repeat(70 * 1024);
+    const res = await POST(
+      ask({
+        messages: [
+          {
+            role: "user",
+            parts: [
+              { type: "text", text: "hi" },
+              { type: "data", blob: padding },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(res.status).toBe(413);
+    expect(model.doStreamCalls).toHaveLength(0);
+  });
+
+  it("never logs the visitor's message text", async () => {
+    logged.length = 0;
+    const secret = "my-unique-question-7f3a9c";
+    const res = await POST(ask(question(`Who are you? ${secret}`)));
+    await res.text();
+    expect(logged.length).toBeGreaterThan(0);
+    expect(JSON.stringify(logged)).not.toContain(secret);
+  });
+});
+
+describe("GET /api/ask", () => {
+  it("reports how many public pages the double can retrieve from", async () => {
+    vi.resetModules();
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(await res.json()).toMatchObject({
+      ok: true,
+      knowledgeDocs: 3,
+      model: "anthropic/claude-haiku-4.5",
+    });
   });
 });

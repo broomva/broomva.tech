@@ -164,9 +164,9 @@ const nextConfig: NextConfig = {
     "*": ["./public/audio/**", "./public/images/**"],
   },
   // /api/ask (the "Ask Carlos" double, BRO-3994) reads the build-generated
-  // public/agent-knowledge.json from disk. The read is a dynamic fs path the
-  // tracer cannot see, and the loader's self-fetch fallback would hit Bot
-  // Protection, so ship the file inside that function explicitly.
+  // public/agent-knowledge.json from disk (lib/twin/knowledge.ts). The file
+  // is generated outside the module graph, so list it explicitly rather
+  // than rely on the tracer; a self-fetch fallback would hit Bot Protection.
   outputFileTracingIncludes: {
     "/api/ask": ["./public/agent-knowledge.json"],
   },
