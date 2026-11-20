@@ -89,6 +89,21 @@ describe("proxy public artifact routes", () => {
     },
   );
 
+  test("lets anonymous visitors POST to the Ask Carlos double (BRO-3994)", async () => {
+    const response = await proxy(
+      req("/api/ask", {
+        method: "POST",
+        headers: { origin: "https://broomva.tech" },
+      }),
+    );
+
+    // Reaches the handler: no /login redirect and, unlike /api/prompts
+    // writes, no legal-acceptance gate for anonymous callers.
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(mockAcceptance).not.toHaveBeenCalled();
+  });
+
   test.each([
     "/api/prompts/example/copy",
   ])("blocks anonymous data-writing surface %s", async (pathname) => {

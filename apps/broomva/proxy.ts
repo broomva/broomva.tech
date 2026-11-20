@@ -52,6 +52,9 @@ const PUBLIC_API_PREFIXES = [
   // to no-op for anonymous readers (`NextResponse.json(null)` on GET, 401 on
   // POST). The proxy must let the request through so the handler can pick.
   "/api/audio-playback",
+  // "Ask Carlos" double (BRO-3994): anonymous by design. The handler
+  // enforces same-origin, size and rate limits; it stores nothing.
+  "/api/ask",
 ] as const;
 
 /** Metadata / SEO routes always allowed. */
