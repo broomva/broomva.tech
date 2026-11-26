@@ -23,9 +23,13 @@
  *   TARGET_BASE_URL=https://my-preview.vercel.app node scripts/verify-public-asset-routes.mjs
  *
  * Environment variables:
+ *   PROBE_REQUIRE_CONCLUSIVE — "1" fails the run when a probe is inconclusive
+ *                     (edge-mitigated or paused account; see probe-classify.mjs)
  *   TARGET_BASE_URL  — base URL to probe (default: https://broomva.tech)
  *   STRICT_TIMEOUT_MS — per-request timeout in ms (default: 15000)
  */
+
+import { classifyProbe } from "./probe-classify.mjs";
 
 const TARGET_BASE_URL = (
   process.env.TARGET_BASE_URL || "https://broomva.tech"
@@ -44,6 +48,9 @@ const RETRY_DELAY_MS = Number.parseInt(
   process.env.PROBE_RETRY_DELAY_MS || "10000",
   10
 );
+
+// Set PROBE_REQUIRE_CONCLUSIVE=1 to fail when any probe could not reach the app.
+const REQUIRE_CONCLUSIVE = process.env.PROBE_REQUIRE_CONCLUSIVE === "1";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -104,7 +111,7 @@ const PROBES = [
   },
 ];
 
-async function probe({ path, kind, expectedStatus, label }) {
+async function probe({ path, kind, expectedStatus }) {
   const url = `${TARGET_BASE_URL}${path}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -117,32 +124,15 @@ async function probe({ path, kind, expectedStatus, label }) {
     });
     const status = res.status;
     const location = res.headers.get("location") || "";
-
-    // The defining failure mode we want to catch: the middleware proxy
-    // accidentally treats a public asset as a gated route and sends it to
-    // /login. That's never correct for any path in this list.
-    if (location.startsWith("/login") || /\blogin\b/.test(location)) {
-      return {
-        ok: false,
-        status,
-        location,
-        reason: "redirects to /login (auth proxy gated a public asset)",
-      };
-    }
-
-    if (!expectedStatus(status)) {
-      return {
-        ok: false,
-        status,
-        location,
-        reason: `status ${status} not in expected set for ${kind}`,
-      };
-    }
-
-    return { ok: true, status, location };
+    const mitigated = res.headers.get("x-vercel-mitigated");
+    return {
+      status,
+      location,
+      ...classifyProbe({ status, location, mitigated, expectedStatus, kind }),
+    };
   } catch (err) {
     return {
-      ok: false,
+      outcome: "fail",
       status: 0,
       location: "",
       reason: `fetch failed: ${err.message}`,
@@ -156,7 +146,8 @@ async function probeWithRetry(p) {
   let lastResult;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     lastResult = await probe(p);
-    if (lastResult.ok) {
+    // An edge mitigation will not clear on retry; waiting only slows CI.
+    if (lastResult.outcome !== "fail") {
       if (attempt > 1) lastResult.attempts = attempt;
       return lastResult;
     }
@@ -166,27 +157,47 @@ async function probeWithRetry(p) {
   return lastResult;
 }
 
-let failed = 0;
+const counts = { pass: 0, fail: 0, inconclusive: 0 };
 console.log(
   `ℹ  Probing public asset routes on ${TARGET_BASE_URL} (max ${MAX_ATTEMPTS} attempt(s) per probe)`
 );
 for (const p of PROBES) {
   const r = await probeWithRetry(p);
-  if (r.ok) {
-    const dest = r.location ? ` → ${r.location.slice(0, 80)}` : "";
+  counts[r.outcome]++;
+  const dest = r.location ? ` → ${r.location.slice(0, 80)}` : "";
+  if (r.outcome === "pass") {
     const note = r.attempts ? ` (after ${r.attempts} attempts)` : "";
     console.log(`✓ ${p.label.padEnd(28)} HTTP ${r.status}${dest}${note}`);
+  } else if (r.outcome === "inconclusive") {
+    console.warn(
+      `? ${p.label.padEnd(28)} HTTP ${r.status}${dest}\n   ${r.reason}\n   url: ${TARGET_BASE_URL}${p.path}`
+    );
   } else {
-    failed++;
-    const dest = r.location ? ` → ${r.location.slice(0, 80)}` : "";
     console.error(
       `✗ ${p.label.padEnd(28)} HTTP ${r.status}${dest}\n   ${r.reason}\n   url: ${TARGET_BASE_URL}${p.path}`
     );
   }
 }
 
-if (failed > 0) {
-  console.error(`\n${failed} probe(s) failed.`);
+console.log(
+  `\n${counts.pass} passed, ${counts.inconclusive} inconclusive, ${counts.fail} failed (of ${PROBES.length}).`
+);
+
+if (counts.inconclusive > 0) {
+  const msg = `${counts.inconclusive} of ${PROBES.length} public asset probe(s) never reached the app (Vercel edge mitigation or paused account), so the auth-proxy check did not run for them.`;
+  // GitHub Actions annotation: visible on the run summary, does not fail it.
+  if (process.env.GITHUB_ACTIONS) console.log(`::warning title=Asset probe inconclusive::${msg}`);
+  else console.warn(`⚠  ${msg}`);
+}
+
+if (counts.fail > 0) {
+  console.error(`${counts.fail} probe(s) failed.`);
   process.exit(1);
 }
-console.log("\n✓ All public asset routes resolve.");
+if (counts.inconclusive > 0 && REQUIRE_CONCLUSIVE) {
+  console.error("PROBE_REQUIRE_CONCLUSIVE=1: inconclusive probes fail the check.");
+  process.exit(1);
+}
+if (counts.pass === PROBES.length) {
+  console.log("✓ All public asset routes resolve.");
+}
