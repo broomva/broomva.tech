@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AskTwin } from "@/components/site/ask-twin";
 import ThermodynamicGrid from "@/components/ui/interactive-thermodynamic-grid";
 
 /* ------------------------------------------------------------------ */
@@ -133,6 +134,15 @@ export function HeroSection({ userName }: { userName?: string | null }) {
               </a>
             ),
           )}
+        </motion.div>
+
+        {/* "Ask Carlos" — the public AI double (BRO-3994) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          <AskTwin />
         </motion.div>
       </div>
 
