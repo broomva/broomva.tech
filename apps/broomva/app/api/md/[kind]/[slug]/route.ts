@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { type ContentKind, getContentBySlug } from "@/lib/content";
 import { config } from "@/lib/config";
 import { getPromptBySlugAnyState } from "@/lib/db/queries";
@@ -26,6 +27,9 @@ export async function GET(
   }
 
   if (kind === "prompts") {
+    // Opt out of static prerendering under cacheComponents so prompt visibility
+    // and deletion are always verified live against the DB.
+    await connection();
     let dbPrompt:
       | Awaited<ReturnType<typeof getPromptBySlugAnyState>>
       | undefined;
