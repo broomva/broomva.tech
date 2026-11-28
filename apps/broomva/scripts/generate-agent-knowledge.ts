@@ -1,7 +1,7 @@
 /**
  * Build-time script: emits public/agent-knowledge.json for the Arcan chat.
  *
- * Sources: every MDX under content/{writing,notes,projects,prompts}.
+ * Sources: published MDX under content/{writing,notes,projects}.
  * For each document it captures: body (JSX stripped), frontmatter, tags,
  * wikilinks, related, headings, wordCount — plus a graph view (nodes + edges)
  * and an inverted term index.
@@ -20,16 +20,17 @@ import type {
   AgentGraphEdgeType,
   AgentGraphNode,
   AgentKnowledge,
-  ContentKind,
+  ContentKind as SiteContentKind,
 } from "../lib/ai/knowledge/types";
 
+// Prompt visibility is checked at request time by the library and API.
+type ContentKind = Exclude<SiteContentKind, "prompts">;
 const CONTENT_ROOT = path.join(process.cwd(), "content");
-const KINDS: ContentKind[] = ["writing", "notes", "projects", "prompts"];
+const KINDS: ContentKind[] = ["writing", "notes", "projects"];
 const KIND_ROUTES: Record<ContentKind, string> = {
   writing: "/writing",
   notes: "/notes",
   projects: "/projects",
-  prompts: "/prompts",
 };
 
 // ── Wikilink + heading extraction ────────────────────────────────────────────

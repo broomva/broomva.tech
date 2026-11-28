@@ -18,6 +18,10 @@ vi.mock("next/cache", () => ({
 const LONG_PREFIX = "a".repeat(200);
 
 vi.mock("@/lib/content", () => ({
+  getAllSlugs: vi.fn(async (kind: string) => {
+    if (kind === "prompts") return ["revoked-prompt"];
+    return kind === "writing" ? ["arcan-post"] : [];
+  }),
   getContentList: vi.fn(async (kind: string) => {
     if (kind === "writing") {
       return [
@@ -62,14 +66,17 @@ vi.mock("@/lib/github", () => ({
   getSkillsRoster: vi.fn(),
 }));
 
+vi.mock("@/lib/url", () => ({ getBaseUrl: () => "https://example.test" }));
 vi.mock("@/components/site/page-hero", () => ({ PageHero: () => null }));
 vi.mock("@/components/site/prompt-viewer", () => ({ PromptViewer: () => null }));
 
 import { generateMetadata as promptMetadata } from "@/app/(site)/prompts/[slug]/page";
+import { GET as llmsFullGET } from "@/app/api/llms-full/route";
 import { GET as mdGET } from "@/app/api/md/[kind]/[slug]/route";
 import { GET as searchGET } from "@/app/api/search/route";
 import { GET as skillDetailGET } from "@/app/api/skills/[slug]/route";
 import { GET as skillsGET } from "@/app/api/skills/route";
+import sitemap from "@/app/sitemap";
 import {
   getNonPublicPromptSlugs,
   getPromptBySlugAnyState,
@@ -259,6 +266,18 @@ describe("Vercel overconsumption route invariants", () => {
       });
       await expect(promptMetadata({ params })).rejects.toThrow("db down");
       expect(connection).toHaveBeenCalled();
+    });
+
+    it("links to the prompt library without publishing mutable entries in static site indexes", async () => {
+      const llmsIndex = await (await llmsFullGET()).text();
+      expect(llmsIndex).toContain("/writing/arcan-post");
+      expect(llmsIndex).toContain("Prompt library");
+      expect(llmsIndex).not.toContain("/prompts/revoked-prompt");
+
+      const paths = (await sitemap()).map(({ url }) => new URL(url).pathname);
+      expect(paths).toContain("/writing/arcan-post");
+      expect(paths).toContain("/prompts");
+      expect(paths).not.toContain("/prompts/revoked-prompt");
     });
 
     it("GET /api/skills caches live responses publicly and marks degraded fallbacks no-store", async () => {
