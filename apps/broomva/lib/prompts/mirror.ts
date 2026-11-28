@@ -16,9 +16,14 @@ export type GithubMirrorStatus =
  */
 export async function mirrorIfAdmin(
   email: string | undefined | null,
-  prompt: Parameters<typeof commitPromptToGitHub>[0],
+  prompt: Parameters<typeof commitPromptToGitHub>[0] & {
+    visibility?: string | null;
+  },
 ): Promise<GithubMirrorStatus | null> {
   if (!isAdmin(email)) return null;
+  if (prompt.visibility !== undefined && prompt.visibility !== "public") {
+    return null;
+  }
   try {
     const ghResult = await commitPromptToGitHub(prompt);
     if (ghResult.success) return { ok: true };

@@ -24,7 +24,7 @@ import {
   readBodyCapped,
 } from "@/lib/twin/guard";
 import { loadTwinKnowledge } from "@/lib/twin/knowledge";
-import { buildTwinSystemParts } from "@/lib/twin/persona";
+import { buildTwinSystemPrompt } from "@/lib/twin/persona";
 import { retrieveForQuestion } from "@/lib/twin/retrieve";
 
 export const maxDuration = 30;
@@ -98,26 +98,17 @@ export async function POST(req: Request) {
 
   const started = Date.now();
   const retrieved = await retrieveForQuestion(parsed.question);
-  const { staticPrompt, dynamicContext } = buildTwinSystemParts({
+  // Single system string: Claude Haiku 4.5 requires 4,096 tokens before a
+  // prompt-cache breakpoint (~2.4K static brief is below threshold), and a
+  // single system prompt preserves compatibility with any ASK_MODEL override.
+  const system = buildTwinSystemPrompt({
     retrieved,
     today: new Date().toISOString().slice(0, 10),
   });
 
   const result = streamText({
     model: gateway(MODEL),
-    system: [
-      {
-        role: "system",
-        content: staticPrompt,
-        providerOptions: {
-          anthropic: { cacheControl: { type: "ephemeral" } },
-        },
-      },
-      {
-        role: "system",
-        content: dynamicContext,
-      },
-    ],
+    system,
     messages: await convertToModelMessages(parsed.messages),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     abortSignal: req.signal,

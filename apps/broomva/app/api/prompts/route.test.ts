@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}));
 
 vi.mock("@/lib/db/queries", () => ({
   getAllPublicPrompts: vi.fn(),
+  getNonPublicPromptSlugs: vi.fn(),
   getMetricsForSlugs: vi.fn(),
   createUserPrompt: vi.fn(),
   getPromptBySlug: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock("@/lib/prompts/github-commit", () => ({
 import { GET, POST } from "./route";
 import {
   getAllPublicPrompts,
+  getNonPublicPromptSlugs,
   getMetricsForSlugs,
   createUserPrompt,
   getPromptBySlug,
@@ -40,6 +42,7 @@ import { isAdmin } from "@/lib/prompts/admin";
 import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
 
 const mockGetAll = vi.mocked(getAllPublicPrompts);
+const mockGetNonPublicSlugs = vi.mocked(getNonPublicPromptSlugs);
 const mockGetMetrics = vi.mocked(getMetricsForSlugs);
 const mockGetContentList = vi.mocked(getContentList);
 const mockCreateUserPrompt = vi.mocked(createUserPrompt);
@@ -88,10 +91,12 @@ const MDX_ENTRY = {
 describe("GET /api/prompts", () => {
   beforeEach(() => {
     mockGetAll.mockReset();
+    mockGetNonPublicSlugs.mockReset();
     mockGetMetrics.mockReset();
     mockGetContentList.mockReset();
 
     mockGetAll.mockResolvedValue([DB_PROMPT] as never);
+    mockGetNonPublicSlugs.mockResolvedValue([]);
     mockGetContentList.mockResolvedValue([MDX_ENTRY] as never);
     mockGetMetrics.mockResolvedValue(
       new Map([
@@ -122,12 +127,24 @@ describe("GET /api/prompts", () => {
   test("200 — no ?include returns merged list without metrics", async () => {
     const res = await GET(makeReq(""));
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toBe(2);
     expect(body[0].metrics).toBeUndefined();
     expect(body[1].metrics).toBeUndefined();
     expect(mockGetMetrics).not.toHaveBeenCalled();
+  });
+
+  test("200 — private or soft-deleted DB slugs suppress stale MDX mirrors", async () => {
+    mockGetNonPublicSlugs.mockResolvedValue(["refactor-helper"]);
+    const res = await GET(makeReq(""));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    const body = await res.json();
+    expect(body.map((b: { slug: string }) => b.slug)).toEqual([
+      "code-review-agent",
+    ]);
   });
 
   test("200 — ?include=metrics enriches each entry with metrics", async () => {
@@ -226,6 +243,20 @@ describe("POST /api/prompts — admin GitHub mirror behavior", () => {
     expect(warning).toBeTruthy();
     expect(warning).toContain("GitHub mirror failed");
     expect(warning).toContain("GITHUB_TOKEN not set");
+  });
+
+  test("admin + private visibility → never mirrors private prompt to public GitHub MDX", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockCreateUserPrompt.mockResolvedValue({
+      ...CREATED_ROW,
+      visibility: "private" as const,
+    } as never);
+
+    const res = await POST(postReq());
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.githubMirror).toBeUndefined();
+    expect(mockCommitToGitHub).not.toHaveBeenCalled();
   });
 
   test("non-admin path → no mirror attempt, no githubMirror in body", async () => {

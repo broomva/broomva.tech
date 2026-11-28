@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 
 vi.mock("@/lib/db/queries", () => ({
   getPromptBySlug: vi.fn(),
+  getPromptBySlugAnyState: vi.fn(),
   updateUserPrompt: vi.fn(),
   softDeleteUserPrompt: vi.fn(),
   getPromptMetrics: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock("@/lib/prompts/github-commit", () => ({
 import { GET, PUT } from "./route";
 import {
   getPromptBySlug,
+  getPromptBySlugAnyState,
   getPromptMetrics,
   updateUserPrompt,
 } from "@/lib/db/queries";
@@ -33,6 +35,7 @@ import { isAdmin } from "@/lib/prompts/admin";
 import { commitPromptToGitHub } from "@/lib/prompts/github-commit";
 
 const mockGetPrompt = vi.mocked(getPromptBySlug);
+const mockGetPromptAnyState = vi.mocked(getPromptBySlugAnyState);
 const mockGetMetrics = vi.mocked(getPromptMetrics);
 const mockGetContent = vi.mocked(getContentBySlug);
 const mockUpdateUserPrompt = vi.mocked(updateUserPrompt);
@@ -81,14 +84,16 @@ function makeReq(query = "") {
 describe("GET /api/prompts/[slug]", () => {
   beforeEach(() => {
     mockGetPrompt.mockReset();
+    mockGetPromptAnyState.mockReset();
     mockGetMetrics.mockReset();
     mockGetContent.mockReset();
   });
 
   test("DB-prompt path WITHOUT ?include=metrics returns the prompt without metrics", async () => {
-    mockGetPrompt.mockResolvedValue(dbPromptRow as never);
+    mockGetPromptAnyState.mockResolvedValue(dbPromptRow as never);
     const res = await GET(makeReq(), { params: Promise.resolve({ slug: SLUG }) });
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     const json = await res.json();
     expect(json.title).toBe("Code Review Agent");
     expect(json.slug).toBe(SLUG);
@@ -97,18 +102,61 @@ describe("GET /api/prompts/[slug]", () => {
   });
 
   test("DB-prompt path WITH ?include=metrics injects metrics block", async () => {
-    mockGetPrompt.mockResolvedValue(dbPromptRow as never);
+    mockGetPromptAnyState.mockResolvedValue(dbPromptRow as never);
     mockGetMetrics.mockResolvedValue(metricsPayload as never);
     const res = await GET(makeReq("?include=metrics"), { params: Promise.resolve({ slug: SLUG }) });
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     const json = await res.json();
     expect(json.title).toBe("Code Review Agent");
     expect(json.metrics).toEqual(metricsPayload);
     expect(mockGetMetrics).toHaveBeenCalledWith(SLUG);
   });
 
+  test("private DB row returns 404 without loading metrics or falling back to MDX", async () => {
+    mockGetPromptAnyState.mockResolvedValue({
+      ...dbPromptRow,
+      visibility: "private" as const,
+    } as never);
+    mockGetContent.mockResolvedValue({
+      slug: SLUG,
+      title: "Stale MDX mirror",
+      summary: "",
+      content: "body",
+      html: "",
+      date: "2026-05-09",
+      tags: [],
+      kind: "prompts",
+      published: true,
+      pinned: false,
+    } as never);
+
+    const res = await GET(makeReq("?include=metrics"), {
+      params: Promise.resolve({ slug: SLUG }),
+    });
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(mockGetMetrics).not.toHaveBeenCalled();
+    expect(mockGetContent).not.toHaveBeenCalled();
+  });
+
+  test("soft-deleted DB row returns 404 without loading metrics or falling back to MDX", async () => {
+    mockGetPromptAnyState.mockResolvedValue({
+      ...dbPromptRow,
+      deletedAt: new Date("2026-05-10T00:00:00Z"),
+    } as never);
+
+    const res = await GET(makeReq("?include=metrics"), {
+      params: Promise.resolve({ slug: SLUG }),
+    });
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(mockGetMetrics).not.toHaveBeenCalled();
+    expect(mockGetContent).not.toHaveBeenCalled();
+  });
+
   test("MDX-fallback path WITH ?include=metrics also injects metrics block", async () => {
-    mockGetPrompt.mockResolvedValue(undefined);
+    mockGetPromptAnyState.mockResolvedValue(undefined);
     mockGetContent.mockResolvedValue({
       slug: SLUG,
       title: "MDX prompt",
@@ -125,16 +173,18 @@ describe("GET /api/prompts/[slug]", () => {
 
     const res = await GET(makeReq("?include=metrics"), { params: Promise.resolve({ slug: SLUG }) });
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     const json = await res.json();
     expect(json.title).toBe("MDX prompt");
     expect(json.metrics).toEqual(metricsPayload);
   });
 
   test("404 when neither DB nor MDX has the prompt", async () => {
-    mockGetPrompt.mockResolvedValue(undefined);
+    mockGetPromptAnyState.mockResolvedValue(undefined);
     mockGetContent.mockResolvedValue(null);
     const res = await GET(makeReq(), { params: Promise.resolve({ slug: SLUG }) });
     expect(res.status).toBe(404);
+    expect(mockGetMetrics).not.toHaveBeenCalled();
   });
 });
 
@@ -199,6 +249,20 @@ describe("PUT /api/prompts/[slug] — admin GitHub mirror behavior", () => {
     expect(warning).toBeTruthy();
     expect(warning).toContain("GitHub mirror failed");
     expect(warning).toContain("GITHUB_TOKEN not set");
+  });
+
+  test("admin + private visibility → never mirrors private prompt to public GitHub MDX", async () => {
+    mockIsAdmin.mockReturnValue(true);
+    mockUpdateUserPrompt.mockResolvedValue({
+      ...UPDATED_ROW,
+      visibility: "private" as const,
+    } as never);
+
+    const res = await PUT(putReq(), { params: Promise.resolve({ slug: SLUG }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.githubMirror).toBeUndefined();
+    expect(mockCommitToGitHub).not.toHaveBeenCalled();
   });
 
   test("non-admin owner update → no mirror, no githubMirror field", async () => {

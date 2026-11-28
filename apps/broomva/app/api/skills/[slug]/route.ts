@@ -11,11 +11,16 @@ export async function GET(
   const { slug } = await params;
 
   let layers;
+  let degraded = false;
   try {
     layers = await getSkillsRoster("broomva");
-    if (!layers.length) layers = BSTACK_LAYERS;
+    if (!layers.length) {
+      layers = BSTACK_LAYERS;
+      degraded = true;
+    }
   } catch {
     layers = BSTACK_LAYERS;
+    degraded = true;
   }
 
   for (const layer of layers) {
@@ -25,13 +30,17 @@ export async function GET(
         { ...skill, layer: layer.id },
         {
           headers: {
-            "Cache-Control":
-              "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+            "Cache-Control": degraded
+              ? "no-store"
+              : "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
           },
         },
       );
     }
   }
 
-  return NextResponse.json({ error: "Skill not found" }, { status: 404 });
+  return NextResponse.json(
+    { error: "Skill not found" },
+    { status: 404, headers: degraded ? { "Cache-Control": "no-store" } : undefined },
+  );
 }

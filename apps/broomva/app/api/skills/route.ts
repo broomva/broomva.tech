@@ -9,11 +9,16 @@ export async function GET(request: Request) {
   const layerFilter = searchParams.get("layer");
 
   let layers;
+  let degraded = false;
   try {
     layers = await getSkillsRoster("broomva");
-    if (!layers.length) layers = BSTACK_LAYERS;
+    if (!layers.length) {
+      layers = BSTACK_LAYERS;
+      degraded = true;
+    }
   } catch {
     layers = BSTACK_LAYERS;
+    degraded = true;
   }
 
   if (layerFilter) {
@@ -22,8 +27,9 @@ export async function GET(request: Request) {
 
   return NextResponse.json(layers, {
     headers: {
-      "Cache-Control":
-        "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+      "Cache-Control": degraded
+        ? "no-store"
+        : "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
     },
   });
 }

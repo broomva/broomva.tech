@@ -100,34 +100,17 @@ function formatRetrieved(docs: RetrievedDoc[]): string {
   return `## Pages related to this question (excerpts from my published writing, notes and projects)\n${body}`;
 }
 
-export interface TwinSystemParts {
-  /** Rules + daily date + public brief — identical across visitors all day, safe to prompt-cache. */
-  staticPrompt: string;
-  /** Per-question retrieved excerpts — varies per query, kept outside the cached prefix. */
-  dynamicContext: string;
-}
-
-export function buildTwinSystemParts({
+export function buildTwinSystemPrompt({
   retrieved,
   today,
 }: {
   retrieved: RetrievedDoc[];
   today: string;
-}): TwinSystemParts {
-  return {
-    staticPrompt: [
-      RULES,
-      `# PUBLIC CONTEXT (today is ${today})`,
-      buildPublicBrief(),
-    ].join("\n\n"),
-    dynamicContext: formatRetrieved(retrieved),
-  };
-}
-
-export function buildTwinSystemPrompt(args: {
-  retrieved: RetrievedDoc[];
-  today: string;
 }): string {
-  const { staticPrompt, dynamicContext } = buildTwinSystemParts(args);
-  return `${staticPrompt}\n\n${dynamicContext}`;
+  return [
+    RULES,
+    `# PUBLIC CONTEXT (today is ${today})`,
+    buildPublicBrief(),
+    formatRetrieved(retrieved),
+  ].join("\n\n");
 }

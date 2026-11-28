@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getContentList } from "@/lib/content";
 import {
   getAllPublicPrompts,
+  getNonPublicPromptSlugs,
   createUserPrompt,
   getPromptBySlug,
 } from "@/lib/db/queries";
@@ -15,8 +16,8 @@ import type { ContentSummary } from "@/lib/content";
 
 export const maxDuration = 15;
 
-const PUBLIC_GET_CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store",
 };
 
 function dbToSummary(p: UserPrompt): ContentSummary {
@@ -49,12 +50,19 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get("sort");
 
   let dbPrompts: UserPrompt[] = [];
+  let hiddenSlugs: string[] = [];
   try {
-    dbPrompts = await getAllPublicPrompts({ category, tag, model });
+    [dbPrompts, hiddenSlugs] = await Promise.all([
+      getAllPublicPrompts({ category, tag, model }),
+      getNonPublicPromptSlugs(),
+    ]);
   } catch {
     // DB schema not ready yet (migration pending) — fall through to MDX
   }
-  const dbSlugs = new Set(dbPrompts.map((p) => p.slug));
+  const dbSlugs = new Set([
+    ...dbPrompts.map((p) => p.slug),
+    ...hiddenSlugs,
+  ]);
   const dbSummaries = dbPrompts.map(dbToSummary);
 
   let mdxEntries = await getContentList("prompts");
@@ -123,11 +131,11 @@ export async function GET(request: NextRequest) {
       }),
     );
     return NextResponse.json(full.filter(Boolean), {
-      headers: PUBLIC_GET_CACHE_HEADERS,
+      headers: NO_STORE_HEADERS,
     });
   }
 
-  return NextResponse.json(merged, { headers: PUBLIC_GET_CACHE_HEADERS });
+  return NextResponse.json(merged, { headers: NO_STORE_HEADERS });
 }
 
 export async function POST(request: NextRequest) {

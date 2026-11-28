@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getContentBySlug } from "@/lib/content";
 import {
   getPromptBySlug,
+  getPromptBySlugAnyState,
   updateUserPrompt,
   softDeleteUserPrompt,
 } from "@/lib/db/queries";
@@ -12,8 +13,8 @@ import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
 export const maxDuration = 15;
 
-const PUBLIC_GET_CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store",
 };
 
 export async function GET(
@@ -24,26 +25,38 @@ export async function GET(
   const url = new URL(request.url);
   const includeMetrics = url.searchParams.get("include") === "metrics";
 
-  let metrics:
-    | Awaited<ReturnType<typeof import("@/lib/db/queries").getPromptMetrics>>
-    | undefined;
-  if (includeMetrics) {
-    try {
-      const { getPromptMetrics } = await import("@/lib/db/queries");
-      metrics = await getPromptMetrics(slug);
-    } catch {
-      // Tables not ready — omit metrics gracefully
-    }
-  }
-
-  // DB first — gracefully handle missing migration
-  let dbPrompt: Awaited<ReturnType<typeof getPromptBySlug>> | undefined;
+  // Check DB state first (including private and soft-deleted rows) so a
+  // revoked or private prompt never leaks metrics or falls back to a stale
+  // MDX mirror.
+  let dbPrompt: Awaited<ReturnType<typeof getPromptBySlugAnyState>> | undefined;
+  let dbLookupFailed = false;
   try {
-    dbPrompt = await getPromptBySlug(slug);
+    dbPrompt = await getPromptBySlugAnyState(slug);
   } catch {
     // DB schema not ready yet — fall through to MDX
+    dbLookupFailed = true;
   }
-  if (dbPrompt) {
+
+  if (!dbLookupFailed && dbPrompt) {
+    if (dbPrompt.deletedAt !== null || dbPrompt.visibility !== "public") {
+      return NextResponse.json(
+        { error: "Prompt not found" },
+        { status: 404, headers: NO_STORE_HEADERS },
+      );
+    }
+
+    let metrics:
+      | Awaited<ReturnType<typeof import("@/lib/db/queries").getPromptMetrics>>
+      | undefined;
+    if (includeMetrics) {
+      try {
+        const { getPromptMetrics } = await import("@/lib/db/queries");
+        metrics = await getPromptMetrics(slug);
+      } catch {
+        // Tables not ready — omit metrics gracefully
+      }
+    }
+
     return NextResponse.json(
       {
         title: dbPrompt.title,
@@ -63,18 +76,34 @@ export async function GET(
         variables: dbPrompt.variables ?? undefined,
         ...(includeMetrics ? { metrics: metrics ?? null } : {}),
       },
-      { headers: PUBLIC_GET_CACHE_HEADERS },
+      { headers: NO_STORE_HEADERS },
     );
   }
 
-  // MDX fallback
+  // MDX fallback (only when no DB row exists for this slug)
   const entry = await getContentBySlug("prompts", slug);
   if (!entry) {
-    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Prompt not found" },
+      { status: 404, headers: NO_STORE_HEADERS },
+    );
   }
+
+  let metrics:
+    | Awaited<ReturnType<typeof import("@/lib/db/queries").getPromptMetrics>>
+    | undefined;
+  if (includeMetrics) {
+    try {
+      const { getPromptMetrics } = await import("@/lib/db/queries");
+      metrics = await getPromptMetrics(slug);
+    } catch {
+      // Tables not ready — omit metrics gracefully
+    }
+  }
+
   return NextResponse.json(
     includeMetrics ? { ...entry, metrics: metrics ?? null } : entry,
-    { headers: PUBLIC_GET_CACHE_HEADERS },
+    { headers: NO_STORE_HEADERS },
   );
 }
 

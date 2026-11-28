@@ -99,7 +99,7 @@ describe("POST /api/ask", () => {
     ({ POST } = await import("./route"));
   });
 
-  it("streams an answer grounded in the public brief and retrieved pages with prompt caching", async () => {
+  it("streams an answer grounded in the public brief and retrieved pages", async () => {
     logged.length = 0;
     const res = await POST(ask(question("Who are you?")));
     expect(res.status).toBe(200);
@@ -109,15 +109,9 @@ describe("POST /api/ask", () => {
 
     const call = model.doStreamCalls[0];
     expect(call.maxOutputTokens).toBe(700);
-    const systems = call.prompt.filter((m) => m.role === "system");
-    expect(systems).toHaveLength(2);
-    expect(systems[0]?.content).toContain("You are an AI double, not Carlos");
-    expect(systems[0]?.content).not.toContain("### Life — /projects/life");
-    expect(systems[0]?.providerOptions).toEqual({
-      anthropic: { cacheControl: { type: "ephemeral" } },
-    });
-    expect(systems[1]?.content).toContain("### Life — /projects/life");
-    expect(systems[1]?.providerOptions).toBeUndefined();
+    const system = call.prompt.find((m) => m.role === "system");
+    expect(system?.content).toContain("You are an AI double, not Carlos");
+    expect(system?.content).toContain("### Life — /projects/life");
     const users = call.prompt.filter((m) => m.role === "user");
     expect(JSON.stringify(users)).toContain("Who are you?");
 

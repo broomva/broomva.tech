@@ -8,7 +8,9 @@ import {
   gt,
   gte,
   inArray,
+  isNotNull,
   isNull,
+  ne,
   sql,
   type SQL,
 } from "drizzle-orm";
@@ -1316,6 +1318,31 @@ export async function getPromptBySlug(
     .from(userPrompt)
     .where(and(eq(userPrompt.slug, slug), isNull(userPrompt.deletedAt)));
   return result;
+}
+
+export async function getPromptBySlugAnyState(
+  slug: string
+): Promise<UserPrompt | undefined> {
+  const [result] = await db
+    .select()
+    .from(userPrompt)
+    .where(eq(userPrompt.slug, slug))
+    .orderBy(desc(userPrompt.updatedAt))
+    .limit(1);
+  return result;
+}
+
+export async function getNonPublicPromptSlugs(): Promise<string[]> {
+  const rows = await db
+    .select({ slug: userPrompt.slug })
+    .from(userPrompt)
+    .where(
+      or(
+        ne(userPrompt.visibility, "public"),
+        isNotNull(userPrompt.deletedAt),
+      ),
+    );
+  return rows.map((r) => r.slug);
 }
 
 export async function getAllPublicPrompts(filters?: {
