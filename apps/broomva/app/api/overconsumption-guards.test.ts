@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { NextRequest } from "next/server";
+import { connection, NextRequest } from "next/server";
 import ts from "typescript";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -62,6 +62,10 @@ vi.mock("@/lib/github", () => ({
   getSkillsRoster: vi.fn(),
 }));
 
+vi.mock("@/components/site/page-hero", () => ({ PageHero: () => null }));
+vi.mock("@/components/site/prompt-viewer", () => ({ PromptViewer: () => null }));
+
+import { generateMetadata as promptMetadata } from "@/app/(site)/prompts/[slug]/page";
 import { GET as mdGET } from "@/app/api/md/[kind]/[slug]/route";
 import { GET as searchGET } from "@/app/api/search/route";
 import { GET as skillDetailGET } from "@/app/api/skills/[slug]/route";
@@ -235,6 +239,26 @@ describe("Vercel overconsumption route invariants", () => {
       expect(writingRes.headers.get("Cache-Control")).toBe(
         "public, max-age=3600, s-maxage=3600",
       );
+    });
+
+    it("generates prompt page metadata only after checking live visibility", async () => {
+      const params = Promise.resolve({ slug: "revoked-prompt" });
+      mockGetPromptBySlugAnyState
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          visibility: "private",
+          deletedAt: null,
+        } as never)
+        .mockRejectedValueOnce(new Error("db down"));
+
+      await expect(promptMetadata({ params })).resolves.toMatchObject({
+        title: "prompts:revoked-prompt",
+      });
+      await expect(promptMetadata({ params })).resolves.toEqual({
+        title: "Prompt not found",
+      });
+      await expect(promptMetadata({ params })).rejects.toThrow("db down");
+      expect(connection).toHaveBeenCalled();
     });
 
     it("GET /api/skills caches live responses publicly and marks degraded fallbacks no-store", async () => {

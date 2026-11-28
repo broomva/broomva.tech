@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { cache, Suspense } from "react";
 import { PageHero } from "@/components/site/page-hero";
 import { PromptViewer } from "@/components/site/prompt-viewer";
 import { formatDate } from "@/lib/date";
@@ -11,57 +13,60 @@ export async function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
+const getVisiblePrompt = cache(async (slug: string) => {
+  await connection();
+  const entry = await getContentBySlug("prompts", slug);
+  if (!entry) return null;
+
+  const prompt = await getPromptBySlugAnyState(slug);
+  if (prompt && (prompt.deletedAt !== null || prompt.visibility !== "public")) {
+    return null;
+  }
+
+  return { entry, copyCount: prompt?.copyCount ?? 0 };
+});
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const entry = await getContentBySlug("prompts", slug);
+  const prompt = await getVisiblePrompt(slug);
 
-  if (!entry) {
+  if (!prompt) {
     return { title: "Prompt not found" };
   }
 
   return {
-    title: entry.title,
-    description: entry.summary,
+    title: prompt.entry.title,
+    description: prompt.entry.summary,
   };
 }
 
-export default async function PromptSlugPage({
+export default function PromptSlugPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <PromptDetail params={params} />
+    </Suspense>
+  );
+}
+
+async function PromptDetail({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const entry = await getContentBySlug("prompts", slug);
-  if (!entry) {
+  const prompt = await getVisiblePrompt(slug);
+  if (!prompt) {
     notFound();
   }
-
-  // Merge DB state & stats (copyCount) if available; suppress stale MDX
-  // mirrors whose DB row was revoked to private or soft-deleted.
-  let copyCount = 0;
-  try {
-    const dbPrompt = await getPromptBySlugAnyState(slug);
-    if (dbPrompt) {
-      if (dbPrompt.deletedAt !== null || dbPrompt.visibility !== "public") {
-        notFound();
-      }
-      copyCount = dbPrompt.copyCount;
-    }
-  } catch (err) {
-    if (
-      typeof err === "object" &&
-      err !== null &&
-      "digest" in err &&
-      String((err as { digest?: unknown }).digest).includes("NEXT_HTTP_ERROR_FALLBACK")
-    ) {
-      throw err;
-    }
-    // DB not ready during static build — show 0
-  }
+  const { entry, copyCount } = prompt;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
