@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSkillsRoster } from "@/lib/github";
 import { BSTACK_LAYERS } from "@/lib/skills-data";
 
+export const maxDuration = 15;
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const layerFilter = searchParams.get("layer");
@@ -18,5 +20,10 @@ export async function GET(request: Request) {
     layers = layers.filter((l) => l.id === layerFilter);
   }
 
-  return NextResponse.json(layers);
+  return NextResponse.json(layers, {
+    headers: {
+      "Cache-Control":
+        "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+    },
+  });
 }

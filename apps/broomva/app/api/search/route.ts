@@ -10,6 +10,12 @@ const CONTENT_KINDS: ContentKind[] = [
 ];
 
 const ONE_HOUR = 3600;
+const MAX_QUERY_LEN = 200;
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+};
+
+export const maxDuration = 10;
 
 const getCachedContent = unstable_cache(
   async () => {
@@ -34,12 +40,20 @@ const getCachedContent = unstable_cache(
 );
 
 export async function GET(request: NextRequest) {
-  const q = request.nextUrl.searchParams.get("q")?.toLowerCase().trim() ?? "";
+  const q =
+    request.nextUrl.searchParams
+      .get("q")
+      ?.toLowerCase()
+      .trim()
+      .slice(0, MAX_QUERY_LEN) ?? "";
 
   const flat = await getCachedContent();
 
   if (!q) {
-    return NextResponse.json({ results: flat.slice(0, 12) });
+    return NextResponse.json(
+      { results: flat.slice(0, 12) },
+      { headers: CACHE_HEADERS },
+    );
   }
 
   const filtered = flat.filter(
@@ -50,5 +64,8 @@ export async function GET(request: NextRequest) {
       item.kind.includes(q),
   );
 
-  return NextResponse.json({ results: filtered.slice(0, 12) });
+  return NextResponse.json(
+    { results: filtered.slice(0, 12) },
+    { headers: CACHE_HEADERS },
+  );
 }

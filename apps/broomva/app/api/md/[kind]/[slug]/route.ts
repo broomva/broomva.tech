@@ -1,6 +1,8 @@
 import { type ContentKind, getContentBySlug } from "@/lib/content";
 import { config } from "@/lib/config";
 
+export const maxDuration = 10;
+
 const VALID_KINDS = new Set<ContentKind>([
   "writing",
   "projects",

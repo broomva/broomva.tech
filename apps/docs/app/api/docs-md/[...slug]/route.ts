@@ -1,5 +1,7 @@
 import { source } from "@/lib/source";
 
+export const maxDuration = 10;
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ slug: string[] }> },

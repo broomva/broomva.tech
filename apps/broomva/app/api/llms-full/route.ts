@@ -1,6 +1,8 @@
 import { config } from "@/lib/config";
 import { getAllSlugs, getContentBySlug } from "@/lib/content";
 
+export const maxDuration = 15;
+
 export async function GET() {
   const [projectSlugs, writingSlugs, noteSlugs, promptSlugs] =
     await Promise.all([

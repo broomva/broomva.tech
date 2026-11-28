@@ -6,6 +6,8 @@ import {
   getVisiblePrompts,
 } from "@/lib/db/queries";
 
+export const maxDuration = 15;
+
 export async function GET(request: NextRequest) {
   const { data: session } = await getSafeSession();
   const userId = session?.user?.id;

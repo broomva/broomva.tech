@@ -7,6 +7,8 @@ import { captureServerEvent } from "@/lib/analytics/posthog";
 import { logInvocation } from "@/lib/telemetry/log-invocation";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
+export const maxDuration = 10;
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },

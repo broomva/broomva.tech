@@ -89,6 +89,15 @@ describe("proxy public artifact routes", () => {
     },
   );
 
+  test("does not allow unauthenticated access to removed /api/debug prefix", async () => {
+    const response = await proxy(req("/api/debug"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://broomva.tech/login?redirectTo=%2Fapi%2Fdebug",
+    );
+  });
+
   test("lets anonymous visitors POST to the Ask Carlos double (BRO-3994)", async () => {
     const response = await proxy(
       req("/api/ask", {

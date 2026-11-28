@@ -7,6 +7,8 @@ import {
   updateUserPrompt,
 } from "@/lib/db/queries";
 
+export const maxDuration = 15;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

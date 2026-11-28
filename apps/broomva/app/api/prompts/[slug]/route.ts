@@ -10,6 +10,12 @@ import { isAdmin } from "@/lib/prompts/admin";
 import { mirrorIfAdmin, mirrorWarningHeaders } from "@/lib/prompts/mirror";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
+export const maxDuration = 15;
+
+const PUBLIC_GET_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+};
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
@@ -38,24 +44,27 @@ export async function GET(
     // DB schema not ready yet — fall through to MDX
   }
   if (dbPrompt) {
-    return NextResponse.json({
-      title: dbPrompt.title,
-      summary: dbPrompt.summary ?? "",
-      content: dbPrompt.content,
-      html: "",
-      date: dbPrompt.updatedAt.toISOString(),
-      slug: dbPrompt.slug,
-      kind: "prompts",
-      published: true,
-      pinned: false,
-      tags: dbPrompt.tags ?? [],
-      links: dbPrompt.links ?? [],
-      category: dbPrompt.category ?? undefined,
-      model: dbPrompt.model ?? undefined,
-      version: dbPrompt.version ?? undefined,
-      variables: dbPrompt.variables ?? undefined,
-      ...(includeMetrics ? { metrics: metrics ?? null } : {}),
-    });
+    return NextResponse.json(
+      {
+        title: dbPrompt.title,
+        summary: dbPrompt.summary ?? "",
+        content: dbPrompt.content,
+        html: "",
+        date: dbPrompt.updatedAt.toISOString(),
+        slug: dbPrompt.slug,
+        kind: "prompts",
+        published: true,
+        pinned: false,
+        tags: dbPrompt.tags ?? [],
+        links: dbPrompt.links ?? [],
+        category: dbPrompt.category ?? undefined,
+        model: dbPrompt.model ?? undefined,
+        version: dbPrompt.version ?? undefined,
+        variables: dbPrompt.variables ?? undefined,
+        ...(includeMetrics ? { metrics: metrics ?? null } : {}),
+      },
+      { headers: PUBLIC_GET_CACHE_HEADERS },
+    );
   }
 
   // MDX fallback
@@ -65,6 +74,7 @@ export async function GET(
   }
   return NextResponse.json(
     includeMetrics ? { ...entry, metrics: metrics ?? null } : entry,
+    { headers: PUBLIC_GET_CACHE_HEADERS },
   );
 }
 

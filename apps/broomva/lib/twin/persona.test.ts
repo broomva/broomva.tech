@@ -5,6 +5,7 @@ import { focus, open } from "@/lib/site-data/now";
 import { concurrent, ossProjects } from "@/lib/site-data/profile";
 import {
   buildPublicBrief,
+  buildTwinSystemParts,
   buildTwinSystemPrompt,
   CONTACT_EMAIL,
 } from "./persona";
@@ -77,6 +78,37 @@ describe("persona brief", () => {
     });
     expect(prompt).toContain("### Life — /projects/life");
     expect(prompt).toContain("Arcan runtime and Lago persistence");
+  });
+
+  it("keeps staticPrompt byte-identical across questions for prompt caching", () => {
+    const a = buildTwinSystemParts({ retrieved: [], today: "2026-11-27" });
+    const b = buildTwinSystemParts({
+      retrieved: [
+        {
+          title: "Life",
+          url: "/projects/life",
+          summary: "Rust Agent OS",
+          excerpt: "Arcan runtime",
+        },
+      ],
+      today: "2026-11-27",
+    });
+    expect(a.staticPrompt).toBe(b.staticPrompt);
+    expect(a.staticPrompt).not.toContain("### Life — /projects/life");
+    expect(b.dynamicContext).toContain("### Life — /projects/life");
+    expect(`${b.staticPrompt}\n\n${b.dynamicContext}`).toBe(
+      buildTwinSystemPrompt({
+        retrieved: [
+          {
+            title: "Life",
+            url: "/projects/life",
+            summary: "Rust Agent OS",
+            excerpt: "Arcan runtime",
+          },
+        ],
+        today: "2026-11-27",
+      }),
+    );
   });
 
   // The privacy boundary, enforced: every source the double can quote is a

@@ -1,6 +1,8 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
+export const maxDuration = 10;
+
 /**
  * POST /api/skills/refresh
  *

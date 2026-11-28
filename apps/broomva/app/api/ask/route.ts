@@ -24,7 +24,7 @@ import {
   readBodyCapped,
 } from "@/lib/twin/guard";
 import { loadTwinKnowledge } from "@/lib/twin/knowledge";
-import { buildTwinSystemPrompt } from "@/lib/twin/persona";
+import { buildTwinSystemParts } from "@/lib/twin/persona";
 import { retrieveForQuestion } from "@/lib/twin/retrieve";
 
 export const maxDuration = 30;
@@ -98,14 +98,26 @@ export async function POST(req: Request) {
 
   const started = Date.now();
   const retrieved = await retrieveForQuestion(parsed.question);
-  const system = buildTwinSystemPrompt({
+  const { staticPrompt, dynamicContext } = buildTwinSystemParts({
     retrieved,
     today: new Date().toISOString().slice(0, 10),
   });
 
   const result = streamText({
     model: gateway(MODEL),
-    system,
+    system: [
+      {
+        role: "system",
+        content: staticPrompt,
+        providerOptions: {
+          anthropic: { cacheControl: { type: "ephemeral" } },
+        },
+      },
+      {
+        role: "system",
+        content: dynamicContext,
+      },
+    ],
     messages: await convertToModelMessages(parsed.messages),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     abortSignal: req.signal,
@@ -116,6 +128,8 @@ export async function POST(req: Request) {
           turns: parsed.messages.length,
           retrieved: retrieved.map((d) => d.url),
           inputTokens: usage.inputTokens,
+          cacheReadTokens: usage.inputTokenDetails?.cacheReadTokens,
+          cacheWriteTokens: usage.inputTokenDetails?.cacheWriteTokens,
           outputTokens: usage.outputTokens,
           finishReason,
           ms: Date.now() - started,

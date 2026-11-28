@@ -13,6 +13,12 @@ import { resolveAuth } from "@/lib/prompts/resolve-auth";
 import type { UserPrompt } from "@/lib/db/schema";
 import type { ContentSummary } from "@/lib/content";
 
+export const maxDuration = 15;
+
+const PUBLIC_GET_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+};
+
 function dbToSummary(p: UserPrompt): ContentSummary {
   return {
     title: p.title,
@@ -116,10 +122,12 @@ export async function GET(request: NextRequest) {
         return getContentBySlug("prompts", entry.slug);
       }),
     );
-    return NextResponse.json(full.filter(Boolean));
+    return NextResponse.json(full.filter(Boolean), {
+      headers: PUBLIC_GET_CACHE_HEADERS,
+    });
   }
 
-  return NextResponse.json(merged);
+  return NextResponse.json(merged, { headers: PUBLIC_GET_CACHE_HEADERS });
 }
 
 export async function POST(request: NextRequest) {
