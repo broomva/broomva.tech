@@ -27,17 +27,19 @@ export async function GET(
 
   // Check DB state first (including private and soft-deleted rows) so a
   // revoked or private prompt never leaks metrics or falls back to a stale
-  // MDX mirror.
+  // MDX mirror. Fail closed on DB error so an outage cannot expose a private
+  // or deleted row's mirror.
   let dbPrompt: Awaited<ReturnType<typeof getPromptBySlugAnyState>> | undefined;
-  let dbLookupFailed = false;
   try {
     dbPrompt = await getPromptBySlugAnyState(slug);
   } catch {
-    // DB schema not ready yet — fall through to MDX
-    dbLookupFailed = true;
+    return NextResponse.json(
+      { error: "Service unavailable" },
+      { status: 503, headers: NO_STORE_HEADERS },
+    );
   }
 
-  if (!dbLookupFailed && dbPrompt) {
+  if (dbPrompt) {
     if (dbPrompt.deletedAt !== null || dbPrompt.visibility !== "public") {
       return NextResponse.json(
         { error: "Prompt not found" },

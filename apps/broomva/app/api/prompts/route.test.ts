@@ -147,6 +147,14 @@ describe("GET /api/prompts", () => {
     ]);
   });
 
+  test("503 — fails closed when DB visibility lookup rejects without leaking MDX", async () => {
+    mockGetNonPublicSlugs.mockRejectedValue(new Error("db offline"));
+    const res = await GET(makeReq("format=full"));
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(mockGetContentList).not.toHaveBeenCalled();
+  });
+
   test("200 — ?include=metrics enriches each entry with metrics", async () => {
     const res = await GET(makeReq("include=metrics"));
     expect(res.status).toBe(200);

@@ -10,32 +10,66 @@ vi.mock("next/cache", () => ({
   unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }));
 
+const LONG_PREFIX = "a".repeat(200);
+
 vi.mock("@/lib/content", () => ({
-  getContentList: vi.fn(async (kind: string) =>
-    kind === "writing"
-      ? [
-          {
-            slug: "arcan-post",
-            title: "Arcan Runtime",
-            summary: "Agent OS runtime",
-            tags: ["arcan"],
-            date: "2026-11-20",
-          },
-        ]
-      : [],
-  ),
+  getContentList: vi.fn(async (kind: string) => {
+    if (kind === "writing") {
+      return [
+        {
+          slug: "arcan-post",
+          title: `${LONG_PREFIX}UNIQUE_TAIL`,
+          summary: "Agent OS runtime",
+          tags: ["arcan"],
+          date: "2026-11-20",
+        },
+      ];
+    }
+    if (kind === "prompts") {
+      return [
+        {
+          slug: "revoked-prompt",
+          title: "Revoked Prompt",
+          summary: "Should be suppressed",
+          tags: ["secret"],
+          date: "2026-11-20",
+        },
+      ];
+    }
+    return [];
+  }),
+  getContentBySlug: vi.fn(async (kind: string, slug: string) => ({
+    slug,
+    title: `${kind}:${slug}`,
+    summary: "Summary",
+    content: "Body",
+    tags: [],
+    date: "2026-11-20",
+  })),
+}));
+
+vi.mock("@/lib/db/queries", () => ({
+  getNonPublicPromptSlugs: vi.fn(),
+  getPromptBySlugAnyState: vi.fn(),
 }));
 
 vi.mock("@/lib/github", () => ({
   getSkillsRoster: vi.fn(),
 }));
 
+import { GET as mdGET } from "@/app/api/md/[kind]/[slug]/route";
 import { GET as searchGET } from "@/app/api/search/route";
 import { GET as skillDetailGET } from "@/app/api/skills/[slug]/route";
 import { GET as skillsGET } from "@/app/api/skills/route";
+import {
+  getNonPublicPromptSlugs,
+  getPromptBySlugAnyState,
+} from "@/lib/db/queries";
 import { getSkillsRoster } from "@/lib/github";
 
 const mockGetSkillsRoster = vi.mocked(getSkillsRoster);
+const mockGetNonPublicPromptSlugs = vi.mocked(getNonPublicPromptSlugs);
+const mockGetPromptBySlugAnyState = vi.mocked(getPromptBySlugAnyState);
 
 function findRouteFiles(dir: string): string[] {
   const out: string[] = [];
@@ -122,19 +156,79 @@ describe("Vercel overconsumption route invariants", () => {
     ).toBe(300);
   });
 
-  describe("runtime Cache-Control headers on public read-only handlers", () => {
+  describe("runtime Cache-Control & visibility guards on API handlers", () => {
     beforeEach(() => {
       mockGetSkillsRoster.mockReset();
+      mockGetNonPublicPromptSlugs.mockReset();
+      mockGetPromptBySlugAnyState.mockReset();
     });
 
-    it("GET /api/search returns public CDN Cache-Control and caps query length", async () => {
-      const longQuery = "a".repeat(500);
+    it("GET /api/search enforces the 200-char query cap, suppresses revoked prompts, and CDN-caches non-prompt results", async () => {
+      mockGetNonPublicPromptSlugs.mockResolvedValue(["revoked-prompt"]);
+
+      // Exceeds 200 chars with a differing tail: only matches if truncated to 200 chars.
       const res = await searchGET(
-        new NextRequest(`http://localhost/api/search?q=${longQuery}`),
+        new NextRequest(
+          `http://localhost/api/search?q=${LONG_PREFIX}DIFFERENT_TAIL`,
+        ),
       );
       expect(res.status).toBe(200);
       expect(res.headers.get("Cache-Control")).toBe(
         "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+      );
+      const body = await res.json();
+      expect(body.results.map((r: { slug: string }) => r.slug)).toEqual([
+        "arcan-post",
+      ]);
+
+      // Revoked prompt is never returned even on direct query.
+      const revokedRes = await searchGET(
+        new NextRequest("http://localhost/api/search?q=revoked"),
+      );
+      const revokedBody = await revokedRes.json();
+      expect(revokedBody.results).toEqual([]);
+    });
+
+    it("GET /api/search omits prompts and returns private, no-store on DB visibility error", async () => {
+      mockGetNonPublicPromptSlugs.mockRejectedValue(new Error("db down"));
+
+      const res = await searchGET(
+        new NextRequest("http://localhost/api/search?q=revoked"),
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+      const body = await res.json();
+      expect(body.results).toEqual([]);
+    });
+
+    it("GET /api/md/prompts/[slug] enforces DB visibility and fails closed on DB error", async () => {
+      mockGetPromptBySlugAnyState.mockResolvedValueOnce({
+        slug: "revoked-prompt",
+        visibility: "private",
+        deletedAt: null,
+      } as never);
+      const privRes = await mdGET(
+        new Request("http://localhost/api/md/prompts/revoked-prompt"),
+        { params: Promise.resolve({ kind: "prompts", slug: "revoked-prompt" }) },
+      );
+      expect(privRes.status).toBe(404);
+      expect(privRes.headers.get("Cache-Control")).toBe("private, no-store");
+
+      mockGetPromptBySlugAnyState.mockRejectedValueOnce(new Error("db down"));
+      const errRes = await mdGET(
+        new Request("http://localhost/api/md/prompts/revoked-prompt"),
+        { params: Promise.resolve({ kind: "prompts", slug: "revoked-prompt" }) },
+      );
+      expect(errRes.status).toBe(503);
+      expect(errRes.headers.get("Cache-Control")).toBe("private, no-store");
+
+      const writingRes = await mdGET(
+        new Request("http://localhost/api/md/writing/arcan-post"),
+        { params: Promise.resolve({ kind: "writing", slug: "arcan-post" }) },
+      );
+      expect(writingRes.status).toBe(200);
+      expect(writingRes.headers.get("Cache-Control")).toBe(
+        "public, max-age=3600, s-maxage=3600",
       );
     });
 

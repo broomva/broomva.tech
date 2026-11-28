@@ -155,6 +155,30 @@ describe("GET /api/prompts/[slug]", () => {
     expect(mockGetContent).not.toHaveBeenCalled();
   });
 
+  test("DB lookup error fails closed with 503 without falling back to MDX or metrics", async () => {
+    mockGetPromptAnyState.mockRejectedValue(new Error("connection refused"));
+    mockGetContent.mockResolvedValue({
+      slug: SLUG,
+      title: "Stale MDX mirror",
+      summary: "",
+      content: "body",
+      html: "",
+      date: "2026-05-09",
+      tags: [],
+      kind: "prompts",
+      published: true,
+      pinned: false,
+    } as never);
+
+    const res = await GET(makeReq("?include=metrics"), {
+      params: Promise.resolve({ slug: SLUG }),
+    });
+    expect(res.status).toBe(503);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(mockGetContent).not.toHaveBeenCalled();
+    expect(mockGetMetrics).not.toHaveBeenCalled();
+  });
+
   test("MDX-fallback path WITH ?include=metrics also injects metrics block", async () => {
     mockGetPromptAnyState.mockResolvedValue(undefined);
     mockGetContent.mockResolvedValue({

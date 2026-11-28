@@ -4,7 +4,7 @@ import { PageHero } from "@/components/site/page-hero";
 import { PromptViewer } from "@/components/site/prompt-viewer";
 import { formatDate } from "@/lib/date";
 import { getAllSlugs, getContentBySlug } from "@/lib/content";
-import { getPromptBySlug } from "@/lib/db/queries";
+import { getPromptBySlugAnyState } from "@/lib/db/queries";
 
 export async function generateStaticParams() {
   const slugs = await getAllSlugs("prompts");
@@ -40,13 +40,27 @@ export default async function PromptSlugPage({
     notFound();
   }
 
-  // Merge DB stats (copyCount) if available
+  // Merge DB state & stats (copyCount) if available; suppress stale MDX
+  // mirrors whose DB row was revoked to private or soft-deleted.
   let copyCount = 0;
   try {
-    const dbPrompt = await getPromptBySlug(slug);
-    if (dbPrompt) copyCount = dbPrompt.copyCount;
-  } catch {
-    // DB not ready — show 0
+    const dbPrompt = await getPromptBySlugAnyState(slug);
+    if (dbPrompt) {
+      if (dbPrompt.deletedAt !== null || dbPrompt.visibility !== "public") {
+        notFound();
+      }
+      copyCount = dbPrompt.copyCount;
+    }
+  } catch (err) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "digest" in err &&
+      String((err as { digest?: unknown }).digest).includes("NEXT_HTTP_ERROR_FALLBACK")
+    ) {
+      throw err;
+    }
+    // DB not ready during static build — show 0
   }
 
   return (

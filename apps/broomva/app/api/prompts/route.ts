@@ -57,7 +57,10 @@ export async function GET(request: NextRequest) {
       getNonPublicPromptSlugs(),
     ]);
   } catch {
-    // DB schema not ready yet (migration pending) — fall through to MDX
+    return NextResponse.json(
+      { error: "Service unavailable" },
+      { status: 503, headers: NO_STORE_HEADERS },
+    );
   }
   const dbSlugs = new Set([
     ...dbPrompts.map((p) => p.slug),

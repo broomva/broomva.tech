@@ -1270,7 +1270,7 @@ export async function getUserPromptById(
   const [result] = await db
     .select()
     .from(userPrompt)
-    .where(eq(userPrompt.id, id));
+    .where(and(eq(userPrompt.id, id), isNull(userPrompt.deletedAt)));
   return result;
 }
 
@@ -1294,7 +1294,13 @@ export async function updateUserPrompt(
   const [result] = await db
     .update(userPrompt)
     .set(data)
-    .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
+    .where(
+      and(
+        eq(userPrompt.id, id),
+        eq(userPrompt.userId, userId),
+        isNull(userPrompt.deletedAt),
+      ),
+    )
     .returning();
   return result;
 }
@@ -1303,9 +1309,18 @@ export async function deleteUserPrompt(
   id: string,
   userId: string
 ): Promise<boolean> {
+  // Soft-delete rather than physical delete so the tombstone keeps
+  // suppressing any previously mirrored MDX file for the same slug.
   const result = await db
-    .delete(userPrompt)
-    .where(and(eq(userPrompt.id, id), eq(userPrompt.userId, userId)))
+    .update(userPrompt)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(userPrompt.id, id),
+        eq(userPrompt.userId, userId),
+        isNull(userPrompt.deletedAt),
+      ),
+    )
     .returning({ id: userPrompt.id });
   return result.length > 0;
 }
