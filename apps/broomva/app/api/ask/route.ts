@@ -98,6 +98,9 @@ export async function POST(req: Request) {
 
   const started = Date.now();
   const retrieved = await retrieveForQuestion(parsed.question);
+  // Single system string: Claude Haiku 4.5 requires 4,096 tokens before a
+  // prompt-cache breakpoint (~2.4K static brief is below threshold), and a
+  // single system prompt preserves compatibility with any ASK_MODEL override.
   const system = buildTwinSystemPrompt({
     retrieved,
     today: new Date().toISOString().slice(0, 10),
@@ -116,6 +119,8 @@ export async function POST(req: Request) {
           turns: parsed.messages.length,
           retrieved: retrieved.map((d) => d.url),
           inputTokens: usage.inputTokens,
+          cacheReadTokens: usage.inputTokenDetails?.cacheReadTokens,
+          cacheWriteTokens: usage.inputTokenDetails?.cacheWriteTokens,
           outputTokens: usage.outputTokens,
           finishReason,
           ms: Date.now() - started,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getContentBySlug } from "@/lib/content";
 import {
   getPromptBySlug,
+  getPromptBySlugAnyState,
   updateUserPrompt,
   softDeleteUserPrompt,
 } from "@/lib/db/queries";
@@ -10,6 +11,12 @@ import { isAdmin } from "@/lib/prompts/admin";
 import { mirrorIfAdmin, mirrorWarningHeaders } from "@/lib/prompts/mirror";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 
+export const maxDuration = 15;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store",
+};
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
@@ -17,6 +24,72 @@ export async function GET(
   const { slug } = await params;
   const url = new URL(request.url);
   const includeMetrics = url.searchParams.get("include") === "metrics";
+
+  // Check DB state first (including private and soft-deleted rows) so a
+  // revoked or private prompt never leaks metrics or falls back to a stale
+  // MDX mirror. Fail closed on DB error so an outage cannot expose a private
+  // or deleted row's mirror.
+  let dbPrompt: Awaited<ReturnType<typeof getPromptBySlugAnyState>> | undefined;
+  try {
+    dbPrompt = await getPromptBySlugAnyState(slug);
+  } catch {
+    return NextResponse.json(
+      { error: "Service unavailable" },
+      { status: 503, headers: NO_STORE_HEADERS },
+    );
+  }
+
+  if (dbPrompt) {
+    if (dbPrompt.deletedAt !== null || dbPrompt.visibility !== "public") {
+      return NextResponse.json(
+        { error: "Prompt not found" },
+        { status: 404, headers: NO_STORE_HEADERS },
+      );
+    }
+
+    let metrics:
+      | Awaited<ReturnType<typeof import("@/lib/db/queries").getPromptMetrics>>
+      | undefined;
+    if (includeMetrics) {
+      try {
+        const { getPromptMetrics } = await import("@/lib/db/queries");
+        metrics = await getPromptMetrics(slug);
+      } catch {
+        // Tables not ready — omit metrics gracefully
+      }
+    }
+
+    return NextResponse.json(
+      {
+        title: dbPrompt.title,
+        summary: dbPrompt.summary ?? "",
+        content: dbPrompt.content,
+        html: "",
+        date: dbPrompt.updatedAt.toISOString(),
+        slug: dbPrompt.slug,
+        kind: "prompts",
+        published: true,
+        pinned: false,
+        tags: dbPrompt.tags ?? [],
+        links: dbPrompt.links ?? [],
+        category: dbPrompt.category ?? undefined,
+        model: dbPrompt.model ?? undefined,
+        version: dbPrompt.version ?? undefined,
+        variables: dbPrompt.variables ?? undefined,
+        ...(includeMetrics ? { metrics: metrics ?? null } : {}),
+      },
+      { headers: NO_STORE_HEADERS },
+    );
+  }
+
+  // MDX fallback (only when no DB row exists for this slug)
+  const entry = await getContentBySlug("prompts", slug);
+  if (!entry) {
+    return NextResponse.json(
+      { error: "Prompt not found" },
+      { status: 404, headers: NO_STORE_HEADERS },
+    );
+  }
 
   let metrics:
     | Awaited<ReturnType<typeof import("@/lib/db/queries").getPromptMetrics>>
@@ -30,41 +103,9 @@ export async function GET(
     }
   }
 
-  // DB first — gracefully handle missing migration
-  let dbPrompt: Awaited<ReturnType<typeof getPromptBySlug>> | undefined;
-  try {
-    dbPrompt = await getPromptBySlug(slug);
-  } catch {
-    // DB schema not ready yet — fall through to MDX
-  }
-  if (dbPrompt) {
-    return NextResponse.json({
-      title: dbPrompt.title,
-      summary: dbPrompt.summary ?? "",
-      content: dbPrompt.content,
-      html: "",
-      date: dbPrompt.updatedAt.toISOString(),
-      slug: dbPrompt.slug,
-      kind: "prompts",
-      published: true,
-      pinned: false,
-      tags: dbPrompt.tags ?? [],
-      links: dbPrompt.links ?? [],
-      category: dbPrompt.category ?? undefined,
-      model: dbPrompt.model ?? undefined,
-      version: dbPrompt.version ?? undefined,
-      variables: dbPrompt.variables ?? undefined,
-      ...(includeMetrics ? { metrics: metrics ?? null } : {}),
-    });
-  }
-
-  // MDX fallback
-  const entry = await getContentBySlug("prompts", slug);
-  if (!entry) {
-    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
-  }
   return NextResponse.json(
     includeMetrics ? { ...entry, metrics: metrics ?? null } : entry,
+    { headers: NO_STORE_HEADERS },
   );
 }
 

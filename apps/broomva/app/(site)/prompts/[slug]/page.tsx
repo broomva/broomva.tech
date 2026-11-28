@@ -1,15 +1,30 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { cache, Suspense } from "react";
 import { PageHero } from "@/components/site/page-hero";
 import { PromptViewer } from "@/components/site/prompt-viewer";
 import { formatDate } from "@/lib/date";
 import { getAllSlugs, getContentBySlug } from "@/lib/content";
-import { getPromptBySlug } from "@/lib/db/queries";
+import { getPromptBySlugAnyState } from "@/lib/db/queries";
 
 export async function generateStaticParams() {
   const slugs = await getAllSlugs("prompts");
   return slugs.map((slug) => ({ slug }));
 }
+
+const getVisiblePrompt = cache(async (slug: string) => {
+  await connection();
+  const entry = await getContentBySlug("prompts", slug);
+  if (!entry) return null;
+
+  const prompt = await getPromptBySlugAnyState(slug);
+  if (prompt && (prompt.deletedAt !== null || prompt.visibility !== "public")) {
+    return null;
+  }
+
+  return { entry, copyCount: prompt?.copyCount ?? 0 };
+});
 
 export async function generateMetadata({
   params,
@@ -17,37 +32,41 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const entry = await getContentBySlug("prompts", slug);
+  const prompt = await getVisiblePrompt(slug);
 
-  if (!entry) {
+  if (!prompt) {
     return { title: "Prompt not found" };
   }
 
   return {
-    title: entry.title,
-    description: entry.summary,
+    title: prompt.entry.title,
+    description: prompt.entry.summary,
   };
 }
 
-export default async function PromptSlugPage({
+export default function PromptSlugPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <PromptDetail params={params} />
+    </Suspense>
+  );
+}
+
+async function PromptDetail({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const entry = await getContentBySlug("prompts", slug);
-  if (!entry) {
+  const prompt = await getVisiblePrompt(slug);
+  if (!prompt) {
     notFound();
   }
-
-  // Merge DB stats (copyCount) if available
-  let copyCount = 0;
-  try {
-    const dbPrompt = await getPromptBySlug(slug);
-    if (dbPrompt) copyCount = dbPrompt.copyCount;
-  } catch {
-    // DB not ready — show 0
-  }
+  const { entry, copyCount } = prompt;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">

@@ -1,13 +1,14 @@
 import { config } from "@/lib/config";
 import { getAllSlugs, getContentBySlug } from "@/lib/content";
 
+export const maxDuration = 15;
+
 export async function GET() {
-  const [projectSlugs, writingSlugs, noteSlugs, promptSlugs] =
+  const [projectSlugs, writingSlugs, noteSlugs] =
     await Promise.all([
       getAllSlugs("projects"),
       getAllSlugs("writing"),
       getAllSlugs("notes"),
-      getAllSlugs("prompts"),
     ]);
 
   const projectEntries = await Promise.all(
@@ -33,15 +34,6 @@ export async function GET() {
       const entry = await getContentBySlug("notes", slug);
       return entry
         ? `- [${entry.title}](${config.appUrl}/notes/${slug}): ${entry.summary ?? ""}`
-        : null;
-    }),
-  );
-
-  const promptEntries = await Promise.all(
-    promptSlugs.map(async (slug) => {
-      const entry = await getContentBySlug("prompts", slug);
-      return entry
-        ? `- [${entry.title}](${config.appUrl}/prompts/${slug}): ${entry.summary ?? ""}`
         : null;
     }),
   );
@@ -78,7 +70,7 @@ ${noteEntries.filter(Boolean).join("\n")}
 
 ## Prompts
 
-${promptEntries.filter(Boolean).join("\n")}
+- [Prompt library](${config.appUrl}/prompts): Browse currently public prompts.
 
 ## APIs
 

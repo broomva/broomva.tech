@@ -59,8 +59,8 @@ function streamingModel(chunks: string[]) {
             usage: {
               inputTokens: {
                 total: 10,
-                noCache: 10,
-                cacheRead: 0,
+                noCache: 2,
+                cacheRead: 8,
                 cacheWrite: 0,
               },
               outputTokens: { total: 5, text: 5, reasoning: 0 },
@@ -100,6 +100,7 @@ describe("POST /api/ask", () => {
   });
 
   it("streams an answer grounded in the public brief and retrieved pages", async () => {
+    logged.length = 0;
     const res = await POST(ask(question("Who are you?")));
     expect(res.status).toBe(200);
     const text = await res.text();
@@ -113,6 +114,14 @@ describe("POST /api/ask", () => {
     expect(system?.content).toContain("### Life — /projects/life");
     const users = call.prompt.filter((m) => m.role === "user");
     expect(JSON.stringify(users)).toContain("Who are you?");
+
+    const finishLog = logged.find(
+      (entry) => Array.isArray(entry) && entry[1] === "ask answered",
+    ) as [Record<string, unknown>, string] | undefined;
+    expect(finishLog?.[0]).toMatchObject({
+      cacheReadTokens: 8,
+      cacheWriteTokens: 0,
+    });
   });
 
   it("refuses cross-origin browser requests before calling the model", async () => {

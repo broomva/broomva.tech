@@ -42,7 +42,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/llms",
   "/api/prompts",
   "/api/assets",
-  "/api/debug",
   // Infra health probes (e.g. /api/health/redis): status-only JSON (no
   // secrets), polled by dogfood / uptime checks from terminals with no
   // session cookie. Must not 307→/login or external probes can't read it.

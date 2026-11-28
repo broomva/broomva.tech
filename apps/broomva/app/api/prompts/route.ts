@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getContentList } from "@/lib/content";
 import {
   getAllPublicPrompts,
+  getNonPublicPromptSlugs,
   createUserPrompt,
   getPromptBySlug,
 } from "@/lib/db/queries";
@@ -12,6 +13,12 @@ import { mirrorIfAdmin, mirrorWarningHeaders } from "@/lib/prompts/mirror";
 import { resolveAuth } from "@/lib/prompts/resolve-auth";
 import type { UserPrompt } from "@/lib/db/schema";
 import type { ContentSummary } from "@/lib/content";
+
+export const maxDuration = 15;
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store",
+};
 
 function dbToSummary(p: UserPrompt): ContentSummary {
   return {
@@ -43,12 +50,22 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get("sort");
 
   let dbPrompts: UserPrompt[] = [];
+  let hiddenSlugs: string[] = [];
   try {
-    dbPrompts = await getAllPublicPrompts({ category, tag, model });
+    [dbPrompts, hiddenSlugs] = await Promise.all([
+      getAllPublicPrompts({ category, tag, model }),
+      getNonPublicPromptSlugs(),
+    ]);
   } catch {
-    // DB schema not ready yet (migration pending) — fall through to MDX
+    return NextResponse.json(
+      { error: "Service unavailable" },
+      { status: 503, headers: NO_STORE_HEADERS },
+    );
   }
-  const dbSlugs = new Set(dbPrompts.map((p) => p.slug));
+  const dbSlugs = new Set([
+    ...dbPrompts.map((p) => p.slug),
+    ...hiddenSlugs,
+  ]);
   const dbSummaries = dbPrompts.map(dbToSummary);
 
   let mdxEntries = await getContentList("prompts");
@@ -116,10 +133,12 @@ export async function GET(request: NextRequest) {
         return getContentBySlug("prompts", entry.slug);
       }),
     );
-    return NextResponse.json(full.filter(Boolean));
+    return NextResponse.json(full.filter(Boolean), {
+      headers: NO_STORE_HEADERS,
+    });
   }
 
-  return NextResponse.json(merged);
+  return NextResponse.json(merged, { headers: NO_STORE_HEADERS });
 }
 
 export async function POST(request: NextRequest) {

@@ -15,6 +15,8 @@
 import { connection, NextResponse } from "next/server";
 import { checkRedisHealth } from "@/lib/redis-health";
 
+export const maxDuration = 10;
+
 export async function GET() {
   // Opt out of static prerendering (the project runs `cacheComponents`, which
   // forbids `export const dynamic`): always probe live — a build-time cached

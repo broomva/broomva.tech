@@ -2,7 +2,7 @@
  * Build-time script: generates public/search-index.json from all site content.
  *
  * Sources:
- *   1. MDX content  — writing, notes, projects, prompts (via lib/content.ts)
+ *   1. MDX content  — writing, notes, projects
  *   2. Skills       — static BSTACK_LAYERS (no GitHub API needed)
  *   3. GitHub repos  — via GitHub API (graceful fallback if no token)
  *   4. Static pages  — hardcoded entries for non-content routes
@@ -27,12 +27,13 @@ interface SearchEntry {
   category?: string;
 }
 
-type ContentKind = "notes" | "projects" | "writing" | "prompts";
+type ContentKind = "notes" | "projects" | "writing";
 
 // ── MDX content (reimplemented to avoid Next.js server imports) ──────────────
 
 const CONTENT_ROOT = path.join(process.cwd(), "content");
-const CONTENT_KINDS: ContentKind[] = ["writing", "notes", "projects", "prompts"];
+// Prompt visibility is mutable. Link to the library from the static index.
+const CONTENT_KINDS: ContentKind[] = ["writing", "notes", "projects"];
 
 async function readMdxEntries(kind: ContentKind): Promise<SearchEntry[]> {
   let files: string[];

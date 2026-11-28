@@ -1,5 +1,7 @@
 import { config } from "@/lib/config";
 
+export const maxDuration = 10;
+
 export function GET() {
   const content = `# ${config.appName}
 

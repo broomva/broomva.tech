@@ -7,6 +7,8 @@ import {
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
+export const maxDuration = 10;
+
 export async function GET() {
   const { data: session } = await getSafeSession({
     fetchOptions: { headers: await headers() },

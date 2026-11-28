@@ -1,5 +1,9 @@
+import { connection } from "next/server";
 import { type ContentKind, getContentBySlug } from "@/lib/content";
 import { config } from "@/lib/config";
+import { getPromptBySlugAnyState } from "@/lib/db/queries";
+
+export const maxDuration = 10;
 
 const VALID_KINDS = new Set<ContentKind>([
   "writing",
@@ -7,6 +11,10 @@ const VALID_KINDS = new Set<ContentKind>([
   "notes",
   "prompts",
 ]);
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store",
+};
 
 export async function GET(
   _req: Request,
@@ -18,8 +26,39 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
+  if (kind === "prompts") {
+    // Opt out of static prerendering under cacheComponents so prompt visibility
+    // and deletion are always verified live against the DB.
+    await connection();
+    let dbPrompt:
+      | Awaited<ReturnType<typeof getPromptBySlugAnyState>>
+      | undefined;
+    try {
+      dbPrompt = await getPromptBySlugAnyState(slug);
+    } catch {
+      return new Response("Service unavailable", {
+        status: 503,
+        headers: NO_STORE_HEADERS,
+      });
+    }
+    if (
+      dbPrompt &&
+      (dbPrompt.deletedAt !== null || dbPrompt.visibility !== "public")
+    ) {
+      return new Response("Not found", {
+        status: 404,
+        headers: NO_STORE_HEADERS,
+      });
+    }
+  }
+
   const doc = await getContentBySlug(kind as ContentKind, slug);
-  if (!doc) return new Response("Not found", { status: 404 });
+  if (!doc) {
+    return new Response("Not found", {
+      status: 404,
+      headers: kind === "prompts" ? NO_STORE_HEADERS : undefined,
+    });
+  }
 
   const url = `${config.appUrl}/${kind}/${slug}`;
   const tagsLine = doc.tags.length > 0 ? `\ntags: [${doc.tags.join(", ")}]` : "";
@@ -38,7 +77,10 @@ ${doc.content}`;
   return new Response(markdown, {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
-      "Cache-Control": "public, max-age=3600, s-maxage=3600",
+      "Cache-Control":
+        kind === "prompts"
+          ? "private, no-store"
+          : "public, max-age=3600, s-maxage=3600",
     },
   });
 }
